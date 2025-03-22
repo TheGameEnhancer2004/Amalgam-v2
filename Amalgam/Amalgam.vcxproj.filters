@@ -209,6 +209,7 @@
     <ClCompile Include="src\Hooks\HostState_Shutdown.cpp" />
     <ClCompile Include="include\ImGui\LanguageDefinitions.cpp" />
     <ClCompile Include="src\Hooks\CBaseEntity_BaseInterpolatePart1.cpp" />
+    <ClCompile Include="src\Features\Misc\NamedPipe\NamedPipe.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -611,6 +612,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\IServerEntity.h" />
     <ClInclude Include="src\SDK\Definitions\Main\IServerUnknown.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\IMatchGroupDescription.h" />
+    <ClInclude Include="src\Features\Misc\NamedPipe\NamedPipe.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

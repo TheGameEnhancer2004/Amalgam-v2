@@ -7,6 +7,7 @@
 #include "../Features/Commands/Commands.h"
 #include "../Features/ImGui/Menu/Menu.h"
 #include "../Features/Visuals/Visuals.h"
+#include "../Features/Misc/NamedPipe/NamedPipe.h"
 #include "../SDK/Events/Events.h"
 static inline bool CheckDXLevel()
 {
@@ -56,6 +57,7 @@ void CCore::Load()
 	F::Materials.LoadMaterials();
 	U::ConVars.Initialize();
 	F::Commands.Initialize();
+	F::NamedPipe::Initialize();
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
 	F::Configs.m_bConfigLoaded = true;
@@ -114,6 +116,7 @@ void CCore::Unload()
 		cl_wpn_sway_scale->SetValue(0.f);
 
 	Sleep(250);
+	F::NamedPipe::Shutdown();
 	U::ConVars.Unload();
 	F::Materials.UnloadMaterials();
 
