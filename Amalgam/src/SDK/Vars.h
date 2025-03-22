@@ -769,6 +769,9 @@ namespace Vars
 			CVar(AutoF2Ignored, false)
 			CVar(AutoF1Priority, false)
 			CVarEnum(ForceClass, 0, NONE, Off, Scout, Sniper, Soldier, Demoman, Medic, Heavy, Pyro, Spy, Engineer)
+			CVar(NoiseSpam, false)
+		    CVarEnum(VoiceCommandSpam, 0, NONE, Off, Random, Medic, Thanks, GoGoGo, MoveUp, GoLeft, GoRight, Yes, No, Incoming, Spy, SentryAhead, NeedTeleporterHere, Pootis, NeedSentryHere, ActivateCharge, Help, BattleCry, Cheers, Jeers, Positive, Negative, NiceShot, NiceJob)
+		    CVar(VoiceCommandInterval, 4.0f)
 		SUBNAMESPACE_END(Automation)
 
 		SUBNAMESPACE_BEGIN(Sound)

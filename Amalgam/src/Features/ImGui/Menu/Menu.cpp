@@ -1142,6 +1142,9 @@ void CMenu::MenuMisc(int iTab)
 				FToggle("Auto accept item drops", Vars::Misc::Automation::AcceptItemDrops, FToggle_Right);
 				FToggle("Auto F2 ignored", Vars::Misc::Automation::AutoF2Ignored, FToggle_Left);
 				FToggle("Auto F1 priority", Vars::Misc::Automation::AutoF1Priority, FToggle_Right);
+				FToggle("Noise spam", Vars::Misc::Automation::NoiseSpam, FToggle_Left);
+				FDropdown("Voice command spam", Vars::Misc::Automation::VoiceCommandSpam, { "Off", "Random", "Medic", "Thanks", "Go Go Go", "Move Up", "Go Left", "Go Right", "Yes", "No", "Incoming", "Spy", "Sentry Ahead", "Need Teleporter Here", "Pootis", "Need Sentry Here", "Activate Charge", "Help", "Battle Cry", "Cheers", "Jeers", "Positive", "Negative", "Nice Shot", "Nice Job" }, {}, FDropdown_Right);
+				FSlider("Voice command interval", Vars::Misc::Automation::VoiceCommandInterval, 0.5f, 10.0f, 0.1f, "%.1fs", FSlider_Left);
 			} EndSection();
 
 			/* Column 2 */

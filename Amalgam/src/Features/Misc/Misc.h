@@ -12,6 +12,8 @@ class CMisc
 	void BreakShootSound(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void InstantRespawnMVM(CTFPlayer* pLocal);
+	void NoiseSpam(CTFPlayer* pLocal);
+	void VoiceCommandSpam();
 
 	void CheatsBypass();
 	void PingReducer();

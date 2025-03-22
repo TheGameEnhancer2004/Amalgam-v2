@@ -10,12 +10,14 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	CheatsBypass();
 	PingReducer();
 	WeaponSway();
+	VoiceCommandSpam();
 
 	if (!pLocal)
 		return;
 
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
+	NoiseSpam(pLocal);
 
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming() || pLocal->InCond(TF_COND_SHIELD_CHARGE) || pLocal->InCond(TF_COND_HALLOWEEN_KART))
 		return;
@@ -700,4 +702,115 @@ bool CMisc::SteamRPC()
 	I::SteamFriends->SetRichPresence("steam_player_group_size", std::to_string(Vars::Misc::Steam::GroupSize.Value).c_str());
 
 	return true;
+}
+
+void CMisc::NoiseSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::NoiseSpam.Value || !pLocal)
+		return;
+
+	static Timer tTimer{};
+	if (tTimer.Run(1000))
+	{
+		KeyValues* kv = new KeyValues("+use_action_slot_item_server");
+		I::EngineClient->ServerCmdKeyValues(kv);
+		KeyValues* kv2 = new KeyValues("-use_action_slot_item_server");
+		I::EngineClient->ServerCmdKeyValues(kv2);
+	}
+}
+
+void CMisc::VoiceCommandSpam()
+{
+	if (Vars::Misc::Automation::VoiceCommandSpam.Value == 0)
+		return;
+
+	static Timer tTimer{};
+	const float flInterval = Vars::Misc::Automation::VoiceCommandInterval.Value * 1000.0f;
+	if (tTimer.Run(flInterval))
+	{
+		std::string command;
+		switch (Vars::Misc::Automation::VoiceCommandSpam.Value)
+		{
+		case 0: // OFF
+			return;
+		case 1: // RANDOM
+			command = std::format("voicemenu {} {}", rand() % 3, rand() % 9);
+			break;
+		case 2: // MEDIC
+			command = "voicemenu 0 0";
+			break;
+		case 3: // THANKS
+			command = "voicemenu 0 1";
+			break;
+		case 4: // Go Go Go!
+			command = "voicemenu 0 2";
+			break;
+		case 5: // Move up!
+			command = "voicemenu 0 3";
+			break;
+		case 6: // Go left!
+			command = "voicemenu 0 4";
+			break;
+		case 7: // Go right!
+			command = "voicemenu 0 5";
+			break;
+		case 8: // Yes!
+			command = "voicemenu 0 6";
+			break;
+		case 9: // No!
+			command = "voicemenu 0 7";
+			break;
+		case 10: // Incoming!
+			command = "voicemenu 1 0";
+			break;
+		case 11: // Spy!
+			command = "voicemenu 1 1";
+			break;
+		case 12: // Sentry Ahead!
+			command = "voicemenu 1 2";
+			break;
+		case 13: // Need Teleporter Here!
+			command = "voicemenu 1 3";
+			break;
+		case 14: // pootis
+			command = "voicemenu 1 4";
+			break;
+		case 15: // Need Sentry Here!
+			command = "voicemenu 1 5";
+			break;
+		case 16: // Activate Charge!
+			command = "voicemenu 1 6";
+			break;
+		case 17: // Help!
+			command = "voicemenu 2 0";
+			break;
+		case 18: // Battle Cry!
+			command = "voicemenu 2 1";
+			break;
+		case 19: // Cheers!
+			command = "voicemenu 2 2";
+			break;
+		case 20: // Jeers!
+			command = "voicemenu 2 3";
+			break;
+		case 21: // Positive!
+			command = "voicemenu 2 4";
+			break;
+		case 22: // Negative!
+			command = "voicemenu 2 5";
+			break;
+		case 23: // Nice shot!
+			command = "voicemenu 2 6";
+			break;
+		case 24: // Nice job!
+			command = "voicemenu 2 7";
+			break;
+		default:
+			SDK::Output("VoiceCommandSpam", std::format("Unknown voice command index: {}", Vars::Misc::Automation::VoiceCommandSpam.Value).c_str(), { 255, 100, 100, 255 });
+			return;
+		}
+
+		I::EngineClient->ClientCmd_Unrestricted(command.c_str());
+		tTimer.Update();
+	}
 }
