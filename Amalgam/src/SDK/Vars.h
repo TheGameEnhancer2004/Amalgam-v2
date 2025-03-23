@@ -1006,7 +1006,7 @@ namespace Vars
 		CVar(CNetChannel_SendDatagram, true, NOSAVE)
 		CVar(CNetChannel_SendNetMsg, true, NOSAVE)
 		CVar(COPRenderSprites_Render, true, NOSAVE)
-		CVar(CParticleProperty_Create, true, NOSAVE)
+		// CVar(CParticleProperty_Create, true, NOSAVE)
 		CVar(CPlayerResource_GetPlayerName, true, NOSAVE)
 		CVar(CPrediction_RunSimulation, true, NOSAVE)
 		CVar(CRendering3dView_EnableWorldFog, true, NOSAVE)

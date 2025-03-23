@@ -156,7 +156,7 @@
     <ClCompile Include="src\Hooks\RecvProxy_SimulationTime.cpp" />
     <ClCompile Include="src\Hooks\CAttributeManager_AttribHookValue.cpp" />
     <ClCompile Include="src\Hooks\TF_IsHolidayActive.cpp" />
-    <ClCompile Include="src\Hooks\CParticleProperty_Create.cpp" />
+    <!-- <ClCompile Include="src\Hooks\CParticleProperty_Create.cpp" /> -->
     <ClCompile Include="src\Hooks\R_DrawSkyBox.cpp" />
     <ClCompile Include="src\Hooks\CL_ProcessPacketEntities.cpp" />
     <ClCompile Include="src\Hooks\GenerateEquipRegionConflictMask.cpp" />
