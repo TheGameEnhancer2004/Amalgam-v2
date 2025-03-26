@@ -6,20 +6,29 @@
 #include <utility>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include "../../Features/Players/PlayerUtils.h"
 
 bool CCommands::Run(const std::string& cmd, std::deque<std::string>& args)
 {
 	auto uHash = FNV1A::Hash32(cmd.c_str());
-	if (!CommandMap.contains(uHash))
-		return false;
+	if (CommandMap.contains(uHash))
+	{
+		CommandMap[uHash](args);
+		return true;
+	}
+	auto owoHash = FNV1A::Hash32(("owo_" + cmd).c_str());
+	if (CommandMap.contains(owoHash))
+	{
+		CommandMap[owoHash](args);
+		return true;
+	}
 
-	CommandMap[uHash](args);
-	return true;
+	return false;
 }
 
 void CCommands::Register(const std::string& name, CommandCallback callback)
 {
-	CommandMap[FNV1A::Hash32(name.c_str())] = std::move(callback);
+	CommandMap[FNV1A::Hash32(("owo_" + name).c_str())] = std::move(callback);
 }
 
 void CCommands::Initialize()
@@ -33,6 +42,45 @@ void CCommands::Initialize()
 				bHasLoaded = true;
 			}
 			I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
+		});
+
+	Register("ignore", [](const std::deque<std::string>& args)
+		{
+			if (args.size() != 2)
+			{
+				SDK::Output("Usage:\n\tignore <steamid32> <status>\nStatus can be:\n\tFRIEND - Bot will always ignore this player\n\tBOT - Bot will ignore this player until killed twice");
+				return;
+			}
+
+			uint32_t steamID;
+			try
+			{
+				steamID = std::stoul(args[0]);
+			}
+			catch (...)
+			{
+				SDK::Output("Invalid SteamID32");
+				return;
+			}
+
+			std::string status = args[1];
+			std::transform(status.begin(), status.end(), status.begin(), ::toupper);
+
+			if (status == "FRIEND")
+			{
+				F::PlayerUtils.AddTag(steamID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG), true);
+				SDK::Output(std::format("Added FRIEND ignore status to {}", steamID).c_str());
+			}
+			else if (status == "BOT")
+			{
+				F::PlayerUtils.AddTag(steamID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG), true);
+				F::PlayerUtils.m_mBotIgnoreData[steamID].m_bIsIgnored = true;
+				SDK::Output(std::format("Added BOT ignore status to {}", steamID).c_str());
+			}
+			else
+			{
+				SDK::Output("Invalid status. Use FRIEND or BOT");
+			}
 		});
 
 	Register("setcvar", [](const std::deque<std::string>& args)

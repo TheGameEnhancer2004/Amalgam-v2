@@ -259,6 +259,23 @@ bool CPlayerlistUtils::IsIgnored(uint32_t friendsID)
 	if (!friendsID)
 		return false;
 
+	if (HasTag(friendsID, TagToIndex(FRIEND_IGNORE_TAG)))
+		return true;
+
+	if (HasTag(friendsID, TagToIndex(BOT_IGNORE_TAG)))
+	{
+		auto& botData = m_mBotIgnoreData[friendsID];
+		if (botData.m_iKillCount >= 2)
+		{
+			// nigga u killed me twice, now youll feel my rough.
+			RemoveTag(friendsID, TagToIndex(BOT_IGNORE_TAG), true);
+			botData.m_iKillCount = 0;
+			botData.m_bIsIgnored = false;
+			return false;
+		}
+		return true;
+	}
+
 	const int iPriority = GetPriority(friendsID);
 	const int iIgnored = m_vTags[TagToIndex(IGNORED_TAG)].Priority;
 	return iPriority <= iIgnored;
@@ -284,6 +301,18 @@ bool CPlayerlistUtils::IsPrioritized(int iIndex)
 	if (const uint32_t friendsID = GetFriendsID(iIndex))
 		return IsPrioritized(friendsID);
 	return false;
+}
+
+void CPlayerlistUtils::IncrementBotIgnoreKillCount(uint32_t friendsID)
+{
+	if (!friendsID)
+		return;
+
+	if (HasTag(friendsID, TagToIndex(BOT_IGNORE_TAG)))
+	{
+		auto& botData = m_mBotIgnoreData[friendsID];
+		botData.m_iKillCount++;
+	}
 }
 
 const char* CPlayerlistUtils::GetPlayerName(int iIndex, const char* sDefault, int* pType)

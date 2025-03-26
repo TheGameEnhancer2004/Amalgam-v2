@@ -1,6 +1,7 @@
 #include "AutoVote.h"
 
 #include "../../Players/PlayerUtils.h"
+#include "../NamedPipe/NamedPipe.h"
 
 void CAutoVote::UserMessage(bf_read& msgData)
 {
@@ -11,6 +12,25 @@ void CAutoVote::UserMessage(bf_read& msgData)
 	char sTarget[256]; msgData.ReadString(sTarget, sizeof(sTarget));
 	const int iTarget = msgData.ReadByte() >> 1;
 	msgData.Seek(0);
+
+	PlayerInfo_t pi{};
+	if (I::EngineClient->GetPlayerInfo(iTarget, &pi))
+	{
+		if (F::NamedPipe::IsLocalBot(pi.friendsID))
+		{
+			I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
+			return;
+		}
+	}
+	PlayerInfo_t callerPi{};
+	if (I::EngineClient->GetPlayerInfo(iTarget, &callerPi))
+	{
+		if (F::NamedPipe::IsLocalBot(callerPi.friendsID))
+		{
+			I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
+			return;
+		}
+	}
 
 	if (Vars::Misc::Automation::AutoF2Ignored.Value
 		&& (F::PlayerUtils.IsIgnored(iTarget)

@@ -10,6 +10,7 @@
 #include "../../Features/Resolver/Resolver.h"
 #include "../../Features/Visuals/Visuals.h"
 #include "../../Features/Killstreak/Killstreak.h"
+#include "../../Features/Players/PlayerUtils.h"
 
 bool CEventListener::Initialize()
 {
@@ -63,6 +64,19 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 		break;
 	case FNV1A::Hash32Const("player_death"):
 		F::Killstreak.PlayerDeath(pEvent);
+		{
+			const int attacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
+			const int userid = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+
+			if (attacker == I::EngineClient->GetLocalPlayer())
+			{
+				PlayerInfo_t pi{};
+				if (I::EngineClient->GetPlayerInfo(userid, &pi))
+				{
+					F::PlayerUtils.IncrementBotIgnoreKillCount(pi.friendsID);
+				}
+			}
+		}
 		break;
 	case FNV1A::Hash32Const("revive_player_notify"):
 	{
