@@ -5,6 +5,7 @@ MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41
 MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
 	void* rcx, CBaseEntity* pOwner, const Vec3& vEyePosition, Vec3& vEyeAngles)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CBasePlayer_CalcViewModelView.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
@@ -60,6 +61,7 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 		vEyeAngles.z += Vars::Visuals::Viewmodel::Roll.Value * (bFlip ? -1 : 1);
 
 	CALL_ORIGINAL(rcx, pOwner, vNewEyePosition, vEyeAngles);
+#endif
 }
 
 MAKE_HOOK(ClientModeTFNormal_GetViewModelFOV, U::Memory.GetVFunc(I::ClientModeShared, 32), float,

@@ -177,7 +177,9 @@ MAKE_HOOK(CClientModeShared_CreateMove, U::Memory.GetVFunc(I::ClientModeShared, 
 	}
 
 	// Run Features
+#ifndef TEXTMODE
 	F::Spectate.CreateMove(pLocal, pCmd);
+#endif
 	F::Misc.RunPre(pLocal, pCmd);
 	F::AutoJoin.Run(pLocal);
 	F::GameObjectiveController.Update();
@@ -196,7 +198,9 @@ MAKE_HOOK(CClientModeShared_CreateMove, U::Memory.GetVFunc(I::ClientModeShared, 
 	F::NoSpread.Run(pLocal, pWeapon, pCmd);
 	F::Misc.RunPost(pLocal, pCmd, *pSendPacket);
 	F::Resolver.CreateMove(pLocal);
+#ifndef TEXTMODE
 	F::Visuals.CreateMove(pLocal, pWeapon);
+#endif
 
 	{
 		static bool bWasSet = false;
@@ -209,6 +213,7 @@ MAKE_HOOK(CClientModeShared_CreateMove, U::Memory.GetVFunc(I::ClientModeShared, 
 	F::Ticks.ManagePacket(pCmd, pSendPacket);
 	F::AntiAim.Run(pLocal, pWeapon, pCmd, *pSendPacket);
 
+#ifndef TEXTMODE
 	if (pLocal)
 	{
 		static std::vector<Vec3> vAngles;
@@ -235,6 +240,7 @@ MAKE_HOOK(CClientModeShared_CreateMove, U::Memory.GetVFunc(I::ClientModeShared, 
 			F::FakeAngle.Run(pLocal);
 		}
 	}
+#endif
 
 	G::Choking = !*pSendPacket;
 	G::LastUserCmd = pCmd;

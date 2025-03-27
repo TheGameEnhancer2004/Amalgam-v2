@@ -34,8 +34,10 @@
 #include "Interfaces/VPhysics.h"
 #include "Interfaces/CServerTools.h"
 
+#ifndef TEXTMODE
 #include <d3d9.h>
 MAKE_INTERFACE_SIGNATURE_SEARCH(IDirect3DDevice9, DirectXDevice, "shaderapi", "48 8B 0D ? ? ? ? 48 8B 01 FF 50 ? 8B F8", 0x0, 1)
+#endif
 
 class CNullInterfaces
 {

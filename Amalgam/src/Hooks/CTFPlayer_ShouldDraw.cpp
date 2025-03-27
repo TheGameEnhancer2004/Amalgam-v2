@@ -10,6 +10,9 @@ MAKE_SIGNATURE(CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThi
 MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 	void* rcx)
 {
+#ifdef TEXTMODE
+	return false;
+#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayer_ShouldDraw.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -19,11 +22,15 @@ MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 		return Vars::Visuals::ThirdPerson::Enabled.Value ? true : rcx != pLocal->m_hObserverTarget().Get()->GetClientRenderable();
 
 	return CALL_ORIGINAL(rcx);
+#endif
 }
 
 MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(), bool,
 	void* rcx)
 {
+#ifdef TEXTMODE
+	return false;
+#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayer_ShouldDraw.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -40,14 +47,17 @@ MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(
 	}
 
 	return CALL_ORIGINAL(rcx);
+#endif
 }
 
 MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 	void* rcx, const CViewSetup& viewRender, bool drawViewmodel)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayer_ShouldDraw.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, viewRender, drawViewmodel);
 #endif
 	CALL_ORIGINAL(rcx, viewRender, F::Spectate.m_iTarget != -1 ? false : drawViewmodel);
+#endif
 }

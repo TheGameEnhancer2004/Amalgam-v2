@@ -5,6 +5,7 @@ MAKE_SIGNATURE(CViewRender_DrawUnderwaterOverlay, "client.dll", "4C 8B DC 41 56 
 MAKE_HOOK(CViewRender_DrawUnderwaterOverlay, S::CViewRender_DrawUnderwaterOverlay(), void,
 	void* rcx)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CViewRender_DrawUnderwaterOverlay.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -12,4 +13,5 @@ MAKE_HOOK(CViewRender_DrawUnderwaterOverlay, S::CViewRender_DrawUnderwaterOverla
 
 	if (!Vars::Visuals::Removals::ScreenOverlays.Value || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot())
 		CALL_ORIGINAL(rcx);
+#endif
 }

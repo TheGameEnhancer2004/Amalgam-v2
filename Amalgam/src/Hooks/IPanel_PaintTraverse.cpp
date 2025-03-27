@@ -3,6 +3,7 @@
 MAKE_HOOK(IPanel_PaintTraverse, U::Memory.GetVFunc(I::Panel, 41), void,
 	void* rcx, VPANEL vguiPanel, bool forceRepaint, bool allowForce)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::IPanel_PaintTraverse.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, vguiPanel, forceRepaint, allowForce);
@@ -22,4 +23,5 @@ MAKE_HOOK(IPanel_PaintTraverse, U::Memory.GetVFunc(I::Panel, 41), void,
 	}
 
 	CALL_ORIGINAL(rcx, vguiPanel, forceRepaint, allowForce);
+#endif
 }

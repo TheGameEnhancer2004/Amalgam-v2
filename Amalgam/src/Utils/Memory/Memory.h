@@ -18,9 +18,9 @@ public:
 		return vtable[index];
 	}
 
-	inline uintptr_t RelToAbs(const uintptr_t address)
+	inline uintptr_t RelToAbs(const uintptr_t address, const uintptr_t offset = 0x3)
 	{
-		return *reinterpret_cast<std::int32_t*>(address + 0x3) + address + 0x7;
+		return *reinterpret_cast<std::int32_t*>(address + offset) + address + offset + 0x4;
 	}
 
 	template <typename T>

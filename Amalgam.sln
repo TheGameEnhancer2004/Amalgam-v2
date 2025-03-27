@@ -23,6 +23,10 @@ Global
 		ReleaseFreetype|x86 = ReleaseFreetype|x86
 		ReleaseFreetypeAVX2|x64 = ReleaseFreetypeAVX2|x64
 		ReleaseFreetypeAVX2|x86 = ReleaseFreetypeAVX2|x86
+		ReleaseTextmode|x64 = ReleaseTextmode|x64
+		ReleaseTextmode|x86 = ReleaseTextmode|x86
+		ReleaseTextmodeAVX2|x64 = ReleaseTextmodeAVX2|x64
+		ReleaseTextmodeAVX2|x86 = ReleaseTextmodeAVX2|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.Debug|x64.ActiveCfg = Debug|x64
@@ -57,6 +61,14 @@ Global
 		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseFreetypeAVX2|x64.Build.0 = ReleaseFreetypeAVX2|x64
 		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseFreetypeAVX2|x86.ActiveCfg = ReleaseFreetypeAVX2|Win32
 		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseFreetypeAVX2|x86.Build.0 = ReleaseFreetypeAVX2|Win32
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmode|x64.ActiveCfg = ReleaseTextmode|x64
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmode|x64.Build.0 = ReleaseTextmode|x64
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmode|x86.ActiveCfg = ReleaseTextmode|Win32
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmode|x86.Build.0 = ReleaseTextmode|Win32
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmodeAVX2|x64.ActiveCfg = ReleaseTextmodeAVX2|x64
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmodeAVX2|x64.Build.0 = ReleaseTextmodeAVX2|x64
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmodeAVX2|x86.ActiveCfg = ReleaseTextmodeAVX2|Win32
+		{2550C133-72A8-4AF7-B22A-A8012BD9F376}.ReleaseTextmodeAVX2|x86.Build.0 = ReleaseTextmodeAVX2|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

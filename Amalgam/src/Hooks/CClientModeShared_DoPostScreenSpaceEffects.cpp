@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Chams/Chams.h"
@@ -42,3 +43,4 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVFunc(I::Clie
 
 	return CALL_ORIGINAL(rcx, pSetup);
 }
+#endif

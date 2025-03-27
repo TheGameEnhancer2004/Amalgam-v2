@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "Render.h"
 
 #include "../../Hooks/Direct3DDevice9.h"
@@ -160,3 +161,4 @@ void CRender::Initialize(IDirect3DDevice9* pDevice)
 	LoadFonts();
 	LoadStyle();
 }
+#endif 

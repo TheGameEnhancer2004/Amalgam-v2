@@ -51,7 +51,9 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 
 	F::CritHack.Event(pEvent, uHash, pLocal);
 	F::Misc.Event(pEvent, uHash);
+#ifndef TEXTMODE
 	F::Visuals.Event(pEvent, uHash);
+#endif
 	switch (uHash)
 	{
 	case FNV1A::Hash32Const("player_hurt"):
@@ -60,8 +62,11 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		F::Backtrack.SetLerp(pEvent);
+#ifndef TEXTMODE
 		F::Killstreak.PlayerSpawn(pEvent);
+#endif
 		break;
+#ifndef TEXTMODE
 	case FNV1A::Hash32Const("player_death"):
 		F::Killstreak.PlayerDeath(pEvent);
 		{
@@ -78,6 +83,7 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 			}
 		}
 		break;
+#endif
 	case FNV1A::Hash32Const("revive_player_notify"):
 	{
 		if (!Vars::Misc::MannVsMachine::InstantRevive.Value || pEvent->GetInt("entindex") != I::EngineClient->GetLocalPlayer())

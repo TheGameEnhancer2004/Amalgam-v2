@@ -18,8 +18,10 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVFunc(I::ViewRender, 1), void,
 	if (!Vars::Hooks::CViewRender_LevelInit.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
 #endif
+#ifndef TEXTMODE
 	F::Materials.ReloadMaterials();
 	F::Visuals.OverrideWorldTextures();
+#endif
 
 	F::Backtrack.Reset();
 	F::Resolver.Reset();

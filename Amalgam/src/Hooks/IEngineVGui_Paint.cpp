@@ -56,6 +56,7 @@ static inline void Paint()
 MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVFunc(I::EngineVGui, 14), void,
 	void* rcx, int iMode)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::IEngineVGui_Paint.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, iMode);
@@ -64,4 +65,5 @@ MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVFunc(I::EngineVGui, 14), void,
 
 	if (iMode & PAINT_UIPANELS && !G::Unload)
 		Paint();
+#endif
 }

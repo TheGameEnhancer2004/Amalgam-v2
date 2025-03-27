@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 MAKE_SIGNATURE(g_bAllowSecureServers, "engine.dll", "40 88 35 ? ? ? ? 40 84 FF", 0x0);
@@ -12,3 +13,4 @@ MAKE_HOOK(Host_IsSecureServerAllowed, S::Host_IsSecureServerAllowed(), bool)
 	}
 	return CALL_ORIGINAL();
 }
+#endif 

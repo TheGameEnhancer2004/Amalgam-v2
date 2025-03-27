@@ -63,6 +63,7 @@ struct SpriteRenderInfo_t
 MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
     void* rcx, IMatRenderContext* pRenderContext, CParticleCollection* pParticles, void* pContext)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
     if (!Vars::Hooks::COPRenderSprites_Render.Map[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
@@ -151,11 +152,13 @@ MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
     pRenderContext->DepthRange(0.f, 0.2f);
     CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
     pRenderContext->DepthRange(0.f, 1.f);
+#endif
 }
 
 MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, void* pSortList, void* pCamera)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
     if (!Vars::Hooks::COPRenderSprites_Render.Map[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
@@ -168,11 +171,13 @@ MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCar
     info.m_pRGB[((hParticle / 4) * info.m_nRGBStride) + 1].m128_f32[hParticle & 0x3] = float(Vars::Colors::ParticleModulation.Value.g) / 255.f; // green
     info.m_pRGB[((hParticle / 4) * info.m_nRGBStride) + 2].m128_f32[hParticle & 0x3] = float(Vars::Colors::ParticleModulation.Value.b) / 255.f; // blue
     CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
+#endif
 }
 
 MAKE_HOOK(COPRenderSprites_RenderTwoSequenceSpriteCard, S::COPRenderSprites_RenderTwoSequenceSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, void* pSortList, void* pCamera)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
     if (!Vars::Hooks::COPRenderSprites_Render.Map[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
@@ -185,4 +190,5 @@ MAKE_HOOK(COPRenderSprites_RenderTwoSequenceSpriteCard, S::COPRenderSprites_Rend
     info.m_pRGB[((hParticle / 4) * info.m_nRGBStride) + 1].m128_f32[hParticle & 0x3] = float(Vars::Colors::ParticleModulation.Value.g) / 255.f; // green
     info.m_pRGB[((hParticle / 4) * info.m_nRGBStride) + 2].m128_f32[hParticle & 0x3] = float(Vars::Colors::ParticleModulation.Value.b) / 255.f; // blue
     CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
+#endif
 }

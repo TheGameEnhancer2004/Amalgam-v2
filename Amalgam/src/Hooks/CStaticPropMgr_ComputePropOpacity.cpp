@@ -41,6 +41,7 @@ public:
 MAKE_HOOK(CStaticPropMgr_ComputePropOpacity, S::CStaticPropMgr_ComputePropOpacity(), void,
 	void* rcx, CStaticProp* pProp)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CStaticPropMgr_ComputePropOpacity.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pProp);
@@ -53,4 +54,5 @@ MAKE_HOOK(CStaticPropMgr_ComputePropOpacity, S::CStaticPropMgr_ComputePropOpacit
 	}
 
 	CALL_ORIGINAL(rcx, pProp);
+#endif
 }

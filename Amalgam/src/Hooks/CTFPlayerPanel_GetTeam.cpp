@@ -43,6 +43,7 @@ MAKE_HOOK(CTFTeamStatusPlayerPanel_Update, S::CTFTeamStatusPlayerPanel_Update(),
 MAKE_HOOK(vgui_Panel_SetBgColor, S::vgui_Panel_SetBgColor(), void,
 	void* rcx, Color_t color)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayerPanel_GetTeam.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, color);
@@ -64,4 +65,5 @@ MAKE_HOOK(vgui_Panel_SetBgColor, S::vgui_Panel_SetBgColor(), void,
 	}
 
 	CALL_ORIGINAL(rcx, color);
+#endif
 }

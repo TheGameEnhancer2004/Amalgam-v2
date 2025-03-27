@@ -9,6 +9,7 @@
 #include "../Features/Visuals/Visuals.h"
 #include "../Features/Misc/NamedPipe/NamedPipe.h"
 #include "../SDK/Events/Events.h"
+
 static inline bool CheckDXLevel()
 {
 	auto mat_dxlevel = U::ConVars.FindVar("mat_dxlevel");
@@ -54,7 +55,9 @@ void CCore::Load()
 	if (m_bUnload = m_bFailed2 = !U::Hooks.Initialize() || !U::BytePatches.Initialize() || !H::Events.Initialize())
 		return;
 
+#ifndef TEXTMODE
 	F::Materials.LoadMaterials();
+#endif
 	U::ConVars.Initialize();
 	F::Commands.Initialize();
 	F::NamedPipe::Initialize();
@@ -70,10 +73,14 @@ void CCore::Loop()
 {
 	while (true)
 	{
+#ifdef TEXTMODE
+		if (m_bUnload)
+			break;
+#else
 		bool bShouldUnload = U::KeyHandler.Down(VK_F11) && SDK::IsGameWindowInFocus() || m_bUnload;
 		if (bShouldUnload)
 			break;
-
+#endif 
 		Sleep(15);
 	}
 }

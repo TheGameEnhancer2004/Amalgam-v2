@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Materials/Materials.h"
@@ -17,3 +18,4 @@ MAKE_HOOK(CMaterial_Uncache, S::CMaterial_Uncache(), void,
 
 	CALL_ORIGINAL(rcx, bPreserveVars);
 }
+#endif

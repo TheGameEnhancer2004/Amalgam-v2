@@ -26,6 +26,20 @@
   <a href="https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseFreetypeAVX2PDB.zip">
     <img src=".github/assets/pdb_avx2.png" alt="PDB Freetype AVX2" width="auto" height="auto">
   </a>
+  <br>
+  <a href="https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmode.zip">
+    <img src=".github/assets/textmode.png" alt="Download Textmode" width="auto" height="auto">
+  </a>
+  <a href="https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodeAVX2.zip">
+    <img src=".github/assets/textmode_avx2.png" alt="Download Textmode AVX2" width="auto" height="auto">
+  </a>
+  <br>
+  <a href="https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodePDB.zip">
+    <img src=".github/assets/pdb.png" alt="PDB Textmode" width="auto" height="auto">
+  </a>
+  <a href="https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodeAVX2PDB.zip">
+    <img src=".github/assets/pdb_avx2.png" alt="PDB Textmode AVX2" width="auto" height="auto">
+  </a>
 </p>
 
 # Amalgam

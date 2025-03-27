@@ -3,6 +3,7 @@
 MAKE_HOOK(CStudioRender_SetColorModulation, U::Memory.GetVFunc(I::StudioRender, 27), void,
 	void* rcx, const float* pColor)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CStudioRender_SetColorModulation.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pColor);
@@ -20,4 +21,5 @@ MAKE_HOOK(CStudioRender_SetColorModulation, U::Memory.GetVFunc(I::StudioRender, 
 	}
 
 	CALL_ORIGINAL(rcx, pColor);
+#endif
 }

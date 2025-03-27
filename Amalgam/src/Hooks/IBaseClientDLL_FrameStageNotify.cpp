@@ -31,9 +31,10 @@ MAKE_HOOK( IBaseClientDLL_FrameStageNotify, U::Memory.GetVFunc( I::BaseClientDLL
 	{
 	case FRAME_NET_UPDATE_START:
 	{
+#ifndef TEXTMODE
 		auto pLocal = H::Entities.GetLocal();
 		F::Spectate.NetUpdateStart(pLocal);
-
+#endif
 		H::Entities.Clear();
 		break;
 	}
@@ -78,17 +79,19 @@ MAKE_HOOK( IBaseClientDLL_FrameStageNotify, U::Memory.GetVFunc( I::BaseClientDLL
 		F::Backtrack.Store();
 		F::MoveSim.Store();
 		F::CritHack.Store();
-
+#ifndef TEXTMODE
 		auto pLocal = H::Entities.GetLocal();
 		F::ESP.Store(pLocal);
 		F::Chams.Store(pLocal);
 		F::Glow.Store(pLocal);
 		F::Visuals.Store(pLocal);
-
+#endif
 		F::CheaterDetection.Run();
+#ifndef TEXTMODE
 		F::Spectate.NetUpdateEnd(pLocal);
 
 		F::Visuals.Modulate();
+#endif
 		break;
 	}
 	case FRAME_RENDER_START:

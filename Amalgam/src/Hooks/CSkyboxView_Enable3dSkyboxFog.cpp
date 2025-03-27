@@ -5,6 +5,7 @@ MAKE_SIGNATURE(CSkyboxView_Enable3dSkyboxFog, "client.dll", "40 57 48 83 EC ? E8
 MAKE_HOOK(CSkyboxView_Enable3dSkyboxFog, S::CSkyboxView_Enable3dSkyboxFog(), void,
 	void* rcx)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CSkyboxView_Enable3dSkyboxFog.Map[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -22,4 +23,5 @@ MAKE_HOOK(CSkyboxView_Enable3dSkyboxFog, S::CSkyboxView_Enable3dSkyboxFog(), voi
 		float blend[3] = { float(Vars::Colors::FogModulation.Value.r) / 255.f, float(Vars::Colors::FogModulation.Value.g) / 255.f, float(Vars::Colors::FogModulation.Value.b) / 255.f };
 		pRenderContext->FogColor3fv(blend);
 	}
+#endif
 }

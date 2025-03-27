@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Visuals.h"
@@ -5,6 +6,7 @@
 #include "../Features/EnginePrediction/EnginePrediction.h"
 
 MAKE_SIGNATURE(CBaseEntity_FireBullets, "client.dll", "48 89 74 24 ? 55 57 41 55 41 56 41 57 48 8D AC 24 ? ? ? ? 48 81 EC ? ? ? ? F3 41 0F 10 58", 0x0);
+
 static int iBullet{ 0 };
 static int iLastTickCount{ 0 };
 MAKE_HOOK(CBaseEntity_FireBullets, S::CBaseEntity_FireBullets(), void,
@@ -109,3 +111,4 @@ MAKE_HOOK(CBaseEntity_FireBullets, S::CBaseEntity_FireBullets(), void,
 	else
 		H::Particles.ParticleTracer(sString.c_str(), trace.startpos, trace.endpos, pLocal->entindex(), iAttachment, true);
 }
+#endif
