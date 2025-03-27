@@ -50,7 +50,7 @@ public:
 	std::string m_sCurrentVisuals = "default";
 	std::string m_sConfigPath;
 	std::string m_sVisualsPath;
-	const std::string m_sConfigExtension = ".json";
+	const std::string m_sConfigExtension = ".owo";
 
 	bool m_bConfigLoaded = false;
 };

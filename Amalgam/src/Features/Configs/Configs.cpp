@@ -240,7 +240,7 @@ void CConfigs::LoadJson(boost::property_tree::ptree& mapTree, std::string sName,
 
 CConfigs::CConfigs()
 {
-	m_sConfigPath = std::filesystem::current_path().string() + "\\Amalgam";
+	m_sConfigPath = std::filesystem::current_path().string() + "\\past0rboat";
 	m_sVisualsPath = m_sConfigPath + "\\Visuals";
 
 	if (!std::filesystem::exists(m_sConfigPath))
