@@ -1477,11 +1477,11 @@ void CMenu::MenuMisc(int iTab)
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FToggle(Vars::Misc::Movement::NavEngine::PathInSetup);
-						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -50);
-						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
+						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath, FDropdownEnum::Left);
+						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Right | FDropdownEnum::Multi, -30);
+						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 					}
 					PopTransparent();
 				} EndSection();
