@@ -33,8 +33,8 @@ class CMenu
 public:
 	void Render();
 	void AddOutput(const std::string& sFunction, const std::string& sLog, const Color_t& tColor = Vars::Menu::Theme::Accent.Value);
-	void ShowNotification(const std::string& sTitle, const std::string& sMessage, float flDuration = 10.0f);
-	void ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage, float flDuration = 10.0f);
+	void ShowNotification(const std::string& sTitle, const std::string& sMessage);
+	void ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage);
 	void ProcessDeferredNotifications();
 	void DrawNotifications();
 
@@ -46,8 +46,6 @@ public:
 	{
 		std::string m_sTitle;
 		std::string m_sMessage;
-		float m_flStartTime;
-		float m_flDuration;
 		bool m_bVisible;
 	};
 	std::vector<Notification_t> m_vNotifications;

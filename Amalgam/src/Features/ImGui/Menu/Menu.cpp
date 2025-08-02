@@ -4291,25 +4291,21 @@ void CMenu::AddOutput(const std::string& sFunction, const std::string& sLog, con
 		m_vOutput.pop_back();
 }
 
-void CMenu::ShowNotification(const std::string& sTitle, const std::string& sMessage, float flDuration)
+void CMenu::ShowNotification(const std::string& sTitle, const std::string& sMessage)
 {
 	Notification_t notification;
 	notification.m_sTitle = sTitle;
 	notification.m_sMessage = sMessage;
-	notification.m_flStartTime = ImGui::GetTime();
-	notification.m_flDuration = flDuration;
 	notification.m_bVisible = true;
 	
 	m_vNotifications.push_back(notification);
 }
 
-void CMenu::ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage, float flDuration)
+void CMenu::ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage)
 {
 	Notification_t notification;
 	notification.m_sTitle = sTitle;
 	notification.m_sMessage = sMessage;
-	notification.m_flStartTime = 0.0f;
-	notification.m_flDuration = flDuration;
 	notification.m_bVisible = true;
 	
 	m_vDeferredNotifications.push_back(notification);
@@ -4320,10 +4316,8 @@ void CMenu::ProcessDeferredNotifications()
 	if (m_vDeferredNotifications.empty())
 		return;
 	
-	float flCurrentTime = ImGui::GetTime();
 	for (auto& notification : m_vDeferredNotifications)
 	{
-		notification.m_flStartTime = flCurrentTime;
 		m_vNotifications.push_back(notification);
 	}
 	

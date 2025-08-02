@@ -41,7 +41,7 @@ static inline bool CheckDXLevel()
 		//const char* sMessage = "You are running with graphics options that Amalgam does not support.\n-dxlevel must be at least 90.";
 		const char* sMessage = "You are running with graphics options that Amalgam does not support.\nIt is recommended for -dxlevel to be at least 90.";
 		U::Core.AppendFailText(sMessage);
-		F::Menu.ShowDeferredNotification("Graphics Warning", sMessage, 15.0f);
+		F::Menu.ShowDeferredNotification("Graphics Warning", sMessage);
 		SDK::Output("Amalgam", sMessage, { 175, 150, 255 }, true, true);
 		//return false;
 	}
