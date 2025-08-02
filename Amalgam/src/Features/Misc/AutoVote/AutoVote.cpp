@@ -13,7 +13,7 @@ void CAutoVote::UserMessage(bf_read& msgData)
 	const int iTarget = msgData.ReadByte() >> 1;
 	msgData.Seek(0);
 
-
+#ifdef TEXTMODE
 	PlayerInfo_t pi{};
 	if (I::EngineClient->GetPlayerInfo(iTarget, &pi))
 	{
@@ -34,7 +34,7 @@ void CAutoVote::UserMessage(bf_read& msgData)
 			return;
 		}
 	}
-
+#endif
 
 	if (Vars::Misc::Automation::AutoF2Ignored.Value
 		&& (F::PlayerUtils.IsIgnored(iTarget)

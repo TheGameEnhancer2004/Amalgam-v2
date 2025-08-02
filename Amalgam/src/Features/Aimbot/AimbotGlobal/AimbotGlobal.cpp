@@ -139,10 +139,11 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 		if (pLocal->m_iTeamNum() == pEntity->m_iTeamNum())
 			return false;
 
-		// pipe local playa
+#ifdef TEXTMODE
 		PlayerInfo_t pi{};
 		if (I::EngineClient->GetPlayerInfo(pPlayer->entindex(), &pi) && F::NamedPipe::IsLocalBot(pi.friendsID))
 			return true;
+#endif
 
 		if (F::PlayerUtils.IsIgnored(pPlayer->entindex()))
 			return true;

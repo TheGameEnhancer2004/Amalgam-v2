@@ -12,6 +12,8 @@ class CMisc
 	void BreakShootSound(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void InstantRespawnMVM(CTFPlayer* pLocal);
+	void ExecBuyBot(CTFPlayer* pLocal);
+	void ResetBuyBot();
 	void NoiseSpam(CTFPlayer* pLocal);
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
@@ -35,6 +37,9 @@ class CMisc
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
 
+	int m_buybot_step = 1;
+	float m_buybot_clock = 0.0f;
+
 public:
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void RunPost(CTFPlayer* pLocal, CUserCmd* pCmd, bool pSendPacket);
@@ -46,6 +51,7 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	bool SteamRPC();
+	void AutoMvmReadyUp();
 
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;
