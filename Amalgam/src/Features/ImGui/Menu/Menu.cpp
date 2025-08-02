@@ -4244,9 +4244,12 @@ void CMenu::Render()
 
 	PushFont(F::Render.FontRegular);
 
+	ProcessDeferredNotifications();
+
 	DrawBinds();
 	if (m_bIsOpen)
 	{
+		DrawNotifications();
 		DrawMenu();
 
 		AddDraggable("Ticks", Vars::Menu::TicksDisplay, FGet(Vars::Menu::Indicators) & Vars::Menu::IndicatorsEnum::Ticks);
@@ -4283,9 +4286,108 @@ void CMenu::Render()
 
 void CMenu::AddOutput(const std::string& sFunction, const std::string& sLog, const Color_t& tColor)
 {
-	static size_t iID = 0;
+	m_vOutput.push_front({ sFunction, sLog, FNV1A::Hash32Const(sLog.c_str()), tColor });
+	if (m_vOutput.size() > m_iMaxOutputSize)
+		m_vOutput.pop_back();
+}
 
-	m_vOutput.emplace_back(sFunction, sLog, iID++, tColor);
-	while (m_vOutput.size() > m_iMaxOutputSize)
-		m_vOutput.pop_front();
+void CMenu::ShowNotification(const std::string& sTitle, const std::string& sMessage, float flDuration)
+{
+	Notification_t notification;
+	notification.m_sTitle = sTitle;
+	notification.m_sMessage = sMessage;
+	notification.m_flStartTime = ImGui::GetTime();
+	notification.m_flDuration = flDuration;
+	notification.m_bVisible = true;
+	
+	m_vNotifications.push_back(notification);
+}
+
+void CMenu::ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage, float flDuration)
+{
+	Notification_t notification;
+	notification.m_sTitle = sTitle;
+	notification.m_sMessage = sMessage;
+	notification.m_flStartTime = 0.0f;
+	notification.m_flDuration = flDuration;
+	notification.m_bVisible = true;
+	
+	m_vDeferredNotifications.push_back(notification);
+}
+
+void CMenu::ProcessDeferredNotifications()
+{
+	if (m_vDeferredNotifications.empty())
+		return;
+	
+	float flCurrentTime = ImGui::GetTime();
+	for (auto& notification : m_vDeferredNotifications)
+	{
+		notification.m_flStartTime = flCurrentTime;
+		m_vNotifications.push_back(notification);
+	}
+	
+	m_vDeferredNotifications.clear();
+}
+
+void CMenu::DrawNotifications()
+{
+	using namespace ImGui;
+	
+	if (m_vNotifications.empty())
+		return;
+	
+	ImVec2 vDisplaySize = GetIO().DisplaySize;
+	float flNotificationWidth = H::Draw.Scale(400);
+	float flNotificationHeight = H::Draw.Scale(80);
+	float flPosX = (vDisplaySize.x - flNotificationWidth) * 0.5f;
+	float flPosY = H::Draw.Scale(20);
+	
+	for (size_t i = 0; i < m_vNotifications.size(); ++i)
+	{
+		auto& notification = m_vNotifications[i];
+		if (!notification.m_bVisible)
+			continue;
+		
+		float flCurrentPosY = flPosY + (i * (flNotificationHeight + H::Draw.Scale(10)));
+		
+		PushStyleVar(ImGuiStyleVar_WindowRounding, H::Draw.Scale(8));
+		PushStyleVar(ImGuiStyleVar_WindowPadding, { H::Draw.Scale(16), H::Draw.Scale(12) });
+		
+		PushStyleColor(ImGuiCol_WindowBg, F::Render.Background1.Value);
+		PushStyleColor(ImGuiCol_Border, F::Render.Accent.Value);
+		
+		SetNextWindowPos({ flPosX, flCurrentPosY }, ImGuiCond_Always);
+		SetNextWindowSize({ flNotificationWidth, 0 }, ImGuiCond_Always);
+		
+		char sWindowName[64];
+		snprintf(sWindowName, sizeof(sWindowName), "##Notification%zu", i);
+		
+		if (Begin(sWindowName, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			PushFont(F::Render.FontBold);
+			PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.7f, 0.2f, 1.0f));
+			
+			PushFont(F::Render.IconFont);
+			Text(ICON_MD_WARNING);
+			PopFont();
+			
+			SameLine();
+			Text(" %s", notification.m_sTitle.c_str());
+			PopStyleColor();
+			PopFont();
+			
+			Separator();
+			
+			PushFont(F::Render.FontRegular);
+			PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+			TextWrapped("%s", notification.m_sMessage.c_str());
+			PopStyleColor();
+			PopFont();
+		}
+		End();
+		
+		PopStyleColor(2);
+		PopStyleVar(2);
+	}
 }

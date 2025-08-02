@@ -33,10 +33,25 @@ class CMenu
 public:
 	void Render();
 	void AddOutput(const std::string& sFunction, const std::string& sLog, const Color_t& tColor = Vars::Menu::Theme::Accent.Value);
+	void ShowNotification(const std::string& sTitle, const std::string& sMessage, float flDuration = 10.0f);
+	void ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage, float flDuration = 10.0f);
+	void ProcessDeferredNotifications();
+	void DrawNotifications();
 
 	bool m_bIsOpen = false;
 	bool m_bInKeybind = false;
 	bool m_bWindowHovered = false;
+
+	struct Notification_t
+	{
+		std::string m_sTitle;
+		std::string m_sMessage;
+		float m_flStartTime;
+		float m_flDuration;
+		bool m_bVisible;
+	};
+	std::vector<Notification_t> m_vNotifications;
+	std::vector<Notification_t> m_vDeferredNotifications;
 };
 
 ADD_FEATURE(CMenu, Menu);
