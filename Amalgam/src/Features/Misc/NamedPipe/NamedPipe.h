@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef TEXTMODE
+
 #include "../../../SDK/SDK.h"
 #include "../../Configs/Configs.h"
 #include <string>
@@ -24,4 +26,6 @@ namespace F::NamedPipe
     bool IsLocalBot(uint32_t friendsID);
     void UpdateLocalBotIgnoreStatus();
     void ClearLocalBots();
-} 
+}
+
+#endif

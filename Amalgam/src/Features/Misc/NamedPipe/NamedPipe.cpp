@@ -1,12 +1,12 @@
 //
 //
 //
-// TODO: REFACTOR THIS DOGSHIT
-// TODO: REFACTOR THIS DOGSHIT
-// TODO: REFACTOR THIS DOGSHIT
+// TODO: REFACTOR THIS bad code
 //
 //
 //
+#ifdef TEXTMODE
+
 #include "NamedPipe.h"
 #include "../../../SDK/SDK.h"
 #include "../../Players/PlayerUtils.h"
@@ -857,4 +857,6 @@ namespace F::NamedPipe
         }
         Log("ConnectAndMaintainPipe ended");
     }
-} 
+}
+
+#endif // TEXTMODE
