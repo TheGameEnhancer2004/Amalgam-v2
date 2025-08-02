@@ -1650,8 +1650,8 @@ void CMenu::MenuMisc(int iTab)
 				{
 					FToggle(Vars::Misc::MannVsMachine::InstantRespawn, FToggleEnum::Left);
 					FToggle(Vars::Misc::MannVsMachine::InstantRevive, FToggleEnum::Right);
-					FToggle(Vars::Misc::MannVsMachine::AllowInspect);
-					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp);
+					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
+					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
 					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
 					{
