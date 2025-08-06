@@ -778,10 +778,10 @@ void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 
 void CMisc::RandomVotekick(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Automation::RandomVotekick.Value || !I::EngineClient->IsInGame() || !I::EngineClient->IsConnected())
+	if (!Vars::Misc::Automation::AutoVotekick.Value || !I::EngineClient->IsInGame() || !I::EngineClient->IsConnected())
 		return;
 
-	if (!m_tRandomVotekickTimer.Run(1.0f))
+	if (!m_tAutoVotekickTimer.Run(1.0f))
 		return;
 
 	std::vector<int> vPotentialTargets;
@@ -793,6 +793,9 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 
 		PlayerInfo_t pi{};
 		if (!I::EngineClient->GetPlayerInfo(i, &pi) || pi.fakeplayer)
+			continue;
+
+		if (Vars::Misc::Automation::AutoVotekick.Value == Vars::Misc::Automation::AutoVotekickEnum::Prio && !F::PlayerUtils.IsPrioritized(i))
 			continue;
 
 		if (H::Entities.IsFriend(i) || 
@@ -808,16 +811,12 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 	if (vPotentialTargets.empty())
 		return;
 
-
 	int iRandom = SDK::RandomInt(0, vPotentialTargets.size() - 1);
 	int iTarget = vPotentialTargets[iRandom];
 
-
 	PlayerInfo_t pi{};
 	if (I::EngineClient->GetPlayerInfo(iTarget, &pi))
-	{
 		I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pi.userID).c_str());
-	}
 }
 
 

@@ -56,7 +56,7 @@ public:
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;
 	bool m_bAntiAFK = false;
-	Timer m_tRandomVotekickTimer;
+	Timer m_tAutoVotekickTimer;
 };
 
 ADD_FEATURE(CMisc, Misc);

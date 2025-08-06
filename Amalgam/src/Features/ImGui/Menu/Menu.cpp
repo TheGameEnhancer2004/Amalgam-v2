@@ -1527,13 +1527,13 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
 					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
-					FToggle(Vars::Misc::Automation::RandomVotekick, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::ChatSpam::Enable, FToggleEnum::Right);
+					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FToggle(Vars::Misc::Automation::ChatSpam::Enable, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
 					{
-						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Left | FSliderEnum::Clamp);
-						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Right);
-						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Left);
+						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Right | FSliderEnum::Clamp);
+						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
+						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
 					}
 					PopTransparent();
 					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);

@@ -1076,7 +1076,9 @@ namespace Vars
 			CVar(KartControl, "Kart control", false);
 			CVar(AutoF2Ignored, "Auto F2 ignored", false);
 			CVar(AutoF1Priority, "Auto F1 priority", false);
-			CVar(RandomVotekick, "Random votekick", false);
+			CVarEnum(AutoVotekick, "Auto votekick", 0, NONE, nullptr,
+				VA_LIST("Off", "Random", "Prioritized only"),
+				Off, Random, Prio);
 			CVar(ForceClass, "Autojoin class", 0);
 			CVarEnum(VoiceCommandSpam, "Voice command spam", 0, NONE, nullptr,
 				VA_LIST("Off", "Random", "Medic", "Thanks", "Nice Shot", "Cheers", "Jeers", "Go Go Go", "Move Up", "Go Left", "Go Right", "Yes", "No", "Incoming", "Spy", "Sentry Ahead", "Need Teleporter", "Pootis", "Need Sentry", "Activate Charge", "Help", "Battle Cry"),
