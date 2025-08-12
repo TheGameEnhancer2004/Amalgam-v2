@@ -18,6 +18,7 @@ struct Frame
 	std::string m_sFile = "";
 	unsigned int m_uLine = 0;
 	std::string m_sName = "";
+	std::string m_sPattern = "";
 };
 
 static std::deque<Frame> StackTrace(PCONTEXT pContext)
@@ -79,6 +80,11 @@ static std::deque<Frame> StackTrace(PCONTEXT pContext)
 				tFrame.m_sName = symbol->Name;
 		}
 
+		{
+			auto sPattern = U::Memory.GenerateSignatureAtAddress(tStackFrame.AddrPC.Offset);
+			tFrame.m_sPattern = sPattern.empty() ? "No signature" : sPattern;
+		}
+
 		vTrace.push_back(tFrame);
 	}
 	//if (!vTrace.empty())
@@ -128,6 +134,8 @@ static LONG APIENTRY ExceptionFilter(PEXCEPTION_POINTERS ExceptionInfo)
 				ssErrorStream << std::format(" ({} L{})", tFrame.m_sFile, tFrame.m_uLine);
 			if (!tFrame.m_sName.empty())
 				ssErrorStream << std::format(" ({})", tFrame.m_sName);
+			if (!tFrame.m_sPattern.empty())
+				ssErrorStream << std::format("\n({})", tFrame.m_sPattern);
 			ssErrorStream << "\n";
 		}
 		ssErrorStream << "\n";

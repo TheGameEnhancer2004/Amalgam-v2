@@ -1100,6 +1100,7 @@
     <ClCompile Include="include\MinHook\hde\hde64.c" />
     <ClCompile Include="include\MinHook\hook.c" />
     <ClCompile Include="include\MinHook\trampoline.c" />
+    <ClCompile Include="include\Zydis\Zydis.c" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />
     <ClCompile Include="src\BytePatches\BytePatches.cpp" />
@@ -1430,6 +1431,7 @@
     <ClInclude Include="include\MinHook\hde\table64.h" />
     <ClInclude Include="include\MinHook\MinHook.h" />
     <ClInclude Include="include\MinHook\trampoline.h" />
+    <ClInclude Include="include\Zydis\Zydis.h" />
     <ClInclude Include="src\Features\AutoJoin\AutoJoin.h" />
     <ClInclude Include="src\Features\CritHack\NoPipeRot.h" />
     <ClInclude Include="src\Features\Killstreak\Killstreak.h" />

@@ -264,6 +264,8 @@
     <ClCompile Include="src\SDK\Definitions\Main\CTFPlayer.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_FireBullet.cpp" />
     <ClCompile Include="src\Hooks\CTFRocketLauncher_CheckReloadMisfire.cpp" />
+    <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
+    <ClCompile Include="include\Zydis\Zydis.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -672,6 +674,7 @@
     <ClInclude Include="src\Features\Misc\AutoItem\AutoItem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFInventoryManager.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CPlayerResource.h" />
+    <ClInclude Include="include\Zydis\Zydis.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
