@@ -267,12 +267,24 @@ void CMisc::AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd)
 	static auto mp_idlemaxtime = U::ConVars.FindVar("mp_idlemaxtime");
 	const int iIdleMethod = mp_idledealmethod->GetInt();
 	const float flMaxIdleTime = mp_idlemaxtime->GetFloat();
+	static bool bForce = false;
+
+	// Just in case there's a connection problem
+	auto pNetChan = I::EngineClient->GetNetChannelInfo();
+	bool bTimingOut = pNetChan && pNetChan->IsTimingOut();
+	if (bTimingOut) 
+		bForce = true;
 
 	if (pCmd->buttons & (IN_MOVELEFT | IN_MOVERIGHT | IN_FORWARD | IN_BACK) || !pLocal->IsAlive())
+	{
 		tTimer.Update();
-	else if (Vars::Misc::Automation::AntiAFK.Value && iIdleMethod && tTimer.Check(flMaxIdleTime * 60.f - 10.f)) // trigger 10 seconds before kick
+		bForce = false;
+	}
+	else if (Vars::Misc::Automation::AntiAFK.Value && iIdleMethod && (tTimer.Check(flMaxIdleTime * 60.f - 10.f) || (!bTimingOut && bForce))) // trigger 10 seconds before kick
 	{
 		pCmd->buttons |= I::GlobalVars->tickcount % 2 ? IN_FORWARD : IN_BACK;
+		tTimer.Update();
+		bForce = false;
 		m_bAntiAFK = true;
 	}
 }
