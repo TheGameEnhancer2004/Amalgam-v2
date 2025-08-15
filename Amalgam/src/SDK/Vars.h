@@ -287,9 +287,9 @@ namespace Vars
 			CVarEnum(Target, "Target", 0b0000001, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Players", "Sentries", "Dispensers", "Teleporters", "Stickies", "NPCs", "Bombs"),
 				Players = 1 << 0, Sentry = 1 << 1, Dispenser = 1 << 2, Teleporter = 1 << 3, Stickies = 1 << 4, NPCs = 1 << 5, Bombs = 1 << 6);
-			CVarEnum(Ignore, "Ignore", 0b000000000, DROPDOWN_MULTI, nullptr,
-				VA_LIST("Friends", "Party", "Invulnerable", "Cloaked", "Unsimulated players", "Dead Ringer", "Vaccinator", "Disguised", "Taunting"),
-				Friends = 1 << 0, Party = 1 << 1, Invulnerable = 1 << 2, Cloaked = 1 << 3, Unsimulated = 1 << 4, DeadRinger = 1 << 5, Vaccinator = 1 << 6, Disguised = 1 << 7, Taunting = 1 << 8);
+			CVarEnum(Ignore, "Ignore", 0b0000000000, DROPDOWN_MULTI, nullptr,
+				VA_LIST("Friends", "Party", "Invulnerable", "Cloaked", "Unsimulated players", "Dead Ringer", "Vaccinator", "Disguised", "Taunting", "Sentry busters"),
+				Friends = 1 << 0, Party = 1 << 1, Invulnerable = 1 << 2, Cloaked = 1 << 3, Unsimulated = 1 << 4, DeadRinger = 1 << 5, Vaccinator = 1 << 6, Disguised = 1 << 7, Taunting = 1 << 8, SentryBusters = 1 << 9);
 			CVar(AimFOV, "Aim FOV", 30.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 360.f);
 			CVar(MaxTargets, "Max targets", 2, SLIDER_MIN, 1, 6);
 			CVar(IgnoreCloak, "Ignore cloak", 100.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 10.f, "%g%%");
@@ -316,8 +316,8 @@ namespace Vars
 				VA_LIST("Head", "Body", "Pelvis", "Arms", "Legs", "##Divider", "Bodyaim if lethal"),
 				Head = 1 << 0, Body = 1 << 1, Pelvis = 1 << 2, Arms = 1 << 3, Legs = 1 << 4, BodyaimIfLethal = 1 << 5);
 			CVarEnum(Modifiers, VA_LIST("Modifiers", "Hitscan modifiers"), 0b0100000, DROPDOWN_MULTI, nullptr,
-				VA_LIST("Tapfire", "Wait for headshot", "Wait for charge", "Scoped only", "Auto scope", "Auto rev minigun", "Extinguish team"),
-				Tapfire = 1 << 0, WaitForHeadshot = 1 << 1, WaitForCharge = 1 << 2, ScopedOnly = 1 << 3, AutoScope = 1 << 4, AutoRev = 1 << 5, ExtinguishTeam = 1 << 6);
+				VA_LIST("Tapfire", "Wait for headshot", "Wait for charge", "Scoped only", "Auto scope", "Auto rev minigun", "Extinguish team", "Prefer medics"),
+				Tapfire = 1 << 0, WaitForHeadshot = 1 << 1, WaitForCharge = 1 << 2, ScopedOnly = 1 << 3, AutoScope = 1 << 4, AutoRev = 1 << 5, ExtinguishTeam = 1 << 6, PreferMedics = 1 << 7);
 			CVar(PointScale, "Point scale", 0.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 5.f, "%g%%");
 			CVar(TapFireDist, "Tapfire distance", 1000.f, SLIDER_MIN | SLIDER_PRECISION, 250.f, 1000.f, 50.f);
 

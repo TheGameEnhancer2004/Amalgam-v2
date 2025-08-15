@@ -145,6 +145,13 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 			return true;
 #endif
 
+		if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::SentryBusters)
+		{
+			uint32_t uModel = H::Entities.GetModel(pPlayer->entindex());
+			if (uModel == FNV1A::Hash32Const("models/bots/demo/bot_sentry_buster.mdl"))
+				return true;
+		}
+
 		if (F::PlayerUtils.IsIgnored(pPlayer->entindex()))
 			return true;
 
@@ -270,7 +277,21 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 
 int CAimbotGlobal::GetPriority(int iIndex)
 {
-	return F::PlayerUtils.GetPriority(iIndex);
+    int iPriority = F::PlayerUtils.GetPriority(iIndex);
+
+    if (Vars::Aimbot::Hitscan::Modifiers.Value & Vars::Aimbot::Hitscan::ModifiersEnum::PreferMedics)
+    {
+        auto pPlayer = I::ClientEntityList->GetClientEntity(iIndex)->As<CTFPlayer>();
+        auto pLocal = H::Entities.GetLocal();
+        if (pPlayer && pLocal && pPlayer->IsPlayer() && pPlayer->IsAlive()
+            && pPlayer->m_iTeamNum() != pLocal->m_iTeamNum()
+            && pPlayer->m_iClass() == TF_CLASS_MEDIC)
+        {
+            iPriority += 10;
+        }
+    }
+
+    return iPriority;
 }
 
 bool CAimbotGlobal::ShouldAim()
