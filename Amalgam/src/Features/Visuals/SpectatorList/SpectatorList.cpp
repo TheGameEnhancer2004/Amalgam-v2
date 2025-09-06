@@ -9,61 +9,71 @@ bool CSpectatorList::GetSpectators(CTFPlayer* pTarget)
 {
 	m_vSpectators.clear();
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ALL))
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
+		return false;
+
+	int iTarget = pTarget->entindex();
+	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
 	{
-		auto pPlayer = pEntity->As<CTFPlayer>();
-		int iIndex = pPlayer->entindex();
-		bool bLocal = pEntity->entindex() == I::EngineClient->GetLocalPlayer();
+		auto pPlayer = I::ClientEntityList->GetClientEntity(n)->As<CTFPlayer>();
+		bool bLocal = n == I::EngineClient->GetLocalPlayer();
 
-		auto pObserverTarget = pPlayer->m_hObserverTarget().Get();
-		int iObserverMode = pPlayer->m_iObserverMode();
-		if (bLocal && F::Spectate.m_iTarget != -1)
+		if (pResource->m_bValid(n) && !pResource->IsFakePlayer(n)
+			&& pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != TEAM_SPECTATOR && pResource->m_iTeam(n) == TEAM_SPECTATOR)
 		{
-			pObserverTarget = F::Spectate.m_pOriginalTarget;
-			iObserverMode = F::Spectate.m_iOriginalMode;
-		}
-
-		if (pPlayer->IsAlive() || pObserverTarget != pTarget
-			|| bLocal && !I::EngineClient->IsPlayingDemo() && F::Spectate.m_iTarget == -1)
-		{
-			pObserverTarget = F::Spectate.m_pOriginalTarget;
-			iObserverMode = F::Spectate.m_iOriginalMode;
-		}
-
-		if (pPlayer->IsAlive() || pObserverTarget != pTarget
-			|| bLocal && !I::EngineClient->IsPlayingDemo() && F::Spectate.m_iTarget == -1)
-		{
-			if (m_mRespawnCache.contains(iIndex))
-				m_mRespawnCache.erase(iIndex);
+			m_vSpectators.emplace_back(F::PlayerUtils.GetPlayerName(n, pResource->GetName(n)), "possible", -1.f, false, n);
 			continue;
 		}
 
-		std::string sMode;
-		switch (iObserverMode)
+		if (pTarget->entindex() == n || pResource->IsFakePlayer(n)
+			|| !pPlayer || !pPlayer->IsPlayer() || pPlayer->IsAlive()
+			|| pTarget->IsDormant() != pPlayer->IsDormant()
+			|| pResource->m_iTeam(iTarget) != pResource->m_iTeam(n))
 		{
-		case OBS_MODE_FIRSTPERSON: sMode = "1st"; break;
-		case OBS_MODE_THIRDPERSON: sMode = "3rd"; break;
-		default: continue;
+			if (m_mRespawnCache.contains(n))
+				m_mRespawnCache.erase(n);
+			continue;
 		}
 
-		float flRespawnTime = 0.f, flRespawnIn = 0.f;
-		bool bRespawnTimeIncreased = false; // theoretically the respawn times could be changed by the map but oh well
-		if (auto pResource = H::Entities.GetPR())
+		int iObserverTarget = !pPlayer->IsDormant() ? pPlayer->m_hObserverTarget().GetEntryIndex() : iTarget;
+		int iObserverMode = pPlayer->m_iObserverMode();
+		if (bLocal && F::Spectate.m_iTarget != -1)
 		{
-			flRespawnTime = pResource->m_flNextRespawnTime(iIndex);
+			iObserverTarget = F::Spectate.m_hOriginalTarget.GetEntryIndex();
+			iObserverMode = F::Spectate.m_iOriginalMode;
+		}
+		if (iObserverTarget != iTarget || bLocal && !I::EngineClient->IsPlayingDemo() && F::Spectate.m_iTarget == -1)
+		{
+			if (m_mRespawnCache.contains(n))
+				m_mRespawnCache.erase(n);
+			continue;
+		}
+
+		const char* sMode = "possible";
+		if (!pPlayer->IsDormant())
+		{
+			switch (iObserverMode)
+			{
+			case OBS_MODE_FIRSTPERSON: sMode = "1st"; break;
+			case OBS_MODE_THIRDPERSON: sMode = "3rd"; break;
+			default: continue;
+			}
+		}
+
+		float flRespawnTime = 0.f, flRespawnIn = -1.f;
+		bool bRespawnTimeIncreased = false;
+		if (pPlayer->IsInValidTeam())
+		{
+			flRespawnTime = pResource->m_flNextRespawnTime(n);
 			flRespawnIn = std::max(floorf(flRespawnTime - TICKS_TO_TIME(I::ClientState->m_ClockDriftMgr.m_nServerTick)), 0.f);
+			if (!m_mRespawnCache.contains(n))
+				m_mRespawnCache[n] = flRespawnTime;
+			else if (m_mRespawnCache[n] + 0.5f < flRespawnTime)
+				bRespawnTimeIncreased = true;
 		}
-		if (!m_mRespawnCache.contains(iIndex))
-			m_mRespawnCache[iIndex] = flRespawnTime;
-		else if (m_mRespawnCache[iIndex] + 0.5f < flRespawnTime)
-			bRespawnTimeIncreased = true;
 
-		PlayerInfo_t pi{};
-		if (I::EngineClient->GetPlayerInfo(iIndex, &pi))
-		{
-			std::string sName = F::PlayerUtils.GetPlayerName(iIndex, pi.name);
-			m_vSpectators.emplace_back(sName, sMode, flRespawnIn, bRespawnTimeIncreased, iIndex);
-		}
+		m_vSpectators.emplace_back(F::PlayerUtils.GetPlayerName(n, pResource->GetName(n)), sMode, flRespawnIn, bRespawnTimeIncreased, n);
 	}
 
 	return !m_vSpectators.empty();
@@ -85,11 +95,8 @@ void CSpectatorList::Draw(CTFPlayer* pLocal)
 	case OBS_MODE_THIRDPERSON:
 		pTarget = pLocal->m_hObserverTarget()->As<CTFPlayer>();
 	}
-	PlayerInfo_t pi{};
-	if (!pTarget || pTarget != pLocal && !I::EngineClient->GetPlayerInfo(pTarget->entindex(), &pi))
-		return;
-
-	if (!GetSpectators(pTarget))
+	if (!pTarget || !pTarget->IsPlayer()
+		|| !GetSpectators(pTarget))
 		return;
 
 	int x = Vars::Menu::SpectatorsDisplay.Value.x;
@@ -101,7 +108,7 @@ void CSpectatorList::Draw(CTFPlayer* pLocal)
 	for (auto& Spectator : m_vSpectators)
 	{
 		int w = 0, h = 0;
-		std::string text = std::format("{} - {} ({}s)", Spectator.m_sName, Spectator.m_sMode, static_cast<int>(Spectator.m_flRespawnIn));
+		std::string text = std::format("{} ({} - respawn {}s)", Spectator.m_sName, Spectator.m_sMode, static_cast<int>(Spectator.m_flRespawnIn));
 		I::MatSystemSurface->GetTextSize(fFont.m_dwFont, SDK::ConvertUtf8ToWide(text).c_str(), w, h);
 		maxTextWidth = std::max(maxTextWidth, w);
 	}
@@ -150,17 +157,17 @@ void CSpectatorList::Draw(CTFPlayer* pLocal)
 			tColor = F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(PARTY_TAG)].m_tColor;
 		else if (Spectator.m_bRespawnTimeIncreased)
 			tColor = F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(CHEATER_TAG)].m_tColor;
-		else if (FNV1A::Hash32(Spectator.m_sMode.c_str()) == FNV1A::Hash32Const("1st"))
+		else if (FNV1A::Hash32(Spectator.m_sMode) == FNV1A::Hash32Const("1st"))
 			tColor = tColor.Lerp({ 255, 150, 0, 255 }, 0.5f);
 
-		if (Spectator.m_bRespawnTimeIncreased || FNV1A::Hash32(Spectator.m_sMode.c_str()) == FNV1A::Hash32Const("1st"))
+		if (Spectator.m_bRespawnTimeIncreased || FNV1A::Hash32(Spectator.m_sMode) == FNV1A::Hash32Const("1st"))
 		{
 			Color_t tHighlightColor = tBackgroundColor;
 			tHighlightColor = tHighlightColor.Lerp({ 255, 255, 255, tBackgroundColor.a }, 0.05f);
 			H::Draw.FillRoundRect(x + H::Draw.Scale(12), y - H::Draw.Scale(2), boxWidth - H::Draw.Scale(24), nTall, H::Draw.Scale(2), tHighlightColor);
 		}
 
-		H::Draw.String(fFont, x + H::Draw.Scale(16), y, tColor, ALIGN_TOPLEFT, std::format("{} - {} ({}s)", Spectator.m_sName.c_str(), Spectator.m_sMode.c_str(), static_cast<int>(Spectator.m_flRespawnIn)).c_str());
+		H::Draw.String(fFont, x + H::Draw.Scale(16), y, tColor, ALIGN_TOPLEFT, std::format("{} ({} - respawn {}s)", Spectator.m_sName.c_str(), Spectator.m_sMode, static_cast<int>(Spectator.m_flRespawnIn)).c_str());
 		y += nTall;
 	}
 }

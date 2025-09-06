@@ -8,6 +8,8 @@ void CBacktrack::Reset()
 	m_mRecords.clear();
 	m_dSequences.clear();
 	m_iLastInSequence = 0;
+	m_tRecord.m_vHitboxInfos.clear();
+	memset(m_tRecord.m_aBones, 0, sizeof(m_tRecord.m_aBones));
 }
 
 
@@ -61,6 +63,17 @@ int CBacktrack::GetAnticipatedChoke(int iMethod)
 	if (F::FakeLag.m_iGoal && !Vars::Fakelag::UnchokeOnAttack.Value && F::Ticks.m_iShiftedTicks == F::Ticks.m_iShiftedGoal && !F::Ticks.m_bDoubletap && !F::Ticks.m_bSpeedhack)
 		iAnticipatedChoke = F::FakeLag.m_iGoal - I::ClientState->chokedcommands; // iffy, unsure if there is a good way to get it to work well without unchoking
 	return iAnticipatedChoke;
+}
+
+void CBacktrack::CreateMove(CUserCmd* pCmd)
+{
+	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
+		return;
+
+	// correct tick_count for fakeinterp / nointerp
+	pCmd->tick_count += TIME_TO_TICKS(GetFakeInterp());
+	if (!Vars::Visuals::Removals::Lerp.Value && !Vars::Visuals::Removals::Interpolation.Value)
+		pCmd->tick_count -= TIME_TO_TICKS(G::Lerp);
 }
 
 void CBacktrack::SendLerp()
@@ -192,6 +205,14 @@ std::vector<TickRecord*> CBacktrack::GetValidRecords(std::vector<TickRecord*>& v
 	return vReturn;
 }
 
+matrix3x4* CBacktrack::GetBones(CBaseEntity* pEntity)
+{
+	std::vector<TickRecord*> vRecords = {};
+	if (F::Backtrack.GetRecords(pEntity, vRecords) && !vRecords.empty())
+		return vRecords.front()->m_aBones;
+	return nullptr;
+}
+
 
 
 void CBacktrack::MakeRecords()
@@ -199,12 +220,18 @@ void CBacktrack::MakeRecords()
 	for (auto& pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ALL))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() || pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost()
+		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() || !pPlayer->IsAlive() || pPlayer->IsAGhost()
 			|| !H::Entities.GetDeltaTime(pPlayer->entindex()))
 			continue;
-			
-		auto pBones = H::Entities.GetBones(pPlayer->entindex());
-		if (!pBones) continue;
+		
+		
+		matrix3x4 aBones[MAXSTUDIOBONES];
+		m_bSettingUpBones = true;
+		bool bSetup = pPlayer->SetupBones(aBones, MAXSTUDIOBONES, BONE_USED_BY_ANYTHING, pPlayer->m_flSimulationTime());
+		m_bSettingUpBones = false;
+		if (!bSetup)
+			continue;
+		
 		auto pModel = pPlayer->GetModel();
 		if (!pModel) continue;
 		auto pHDR = I::ModelInfoClient->GetStudiomodel(pModel);
@@ -213,7 +240,6 @@ void CBacktrack::MakeRecords()
 		if (!pSet) continue;
 
 		std::vector<HitboxInfo> vHitboxInfos{};
-		auto tBoneMatrix = *reinterpret_cast<BoneMatrix*>(pBones);
 
 		for (int nHitbox = 0; nHitbox < pPlayer->GetNumOfHitboxes(); nHitbox++)
 		{
@@ -223,29 +249,27 @@ void CBacktrack::MakeRecords()
 			const Vec3 iMin = pBox->bbmin, iMax = pBox->bbmax;
 			const int iBone = pBox->bone;
 			Vec3 vCenter{};
-			Math::VectorTransform((iMin + iMax) / 2, tBoneMatrix.m_aBones[iBone], vCenter);
+			Math::VectorTransform((iMin + iMax) / 2, aBones[iBone], vCenter);
 			vHitboxInfos.push_back({ iBone, nHitbox, vCenter, iMin, iMax });
 		}
 
 		auto& vRecords = m_mRecords[pPlayer];
-
-		const TickRecord* pLastRecord = !vRecords.empty() ? &vRecords.front() : nullptr;
-		vRecords.emplace_front(
+		TickRecord tCurRecord = {
 			pPlayer->m_flSimulationTime(),
 			pPlayer->m_vecOrigin(),
 			pPlayer->m_vecMins(),
 			pPlayer->m_vecMaxs(),
-			tBoneMatrix,
 			vHitboxInfos,
-			m_mDidShoot[pPlayer->entindex()],
-			pPlayer->m_vecOrigin()
-		);
-		const TickRecord& tCurRecord = vRecords.front();
+			m_mDidShoot[pPlayer->entindex()]
+		};
+		memcpy(tCurRecord.m_aBones, aBones, sizeof(tCurRecord.m_aBones));
+		TickRecord* pLastRecord = !vRecords.empty() ? &vRecords.front() : nullptr;
+		vRecords.emplace_front(tCurRecord);
 
 		bool bLagComp = false;
 		if (pLastRecord)
 		{
-			const Vec3 vDelta = tCurRecord.m_vBreak - pLastRecord->m_vBreak;
+			const Vec3 vDelta = tCurRecord.m_vOrigin - pLastRecord->m_vOrigin;
 
 			static auto sv_lagcompensation_teleport_dist = U::ConVars.FindVar("sv_lagcompensation_teleport_dist");
 			const float flDist = powf(sv_lagcompensation_teleport_dist->GetFloat(), 2.f);
@@ -253,11 +277,8 @@ void CBacktrack::MakeRecords()
 			{
 				bLagComp = true;
 				if (!H::Entities.GetLagCompensation(pPlayer->entindex()))
-				{
 					vRecords.resize(1);
-					vRecords.front().m_flSimTime = std::numeric_limits<float>::max(); // hack
-				}
-				std::for_each(vRecords.begin(), vRecords.end(), [](auto& tRecord) { tRecord.m_bInvalid = true; });
+				std::for_each(vRecords.begin() + 1, vRecords.end(), [](auto& tRecord) { tRecord.m_bInvalid = true; });
 			}
 
 			for (auto& tRecord : vRecords)
@@ -268,9 +289,9 @@ void CBacktrack::MakeRecords()
 				tRecord.m_vOrigin = tCurRecord.m_vOrigin;
 				tRecord.m_vMins = tCurRecord.m_vMins;
 				tRecord.m_vMaxs = tCurRecord.m_vMaxs;
-				tRecord.m_BoneMatrix = tCurRecord.m_BoneMatrix;
 				tRecord.m_vHitboxInfos = tCurRecord.m_vHitboxInfos;
 				tRecord.m_bOnShot = tCurRecord.m_bOnShot;
+				memcpy(tRecord.m_aBones, tCurRecord.m_aBones, sizeof(tRecord.m_aBones));
 			}
 		}
 
@@ -417,9 +438,6 @@ std::optional<TickRecord> CBacktrack::GetHitRecord(CBaseEntity* pEntity, CTFWeap
 		vRecords = F::Backtrack.GetValidRecords(vRecords);
 		for(auto pRecord : vRecords)
 		{
-			if (!pRecord->m_BoneMatrix.m_aBones)
-				continue;
-
 			for (int n = 0; n < pRecord->m_vHitboxInfos.size(); n++)
 			{
 				auto sHitboxInfo = pRecord->m_vHitboxInfos[n];
@@ -511,7 +529,7 @@ void CBacktrack::Draw(CTFPlayer* pLocal)
 	if (!(Vars::Menu::Indicators.Value & Vars::Menu::IndicatorsEnum::Ping) || !pLocal->IsAlive())
 		return;
 
-	auto pResource = H::Entities.GetPR();
+	auto pResource = H::Entities.GetResource();
 	auto pNetChan = I::EngineClient->GetNetChannelInfo();
 	if (!pResource || !pNetChan)
 		return;
@@ -526,7 +544,7 @@ void CBacktrack::Draw(CTFPlayer* pLocal)
 
 	float flFake = std::min(flFakeLatency + flFakeLerp, m_flMaxUnlag) * 1000;
 	float flLatency = std::max(pNetChan->GetLatency(FLOW_INCOMING) + pNetChan->GetLatency(FLOW_OUTGOING) - flFakeLatency, 0.f) * 1000;
-	int iLatencyScoreboard = pResource->m_iPing(pLocal->entindex());
+	int iLatencyScoreboard = pResource->m_iPing(I::EngineClient->GetLocalPlayer());
 
 	int x = Vars::Menu::PingDisplay.Value.x;
 	int y = Vars::Menu::PingDisplay.Value.y + 8;

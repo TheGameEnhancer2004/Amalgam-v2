@@ -22,15 +22,14 @@ static inline std::string GetProcessName(DWORD dwProcessID)
 	if (!hProcess)
 		return "";
 
-	char buffer[MAX_PATH];
-	if (!GetModuleBaseName(hProcess, nullptr, buffer, sizeof(buffer) / sizeof(char)))
+	if (char buffer[MAX_PATH]; GetModuleBaseName(hProcess, nullptr, buffer, sizeof(buffer) / sizeof(char)))
 	{
 		CloseHandle(hProcess);
-		return "";
+		return buffer;
 	}
 
 	CloseHandle(hProcess);
-	return buffer;
+	return "";
 }
 
 static inline bool CheckDXLevel()
@@ -38,66 +37,15 @@ static inline bool CheckDXLevel()
 	auto mat_dxlevel = U::ConVars.FindVar("mat_dxlevel");
 	if (mat_dxlevel->GetInt() < 90)
 	{
-		//const char* sMessage = "You are running with graphics options that Amalgam does not support.\n-dxlevel must be at least 90.";
-		const char* sMessage = "You are running with graphics options that Amalgam does not support.\nIt is recommended for -dxlevel to be at least 90.";
+		//const char* sMessage = "You are running with graphics options that Amalgam does not support. -dxlevel must be at least 90.";
+		const char* sMessage = "You are running with graphics options that Amalgam does not support. It is recommended for -dxlevel to be at least 90.";
 		U::Core.AppendFailText(sMessage);
 		F::Menu.ShowDeferredNotification("Graphics Warning", sMessage);
-		SDK::Output("Amalgam", sMessage, { 175, 150, 255 }, true, true);
+		SDK::Output("Amalgam", sMessage, { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 		//return false;
 	}
 
 	return true;
-}
-
-const char* CCore::SearchForDLL(const char* pszDLLSearch)
-{
-	HANDLE hProcessSnap = INVALID_HANDLE_VALUE;
-	PROCESSENTRY32 pe32;
-	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (hProcessSnap == INVALID_HANDLE_VALUE)
-		return pszDLLSearch;
-
-	pe32.dwSize = sizeof(PROCESSENTRY32);
-	if (!Process32First(hProcessSnap, &pe32))
-	{
-		CloseHandle(hProcessSnap);
-		return pszDLLSearch;
-	}
-
-	do
-	{
-		if (pe32.szExeFile == strstr(pe32.szExeFile, "tf_win64.exe"))
-		{
-			HANDLE hModuleSnap = INVALID_HANDLE_VALUE;
-			MODULEENTRY32 me32;
-			hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pe32.th32ProcessID);
-			if (hModuleSnap == INVALID_HANDLE_VALUE)
-				break;
-
-			me32.dwSize = sizeof(MODULEENTRY32);
-			if (!Module32First(hModuleSnap, &me32))
-			{
-				CloseHandle(hModuleSnap);
-				break;
-			}
-
-			do
-			{
-				if (strstr(me32.szModule, pszDLLSearch))
-				{
-					CloseHandle(hProcessSnap);
-					CloseHandle(hModuleSnap);
-					return me32.szModule;
-				}
-			} while (Module32Next(hModuleSnap, &me32));
-
-			CloseHandle(hModuleSnap);
-			break;
-		}
-	} while (Process32Next(hProcessSnap, &pe32));
-
-	CloseHandle(hProcessSnap);
-	return pszDLLSearch;
 }
 
 void CCore::AppendFailText(const char* sMessage)
@@ -120,7 +68,7 @@ void CCore::LogFailText()
 	}
 	catch (...) {}
 #ifndef TEXTMODE
-	SDK::Output("Failed to load", m_ssFailStream.str().c_str(), {}, false, true, false, false, false, false, MB_OK | MB_ICONERROR);
+	SDK::Output("Failed to load", m_ssFailStream.str().c_str(), {}, OUTPUT_DEBUG, MB_OK | MB_ICONERROR);
 #endif
 }
 
@@ -155,7 +103,7 @@ static bool ModulesLoaded()
 		GetModuleHandleA("inputsystem.dll") &&
 		GetModuleHandleA("vphysics.dll") &&
 		GetModuleHandleA("steamclient64.dll") &&
-		FNV1A::Hash32(U::Core.SearchForDLL("shaderapi")) != FNV1A::Hash32Const("shaderapi");
+		(GetModuleHandleA("shaderapidx9.dll") || GetModuleHandleA("shaderapivk.dll"));
 }
 
 void CCore::Load()
@@ -192,15 +140,13 @@ void CCore::Load()
 	F::Materials.LoadMaterials();
 #endif
 	U::ConVars.Initialize();
-	F::Commands.Initialize();
 #ifdef TEXTMODE
 	F::NamedPipe::Initialize();
 #endif
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
-	F::Configs.m_bConfigLoaded = true;
 
-	SDK::Output("Amalgam", "Loaded", { 175, 150, 255 }, true, true, true);
+	SDK::Output("Amalgam", "Loaded", { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 }
 
 void CCore::Loop()
@@ -259,5 +205,5 @@ void CCore::Unload()
 		return;
 	}
 
-	SDK::Output("Amalgam", "Unloaded", { 175, 150, 255 }, true, true);
+	SDK::Output("Amalgam", "Unloaded", { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 }

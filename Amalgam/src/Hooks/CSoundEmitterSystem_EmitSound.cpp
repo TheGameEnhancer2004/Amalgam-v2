@@ -1,7 +1,5 @@
 #include "../SDK/SDK.h"
 
-#include <boost/algorithm/string.hpp>
-
 MAKE_SIGNATURE(CSoundEmitterSystem_EmitSound, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 41 56 48 81 EC ? ? ? ? 49 8B D9", 0x0);
 //MAKE_SIGNATURE(S_StartDynamicSound, "engine.dll", "4C 8B DC 57 48 81 EC", 0x0);
 MAKE_SIGNATURE(S_StartSound, "engine.dll", "40 53 48 83 EC ? 48 83 79 ? ? 48 8B D9 75 ? 33 C0", 0x0);
@@ -91,48 +89,41 @@ struct EmitSound_t
 	mutable short		m_hSoundScriptHandle;
 };
 
-const static std::vector<const char*> vFootsteps = { "footsteps", "flesh_impact_hard", "body_medium_impact_soft", "glass_sheet_step", "rubber_tire_impact_soft", "plastic_box_impact_soft", "plastic_barrel_impact_soft", "cardboard_box_impact_soft" };
-const static std::vector<const char*> vNoisemaker = { "items\\halloween", "items\\football_manager", "items\\japan_fundraiser", "items\\samurai\\tf_samurai_noisemaker", "items\\summer", "misc\\happy_birthday_tf", "misc\\jingle_bells" };
-const static std::vector<const char*> vFryingPan = { "pan_" };
-const static std::vector<const char*> vWater = { "ambient_mp3\\water\\water_splash", "slosh", "wade" };
+const static std::vector<const char*> s_vFootsteps = { "footstep", "flesh_impact_hard", "body_medium_impact_soft", "glass_sheet_step", "rubber_tire_impact_soft", "plastic_box_impact_soft", "plastic_barrel_impact_soft", "cardboard_box_impact_soft", "ceiling_tile_step" };
+const static std::vector<const char*> s_vNoisemaker = { "items\\halloween", "items\\football_manager", "items\\japan_fundraiser", "items\\samurai\\tf_samurai_noisemaker", "items\\summer", "misc\\happy_birthday_tf", "misc\\jingle_bells" };
+const static std::vector<const char*> s_vFryingPan = { "pan_" };
+const static std::vector<const char*> s_vWater = { "ambient_mp3\\water\\water_splash", "slosh", "wade" };
 
 static bool ShouldBlockSound(const char* pSound)
 {
-	if (!pSound)
+	if (!Vars::Misc::Sound::Block.Value || !pSound)
 		return false;
 
 	std::string sSound = pSound;
-	boost::algorithm::to_lower(sSound);
-
-	if (Vars::Misc::Sound::Block.Value)
-	{
-		auto CheckSound = [&](int iFlag, const std::vector<const char*>& vSounds)
+	std::transform(sSound.begin(), sSound.end(), sSound.begin(), ::tolower);
+	auto CheckSound = [&](int iFlag, const std::vector<const char*>& vSounds)
+		{
+			if (Vars::Misc::Sound::Block.Value & iFlag)
 			{
-				if (Vars::Misc::Sound::Block.Value & iFlag)
+				for (auto& sNoise : vSounds)
 				{
-					for (auto& sNoise : vSounds)
-					{
-						if (sSound.find(sNoise) != std::string::npos)
-							return true;
-					}
+					if (sSound.find(sNoise) != std::string::npos)
+						return true;
 				}
-				return false;
-			};
+			}
+			return false;
+		};
 
-		if (CheckSound(Vars::Misc::Sound::BlockEnum::Footsteps, vFootsteps))
-			return true;
+	if (CheckSound(Vars::Misc::Sound::BlockEnum::Footsteps, s_vFootsteps))
+		return true;
 
-		if (CheckSound(Vars::Misc::Sound::BlockEnum::Noisemaker, vNoisemaker))
-			return true;
+	if (CheckSound(Vars::Misc::Sound::BlockEnum::Noisemaker, s_vNoisemaker))
+		return true;
 
-		if (CheckSound(Vars::Misc::Sound::BlockEnum::FryingPan, vFryingPan))
-			return true;
+	if (CheckSound(Vars::Misc::Sound::BlockEnum::FryingPan, s_vFryingPan))
+		return true;
 
-		if (CheckSound(Vars::Misc::Sound::BlockEnum::Water, vWater))
-			return true;
-	}
-
-	if (FNV1A::Hash32(pSound) == FNV1A::Hash32Const("Physics.WaterSplash")) // temporary fix for duplicate water sounds
+	if (CheckSound(Vars::Misc::Sound::BlockEnum::Water, s_vWater))
 		return true;
 
 	return false;

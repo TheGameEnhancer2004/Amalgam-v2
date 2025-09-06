@@ -14,6 +14,7 @@ struct Output_t
 
 class CMenu
 {
+private:
 	void DrawMenu();
 
 	void MenuAimbot(int iTab);
@@ -32,9 +33,9 @@ class CMenu
 
 public:
 	void Render();
-	void AddOutput(const std::string& sFunction, const std::string& sLog, const Color_t& tColor = Vars::Menu::Theme::Accent.Value);
-	void ShowNotification(const std::string& sTitle, const std::string& sMessage);
-	void ShowDeferredNotification(const std::string& sTitle, const std::string& sMessage);
+	void AddOutput(const char* sFunction, const char* sLog, Color_t tColor = Vars::Menu::Theme::Accent.Value);
+	void ShowNotification(const char* sTitle, const char* sMessage);
+	void ShowDeferredNotification(const char* sTitle, const char* sMessage);
 	void ProcessDeferredNotifications();
 	void DrawNotifications();
 

@@ -104,7 +104,7 @@ bool CAutoRocketJump::SetAngles(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 
 void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!pLocal || !pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || I::EngineVGui->IsGameUIVisible())
+	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || I::EngineVGui->IsGameUIVisible())
 	{
 		m_iFrame = -1;
 		return;
@@ -159,7 +159,8 @@ void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 					Vec3 New = F::ProjSim.GetOrigin();
 
 					CGameTrace trace = {};
-					CTraceFilterCollideable filter = {}; filter.pSkip = pLocal;
+					CTraceFilterCollideable filter = {};
+					filter.pSkip = pLocal;
 					SDK::Trace(Old, New, MASK_SOLID, &filter, &trace);
 					if (trace.DidHit())
 					{
@@ -231,7 +232,7 @@ void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 			}
 		}
 
-		if (m_iFrame == -1 && pWeapon->GetWeaponID() == TF_WEAPON_PARTICLE_CANNON && G::OriginalMove.m_iButtons & IN_ATTACK2)
+		if (m_iFrame == -1 && pWeapon->GetWeaponID() == TF_WEAPON_PARTICLE_CANNON && G::OriginalCmd.buttons & IN_ATTACK2)
 			pCmd->buttons |= IN_ATTACK2;
 	}
 
@@ -276,5 +277,5 @@ void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		}
 	}
 
-	m_bRunning = m_iFrame != -1; // prevent stuff like anti-aim messing with timing
+	m_bRunning = m_iFrame != -1; // prevent stuff like antiaim messing with timing
 }

@@ -1,9 +1,9 @@
 #include "SDK.h"
 
-#include "../Features/EnginePrediction/EnginePrediction.h"
 #include "../Features/Visuals/Notifications/Notifications.h"
 #include "../Features/ImGui/Menu/Menu.h"
-#include "../Features/Configs/Configs.h"
+#include "../Features/EnginePrediction/EnginePrediction.h"
+
 #include <random>
 #include <fstream>
 
@@ -27,50 +27,50 @@ static BOOL CALLBACK TeamFortressWindow(HWND hWindow, LPARAM lParam)
 
 
 
-void SDK::Output(const char* cFunction, const char* cLog, Color_t tColor,
-	bool bConsole, bool bDebug, bool bToast, bool bMenu, bool bChat, bool bParty, int iMessageBox,
+void SDK::Output(const char* sFunction, const char* sLog, Color_t tColor,
+	int iTo, int iMessageBox,
 	const char* sLeft, const char* sRight)
 {
-	if (cLog)
+	if (sLog)
 	{
-		if (bConsole)
+		if (iTo & OUTPUT_CONSOLE)
 		{
-			I::CVar->ConsoleColorPrintf(tColor, "%s%s%s ", sLeft, cFunction, sRight);
-			I::CVar->ConsoleColorPrintf({}, "%s\n", cLog);
+			I::CVar->ConsoleColorPrintf(tColor, "%s%s%s ", sLeft, sFunction, sRight);
+			I::CVar->ConsoleColorPrintf({}, "%s\n", sLog);
 		}
-		if (bDebug)
-			OutputDebugString(std::format("{}{}{} {}\n", sLeft, cFunction, sRight, cLog).c_str());
-		if (bToast)
-			F::Notifications.Add(cLog, Vars::Logging::Lifetime.Value, 0.2f, tColor);
-		if (bMenu)
-			F::Menu.AddOutput(std::format("{}{}{}", sLeft, cFunction, sRight).c_str(), cLog, tColor);
-		if (bChat)
-			I::ClientModeShared->m_pChatElement->ChatPrintf(0, std::format("{}{}{}{}\x1 {}", tColor.ToHex(), sLeft, cFunction, sRight, cLog).c_str());
-		if (bParty)
-			I::TFPartyClient->SendPartyChat(cLog);
+		if (iTo & OUTPUT_DEBUG)
+			OutputDebugString(std::format("{}{}{} {}\n", sLeft, sFunction, sRight, sLog).c_str());
+		if (iTo & OUTPUT_TOAST)
+			F::Notifications.Add(sLog, tColor);
+		if (iTo & OUTPUT_MENU)
+			F::Menu.AddOutput(std::format("{}{}{}", sLeft, sFunction, sRight).c_str(), sLog, tColor);
+		if (iTo & OUTPUT_CHAT)
+			I::ClientModeShared->m_pChatElement->ChatPrintf(0, std::format("{}{}{}{}\x1 {}", tColor.ToHex(), sLeft, sFunction, sRight, sLog).c_str());
+		if (iTo & OUTPUT_PARTY)
+			I::TFPartyClient->SendPartyChat(sLog);
 		if (iMessageBox != -1)
-			MessageBox(nullptr, cLog, cFunction, iMessageBox);
+			MessageBox(nullptr, sLog, sFunction, iMessageBox);
 	}
 	else
 	{
-		if (bConsole)
-			I::CVar->ConsoleColorPrintf(tColor, "%s\n", cFunction);
-		if (bDebug)
-			OutputDebugString(std::format("{}\n", cFunction).c_str());
-		if (bToast)
-			F::Notifications.Add(cFunction, Vars::Logging::Lifetime.Value, 0.2f, tColor);
-		if (bMenu)
-			F::Menu.AddOutput("", cFunction, tColor);
-		if (bChat)
-			I::ClientModeShared->m_pChatElement->ChatPrintf(0, std::format("{}{}\x1", tColor.ToHex(), cFunction).c_str());
-		if (bParty)
-			I::TFPartyClient->SendPartyChat(cFunction);
+		if (iTo & OUTPUT_CONSOLE)
+			I::CVar->ConsoleColorPrintf(tColor, "%s\n", sFunction);
+		if (iTo & OUTPUT_DEBUG)
+			OutputDebugString(std::format("{}\n", sFunction).c_str());
+		if (iTo & OUTPUT_TOAST)
+			F::Notifications.Add(sFunction, tColor);
+		if (iTo & OUTPUT_MENU)
+			F::Menu.AddOutput("", sFunction, tColor);
+		if (iTo & OUTPUT_CHAT)
+			I::ClientModeShared->m_pChatElement->ChatPrintf(0, std::format("{}{}\x1", tColor.ToHex(), sFunction).c_str());
+		if (iTo & OUTPUT_PARTY)
+			I::TFPartyClient->SendPartyChat(sFunction);
 		if (iMessageBox != -1)
-			MessageBox(nullptr, "", cFunction, iMessageBox);
+			MessageBox(nullptr, "", sFunction, iMessageBox);
 	}
 }
 
-void SDK::SetClipboard(std::string sString)
+void SDK::SetClipboard(const std::string& sString)
 {
 	if (OpenClipboard(nullptr))
 	{
@@ -332,7 +332,8 @@ void SDK::TraceHull(const Vec3& vecStart, const Vec3& vecEnd, const Vec3& vecHul
 bool SDK::VisPos(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFrom, const Vec3& vTo, unsigned int nMask)
 {
 	CGameTrace trace = {};
-	CTraceFilterHitscan filter = {}; filter.pSkip = pSkip;
+	CTraceFilterHitscan filter = {};
+	filter.pSkip = pSkip;
 	Trace(vFrom, vTo, nMask, &filter, &trace);
 	if (trace.DidHit())
 		return trace.m_pEnt && trace.m_pEnt == pEntity;
@@ -341,7 +342,9 @@ bool SDK::VisPos(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFr
 bool SDK::VisPosCollideable(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFrom, const Vec3& vTo, unsigned int nMask)
 {
 	CGameTrace trace = {};
-	CTraceFilterCollideable filter = {}; filter.pSkip = pSkip; filter.iType = SKIP_CHECK;
+	CTraceFilterCollideable filter = {};
+	filter.pSkip = pSkip;
+	filter.iType = SKIP_CHECK;
 	Trace(vFrom, vTo, nMask, &filter, &trace);
 	if (trace.DidHit())
 		return trace.m_pEnt && trace.m_pEnt == pEntity;
@@ -350,7 +353,8 @@ bool SDK::VisPosCollideable(CBaseEntity* pSkip, const CBaseEntity* pEntity, cons
 bool SDK::VisPosWorld(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFrom, const Vec3& vTo, unsigned int nMask)
 {
 	CGameTrace trace = {};
-	CTraceFilterWorldAndPropsOnly filter = {}; filter.pSkip = pSkip;
+	CTraceFilterWorldAndPropsOnly filter = {};
+	filter.pSkip = pSkip;
 	Trace(vFrom, vTo, nMask, &filter, &trace);
 	if (trace.DidHit())
 		return trace.m_pEnt && trace.m_pEnt == pEntity;
@@ -601,7 +605,8 @@ int SDK::IsAttacking(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, const CUserCmd* 
 		Vec3 vForward; Math::AngleVectors(vAngle, &vForward);
 
 		CGameTrace trace = {};
-		CTraceFilterHitscan filter = {}; filter.pSkip = pLocal;
+		CTraceFilterHitscan filter = {};
+		filter.pSkip = pLocal;
 		static auto tf_grapplinghook_max_distance = U::ConVars.FindVar("tf_grapplinghook_max_distance");
 		const float flGrappleDistance = tf_grapplinghook_max_distance->GetFloat();
 		Trace(vPos, vPos + vForward * flGrappleDistance, MASK_SOLID, &filter, &trace);
@@ -734,10 +739,10 @@ bool SDK::StopMovement(CTFPlayer* pLocal, CUserCmd* pCmd)
 Vec3 SDK::ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo)
 {
 	const Vec3 vDiff = vTo - vFrom;
-	if (!vDiff.Length())
+	if (!vDiff.Length2D())
 		return {};
 
-	Vec3 vSilent = { vDiff.x, vDiff.y, 0 };
+	Vec3 vSilent = vDiff.To2D();
 	Vec3 vAngle = Math::VectorAngles(vSilent);
 	const float flYaw = DEG2RAD(vAngle.y - pCmd->viewangles.y);
 	const float flPitch = DEG2RAD(vAngle.x - pCmd->viewangles.x);
@@ -808,7 +813,9 @@ void SDK::GetProjectileFireSetup(CTFPlayer* pPlayer, const Vec3& vAngIn, Vec3 vO
 		Vec3 vEndPos = vShootPos + vForward * 2000.f;
 
 		CGameTrace trace = {};
-		CTraceFilterCollideable filter = {}; filter.pSkip = pPlayer; filter.iType = SKIP_CHECK;
+		CTraceFilterCollideable filter = {};
+		filter.pSkip = pPlayer;
+		filter.iType = SKIP_CHECK;
 		Trace(vShootPos, vEndPos, MASK_SOLID, &filter, &trace);
 		if (trace.DidHit() && trace.fraction > 0.1f)
 			vEndPos = trace.endpos;

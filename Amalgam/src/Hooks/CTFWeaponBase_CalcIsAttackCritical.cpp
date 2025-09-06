@@ -2,6 +2,8 @@
 
 #include "../Features/CritHack/CritHack.h"
 
+static int s_iCurrentSeed = -1;
+
 MAKE_HOOK(CTFWeaponBase_CalcIsAttackCritical, S::CTFWeaponBase_CalcIsAttackCritical(), void,
 	void* rcx)
 {
@@ -16,8 +18,8 @@ MAKE_HOOK(CTFWeaponBase_CalcIsAttackCritical, S::CTFWeaponBase_CalcIsAttackCriti
 	pWeapon->m_iWeaponMode() = TF_WEAPON_PRIMARY_MODE;
 	if (I::Prediction->m_bFirstTimePredicted)
 	{
-		*G::RandomSeed() = F::CritHack.m_iWishRandomSeed;
 		CALL_ORIGINAL(rcx);
+		s_iCurrentSeed = pWeapon->m_iCurrentSeed();
 	}
 	else // fixes minigun and flamethrower buggy crit sounds for the most part
 	{
@@ -32,6 +34,7 @@ MAKE_HOOK(CTFWeaponBase_CalcIsAttackCritical, S::CTFWeaponBase_CalcIsAttackCriti
 		pWeapon->m_nCritSeedRequests() = nOldCritSeedRequests;
 		pWeapon->m_flLastRapidFireCritCheckTime() = flOldLastRapidFireCritCheckTime;
 		pWeapon->m_flCritTime() = flOldCritTime;
+		pWeapon->m_iCurrentSeed() = s_iCurrentSeed; // make sure seed stays changed
 	}
 	pWeapon->m_iWeaponMode() = nPreviousWeaponMode;
 }

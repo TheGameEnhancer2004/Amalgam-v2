@@ -12,7 +12,9 @@ void CAutoHeal::ActivateOnVoice(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUse
 		return;
 
 	auto pTarget = pWeapon->m_hHealingTarget().Get();
-	if (!pTarget || Vars::Aimbot::Healing::FriendsOnly.Value && !H::Entities.IsFriend(pTarget->entindex()) && !H::Entities.InParty(pTarget->entindex()))
+	if (!pTarget
+		|| Vars::Aimbot::Healing::HealPriority.Value == Vars::Aimbot::Healing::HealPriorityEnum::FriendsOnly
+		&& !H::Entities.IsFriend(pTarget->entindex()) && !H::Entities.InParty(pTarget->entindex()))
 		return;
 
 	if (m_mMedicCallers.contains(pTarget->entindex()))
@@ -228,7 +230,7 @@ void CAutoHeal::GetDangers(CTFPlayer* pTarget, bool bVaccinator, float& flBullet
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iIndex = pPlayer->entindex();
-		if (pPlayer->IsDormant() || !pPlayer->CanAttack(true, false))
+		if (!pPlayer->CanAttack(true, false))
 			continue;
 
 		auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();
@@ -372,7 +374,7 @@ void CAutoHeal::GetDangers(CTFPlayer* pTarget, bool bVaccinator, float& flBullet
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::BUILDINGS_ENEMIES))
 	{
 		auto pSentry = pEntity->As<CObjectSentrygun>();
-		if (pSentry->GetClassID() != ETFClassID::CObjectSentrygun)
+		if (!pSentry->IsBuilding())
 			continue;
 
 		if (pSentry->m_hEnemy().Get() != pTarget && pSentry->m_hAutoAimTarget().Get() != pTarget || !pSentry->m_iAmmoShells())
@@ -436,7 +438,9 @@ void CAutoHeal::GetDangers(CTFPlayer* pTarget, bool bVaccinator, float& flBullet
 			pWeapon = pEntity->As<CTFBaseProjectile>()->m_hLauncher()->As<CTFWeaponBase>();
 			pOwner = pWeapon ? pWeapon->m_hOwner()->As<CTFPlayer>() : nullptr;
 		}
-		if (!pOwner || pOwner->m_iTeamNum() == pTarget->m_iTeamNum() || pWeapon && !pWeapon->GetDamage())
+		if (!pOwner
+			|| (!F::AimbotGlobal.FriendlyFire() || pEntity->GetClassID() == ETFClassID::CTFProjectile_HealingBolt) && pOwner->m_iTeamNum() == pTarget->m_iTeamNum()
+			|| pWeapon && !pWeapon->GetDamage())
 			continue;
 
 		Vec3 vVelocity = F::ProjSim.GetVelocity(pEntity);
@@ -557,7 +561,8 @@ void CAutoHeal::AutoVaccinator(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUser
 
 	std::vector<CTFPlayer*> vTargets = { pLocal };
 	if (auto pTarget = pWeapon->m_hHealingTarget()->As<CTFPlayer>(); pTarget &&
-		(!Vars::Aimbot::Healing::FriendsOnly.Value || H::Entities.IsFriend(pTarget->entindex()) || H::Entities.InParty(pTarget->entindex())))
+		(Vars::Aimbot::Healing::HealPriority.Value <= Vars::Aimbot::Healing::HealPriorityEnum::FriendsOnly
+		|| H::Entities.IsFriend(pTarget->entindex()) || H::Entities.InParty(pTarget->entindex())))
 		vTargets.push_back(pTarget);
 
 	for (auto pTarget : vTargets)
@@ -626,7 +631,10 @@ void CAutoHeal::Event(IGameEvent* pEvent, uint32_t uHash)
 		bool bMinicrit = pEvent->GetBool("minicrit");
 
 		int iTarget = pWeapon->m_hHealingTarget().GetEntryIndex();
-		if (iVictim == iAttacker || iVictim != I::EngineClient->GetLocalPlayer() && (iVictim != iTarget || Vars::Aimbot::Healing::FriendsOnly.Value && !H::Entities.IsFriend(iTarget) && !H::Entities.InParty(iTarget)))
+		if (iVictim == iAttacker || iVictim != I::EngineClient->GetLocalPlayer()
+			&& (iVictim != iTarget
+				|| Vars::Aimbot::Healing::HealPriority.Value == Vars::Aimbot::Healing::HealPriorityEnum::FriendsOnly
+				&& !H::Entities.IsFriend(iTarget) && !H::Entities.InParty(iTarget)))
 			return;
 
 		auto pEntity = I::ClientEntityList->GetClientEntity(iAttacker)->As<CTFPlayer>();

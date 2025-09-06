@@ -9,26 +9,60 @@
 #include "../Misc/Misc.h"
 #include <utility>
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/algorithm/string/join.hpp>
 
-bool CCommands::Run(const std::string& sCmd, std::deque<std::string>& vArgs)
-{
-	auto uHash = FNV1A::Hash32(sCmd.c_str());
-	if (!m_mCommands.contains(uHash))
-		return false;
+static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
+	{
+		FNV1A::Hash32Const("cat_setcvar"), 
+		[](const std::deque<const char*>& vArgs)
+		{
+			if (vArgs.size() < 2)
+			{
+				SDK::Output("Usage:\n\tcat_setcvar <cvar> <value>");
+				return;
+			}
 
-	m_mCommands[uHash](vArgs);
-	return true;
-}
+			const char* sCVar = vArgs[0];
+			auto pCVar = I::CVar->FindVar(sCVar);
+			if (!pCVar)
+			{
+				SDK::Output(std::format("Could not find {}", sCVar).c_str());
+				return;
+			}
 
-void CCommands::Register(const std::string& sName, CommandCallback fCallback)
-{
-	m_mCommands[FNV1A::Hash32(sName.c_str())] = std::move(fCallback);
-}
+			std::string sValue = "";
+			for (int i = 1; i < vArgs.size(); i++)
+				sValue += std::format("{} ", vArgs[i]);
+			sValue.pop_back();
+			boost::replace_all(sValue, "\"", "");
 
-void CCommands::Initialize()
-{
-	Register("cat_queue", [](const std::deque<std::string>& vArgs)
+			pCVar->SetValue(sValue.c_str());
+			SDK::Output(std::format("Set {} to {}", sCVar, sValue).c_str());
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_getcvar"), 
+		[](const std::deque<const char*>& vArgs)
+		{
+			if (vArgs.size() != 1)
+			{
+				SDK::Output("Usage:\n\tcat_getcvar <cvar>");
+				return;
+			}
+
+			const char* sCVar = vArgs[0];
+			auto pCVar = I::CVar->FindVar(sCVar);
+			if (!pCVar)
+			{
+				SDK::Output(std::format("Could not find {}", sCVar).c_str());
+				return;
+			}
+
+			SDK::Output(std::format("Value of {} is {}", sCVar, pCVar->GetString()).c_str());
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_queue"), 
+		[](const std::deque<const char*>& vArgs)
 		{
 			if (!I::TFPartyClient)
 				return;
@@ -44,106 +78,80 @@ void CCommands::Initialize()
 				bHasLoaded = true;
 			}
 			I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
-		});
-
-	Register("cat_load", [](const std::deque<std::string>& args)
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_load"), 
+		[](const std::deque<const char*>& vArgs)
 		{
-			if (args.empty())
+			if (vArgs.size() != 1)
 			{
 				SDK::Output("Usage:\n\tcat_load <config_name>");
 				return;
 			}
 
-			F::Configs.LoadConfig(args[0], true);
-		});
-
-	Register("cat_setcvar", [](const std::deque<std::string>& vArgs)
-		{
-			if (vArgs.size() < 2)
-			{
-				SDK::Output("Usage:\n\tcat_setcvar <cvar> <value>");
-				return;
-			}
-
-			std::string sCVar = vArgs[0];
-			auto pCVar = I::CVar->FindVar(sCVar.c_str());
-			if (!pCVar)
-			{
-				SDK::Output(std::format("Could not find {}", sCVar).c_str());
-				return;
-			}
-
-			auto vArgs2 = vArgs; vArgs2.pop_front();
-			std::string sValue = boost::algorithm::join(vArgs2, " ");
-			boost::replace_all(sValue, "\"", "");
-			pCVar->SetValue(sValue.c_str());
-			SDK::Output(std::format("Set {} to {}", sCVar, sValue).c_str());
-		});
-
-	Register("cat_getcvar", [](const std::deque<std::string>& vArgs)
-		{
-			if (vArgs.size() != 1)
-			{
-				SDK::Output("Usage:\n\tcat_getcvar <cvar>");
-				return;
-			}
-
-			std::string sCVar = vArgs[0];
-			auto pCVar = I::CVar->FindVar(sCVar.c_str());
-			if (!pCVar)
-			{
-				SDK::Output(std::format("Could not find {}", sCVar).c_str());
-				return;
-			}
-
-			SDK::Output(std::format("Value of {} is {}", sCVar, pCVar->GetString()).c_str());
-		});
-
-	Register("cat_clearchat", [](const std::deque<std::string>& vArgs)
-		{
-			I::ClientModeShared->m_pChatElement->SetText("");
-		});
-
-	Register("cat_menu", [](const std::deque<std::string>& vArgs)
-		{
-			I::MatSystemSurface->SetCursorAlwaysVisible(F::Menu.m_bIsOpen = !F::Menu.m_bIsOpen);
-		});
-
-	Register("cat_path_to", [](std::deque<std::string> vArgs)
+			F::Configs.LoadConfig(vArgs[0], true);
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_path_to"), 
+		[](const std::deque<const char*>& vArgs)
 		{
 			// Check if the user provided at least 3 args
 			if (vArgs.size() < 3)
 			{
-				I::CVar->ConsoleColorPrintf({ 255, 255, 255, 255 }, "Usage: cat_path_to <x> <y> <z>\n");
+				SDK::Output("Usage:\n\tcat_path_to <x> <y> <z>");
 				return;
 			}
 
 			// Get the Vec3
-			const auto Vec = Vec3( atoi( vArgs[ 0 ].c_str( ) ), atoi( vArgs[ 1 ].c_str( ) ), atoi( vArgs[ 2 ].c_str( ) ) );
+			const auto Vec = Vec3(atoi(vArgs[0]), atoi(vArgs[1]), atoi(vArgs[2]));
 
-			F::NavEngine.navTo( Vec );
-		});
-
-	Register("cat_nav_search_spawnrooms", [](std::deque<std::string> vArgs)
+			F::NavEngine.navTo(Vec);
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_nav_search_spawnrooms"), 
+		[](const std::deque<const char*>& vArgs)
 		{
-			if ( F::NavEngine.map && F::NavEngine.map->state == CNavParser::NavState::Active )
-				F::NavEngine.map->UpdateRespawnRooms( );
-		});
-
-	Register("cat_save_nav_mesh", [](std::deque<std::string> vArgs)
+			if (F::NavEngine.map && F::NavEngine.map->state == CNavParser::NavState::Active)
+				F::NavEngine.map->UpdateRespawnRooms();
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_save_nav_mesh"), 
+		[](const std::deque<const char*>& vArgs)
 		{
-			if ( auto pNavFile = F::NavEngine.getNavFile( ) )
-				pNavFile->Write( );
-		});
-
-	Register("cat_detach", [](const std::deque<std::string>& vArgs)
+			if (auto pNavFile = F::NavEngine.getNavFile())
+				pNavFile->Write();
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_clearchat"), 
+		[](const std::deque<const char*>& vArgs)
+		{
+			I::ClientModeShared->m_pChatElement->SetText("");
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_menu"), 
+		[](const std::deque<const char*>& vArgs)
+		{
+			I::MatSystemSurface->SetCursorAlwaysVisible(F::Menu.m_bIsOpen = !F::Menu.m_bIsOpen);
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_unload"), 
+		[](const std::deque<const char*>& vArgs)
 		{
 			if (F::Menu.m_bIsOpen)
 				I::MatSystemSurface->SetCursorAlwaysVisible(F::Menu.m_bIsOpen = false);
 			U::Core.m_bUnload = true;
-		});
-
-	Register("cat_ignore", [](const std::deque<std::string>& vArgs)
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_ignore"), 
+		[](const std::deque<const char*>& vArgs)
 		{
 			if (vArgs.size() < 2)
 			{
@@ -168,7 +176,7 @@ void CCommands::Initialize()
 				return;
 			}
 
-			const std::string& sTag = vArgs[1];
+			const char* sTag = vArgs[1];
 			int iTagID = F::PlayerUtils.GetTag(sTag);
 			if (iTagID == -1)
 			{
@@ -193,11 +201,13 @@ void CCommands::Initialize()
 				F::PlayerUtils.AddTag(uFriendsID, iTagID, true);
 				SDK::Output(std::format("Added tag {} to ID32 {}", sTag, uFriendsID).c_str());
 			}
-		});
-
-	Register("cat_crash", [](const std::deque<std::string>& vArgs) // if you want to time out of a server and rejoin
-		{
-			switch (vArgs.empty() ? 0 : FNV1A::Hash32(vArgs.front().c_str()))
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_crash"), 
+		[](const std::deque<const char*>& vArgs)
+		{	// if you want to time out of a server and rejoin
+			switch (vArgs.empty() ? 0 : FNV1A::Hash32(vArgs.front()))
 			{
 			case FNV1A::Hash32Const("true"):
 			case FNV1A::Hash32Const("t"):
@@ -207,10 +217,12 @@ void CCommands::Initialize()
 				Vars::Debug::CrashLogging.Value = false; // we are voluntarily crashing, don't give out log if we don't want one
 			}
 			reinterpret_cast<void(*)()>(0)();
-		});
-
-	Register("cat_rent_item", [](const std::deque<std::string>& vArgs)
-		{
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_rent_item"), 
+		[](const std::deque<const char*>& vArgs)
+		{	
 			if (vArgs.size() != 1)
 			{
 				SDK::Output("Usage:\n\tcat_rent_item <item_def_index>");
@@ -220,7 +232,7 @@ void CCommands::Initialize()
 			item_definition_index_t iDefIdx;
 			try
 			{
-				iDefIdx = atoi(vArgs[0].c_str());
+				iDefIdx = atoi(vArgs[0]);
 			}
 			catch (const std::invalid_argument&)
 			{
@@ -229,10 +241,26 @@ void CCommands::Initialize()
 			}
 
 			F::AutoItem.Rent(iDefIdx);
-		});
-
-	Register("cat_achievement_unlock", [](const std::deque<std::string>& vArgs)
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_unlock"), 
+		[](const std::deque<const char*>& vArgs)
 		{
 			F::Misc.UnlockAchievements();
-		});
+		}
+	},
+};
+
+bool CCommands::Run(const char* sCmd, std::deque<const char*>& vArgs)
+{
+	std::string sLower = sCmd;
+	std::transform(sLower.begin(), sLower.end(), sLower.begin(), ::tolower);
+
+	auto uHash = FNV1A::Hash32(sLower.c_str());
+	if (!s_mCommands.contains(uHash))
+		return false;
+
+	s_mCommands[uHash](vArgs);
+	return true;
 }

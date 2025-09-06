@@ -3,7 +3,7 @@
 void CCPController::UpdateObjectiveResource()
 {
 	// Get ObjectiveResource
-	m_pObjectiveResource = H::Entities.GetOR();
+	m_pObjectiveResource = H::Entities.GetObjectiveResource();
 }
 
 // Don't constantly update the cap status

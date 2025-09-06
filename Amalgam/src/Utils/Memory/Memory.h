@@ -1,5 +1,5 @@
 #pragma once
-#include "../Feature/Feature.h"
+#include "../Macros/Macros.h"
 #include <Windows.h>
 #include <cstdint>
 #include <vector>
@@ -13,6 +13,7 @@ public:
 	uintptr_t FindSignature(const char* szModule, const char* szPattern);
 	uintptr_t FindSignatureAtAddress(uintptr_t uAddress, const char* szPattern, uintptr_t uSkipAddress = 0x0, bool* bRetFound = nullptr);
 	PVOID FindInterface(const char* szModule, const char* szObject);
+	std::string GetModuleOffset(void* pAddress) { return GetModuleOffset(uintptr_t(pAddress)); };
 	std::string GetModuleOffset(uintptr_t uAddress);
 	std::string GetModuleName(uintptr_t uAddress);
 	std::string GenerateSignatureAtAddress(uintptr_t address, size_t maxLength = 120);
@@ -38,15 +39,15 @@ public:
 		return reinterpret_cast<T(__fastcall*)(void*, Args...)>(vTable[I])(p, args...);
 	}
 
-	inline uintptr_t RelToAbs(const uintptr_t address, const uintptr_t offset = 0x3)
+	inline uintptr_t RelToAbs(uintptr_t uAddress, uintptr_t uOffset = 3)
 	{
-		return *reinterpret_cast<std::int32_t*>(address + offset) + address + offset + 0x4;
+		return *reinterpret_cast<int32_t*>(uAddress + uOffset) + uAddress + sizeof(int32_t) + uOffset;
 	}
 
 	template <typename T>
 	inline T GetModuleExport(const char* szModule, const char* szExport)
 	{
-		if (auto hModule = GetModuleHandle(szModule))
+		if (const auto hModule = GetModuleHandle(szModule))
 			return reinterpret_cast<T>(GetProcAddress(hModule, szExport));
 		return reinterpret_cast<T>(nullptr);
 	}

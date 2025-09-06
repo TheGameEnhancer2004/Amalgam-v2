@@ -14,21 +14,15 @@ void CAutoVote::UserMessage(bf_read& msgData)
 	msgData.Seek(0);
 
 #ifdef TEXTMODE
-	PlayerInfo_t pi{};
-	if (I::EngineClient->GetPlayerInfo(iTarget, &pi))
+	if (auto pResource = H::Entities.GetResource(); pResource)
 	{
-		if (F::NamedPipe::IsLocalBot(pi.friendsID))
+		if (F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iTarget)))
 		{
 			I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
 			return;
 		}
-	}
 
-
-	PlayerInfo_t callerPi{};
-	if (I::EngineClient->GetPlayerInfo(iCaller, &callerPi))
-	{
-		if (F::NamedPipe::IsLocalBot(callerPi.friendsID))
+		if (F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iCaller)))
 		{
 			I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
 			return;
@@ -38,8 +32,8 @@ void CAutoVote::UserMessage(bf_read& msgData)
 
 	if (Vars::Misc::Automation::AutoF2Ignored.Value
 		&& (F::PlayerUtils.IsIgnored(iTarget)
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iTarget)
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iTarget)))
+		|| H::Entities.IsFriend(iTarget)
+		|| H::Entities.InParty(iTarget)))
 	{
 		I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
 		return;

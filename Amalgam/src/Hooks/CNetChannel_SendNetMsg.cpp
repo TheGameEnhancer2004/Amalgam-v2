@@ -108,8 +108,8 @@ MAKE_HOOK(CNetChannel_SendNetMsg, S::CNetChannel_SendNetMsg(), bool,
 				sValue = pConVar->m_pParent->m_pszDefaultValue;
 			}
 			pMsg[7] = uintptr_t(sValue.c_str());
-			
-			SDK::Output("Convar spoof", msg.ToString(), Vars::Menu::Theme::Accent.Value, Vars::Debug::Logging.Value);
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("Convar spoof", msg.ToString(), Vars::Menu::Theme::Accent.Value, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		}
 		break;
 	case clc_Move:
@@ -133,7 +133,7 @@ MAKE_HOOK(CNetChannel_SendNetMsg, S::CNetChannel_SendNetMsg(), bool,
 			for (int nFrom = -1, nTo = nNextCommandNr - nNumCmds + 1; nTo <= nNextCommandNr; nTo++)
 			{
 				const bool bIsNewCmd = nTo >= nNextCommandNr - pMsg->m_nNewCommands + 1;
-				bOk = bOk && I::BaseClientDLL->WriteUsercmdDeltaToBuffer(&pMsg->m_DataOut, nFrom, nTo, bIsNewCmd);
+				bOk = bOk && I::Client->WriteUsercmdDeltaToBuffer(&pMsg->m_DataOut, nFrom, nTo, bIsNewCmd);
 				nFrom = nTo;
 			}
 

@@ -3,9 +3,11 @@
 
 #include "../AimbotGlobal/AimbotGlobal.h"
 #include <unordered_set>
+#include <optional>
 
 class CAutoDetonate
 {
+private:
 	void PredictPlayer(CBaseEntity* pLocal, CBaseEntity* pTarget, float flLatency);
 	void RestorePlayer(CBaseEntity* pTarget);
 

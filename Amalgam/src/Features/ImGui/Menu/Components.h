@@ -160,17 +160,12 @@ namespace ImGui
 
 	inline ImVec4 ColorToVec(Color_t tColor)
 	{
-		return { float(tColor.r) / 255.f, float(tColor.g) / 255.f, float(tColor.b) / 255.f, float(tColor.a) / 255.f };
+		return { tColor.r / 255.f, tColor.g / 255.f, tColor.b / 255.f, tColor.a / 255.f };
 	}
 
 	inline Color_t VecToColor(ImVec4 tColor)
 	{
-		return {
-			static_cast<byte>(tColor.x * 256.0f > 255 ? 255 : tColor.x * 256.0f),
-			static_cast<byte>(tColor.y * 256.0f > 255 ? 255 : tColor.y * 256.0f),
-			static_cast<byte>(tColor.z * 256.0f > 255 ? 255 : tColor.z * 256.0f),
-			static_cast<byte>(tColor.w * 256.0f > 255 ? 255 : tColor.w * 256.0f)
-		};
+		return { byte(tColor.x * 255), byte(tColor.y * 255), byte(tColor.z * 255), byte(tColor.w * 255) };
 	}
 
 	inline void DebugDummy(ImVec2 vSize)
@@ -766,15 +761,13 @@ namespace ImGui
 			flTotalWidth += flWidth - GetStyle().WindowPadding.x;
 		}
 
-		/*
-		SetCursorPos({ 0, vOriginalPos.y - H::Draw.Scale(8) });
-		BeginChild("Split1", { GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(112) });
-
-		SetCursorPos({ GetWindowWidth() / 2 - GetStyle().WindowPadding.x / 2, vOriginalPos.y - H::Draw.Scale(8) });
-		BeginChild("Split2", { GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(112) });
-		*/
-
 		return vReturn;
+	}
+
+	inline bool BeginWidgetTable(int iIndex, std::vector<WidgetWindow_t>& vTable)
+	{
+		SetCursorPos(vTable[iIndex].m_vPos);
+		return BeginChild(vTable[iIndex].m_sName.c_str(), vTable[iIndex].m_vSize, vTable[iIndex].m_iWindowFlags, vTable[iIndex].m_iChildFlags);
 	}
 
 	// widgets
@@ -1155,6 +1148,20 @@ namespace ImGui
 		return bReturn;
 	}
 
+	inline bool FToggle(const char* sLabel, int* pVar, int iBit, int iFlags = FToggleEnum::None, bool* pHovered = nullptr)
+	{
+		bool bActive = *pVar & iBit;
+		if (FToggle(sLabel, &bActive, iFlags, pHovered))
+		{
+			if (bActive)
+				*pVar |= iBit;
+			else
+				*pVar &= ~iBit;
+			return true;
+		}
+		return false;
+	}
+
 	inline bool FSlider(const char* sLabel, float* pVar1, float* pVar2, float flMin, float flMax, float flStep = 1.f, const char* fmt = "%g", int iFlags = FSliderEnum::None, bool* pHovered = nullptr)
 	{
 		auto uHash = FNV1A::Hash32Const(sLabel);
@@ -1189,7 +1196,7 @@ namespace ImGui
 #ifdef ALTERNATE_FULL_SLIDER
 		auto vWrapped = WrapText(StripDoubleHash(sLabel), bFull ? vSize.x / 2 - H::Draw.Scale(24) : vSize.x - flEntryWidth - H::Draw.Scale(20));
 #else
-		auto vWrapped = WrapText(StripDoubleHash(sLabel), vSize.x - H::Draw.Scale(20) - flEntryWidth);
+		auto vWrapped = WrapText(StripDoubleHash(sLabel), vSize.x - H::Draw.Scale(14) - flEntryWidth);
 #endif
 		int iWraps = std::min(int(vWrapped.size()), 2); // prevent too many wraps
 #ifdef ALTERNATE_FULL_SLIDER
@@ -2237,9 +2244,12 @@ namespace ImGui
 		case VK_MBUTTON: return "mouse3";
 		case VK_XBUTTON1: return "mouse4";
 		case VK_XBUTTON2: return "mouse5";
-		case VK_CONTROL:
-		case VK_LCONTROL:
-		case VK_RCONTROL: return "control";
+		case VK_SHIFT: return "shift";
+		case VK_LSHIFT: return "lshift";
+		case VK_RSHIFT: return "rshift";
+		case VK_CONTROL: return "control";
+		case VK_LCONTROL: return "lcontrol";
+		case VK_RCONTROL: return "rcontrol";
 		case VK_NUMPAD0: return "num0";
 		case VK_NUMPAD1: return "num1";
 		case VK_NUMPAD2: return "num2";
@@ -2250,7 +2260,11 @@ namespace ImGui
 		case VK_NUMPAD7: return "num7";
 		case VK_NUMPAD8: return "num8";
 		case VK_NUMPAD9: return "num9";
+		case VK_ADD: return "num+";
+		case VK_SUBTRACT: return "num-";
+		case VK_MULTIPLY: return "num*";
 		case VK_DIVIDE: return "num/";
+		case VK_DECIMAL: return "num.";
 		case VK_INSERT: return "insert";
 		case VK_DELETE: return "delete";
 		case VK_PRIOR: return "pgup";
@@ -2277,32 +2291,29 @@ namespace ImGui
 		case VK_F24: return "f24";
 		case VK_LWIN:
 		case VK_RWIN: return "windows";
+		case VK_APPS: return "contextmenu";
 		case VK_PAUSE: return "pause";
-		case VK_APPS: return "apps";
 		case VK_VOLUME_MUTE: return "mute";
-		case VK_VOLUME_DOWN: return "volume down";
-		case VK_VOLUME_UP: return "volume up";
+		case VK_VOLUME_DOWN: return "volumedown";
+		case VK_VOLUME_UP: return "volumeup";
 		case VK_MEDIA_STOP: return "stop";
-		case VK_MEDIA_PLAY_PAUSE: return "play/pause";
-		case VK_MEDIA_PREV_TRACK: return "previous track";
-		case VK_MEDIA_NEXT_TRACK: return "next track";
+		case VK_MEDIA_PLAY_PAUSE: return "pause";
+		case VK_MEDIA_PREV_TRACK: return "previous";
+		case VK_MEDIA_NEXT_TRACK: return "next";
 		}
 
 		std::string str = "unknown";
-
-		CHAR output[16] = { "\0" };
-		if (GetKeyNameTextA(MapVirtualKeyW(key, MAPVK_VK_TO_VSC) << 16, output, 16))
-			str = output;
-
-		std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-		str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end());
-
-		if (Vars::Debug::Info.Value && FNV1A::Hash32(str.c_str()) == FNV1A::Hash32Const("unknown"))
-			str = std::format("{:#x}", key);
-
+		if (char buffer[16]; GetKeyNameText(MapVirtualKey(key, MAPVK_VK_TO_VSC) << 16, buffer, sizeof(buffer)))
+		{
+			str = buffer;
+			std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+			str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end());
+		}
+		//else if (Vars::Debug::Info.Value)
+		//	str = std::format("{:#x}", key);
 		return str;
 	}
-	inline void FKeybind(const char* sLabel, int& iOutput, int iFlags = FKeybindEnum::None, std::vector<int> vIgnore = { Vars::Menu::MenuPrimaryKey[DEFAULT_BIND], Vars::Menu::MenuSecondaryKey[DEFAULT_BIND] }, ImVec2 vSize = { 0, 30 }, int iSizeOffset = 0, bool* pHovered = nullptr)
+	inline void FKeybind(const char* sLabel, int& iOutput, int iFlags = FKeybindEnum::None, std::vector<int> vIgnore = { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] }, ImVec2 vSize = { 0, 30 }, int iSizeOffset = 0, bool* pHovered = nullptr)
 	{
 		ImGuiID uId = GetID(sLabel);
 		PushID(sLabel);
@@ -2360,13 +2371,46 @@ namespace ImGui
 
 		PopID();
 	}
-	inline void FKeybind(ConfigVar<int>& var, int iFlags = FKeybindEnum::None, std::vector<int> vIgnore = { Vars::Menu::MenuPrimaryKey[DEFAULT_BIND], Vars::Menu::MenuSecondaryKey[DEFAULT_BIND] }, ImVec2 vSize = { 0, 30 }, int iSizeOffset = 0, bool* pHovered = nullptr)
+	inline void FKeybind(ConfigVar<int>& var, int iFlags = FKeybindEnum::None, std::vector<int> vIgnore = { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] }, ImVec2 vSize = { 0, 30 }, int iSizeOffset = 0, bool* pHovered = nullptr)
 	{
 		FKeybind(var.m_vTitle.front(), var[DEFAULT_BIND], iFlags, vIgnore, vSize, iSizeOffset, pHovered);
 	}
 
+	inline void FMaterialWindow(const char* sLabel, ChamsMaterial_t* pVar)
+	{
+		auto vOriginalPos = GetCursorPos();
+		PopStyleVar();
+		PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+		PushStyleVar(ImGuiStyleVar_FramePadding, { H::Draw.Scale(2), H::Draw.Scale(2) });
+		PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, { H::Draw.Scale(4), 0 });
+		PushStyleVar(ImGuiStyleVar_PopupBorderSize, H::Draw.Scale());
+		PushStyleColor(ImGuiCol_PopupBg, F::Render.Background0p5.Value);
+
+		if (IconButton(ICON_MD_EDIT))
+			OpenPopup(sLabel);
+
+		SetNextWindowSize({ H::Draw.Scale(300), 0});
+		if (FBeginPopup(sLabel))
+		{
+			FText(sLabel);
+			Divider();
+			FColorPicker(std::format("Material color##{}", sLabel).c_str(), &pVar->tColor, FColorPickerEnum::Left);
+
+			FSlider(std::format("Material render start##{}", sLabel).c_str(), &pVar->flStart, 0.f, 2048.f, 128, "%.fHU", FSliderEnum::Left | FSliderEnum::Clamp);
+			FSlider(std::format("Material render end##{}", sLabel).c_str(), &pVar->flEnd, 512.f, 8192.f, 128.f, "%.fHU", FSliderEnum::Right | FSliderEnum::Min);
+			FToggle(std::format("Material distance to alpha##{}", sLabel).c_str(), &pVar->bSmoothAlpha);
+
+			EndPopup();
+		}
+		PopStyleColor();
+		PopStyleVar(4);
+
+		PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0, H::Draw.Scale(19) });
+		SetCursorPos(vOriginalPos);
+	}
+
 	// dropdown for materials
-	inline bool FMDropdown(const char* sLabel, std::vector<std::pair<std::string, Color_t>>* pVar, int iFlags = FDropdownEnum::None, int iSizeOffset = 0, bool* pHovered = nullptr)
+	inline bool FMDropdown(const char* sLabel, std::vector<std::pair<std::string, ChamsMaterial_t>>* pVar, int iFlags = FDropdownEnum::None, int iSizeOffset = 0, bool* pHovered = nullptr)
 	{
 		// material stuff
 		std::vector<Material_t> vMaterials;
@@ -2399,7 +2443,7 @@ namespace ImGui
 
 		bool bTitle = sLabel[0] != '#';
 
-		std::unordered_map<std::string, std::vector<std::pair<std::string, Color_t>>::iterator> mIts = {};
+		std::unordered_map<std::string, std::vector<std::pair<std::string, ChamsMaterial_t>>::iterator> mIts = {};
 		for (auto it = pVar->begin(); it != pVar->end(); it++)
 			mIts[it->first] = it;
 
@@ -2462,12 +2506,12 @@ namespace ImGui
 				ImVec2 vOriginalPos2 = GetCursorPos();
 				if (bFlagActive) // do here so as to not sink input
 				{
-					SetCursorPos({ vOriginalPos2.x + vSize.x - H::Draw.Scale(31), vOriginalPos2.y + H::Draw.Scale(1) });
-					ColorPicker(std::format("MaterialColor{}", iEntry).c_str(), &it->second->second, false);
+					SetCursorPos({ vOriginalPos2.x + vSize.x - H::Draw.Scale(33), vOriginalPos2.y - H::Draw.Scale(5) });
+					FMaterialWindow(sEntry.c_str(), &it->second->second);
 					SetCursorPos(vOriginalPos2);
 				}
-				bool bHovered = bFlagActive ? IsItemHovered() : false;
 
+				bool bHovered = bFlagActive && IsItemHovered();
 				if (FSelectable(std::format("##{}{}", sEntry, i).c_str(), nullptr, 0, bFlagActive, ImGuiSelectableFlags_DontClosePopups))
 				{
 					if (bFlagActive)
@@ -2658,7 +2702,7 @@ namespace ImGui
 	}
 
 	template <class T>
-	inline void DrawBindInfo(ConfigVar<T>& var, T& val, std::string sBind, bool bNewPopup, bool& bLastHovered)
+	inline void DrawBindInfo(ConfigVar<T>& var, T& val, const std::string& sBind, bool bNewPopup, bool& bLastHovered)
 	{
 		TextUnformatted(std::format("Bind '{}'", sBind).c_str());
 
@@ -2775,7 +2819,7 @@ namespace ImGui
 
 		if (tBind.m_iType == BindEnum::Key)
 		{
-			FKeybind("Key", tBind.m_iKey, FKeybindEnum::None, { Vars::Menu::MenuPrimaryKey[DEFAULT_BIND], Vars::Menu::MenuSecondaryKey[DEFAULT_BIND] }, { 0, 30 }, 0, &bHovered);
+			FKeybind("Key", tBind.m_iKey, FKeybindEnum::None, { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] }, { 0, 30 }, 0, &bHovered);
 			bLastHovered = bLastHovered || bHovered;
 		}
 
@@ -2841,6 +2885,7 @@ namespace ImGui
 	}
 
 	WRAPPER(FToggle, bool, VA_LIST(int iFlags = 0), VA_LIST(&val, iFlags))
+	WRAPPER(FToggle, int, VA_LIST(int iBit, int iFlags = 0), VA_LIST(&val, iBit, iFlags))
 	WRAPPER(FSlider, FloatRange_t, VA_LIST(int iFlags = 0, const char* sFormatOverride = nullptr), VA_LIST(&val.Min, &val.Max, var.m_unMin.f, var.m_unMax.f, var.m_unStep.f, sFormatOverride ? sFormatOverride : var.m_sExtra, iFlags))
 	WRAPPER(FSlider, IntRange_t, VA_LIST(int iFlags = 0, const char* sFormatOverride = nullptr), VA_LIST(&val.Min, &val.Max, var.m_unMin.i, var.m_unMax.i, var.m_unStep.i, sFormatOverride ? sFormatOverride : var.m_sExtra, iFlags))
 	WRAPPER(FSlider, float, VA_LIST(int iFlags = 0, const char* sFormatOverride = nullptr), VA_LIST(&val, var.m_unMin.f, var.m_unMax.f, var.m_unStep.f, sFormatOverride ? sFormatOverride : var.m_sExtra, iFlags))
@@ -2849,7 +2894,7 @@ namespace ImGui
 	WRAPPER(FDropdown, int, VA_LIST(std::vector<const char*> vEntries, std::vector<int> vValues = {}, int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, vEntries, vValues, iFlags, iSizeOffset, var.m_sExtra ? var.m_sExtra : "None"))
 	WRAPPER(FSDropdown, std::string, VA_LIST(int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, var.m_vValues, iFlags, iSizeOffset))
 	WRAPPER(FSDropdown, int, VA_LIST(int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, var.m_vValues, iFlags, iSizeOffset))
-	WRAPPER(FMDropdown, VA_LIST(std::vector<std::pair<std::string, Color_t>>), VA_LIST(int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, iFlags, iSizeOffset))
+	WRAPPER(FMDropdown, VA_LIST(std::vector<std::pair<std::string, ChamsMaterial_t>>), VA_LIST(int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, iFlags, iSizeOffset))
 	WRAPPER(FColorPicker, Color_t, VA_LIST(int iFlags = 0, ImVec2 vOffset = {}, ImVec2 vSize = { H::Draw.Scale(12), H::Draw.Scale(12) }, ImVec2 vIconOffset = {}), VA_LIST(&val, iFlags, vOffset, vSize, vIconOffset))
 	WRAPPER(FColorPicker, Gradient_t, VA_LIST(bool bStart = true, int iFlags = 0, ImVec2 vOffset = {}, ImVec2 vSize = { H::Draw.Scale(12), H::Draw.Scale(12) }, ImVec2 vIconOffset = {}), VA_LIST(bStart ? &val.StartColor : &val.EndColor, iFlags, vOffset, vSize, vIconOffset))
 }

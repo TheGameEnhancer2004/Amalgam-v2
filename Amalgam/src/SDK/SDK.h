@@ -4,7 +4,6 @@
 #include "Globals.h"
 #include "Helpers/Entities/Entities.h"
 #include "Helpers/Draw/Draw.h"
-#include "Helpers/Color/Color.h"
 #include "Helpers/TraceFilters/TraceFilters.h"
 #include "Helpers/Particles/Particles.h"
 #include "Definitions/Types.h"
@@ -19,7 +18,7 @@
 #include "../Utils/Hash/FNV1A.h"
 #include "../Utils/Math/Math.h"
 #include "../Utils/Timer/Timer.h"
-#include "../Utils/Feature/Feature.h"
+#include "../Utils/Macros/Macros.h"
 #include <intrin.h>
 
 #define VK_0              0x30
@@ -64,13 +63,20 @@ template <typename T> int sign(T val)
 	return (val > T(0)) - (val < T(0));
 }
 
+#define OUTPUT_CONSOLE 1 << 0
+#define OUTPUT_DEBUG 1 << 1
+#define OUTPUT_TOAST 1 << 2
+#define OUTPUT_MENU 1 << 3
+#define OUTPUT_CHAT 1 << 4
+#define OUTPUT_PARTY 1 << 5
+
 namespace SDK
 {
-	void Output(const char* cFunction, const char* cLog = nullptr, Color_t tColor = { 255, 255, 255, 255 },
-		bool bConsole = true, bool bDebug = false, bool bToast = false, bool bMenu = false, bool bChat = false, bool bParty = false, int iMessageBox = -1,
+	void Output(const char* sFunction, const char* sLog = nullptr, Color_t tColor = { 255, 255, 255, 255 },
+		int iTo = OUTPUT_CONSOLE, int iMessageBox = -1,
 		const char* sLeft = "[", const char* sRight = "]");
 
-	void SetClipboard(std::string sString);
+	void SetClipboard(const std::string& sString);
 	std::string GetClipboard();
 
 	HWND GetTeamFortressWindow();

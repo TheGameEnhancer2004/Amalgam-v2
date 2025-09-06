@@ -33,6 +33,7 @@ class CBinds
 {
 public:
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
+	void SetVars(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bManage = true);
 
 	bool GetBind(int iID, Bind_t* pBind);
 
@@ -41,6 +42,8 @@ public:
 	int GetParent(int iBind);
 	bool HasChildren(int iBind);
 	bool WillBeEnabled(int iBind);
+
+	void Move(int i1, int i2);
 
 	std::vector<Bind_t> m_vBinds = {};
 };

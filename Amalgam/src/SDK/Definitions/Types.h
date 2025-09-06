@@ -429,7 +429,7 @@ public:
 		x = X; y = Y; z = Z;
 	}
 
-	inline Vec3 To2D()
+	inline Vec3 To2D() const
 	{
 		return { x, y };
 	}
@@ -781,14 +781,14 @@ struct IntRange_t
 {
 	int Min = 0, Max = 0;
 
-	inline bool operator==(IntRange_t other) const
+	inline bool operator==(const IntRange_t& t) const
 	{
-		return Min == other.Min && Max == other.Max;
+		return Min == t.Min && Max == t.Max;
 	}
 
-	inline bool operator!=(IntRange_t other) const
+	inline bool operator!=(const IntRange_t& t) const
 	{
-		return Min != other.Min || Max != other.Max;
+		return Min != t.Min || Max != t.Max;
 	}
 };
 
@@ -796,14 +796,14 @@ struct FloatRange_t
 {
 	float Min = 0, Max = 0;
 
-	inline bool operator==(FloatRange_t other) const
+	inline bool operator==(const FloatRange_t& t) const
 	{
-		return Min == other.Min && Max == other.Max;
+		return Min == t.Min && Max == t.Max;
 	}
 
-	inline bool operator!=(FloatRange_t other) const
+	inline bool operator!=(const FloatRange_t& t) const
 	{
-		return Min != other.Min || Max != other.Max;
+		return Min != t.Min || Max != t.Max;
 	}
 };
 
@@ -864,9 +864,9 @@ struct Color_t
 
 	inline void GetHSV(float& flH, float& flS, float& flV)
 	{
-		float flR = this->r / 255.f;
-		float flG = this->g / 255.f;
-		float flB = this->b / 255.f;
+		float flR = r / 255.f;
+		float flG = g / 255.f;
+		float flB = b / 255.f;
 
 		float flK = 0.f;
 		if (flG < flB)
@@ -893,7 +893,7 @@ struct Color_t
 	inline Color_t HueShift(float flShift)
 	{
 		float flH, flS, flV; GetHSV(flH, flS, flV);
-		Color_t tOut; tOut.SetHSV(fmodf(flH + flShift, 360.f), flS, flV, this->a);
+		Color_t tOut; tOut.SetHSV(fmodf(flH + flShift, 360.f), flS, flV, a);
 		return tOut;
 	}
 
@@ -950,6 +950,11 @@ struct Color_t
 	{
 		return { r, g, b, to };
 	}
+
+	inline int Brightness() const
+	{
+		return r + g + b;
+	}
 };
 
 struct Gradient_t
@@ -968,20 +973,92 @@ struct Gradient_t
 	}
 };
 
+struct ChamsMaterial_t
+{
+	Color_t tColor = Color_t();
+	float flStart = 0.f;
+	float flEnd = 8192.f;
+	bool bSmoothAlpha = false;
+
+	inline bool operator!=(const ChamsMaterial_t& t) const
+	{
+		return tColor != t.tColor || flStart != t.flStart || flEnd != t.flEnd || bSmoothAlpha != t.bSmoothAlpha;
+	}
+
+	inline bool operator==(const ChamsMaterial_t& t) const
+	{
+		return tColor == t.tColor && flStart == t.flStart && flEnd == t.flEnd && bSmoothAlpha == t.bSmoothAlpha;
+	}
+};
+
 struct Chams_t
 {
-	std::vector<std::pair<std::string, Color_t>> Visible = { { "Original", Color_t() } };
-	std::vector<std::pair<std::string, Color_t>> Occluded = {};
+	std::vector<std::pair<std::string, ChamsMaterial_t>> Visible = { { "Original", ChamsMaterial_t()}};
+	std::vector<std::pair<std::string, ChamsMaterial_t>> Occluded = {};
+
+	inline bool operator==(const Chams_t& t) const
+	{
+		return Visible == t.Visible && Occluded == t.Occluded;
+	}
+
+	inline bool operator!=(const Chams_t& t) const
+	{
+		return Visible != t.Visible || Occluded != t.Occluded;
+	}
+
+	inline bool operator()(bool bVisibleOnly = false) const
+	{
+		return bVisibleOnly ? !Visible.empty() : Visible != std::vector<std::pair<std::string, ChamsMaterial_t>>{ { "Original", ChamsMaterial_t() } } || !Occluded.empty();
+	}
+};
+
+struct ESP_t
+{
+	int		Draw = 0b0;
+
+	byte	BackgroundOpacity = 200;
+	float	Start = 0.f;
+	float	End = 8192.f;
+	bool	SmoothAlpha = true;
+
+	inline bool operator==(const ESP_t& t) const
+	{
+		return Draw == t.Draw && BackgroundOpacity == t.BackgroundOpacity && Start == t.Start && End == t.End && SmoothAlpha == t.SmoothAlpha;
+	}
+
+	inline bool operator!=(const ESP_t& t) const
+	{
+		return Draw != t.Draw || BackgroundOpacity != t.BackgroundOpacity || Start != t.Start || End != t.End || SmoothAlpha != t.SmoothAlpha;
+	}
+
+	inline bool operator()() const
+	{
+		return Draw;
+	}
 };
 
 struct Glow_t
 {
 	int		Stencil = 0;
-	int		Blur = 0;
+	float	Blur = 0;
 
-	inline bool operator==(const Glow_t& other) const
+	float	Start = 0.f;
+	float	End = 8192.f;
+	bool	SmoothAlpha = true;
+
+	inline bool operator==(const Glow_t& t) const
 	{
-		return Stencil == other.Stencil && Blur == other.Blur;
+		return Stencil == t.Stencil && Blur == t.Blur && Start == t.Start && End == t.End && SmoothAlpha == t.SmoothAlpha;
+	}
+
+	inline bool operator!=(const Glow_t& t) const
+	{
+		return Stencil != t.Stencil || Blur != t.Blur || Start != t.Start || End != t.End || SmoothAlpha != t.SmoothAlpha;
+	}
+
+	inline bool operator()() const
+	{
+		return Stencil || Blur;
 	}
 };
 
@@ -990,14 +1067,14 @@ struct DragBox_t
 	int x = 150;
 	int y = 100;
 
-	inline bool operator==(DragBox_t other) const
+	inline bool operator==(const DragBox_t& t) const
 	{
-		return x == other.x && y == other.y;
+		return x == t.x && y == t.y;
 	}
 
-	inline bool operator!=(DragBox_t other) const
+	inline bool operator!=(const DragBox_t& t) const
 	{
-		return x != other.x || y != other.y;
+		return x != t.x || y != t.y;
 	}
 };
 
@@ -1008,13 +1085,13 @@ struct WindowBox_t
 	int w = 200;
 	int h = 200;
 
-	inline bool operator==(WindowBox_t other) const
+	inline bool operator==(const WindowBox_t& t) const
 	{
-		return x == other.x && y == other.y && w == other.w && h == other.h;
+		return x == t.x && y == t.y && w == t.w && h == t.h;
 	}
 
-	inline bool operator!=(WindowBox_t other) const
+	inline bool operator!=(const WindowBox_t& t) const
 	{
-		return x != other.x || y != other.y || w != other.w || h != other.h;
+		return x != t.x || y != t.y || w != t.w || h != t.h;
 	}
 };

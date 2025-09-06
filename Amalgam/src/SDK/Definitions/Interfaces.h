@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../../Utils/Feature/Feature.h"
+#include "../../Utils/Macros/Macros.h"
 
 #include "Interfaces/CClientModeShared.h"
 #include "Interfaces/CClientState.h"
 #include "Interfaces/CGlobalVarsBase.h"
+#include "Interfaces/CHLClient.h"
 #include "Interfaces/CTFGameRules.h"
 #include "Interfaces/CTFGCClientSystem.h"
 #include "Interfaces/CTFPartyClient.h"
-#include "Interfaces/IBaseClientDLL.h"
 #include "Interfaces/IClientEntityList.h"
 #include "Interfaces/ICVar.h"
 #include "Interfaces/IEngineTrace.h"
@@ -38,9 +38,8 @@
 
 #ifndef TEXTMODE
 #include <d3d9.h>
-MAKE_INTERFACE_SIGNATURE_SEARCH(IDirect3DDevice9, DirectXDevice, "shaderapi", "48 8B 0D ? ? ? ? 48 8B 01 FF 50 ? 8B F8", 0x0, 1)
+MAKE_INTERFACE_SIGNATURE(IDirect3DDevice9, DirectXDevice, "shaderapidx9.dll, shaderapivk.dll", "48 8B 0D ? ? ? ? 48 8B 01 FF 50 ? 8B F8", 0x0, 1)
 #endif
-
 class CNullInterfaces
 {
 private:

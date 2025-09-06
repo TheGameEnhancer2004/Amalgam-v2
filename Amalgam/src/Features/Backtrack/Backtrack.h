@@ -1,24 +1,12 @@
 #pragma once
 #include "../../SDK/SDK.h"
+#include <optional>
 
-class CIncomingSequence
+struct Sequence_t
 {
-public:
 	int m_nInReliableState;
 	int m_nSequenceNr;
 	float m_flTime;
-
-	CIncomingSequence(int iState, int iSequence, float flTime)
-	{
-		m_nInReliableState = iState;
-		m_nSequenceNr = iSequence;
-		m_flTime = flTime;
-	}
-};
-
-struct BoneMatrix
-{
-	matrix3x4 m_aBones[MAXSTUDIOBONES];
 };
 
 struct HitboxInfo
@@ -34,15 +22,15 @@ struct TickRecord
 	Vec3 m_vOrigin = {};
 	Vec3 m_vMins = {};
 	Vec3 m_vMaxs = {};
-	BoneMatrix m_BoneMatrix = {};
 	std::vector<HitboxInfo> m_vHitboxInfos = {};
 	bool m_bOnShot = false;
-	Vec3 m_vBreak = {};
 	bool m_bInvalid = false;
+	matrix3x4 m_aBones[MAXSTUDIOBONES];
 };
 
 class CBacktrack
 {
+private:
 	void UpdateDatagram();
 	void MakeRecords();
 	void CleanRecords();
@@ -50,7 +38,7 @@ class CBacktrack
 	std::unordered_map<CBaseEntity*, std::deque<TickRecord>> m_mRecords = {};
 	std::unordered_map<int, bool> m_mDidShoot = {};
 
-	std::deque<CIncomingSequence> m_dSequences;
+	std::deque<Sequence_t> m_dSequences;
 	int m_iLastInSequence = 0;
 	int m_nOldInSequenceNr = 0;
 	int m_nOldInReliableState = 0;
@@ -67,15 +55,18 @@ class CBacktrack
 		bool bInsideThisRecord{ false };
 	};
 	std::optional<TickRecord> GetHitRecord(CBaseEntity* pEntity, CTFWeaponBase* pWeapon, CUserCmd* pCmd, CrosshairRecordInfo_t& InfoOut, const Vec3 vAngles, const Vec3 vPos);
+	bool m_bSettingUpBones = false;
 
 public:
 	void Store();
+	void CreateMove(CUserCmd* pCmd);
 	void SendLerp();
 	void Draw(CTFPlayer* pLocal);
 	void Reset();
 
 	bool GetRecords(CBaseEntity* pEntity, std::vector<TickRecord*>& vReturn);
 	std::vector<TickRecord*> GetValidRecords(std::vector<TickRecord*>& vRecords, CTFPlayer* pLocal = nullptr, bool bDistance = false, float flTimeMod = 0.f);
+	matrix3x4* GetBones(CBaseEntity* pEntity);
 
 	float GetReal(int iFlow = MAX_FLOWS, bool bNoFake = true);
 	float GetWishFake();
@@ -91,6 +82,8 @@ public:
 	void AdjustPing(CNetChannel* netChannel);
 	void RestorePing(CNetChannel* netChannel);
 	void BacktrackToCrosshair(CUserCmd* pCmd);
+
+	bool IsSettingUpBones() { return m_bSettingUpBones; }
 
 	int m_iTickCount = 0;
 	float m_flSentInterp = -1.f;

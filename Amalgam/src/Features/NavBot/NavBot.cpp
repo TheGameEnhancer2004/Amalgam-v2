@@ -84,7 +84,7 @@ bool CNavBot::ShouldSearchAmmo(CTFPlayer* pLocal)
 
 int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx)
 {
-	auto pEntity = I::ClientEntityList->GetClientEntity(iPlayerIdx);
+	auto pEntity = I::ClientEntityList->GetClientEntity(iPlayerIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsPlayer())
 		return -1;
 
@@ -103,7 +103,7 @@ int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayer
 	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iPlayerIdx)
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iPlayerIdx)
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invulnerable && pPlayer->IsInvulnerable() && G::SavedDefIndexes[SLOT_MELEE] != Heavy_t_TheHolidayPunch
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Cloaked && pPlayer->m_flInvisibility() && pPlayer->m_flInvisibility() >= Vars::Aimbot::General::IgnoreCloak.Value / 100.f
+		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invisible && pPlayer->m_flInvisibility() && pPlayer->m_flInvisibility() >= Vars::Aimbot::General::IgnoreInvisible.Value / 100.f
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::DeadRinger && pPlayer->m_bFeignDeathReady()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Taunting && pPlayer->IsTaunting()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Disguised && pPlayer->InCond(TF_COND_DISGUISED))
@@ -135,7 +135,7 @@ int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayer
 
 int CNavBot::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
 {
-	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx);
+	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsBuilding())
 		return -1;
 
@@ -868,8 +868,8 @@ bool CNavBot::StayNearTarget(int iEntIndex)
 		)
 	{
 		m_iStayNearTargetIdx = pEntity->entindex();
-		if (auto pPlayerResource = H::Entities.GetPR())
-			m_sFollowTargetName = SDK::ConvertUtf8ToWide(pPlayerResource->m_pszPlayerName(pEntity->entindex()));
+		if (auto pPlayerResource = H::Entities.GetResource())
+			m_sFollowTargetName = SDK::ConvertUtf8ToWide(pPlayerResource->GetName(pEntity->entindex()));
 		return true;
 	}
 
@@ -3077,43 +3077,37 @@ void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
 	if (!I::EngineClient->IsInGame() || !pLocal)
 		return;
 
-	// Get our own info first
-	PlayerInfo_t localInfo{};
-	if (!I::EngineClient->GetPlayerInfo(I::EngineClient->GetLocalPlayer(), &localInfo))
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
 		return;
 
-	uint32_t localFriendsID = localInfo.friendsID;
+	int iLocalIdx = pLocal->entindex();
+	uint32 uLocalUserID = pResource->m_iUserID(iLocalIdx);
 	int iLocalTeam = pLocal->m_iTeamNum();
 
 	// Then check each player
 	for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
 	{
-		if (i == I::EngineClient->GetLocalPlayer())
-			continue;
-
-		PlayerInfo_t pi{};
-		if (!I::EngineClient->GetPlayerInfo(i, &pi))
+		if (i == iLocalIdx || !pResource->m_bValid(i))
 			continue;
 #ifdef TEXTMODE
 		// Is this a local bot????
-		if (!F::NamedPipe::IsLocalBot(pi.friendsID))
+		if (!F::NamedPipe::IsLocalBot(pResource->m_iAccountID(i)))
 			continue;
 #endif
 
 		// Get the player entity
-		auto pEntity = I::ClientEntityList->GetClientEntity(i);
-		if (!pEntity || !pEntity->IsPlayer())
+		auto pEntity = I::ClientEntityList->GetClientEntity(i)->As<CBaseEntity>();
+		if (!pEntity || pEntity->IsDormant() ||
+			!pEntity->IsPlayer() || pEntity->m_iTeamNum() != iLocalTeam)
 			continue;
 
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (!pPlayer->IsAlive() || pPlayer->IsDormant())
-			continue;
-
-		if (pPlayer->m_iTeamNum() != iLocalTeam)
+		if (!pPlayer->IsAlive())
 			continue;
 
 		// Add to our list
-		m_vLocalBotPositions.push_back({ pi.friendsID, pPlayer->GetAbsOrigin() });
+		m_vLocalBotPositions.push_back({ pResource->m_iUserID(i), pPlayer->m_vecVelocity() });
 	}
 
 	// Sort by friendsID to ensure consistent ordering across all bots
@@ -3126,19 +3120,19 @@ void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
 	m_iPositionInFormation = -1;
 	
 	// Add ourselves to the list for calculation purposes
-	std::vector<uint32_t> allBotsInOrder;
-	allBotsInOrder.push_back(localFriendsID);
+	std::vector<uint32_t> vAllBotsInOrder;
+	vAllBotsInOrder.push_back(uLocalUserID);
 	
 	for (const auto& bot : m_vLocalBotPositions)
-		allBotsInOrder.push_back(bot.first);
+		vAllBotsInOrder.push_back(bot.first);
 	
 	// Sort all bots (including us)
-	std::sort(allBotsInOrder.begin(), allBotsInOrder.end());
+	std::sort(vAllBotsInOrder.begin(), vAllBotsInOrder.end());
 	
 	// Find our pofition
-	for (size_t i = 0; i < allBotsInOrder.size(); i++)
+	for (size_t i = 0; i < vAllBotsInOrder.size(); i++)
 	{
-		if (allBotsInOrder[i] == localFriendsID)
+		if (vAllBotsInOrder[i] == uLocalUserID)
 		{
 			m_iPositionInFormation = static_cast<int>(i);
 			break;
@@ -3155,41 +3149,13 @@ std::optional<Vector> CNavBot::GetFormationOffset(CTFPlayer* pLocal, int positio
 	Vector vOffset(0, 0, 0);
 	
 	// Calculate the movement direction of the leader
-	Vector vLeaderOrigin(0, 0, 0);
 	Vector vLeaderVelocity(0, 0, 0);
-	
+
 	if (!m_vLocalBotPositions.empty())
-	{
-		auto pLeader = I::ClientEntityList->GetClientEntity(1); // Leader is always at index 1
-		for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
-		{
-			PlayerInfo_t pi{};
-			if (!I::EngineClient->GetPlayerInfo(i, &pi))
-				continue;
-				
-			if (pi.friendsID == m_vLocalBotPositions[0].first)
-			{
-				pLeader = I::ClientEntityList->GetClientEntity(i);
-				break;
-			}
-		}
-		
-		if (pLeader && pLeader->IsPlayer())
-		{
-			auto pLeaderPlayer = pLeader->As<CTFPlayer>();
-			vLeaderOrigin = pLeaderPlayer->GetAbsOrigin();
-			vLeaderVelocity = pLeaderPlayer->m_vecVelocity();
-		}
-		else
-		{
-			vLeaderOrigin = m_vLocalBotPositions[0].second;
-			vLeaderVelocity = Vector(0, 0, 0);
-		}
-	}
+		vLeaderVelocity = m_vLocalBotPositions[0].second;
 	else
 	{
 		// No leader found, use our own direction
-		vLeaderOrigin = pLocal->GetAbsOrigin();
 		vLeaderVelocity = pLocal->m_vecVelocity();
 	}
 	
@@ -3247,33 +3213,20 @@ bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		return false;
 	
 	// Find the leader
-	uint32_t leaderID = 0;
 	Vector vLeaderPos;
 	CTFPlayer* pLeaderPlayer = nullptr;
 	
 	if (!m_vLocalBotPositions.empty())
 	{
 		// Find the actual leader in-game
-		for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+		auto pLeader = I::ClientEntityList->GetClientEntity(I::EngineClient->GetPlayerForUserID(m_vLocalBotPositions[0].first))->As<CBaseEntity>();
+		if (pLeader && pLeader->IsPlayer())
 		{
-			PlayerInfo_t pi{};
-			if (!I::EngineClient->GetPlayerInfo(i, &pi))
-				continue;
-				
-			if (pi.friendsID == m_vLocalBotPositions[0].first)
-			{
-				auto pLeader = I::ClientEntityList->GetClientEntity(i);
-				if (pLeader && pLeader->IsPlayer())
-				{
-					pLeaderPlayer = pLeader->As<CTFPlayer>();
-					leaderID = pi.friendsID;
-					vLeaderPos = pLeaderPlayer->GetAbsOrigin();
-					break;
-				}
-			}
+			pLeaderPlayer = pLeader->As<CTFPlayer>();
+			vLeaderPos = pLeaderPlayer->GetAbsOrigin();
 		}
 	}
-	if (leaderID == 0 || !pLeaderPlayer)
+	if (!pLeaderPlayer)
 		return false;
 
 	if (pLeaderPlayer->m_iTeamNum() != pLocal->m_iTeamNum())

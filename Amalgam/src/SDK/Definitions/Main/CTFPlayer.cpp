@@ -40,49 +40,56 @@ Vec3 CTFPlayer::GetViewOffset()
 	return getMainOffset() * m_flModelScale();
 }
 
-bool CTFPlayer::InCond(const ETFCond cond)
+bool CTFPlayer::InCond(ETFCond eCond)
 {
-	const int iCond = static_cast<int>(cond);
-	switch (iCond / 32)
+	switch (eCond / 32)
 	{
 	case 0:
-	{
-		const int bit = (1 << iCond);
-		if ((m_nPlayerCond() & bit) == bit || (_condition_bits() & bit) == bit)
-			return true;
-		break;
-	}
+		return m_nPlayerCond() & (1 << eCond) || _condition_bits() & (1 << eCond);
 	case 1:
-	{
-		const int bit = 1 << (iCond - 32);
-		if ((m_nPlayerCondEx() & bit) == bit)
-			return true;
-		break;
-	}
+		return m_nPlayerCondEx() & (1 << (eCond - 32));
 	case 2:
-	{
-		const int bit = 1 << (iCond - 64);
-		if ((m_nPlayerCondEx2() & bit) == bit)
-			return true;
-		break;
-	}
+		return m_nPlayerCondEx2() & (1 << (eCond - 64));
 	case 3:
-	{
-		const int bit = 1 << (iCond - 96);
-		if ((m_nPlayerCondEx3() & bit) == bit)
-			return true;
-		break;
-	}
+		return m_nPlayerCondEx3() & (1 << (eCond - 96));
 	case 4:
-	{
-		const int bit = 1 << (iCond - 128);
-		if ((m_nPlayerCondEx4() & bit) == bit)
-			return true;
-		break;
+		return m_nPlayerCondEx4() & (1 << (eCond - 128));
 	}
-	}
-
 	return false;
+}
+
+void CTFPlayer::AddCond(ETFCond eCond)
+{
+	switch (eCond / 32)
+	{
+	case 0:
+		m_nPlayerCond() |= (1 << eCond), _condition_bits() |= (1 << eCond); break;
+	case 1:
+		m_nPlayerCondEx() |= (1 << (eCond - 32)); break;
+	case 2:
+		m_nPlayerCondEx2() |= (1 << (eCond - 64)); break;
+	case 3:
+		m_nPlayerCondEx3() |= (1 << (eCond - 96)); break;
+	case 4:
+		m_nPlayerCondEx4() |= (1 << (eCond - 128)); break;
+	}
+}
+
+void CTFPlayer::RemoveCond(ETFCond eCond)
+{
+	switch (eCond / 32)
+	{
+	case 0:
+		m_nPlayerCond() &= ~(1 << eCond), _condition_bits() &= ~(1 << eCond); break;
+	case 1:
+		m_nPlayerCondEx() &= ~(1 << (eCond - 32)); break;
+	case 2:
+		m_nPlayerCondEx2() &= ~(1 << (eCond - 64)); break;
+	case 3:
+		m_nPlayerCondEx3() &= ~(1 << (eCond - 96)); break;
+	case 4:
+		m_nPlayerCondEx4() &= ~(1 << (eCond - 128)); break;
+	}
 }
 
 bool CTFPlayer::IsAGhost()
@@ -125,22 +132,21 @@ bool CTFPlayer::IsUbered()
 bool CTFPlayer::IsCritBoosted()
 {
 	return InCond(TF_COND_CRITBOOSTED)
-		|| InCond(TF_COND_CRITBOOSTED_BONUS_TIME)
-		|| InCond(TF_COND_CRITBOOSTED_CARD_EFFECT)
-		|| InCond(TF_COND_CRITBOOSTED_CTF_CAPTURE)
-		|| InCond(TF_COND_CRITBOOSTED_FIRST_BLOOD)
-		|| InCond(TF_COND_CRITBOOSTED_ON_KILL)
 		|| InCond(TF_COND_CRITBOOSTED_PUMPKIN)
+		|| InCond(TF_COND_CRITBOOSTED_USER_BUFF)
+		|| InCond(TF_COND_CRITBOOSTED_FIRST_BLOOD)
+		|| InCond(TF_COND_CRITBOOSTED_BONUS_TIME)
+		|| InCond(TF_COND_CRITBOOSTED_CTF_CAPTURE)
+		|| InCond(TF_COND_CRITBOOSTED_ON_KILL)
 		|| InCond(TF_COND_CRITBOOSTED_RAGE_BUFF)
-		|| InCond(TF_COND_CRITBOOSTED_RUNE_TEMP)
-		|| InCond(TF_COND_CRITBOOSTED_USER_BUFF);
+		|| InCond(TF_COND_CRITBOOSTED_CARD_EFFECT)
+		|| InCond(TF_COND_CRITBOOSTED_RUNE_TEMP);
 }
 
 bool CTFPlayer::IsMiniCritBoosted()
 {
 	return InCond(TF_COND_OFFENSEBUFF)
 		|| InCond(TF_COND_ENERGY_BUFF)
-		|| InCond(TF_COND_MINICRITBOOSTED_ON_KILL)
 		|| InCond(TF_COND_NOHEALINGDAMAGEBUFF)
 		/*|| InCond(TF_COND_CRITBOOSTED_DEMO_CHARGE)*/;
 }

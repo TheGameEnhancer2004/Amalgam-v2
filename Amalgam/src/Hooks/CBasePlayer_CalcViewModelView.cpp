@@ -11,7 +11,7 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 		return CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
 #endif
 
-	Vec3 vOffset = { float(Vars::Visuals::Viewmodel::OffsetX.Value), float(Vars::Visuals::Viewmodel::OffsetY.Value), float(Vars::Visuals::Viewmodel::OffsetZ.Value) };
+	Vec3 vOffset = { Vars::Visuals::Viewmodel::OffsetX.Value, Vars::Visuals::Viewmodel::OffsetY.Value, Vars::Visuals::Viewmodel::OffsetZ.Value };
 	bool bOffset = !vOffset.IsZero();
 
 	if (!Vars::Visuals::Viewmodel::ViewmodelAim.Value && !bOffset && !Vars::Visuals::Viewmodel::Roll.Value
@@ -56,14 +56,4 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 
 	CALL_ORIGINAL(rcx, pOwner, vNewEyePosition, vEyeAngles);
 #endif
-}
-
-MAKE_HOOK(ClientModeTFNormal_GetViewModelFOV, U::Memory.GetVirtual(I::ClientModeShared, 32), float,
-	/*void* rcx*/)
-{
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcViewModelView[DEFAULT_BIND])
-		return CALL_ORIGINAL(/*rcx*/);
-#endif
-	return Vars::Visuals::Viewmodel::FieldOfView.Value ? Vars::Visuals::Viewmodel::FieldOfView.Value : CALL_ORIGINAL(/*rcx*/);
 }

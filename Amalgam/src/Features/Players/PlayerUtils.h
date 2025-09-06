@@ -15,7 +15,7 @@
 struct ListPlayer
 {
 	std::string m_sName;
-	uint32_t m_uFriendsID;
+	uint32_t m_uAccountID;
 	int m_iUserID;
 	int m_iTeam;
 	bool m_bAlive;
@@ -48,63 +48,6 @@ struct PriorityLabel_t
 class CPlayerlistUtils
 {
 public:
-	uint32_t GetFriendsID(int iIndex);
-	PriorityLabel_t* GetTag(int iID);
-	int GetTag(std::string sTag);
-	inline int TagToIndex(int iTag)
-	{
-		if (iTag <= 0)
-			iTag = -iTag;
-		else
-			iTag += TAG_COUNT;
-		return iTag;
-	}
-	inline int IndexToTag(int iID)
-	{
-		if (iID <= TAG_COUNT)
-			iID = -iID;
-		else
-			iID -= TAG_COUNT;
-		return iID;
-	}
-
-	void AddTag(uint32_t uFriendsID, int iID, bool bSave, std::string sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void AddTag(uint32_t uFriendsID, int iID, bool bSave = true, std::string sName = "");
-	void AddTag(int iIndex, int iID, bool bSave, std::string sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void AddTag(int iIndex, int iID, bool bSave = true, std::string sName = "");
-	void RemoveTag(uint32_t uFriendsID, int iID, bool bSave, std::string sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void RemoveTag(uint32_t uFriendsID, int iID, bool bSave = true, std::string sName = "");
-	void RemoveTag(int iIndex, int iID, bool bSave, std::string sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void RemoveTag(int iIndex, int iID, bool bSave = true, std::string sName = "");
-	bool HasTags(uint32_t uFriendsID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	bool HasTags(uint32_t uFriendsID);
-	bool HasTags(int iIndex, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	bool HasTags(int iIndex);
-	bool HasTag(uint32_t uFriendsID, int iID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	bool HasTag(uint32_t uFriendsID, int iID);
-	bool HasTag(int iIndex, int iID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	bool HasTag(int iIndex, int iID);
-
-	int GetPriority(uint32_t uFriendsID, bool bCache = true);
-	int GetPriority(int iIndex, bool bCache = true);
-	PriorityLabel_t* GetSignificantTag(uint32_t uFriendsID, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
-	PriorityLabel_t* GetSignificantTag(int iIndex, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
-	bool IsIgnored(uint32_t uFriendsID);
-	bool IsIgnored(int iIndex);
-	bool IsPrioritized(uint32_t uFriendsID);
-	bool IsPrioritized(int iIndex);
-
-	void IncrementBotIgnoreKillCount(uint32_t uFriendsID);
-
-	const char* GetPlayerName(int iIndex, const char* sDefault, int* pType = nullptr);
-	
-	bool ContainsSpecialChars(const std::string& name);
-	void ProcessSpecialCharsInName(uint32_t uFriendsID, const std::string& name);
-
-	void UpdatePlayers();
-	std::mutex m_mutex;
-
-public:
 	std::unordered_map<uint32_t, std::vector<int>> m_mPlayerTags = {};
 	std::unordered_map<uint32_t, std::string> m_mPlayerAliases = {};
 	std::unordered_map<uint32_t, BotIgnoreData> m_mBotIgnoreData = {};
@@ -125,7 +68,7 @@ public:
 
 	bool m_bLoad = true;
 	bool m_bSave = false;
-	
+
 	// Thai characters to check for auto-tagging
 	const std::vector<unsigned char> m_vSpecialChars = { 
 		0xE0, 0xB9, 0x87,  // '็'
@@ -135,6 +78,69 @@ public:
 		0xE0, 0xB9, 0x8C,  // '์'
 		0xE0, 0xB9, 0xB9   // 'ู'
 	};
+	std::mutex m_mutex;
+
+private:
+	std::vector<int> m_vDummy = {};
+
+public:
+	void Store();
+
+	uint32_t GetAccountID(int iIndex);
+	PriorityLabel_t* GetTag(int iID);
+	int GetTag(const std::string& sTag);
+	inline int TagToIndex(int iTag)
+	{
+		if (iTag <= 0)
+			iTag = -iTag;
+		else
+			iTag += TAG_COUNT;
+		return iTag;
+	}
+	inline int IndexToTag(int iID)
+	{
+		if (iID <= TAG_COUNT)
+			iID = -iID;
+		else
+			iID -= TAG_COUNT;
+		return iID;
+	}
+
+	void AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	void AddTag(uint32_t uAccountID, int iID, bool bSave = true, const char* sName = nullptr);
+	void AddTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	void AddTag(int iIndex, int iID, bool bSave = true, const char* sName = nullptr);
+	void RemoveTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	void RemoveTag(uint32_t uAccountID, int iID, bool bSave = true, const char* sName = nullptr);
+	void RemoveTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	void RemoveTag(int iIndex, int iID, bool bSave = true, const char* sName = nullptr);
+	bool HasTags(uint32_t uAccountID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	bool HasTags(uint32_t uAccountID);
+	bool HasTags(int iIndex, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	bool HasTags(int iIndex);
+	bool HasTag(uint32_t uAccountID, int iID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	bool HasTag(uint32_t uAccountID, int iID);
+	bool HasTag(int iIndex, int iID, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
+	bool HasTag(int iIndex, int iID);
+
+	int GetPriority(uint32_t uAccountID, bool bCache = true);
+	int GetPriority(int iIndex, bool bCache = true);
+	PriorityLabel_t* GetSignificantTag(uint32_t uAccountID, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
+	PriorityLabel_t* GetSignificantTag(int iIndex, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
+	bool IsIgnored(uint32_t uAccountID);
+	bool IsIgnored(int iIndex);
+	bool IsPrioritized(uint32_t uAccountID);
+	bool IsPrioritized(int iIndex);
+	
+	void IncrementBotIgnoreKillCount(uint32_t uFriendsID);
+	
+	const char* GetPlayerName(int iIndex, const char* sDefault, int* pType = nullptr);
+	
+	bool ContainsSpecialChars(const std::string& name);
+	void ProcessSpecialCharsInName(uint32_t uFriendsID, const std::string& name);
+	
+	std::vector<int>& GetPlayerTags(uint32_t uAccountID) { return m_mPlayerTags.contains(uAccountID) ? m_mPlayerTags[uAccountID] : m_vDummy; }
+	std::string* GetPlayerAlias(uint32_t uAccountID) { return m_mPlayerAliases.contains(uAccountID) ? &m_mPlayerAliases[uAccountID] : nullptr; }
 };
 
 ADD_FEATURE(CPlayerlistUtils, PlayerUtils);

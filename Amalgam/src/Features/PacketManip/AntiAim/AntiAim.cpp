@@ -13,8 +13,8 @@ bool CAntiAim::AntiAimOn()
 		|| Vars::AntiAim::PitchFake.Value
 		|| Vars::AntiAim::YawReal.Value
 		|| Vars::AntiAim::YawFake.Value
-		|| Vars::AntiAim::RealYawMode.Value
-		|| Vars::AntiAim::FakeYawMode.Value
+		|| Vars::AntiAim::RealYawBase.Value
+		|| Vars::AntiAim::FakeYawBase.Value
 		|| Vars::AntiAim::RealYawOffset.Value
 		|| Vars::AntiAim::FakeYawOffset.Value);
 }
@@ -24,15 +24,15 @@ bool CAntiAim::YawOn()
 	return Vars::AntiAim::Enabled.Value
 		&& (Vars::AntiAim::YawReal.Value
 		|| Vars::AntiAim::YawFake.Value
-		|| Vars::AntiAim::RealYawMode.Value
-		|| Vars::AntiAim::FakeYawMode.Value
+		|| Vars::AntiAim::RealYawBase.Value
+		|| Vars::AntiAim::FakeYawBase.Value
 		|| Vars::AntiAim::RealYawOffset.Value
 		|| Vars::AntiAim::FakeYawOffset.Value);
 }
 
 bool CAntiAim::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!pLocal || !pLocal->IsAlive() || pLocal->IsAGhost() || (pLocal->IsTaunting() && !Vars::AntiAim::TauntSpin.Value) || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->InCond(TF_COND_HALLOWEEN_KART)
+	if (!pLocal->IsAlive() || pLocal->IsAGhost() || (pLocal->IsTaunting() && !Vars::AntiAim::TauntSpin.Value) || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->InCond(TF_COND_HALLOWEEN_KART)
 		|| G::Attacking == 1 || F::AutoRocketJump.IsRunning() || F::Ticks.m_bDoubletap // this m_bDoubletap check can probably be removed if we fix tickbase correctly
 		|| pWeapon && pWeapon->m_iItemDefinitionIndex() == Soldier_m_TheBeggarsBazooka && pCmd->buttons & IN_ATTACK && !(G::LastUserCmd->buttons & IN_ATTACK))
 		return false;
@@ -47,7 +47,7 @@ bool CAntiAim::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pC
 
 void CAntiAim::FakeShotAngles(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!Vars::AntiAim::InvalidShootPitch.Value || G::Attacking != 1 || G::PrimaryWeaponType != EWeaponType::HITSCAN || !pLocal || pLocal->m_MoveType() != MOVETYPE_WALK)
+	if (!Vars::AntiAim::InvalidShootPitch.Value || G::Attacking != 1 || G::PrimaryWeaponType != EWeaponType::HITSCAN || pLocal->m_MoveType() != MOVETYPE_WALK)
 		return;
 
 	switch (pWeapon ? pWeapon->GetWeaponID() : 0)
@@ -120,7 +120,7 @@ float CAntiAim::GetYawOffset(CTFPlayer* pEntity, bool bFake)
 
 float CAntiAim::GetBaseYaw(CTFPlayer* pLocal, CUserCmd* pCmd, bool bFake)
 {
-	const int iMode = bFake ? Vars::AntiAim::FakeYawMode.Value : Vars::AntiAim::RealYawMode.Value;
+	const int iMode = bFake ? Vars::AntiAim::FakeYawBase.Value : Vars::AntiAim::RealYawBase.Value;
 	const float flOffset = bFake ? Vars::AntiAim::FakeYawOffset.Value : Vars::AntiAim::RealYawOffset.Value;
 	switch (iMode) // 0 offset, 1 at player
 	{
@@ -131,7 +131,7 @@ float CAntiAim::GetBaseYaw(CTFPlayer* pLocal, CUserCmd* pCmd, bool bFake)
 		for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 		{
 			auto pPlayer = pEntity->As<CTFPlayer>();
-			if (pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost() || F::PlayerUtils.IsIgnored(pPlayer->entindex()))
+			if (!pPlayer->IsAlive() || pPlayer->IsAGhost() || F::PlayerUtils.IsIgnored(pPlayer->entindex()))
 				continue;
 			
 			const Vec3 vAngleTo = Math::CalcAngle(pLocal->m_vecOrigin(), pPlayer->m_vecOrigin());

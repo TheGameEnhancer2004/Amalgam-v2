@@ -15,7 +15,7 @@ MAKE_HOOK(CTFGCClientSystem_SOCreated, S::CTFGCClientSystem_SOCreated(), void,
 	if (pObject)
 	{
 		auto uType = reinterpret_cast<unsigned int(*)(void*)>(U::Memory.GetVirtual(pObject, 1))(pObject);
-		SDK::Output("CTFGCClientSystem_SOCreated", std::format("SO created: {}", uType).c_str(), Color_t(255, 255, 255, 255), true, true);
+		SDK::Output("CTFGCClientSystem_SOCreated", std::format("SO created: {}", uType).c_str(), Color_t(255, 255, 255, 255), OUTPUT_CONSOLE | OUTPUT_DEBUG);
 
 #ifndef TEXTMODE
 		if (Vars::Misc::Queueing::AutoCasualJoin.Value)
@@ -24,7 +24,7 @@ MAKE_HOOK(CTFGCClientSystem_SOCreated, S::CTFGCClientSystem_SOCreated(), void,
 			if (uType == 2008)
 			{
 				uint64 uLobbyID = reinterpret_cast<CTFLobbyInvite*>(pObject)->uLobbyID;
-				SDK::Output("CTFGCClientSystem_SOCreated", std::format("Joining {}..", uLobbyID).c_str(), Color_t(255, 255, 255, 255), true, true);
+				SDK::Output("CTFGCClientSystem_SOCreated", std::format("Joining {}..", uLobbyID).c_str(), Color_t(255, 255, 255, 255), OUTPUT_CONSOLE | OUTPUT_DEBUG);
 				I::TFGCClientSystem->RequestAcceptMatchInvite(uLobbyID);
 			}
 			else if (uType == 2004)

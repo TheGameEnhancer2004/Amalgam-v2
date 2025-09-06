@@ -39,45 +39,46 @@ void CAutoQueue::Run()
 	
 	bWasInGame = bInGame;
 
-
-	if (bInGame && Vars::Misc::Queueing::RQif.Value)
+	if (auto pResource = H::Entities.GetResource())
 	{
-		int nPlayerCount = 0;
-		
-		for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+		if (bInGame && Vars::Misc::Queueing::RQif.Value)
 		{
-			PlayerInfo_t pi{};
-			if (I::EngineClient->GetPlayerInfo(i, &pi) && pi.userID != -1)
+			int nPlayerCount = 0;
+
+			for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
 			{
-				bool bShouldCount = true;
-				
-				if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
+				if (pResource->m_iUserID(i) != -1)
 				{
-					uint32_t uFriendsID = pi.friendsID;
-					
-					if (H::Entities.IsFriend(uFriendsID) || 
-						H::Entities.InParty(uFriendsID) ||
-						F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
-						F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
-						F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-						F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
-						F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG)))
+					bool bShouldCount = true;
+
+					if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
 					{
-						bShouldCount = false;
+						uint32_t uFriendsID = pResource->m_iAccountID(i);
+
+						if (H::Entities.IsFriend(uFriendsID) ||
+							H::Entities.InParty(uFriendsID) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG)))
+						{
+							bShouldCount = false;
+						}
 					}
+
+					if (bShouldCount)
+						nPlayerCount++;
 				}
-				
-				if (bShouldCount)
-					nPlayerCount++;
 			}
-		}
-		
-		if (nPlayerCount < Vars::Misc::Queueing::RQplt.Value)
-		{
-			I::TFGCClientSystem->AbandonCurrentMatch();
-			bWasInGame = false;
-			bWasDisconnected = true;
-			flLastQueueTime = 0.0f;
+
+			if (nPlayerCount < Vars::Misc::Queueing::RQplt.Value)
+			{
+				I::TFGCClientSystem->AbandonCurrentMatch();
+				bWasInGame = false;
+				bWasDisconnected = true;
+				flLastQueueTime = 0.0f;
+			}
 		}
 	}
 

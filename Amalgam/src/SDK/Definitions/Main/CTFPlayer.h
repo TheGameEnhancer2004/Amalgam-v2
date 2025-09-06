@@ -193,13 +193,13 @@ public:
 	NETVAR_OFF(m_flStunLerpTarget, float, "CTFPlayer", "m_hItem", -184);
 	NETVAR_OFF(m_bStunNeedsFadeOut, bool, "CTFPlayer", "m_hItem", -188);
 	NETVAR_OFF(m_bTauntForceMoveForward, bool, "CTFPlayer", "m_bAllowMoveDuringTaunt", 1);
-	
+	NETVAR_OFF(m_flTauntForceMoveForwardSpeed, float, "CTFPlayer", "m_bAllowMoveDuringTaunt", 4);
 	int& m_nStreaks(int index)
 	{
 		static int nOffset = U::NetVars.GetNetVar("CTFPlayer", "m_nStreaks");
 		return (&(*reinterpret_cast<int*>(uintptr_t(this) + nOffset)))[index];
 	}
-	
+
 	VIRTUAL(GetMaxHealth, int, 107, this);
 	VIRTUAL(ThirdPersonSwitch, void, 256, this);
 	
@@ -210,7 +210,9 @@ public:
 
 	Vec3 GetEyeAngles();
 	Vec3 GetViewOffset(); // use on nonlocal players
-	bool InCond(const ETFCond cond);
+	bool InCond(ETFCond eCond);
+	void AddCond(ETFCond eCond); // bits only
+	void RemoveCond(ETFCond eCond); // bits only
 	bool IsAGhost();
 	bool IsTaunting();
 	bool IsInvisible();

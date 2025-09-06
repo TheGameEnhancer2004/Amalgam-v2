@@ -74,7 +74,7 @@ AchivementItem_t* CAutoItem::IsAchievementItem(item_definition_index_t iItemDef)
 
 void CAutoItem::GetItem(item_definition_index_t iItemDef, bool bRent)
 {
-	SDK::Output("CAutoItem", std::format("Trying to get item, {}", iItemDef).c_str(), { 255, 223, 0 }, Vars::Debug::Logging.Value, true);
+	SDK::Output("CAutoItem", std::format("Trying to get item, {}", iItemDef).c_str(), { 255, 223, 0 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	auto pAchievementItem = IsAchievementItem(iItemDef);
 	if (pAchievementItem)
 	{
@@ -84,7 +84,7 @@ void CAutoItem::GetItem(item_definition_index_t iItemDef, bool bRent)
 	else if (bRent)
 		Rent(iItemDef);
 	else
-		SDK::Output("CAutoItem", std::format("Failed to get item {}", iItemDef).c_str(), { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+		SDK::Output("CAutoItem", std::format("Failed to get item {}", iItemDef).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 }
 
 void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPlayerInventory* pLocalInventory, std::string sItemDefs, int iClass, int iSlot)
@@ -120,7 +120,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 		}
 		catch (const std::invalid_argument&)
 		{
-			SDK::Output("CAutoItem", "invalid_argument error making vSplitDefIdx vector.", { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+			SDK::Output("CAutoItem", "invalid_argument error making vSplitDefIdx vector.", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			return;
 		}
 
@@ -153,7 +153,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 			}
 			catch (const std::invalid_argument&)
 			{
-				SDK::Output("CAutoItem", "invalid_argument error making result integer.", { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+				SDK::Output("CAutoItem", "invalid_argument error making result integer.", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 				return;
 			}
 
@@ -169,7 +169,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 
 			for (auto sGroup : aCraftGroups[iSlot])
 			{
-				SDK::Output("CAutoItem", std::format("Crafting group: {}", sGroup).c_str(), { 70,130,180 }, Vars::Debug::Logging.Value, true);
+				SDK::Output("CAutoItem", std::format("Crafting group: {}", sGroup).c_str(), { 70,130,180 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 				vDefIndexes.clear();
 				vStrDefIndexes.clear();
 
@@ -188,7 +188,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 				}
 				catch (const std::invalid_argument&)
 				{
-					SDK::Output("CAutoItem", "invalid_argument error making vDefIndexes vector.", { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+					SDK::Output("CAutoItem", "invalid_argument error making vDefIndexes vector.", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 					return;
 				}
 
@@ -218,18 +218,18 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 
 							if (pAchievementMgr->HasAchieved(pAchievementItem->m_sName.c_str()))
 							{
-								SDK::Output("CAutoItem", std::format("Cant get specified ach item {} because it has already been unlocked! moving to next item.", iItemDef).c_str(), { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+								SDK::Output("CAutoItem", std::format("Cant get specified ach item {} because it has already been unlocked! moving to next item.", iItemDef).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 								// User's fault if they put a ach item they unlocked and have used for crafting already/deleted.
 								uAmountAvailableRequirements++;
 								continue;
 							}
-							SDK::Output("CAutoItem", std::format("Getting ach item {}, required for this craft.", iItemDef).c_str(), { 70,130,180 }, Vars::Debug::Logging.Value, true);
+							SDK::Output("CAutoItem", std::format("Getting ach item {}, required for this craft.", iItemDef).c_str(), { 70,130,180 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 							GetItem(iItemDef, false);
 							return;
 						}
 						else
 						{
-							SDK::Output("CAutoItem", std::format("Missing required crafting materials! {} is NOT a ach item!", iItemDef).c_str(), { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
+							SDK::Output("CAutoItem", std::format("Missing required crafting materials! {} is NOT a ach item!", iItemDef).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 							return;
 						}
 					}
@@ -243,10 +243,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 			}
 		}
 		else
-		{
-			SDK::Output("CAutoItem", "No result item, can't auto-craft.", { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
-			return;
-		}
+			SDK::Output("CAutoItem", "No result item, can't auto-craft.", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	}
 }
 
@@ -279,10 +276,7 @@ void CAutoItem::EquipItem(CTFInventoryManager* pInventoryManager, CTFPlayerInven
 	if (pItem)
 	{
 		if (!pItem->UUID())
-		{
-			SDK::Output("CAutoItem", std::format("Invalid UUID for item {}", iItemDef).c_str(), { 255, 131, 131 }, Vars::Debug::Logging.Value, true);
-			return;
-		}
+			SDK::Output("CAutoItem", std::format("Invalid UUID for item {}", iItemDef).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		else
 			pInventoryManager->EquipItemInLoadout(iClass, iSlot, pItem->UUID());
 	}

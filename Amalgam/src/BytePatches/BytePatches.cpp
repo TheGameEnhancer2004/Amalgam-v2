@@ -69,16 +69,18 @@ bool CBytePatches::Initialize()
 		BytePatch("client.dll", "73 ? 48 8D 0D ? ? ? ? FF 15 ? ? ? ? 32 C0", 0x0, "EB")
 	};
 
-	bool bFail{false};
-	for (auto& patch : m_vPatches)
-		if (!patch.Initialize())
+	bool bFail = false;
+	for (auto& tPatch : m_vPatches)
+	{
+		if (!tPatch.Initialize())
 			bFail = true;
+	}
 
 	return !bFail;
 }
 
 void CBytePatches::Unload()
 {
-	for (auto& patch : m_vPatches)
-		patch.Unload();
+	for (auto& tPatch : m_vPatches)
+		tPatch.Unload();
 }

@@ -43,7 +43,6 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 
 			CValve_Random* Random = new CValve_Random();
 			int iCmdNum = iFlags & ProjSimEnum::PredictCmdNum ? F::CritHack.PredictCmdNum(pPlayer, pWeapon, G::CurrentUserCmd) : G::CurrentUserCmd->command_number;
-			//SDK::RandomSeed(SDK::SeedFileLineHash(MD5_PseudoRandom(iCmdNum) & 0x7FFFFFFF, "SelectWeightedSequence", 0));
 			Random->SetSeed(SDK::SeedFileLineHash(MD5_PseudoRandom(iCmdNum) & 0x7FFFFFFF, "SelectWeightedSequence", 0));
 			for (int i = 0; i < 6; ++i)
 				Random->RandomFloat();//SDK::RandomFloat();
@@ -55,13 +54,13 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 				// done after the projectile is created and not before, position may be a bit off
 				if (pWeapon->As<CTFPipebombLauncher>()->m_flChargeBeginTime() > 0.f && I::GlobalVars->curtime - pWeapon->As<CTFPipebombLauncher>()->m_flChargeBeginTime() > 5.0f)
 				{
-					vAngAdd.x += -6.f + /*SDK::RandomInt()*/Random->RandomInt() / float(0x7FFF) * 12.f;
-					vAngAdd.y += -6.f + /*SDK::RandomInt()*/Random->RandomInt() / float(0x7FFF) * 12.f;
+					vAngAdd.x += -6.f + float(Random->RandomInt()) / 0x7FFF * 12.f;
+					vAngAdd.y += -6.f + float(Random->RandomInt()) / 0x7FFF * 12.f;
 				}
 				break;
 			case TF_WEAPON_SYRINGEGUN_MEDIC:
-				vAngAdd.x += Random->RandomFloat(-1.5f, 1.5f);//SDK::RandomFloat(-1.5f, 1.5f);
-				vAngAdd.y += Random->RandomFloat(-1.5f, 1.5f);//SDK::RandomFloat(-1.5f, 1.5f);
+				vAngAdd.x += Random->RandomFloat(-1.5f, 1.5f);
+				vAngAdd.y += Random->RandomFloat(-1.5f, 1.5f);
 			}
 			delete(Random);
 
@@ -113,9 +112,9 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 		float flSpeed = pPlayer->InCond(TF_COND_RUNE_PRECISION) ? 3000.f : SDK::AttribHookValue(1200.f, "mult_projectile_speed", pWeapon);
 		float flLifetime = flMortar
 			? pWeapon->As<CTFGrenadeLauncher>()->m_flDetonateTime() > 0.f ? pWeapon->As<CTFGrenadeLauncher>()->m_flDetonateTime() - I::GlobalVars->curtime : flMortar
-			: SDK::AttribHookValue(2.2f, "fuse_mult", pWeapon);
+			: SDK::AttribHookValue(2.f, "fuse_mult", pWeapon);
 		auto uType = bCannon ? FNV1A::Hash32Const("models/weapons/w_models/w_cannonball.mdl") : FNV1A::Hash32Const("models/weapons/w_models/w_grenade_grenadelauncher.mdl");
-		tProjInfo = { pPlayer, pWeapon, uType, vPos, vAngle, { 6.f, 6.f, 6.f }, flSpeed, 1.f, flLifetime };
+		tProjInfo = { pPlayer, pWeapon, uType, vPos, vAngle, { 6.f, 6.f, 6.f }, flSpeed, 1.f, floorf(flLifetime / 0.195f + 1) * 0.195f };
 		return true;
 	}
 	case TF_WEAPON_PIPEBOMBLAUNCHER:
@@ -272,9 +271,8 @@ bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, 
 		return bReturn;
 
 	CGameTrace trace = {};
-	CTraceFilterCollideable filter = {}; filter.pSkip = pPlayer;
-	if (pWeapon->GetWeaponID() == TF_WEAPON_RAYGUN)
-		filter.iObject = OBJECT_DEFAULT;
+	CTraceFilterWorldAndPropsOnly filter = {};
+	filter.pSkip = pPlayer;
 
 	Vec3 vStart = bQuick ? pPlayer->GetEyePosition() : pPlayer->GetShootPos();
 	Vec3 vEnd = tProjInfo.m_vPos;

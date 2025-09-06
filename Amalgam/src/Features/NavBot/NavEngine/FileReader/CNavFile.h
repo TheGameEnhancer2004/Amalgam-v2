@@ -237,7 +237,7 @@ public:
 		std::ofstream file(sFilePath, std::ios::binary | std::ios::ate);
 		if (!file.is_open())
 		{
-			SDK::Output("CNavFile::Write", std::format("Couldn't open file {}", sFilePath).c_str(), { 200, 150, 150 }, Vars::Debug::Logging.Value);
+			SDK::Output("CNavFile::Write", std::format("Couldn't open file {}", sFilePath).c_str(), { 200, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			return;
 		}
 

@@ -11,7 +11,7 @@
 
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	NoiseSpam(pLocal);
+	NoisemakerSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
 	CheatsBypass();
@@ -27,9 +27,6 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 		}
 	}
 	#endif
-	
-	if (!pLocal)
-		return;
 
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
@@ -38,7 +35,8 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	if (Vars::Misc::MannVsMachine::BuyBot.Value)
 		ExecBuyBot(pLocal);
 
-	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming() || pLocal->InCond(TF_COND_SHIELD_CHARGE) || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
+		|| pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART) || pLocal->InCond(TF_COND_SHIELD_CHARGE))
 		return;
 
 	AutoJump(pLocal, pCmd);
@@ -51,15 +49,20 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 void CMisc::RunPost(CTFPlayer* pLocal, CUserCmd* pCmd, bool pSendPacket)
 {
-	if (!pLocal || !pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming() || pLocal->InCond(TF_COND_SHIELD_CHARGE))
+	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
+		|| pLocal->InCond(TF_COND_SHIELD_CHARGE))
 		return;
 
-	EdgeJump(pLocal, pCmd, true);
-	TauntKartControl(pLocal, pCmd);
-	FastMovement(pLocal, pCmd);
-	AutoPeek(pLocal, pCmd, true);
-	BreakShootSound(pLocal, pCmd);
-	MovementLock(pLocal, pCmd);
+	if (pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+		TauntKartControl(pLocal, pCmd);
+	else
+	{
+		EdgeJump(pLocal, pCmd, true);
+		AutoPeek(pLocal, pCmd, true);
+		FastMovement(pLocal, pCmd);
+		BreakShootSound(pLocal, pCmd);
+		MovementLock(pLocal, pCmd);
+	}
 }
 
 
@@ -291,12 +294,21 @@ void CMisc::AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 void CMisc::InstantRespawnMVM(CTFPlayer* pLocal)
 {
-	if (Vars::Misc::MannVsMachine::InstantRespawn.Value && I::EngineClient->IsInGame() && !pLocal->IsAlive())
-	{
-		KeyValues* kv = new KeyValues("MVM_Revive_Response");
-		kv->SetInt("accepted", 1);
-		I::EngineClient->ServerCmdKeyValues(kv);
-	}
+	if (!Vars::Misc::MannVsMachine::InstantRespawn.Value || pLocal->IsAlive())
+		return;
+
+	KeyValues* kv = new KeyValues("MVM_Revive_Response");
+	kv->SetInt("accepted", 1);
+	I::EngineClient->ServerCmdKeyValues(kv);
+}
+
+void CMisc::NoisemakerSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Exploits::NoisemakerSpam.Value || !pLocal->IsAlive() || pLocal->IsAGhost()
+		|| pLocal->m_bUsingActionSlot() || pLocal->m_flNextNoiseMakerTime() > I::GlobalVars->curtime)
+		return;
+
+	I::EngineClient->ServerCmdKeyValues(new KeyValues("use_action_slot_item_server"));
 }
 
 void CMisc::CheatsBypass()
@@ -327,7 +339,6 @@ void CMisc::WeaponSway()
 
 void CMisc::TauntKartControl(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	// Handle Taunt Slide
 	if (Vars::Misc::Automation::TauntControl.Value && pLocal->IsTaunting() && pLocal->m_bAllowMoveDuringTaunt())
 	{
 		if (pLocal->m_bTauntForceMoveForward())
@@ -338,14 +349,9 @@ void CMisc::TauntKartControl(CTFPlayer* pLocal, CUserCmd* pCmd)
 				pCmd->viewangles.x = 90.f;
 		}
 		if (pCmd->buttons & IN_MOVELEFT)
-			pCmd->sidemove = pCmd->viewangles.x != 90.f ? -50.f : -450.f;
+			pCmd->sidemove = pCmd->viewangles.x == 90.f ? -450.f : -pLocal->m_flTauntForceMoveForwardSpeed();
 		else if (pCmd->buttons & IN_MOVERIGHT)
-			pCmd->sidemove = pCmd->viewangles.x != 90.f ? 50.f : 450.f;
-
-		Vec3 vAngle = I::EngineClient->GetViewAngles();
-		pCmd->viewangles.y = vAngle.y;
-
-		G::SilentAngles = true;
+			pCmd->sidemove = pCmd->viewangles.x == 90.f ? 450.f : pLocal->m_flTauntForceMoveForwardSpeed();
 	}
 	else if (Vars::Misc::Automation::KartControl.Value && pLocal->InCond(TF_COND_HALLOWEEN_KART))
 	{
@@ -411,7 +417,7 @@ void CMisc::FastMovement(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 	case 1:
 	{
-		if ((pLocal->IsDucking() ? !Vars::Misc::Movement::CrouchSpeed.Value : !Vars::Misc::Movement::FastAccelerate.Value)
+		if ((pLocal->IsDucking() ? !Vars::Misc::Movement::DuckSpeed.Value : !Vars::Misc::Movement::FastAccelerate.Value)
 			|| Vars::Misc::Game::AntiCheatCompatibility.Value
 			|| G::Attacking == 1 || F::Ticks.m_bDoubletap || F::Ticks.m_bSpeedhack || F::Ticks.m_bRecharge || G::AntiAim || I::GlobalVars->tickcount % 2)
 			return;
@@ -511,7 +517,7 @@ int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->InCond(TF_COND_STEALTHED))
+		if (!pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->InCond(TF_COND_STEALTHED))
 			continue;
 
 		auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();
@@ -603,14 +609,14 @@ void CMisc::PingReducer()
 		return;
 
 	auto pNetChan = reinterpret_cast<CNetChannel*>(I::EngineClient->GetNetChannelInfo());
-	const auto& pResource = H::Entities.GetPR( );
+	auto pResource = H::Entities.GetResource();
 	if (!pNetChan || !pResource)
 		return;
 
 	static auto cl_cmdrate = U::ConVars.FindVar("cl_cmdrate");
 	const int iCmdRate = cl_cmdrate->GetInt();
-	const int Ping = pResource->m_iPing( I::EngineClient->GetLocalPlayer( ) );
-	const int iTarget = Vars::Misc::Exploits::PingReducer.Value && ( Ping > Vars::Misc::Exploits::PingTarget.Value ) ? -1 : iCmdRate;
+	const int Ping = pResource->m_iPing(I::EngineClient->GetLocalPlayer());
+	const int iTarget = Vars::Misc::Exploits::PingReducer.Value && (Ping > Vars::Misc::Exploits::PingTarget.Value) ? -1 : iCmdRate;
 
 	NET_SetConVar cmd("cl_cmdrate", std::to_string(m_iWishCmdrate = iTarget).c_str());
 	pNetChan->SendNetMsg(cmd);
@@ -640,66 +646,6 @@ void CMisc::LockAchievements()
 		I::SteamUserStats->StoreStats();
 		I::SteamUserStats->RequestCurrentStats();
 	}
-}
-
-bool CMisc::SteamRPC()
-{
-	/*
-	if (!Vars::Misc::Steam::EnableRPC.Value)
-	{
-		if (!bSteamCleared) // stupid way to return back to normal rpc
-		{
-			I::SteamFriends->SetRichPresence("steam_display", ""); // this will only make it say "Team Fortress 2" until the player leaves/joins some server. its bad but its better than making 1000 checks to recreate the original
-			bSteamCleared = true;
-		}
-		return false;
-	}
-
-	bSteamCleared = false;
-	*/
-
-
-	if (!Vars::Misc::SteamRPC::Enabled.Value)
-		return false;
-
-	I::SteamFriends->SetRichPresence("steam_display", "#TF_RichPresence_Display");
-	if (!I::EngineClient->IsInGame() && !Vars::Misc::SteamRPC::OverrideInMenu.Value)
-		I::SteamFriends->SetRichPresence("state", "MainMenu");
-	else
-	{
-		I::SteamFriends->SetRichPresence("state", "PlayingMatchGroup");
-
-		switch (Vars::Misc::SteamRPC::MatchGroup.Value)
-		{
-		case Vars::Misc::SteamRPC::MatchGroupEnum::SpecialEvent: I::SteamFriends->SetRichPresence("matchgrouploc", "SpecialEvent"); break;
-		case Vars::Misc::SteamRPC::MatchGroupEnum::MvMMannUp: I::SteamFriends->SetRichPresence("matchgrouploc", "MannUp"); break;
-		case Vars::Misc::SteamRPC::MatchGroupEnum::Competitive: I::SteamFriends->SetRichPresence("matchgrouploc", "Competitive6v6"); break;
-		case Vars::Misc::SteamRPC::MatchGroupEnum::Casual: I::SteamFriends->SetRichPresence("matchgrouploc", "Casual"); break;
-		case Vars::Misc::SteamRPC::MatchGroupEnum::MvMBootCamp: I::SteamFriends->SetRichPresence("matchgrouploc", "BootCamp"); break;
-		}
-	}
-	I::SteamFriends->SetRichPresence("currentmap", Vars::Misc::SteamRPC::MapText.Value.c_str());
-	I::SteamFriends->SetRichPresence("steam_player_group_size", std::to_string(Vars::Misc::SteamRPC::GroupSize.Value).c_str());
-
-	return true;
-}
-
-
-void CMisc::NoiseSpam(CTFPlayer* pLocal)
-{
-	if (!Vars::Misc::Automation::NoiseSpam.Value || !pLocal)
-		return;
-	
-	if (pLocal->m_bUsingActionSlot())
-		return;
-	
-	static float flLastSpamTime = 0.0f;
-	float flCurrentTime = SDK::PlatFloatTime();
-	if (flCurrentTime - flLastSpamTime < 0.2f) 
-		return;
-	
-	flLastSpamTime = flCurrentTime;
-	I::EngineClient->ServerCmdKeyValues(new KeyValues("use_action_slot_item_server"));
 }
 
 void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
@@ -795,16 +741,19 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 
 	if (!m_tAutoVotekickTimer.Run(1.0f))
 		return;
+	
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
+		return;
 
 	std::vector<int> vPotentialTargets;
 
 	for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
 	{
-		if (i == I::EngineClient->GetLocalPlayer())
+		if (i == pLocal->entindex())
 			continue;
 
-		PlayerInfo_t pi{};
-		if (!I::EngineClient->GetPlayerInfo(i, &pi) || pi.fakeplayer)
+		if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i))
 			continue;
 
 		if (Vars::Misc::Automation::AutoVotekick.Value == Vars::Misc::Automation::AutoVotekickEnum::Prio && !F::PlayerUtils.IsPrioritized(i))
@@ -826,9 +775,7 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 	int iRandom = SDK::RandomInt(0, vPotentialTargets.size() - 1);
 	int iTarget = vPotentialTargets[iRandom];
 
-	PlayerInfo_t pi{};
-	if (I::EngineClient->GetPlayerInfo(iTarget, &pi))
-		I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pi.userID).c_str());
+	I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pResource->m_iUserID(iTarget)).c_str());
 }
 
 
@@ -873,7 +820,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 				gameDir = gameDir.substr(0, lastSlash);
 				
 			// Debug info
-			SDK::Output("ChatSpam", "Loading chat lines from file", {}, true, true);
+			SDK::Output("ChatSpam", "Loading chat lines from file", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			
 			std::vector<std::string> pathsToTry = {
 				"cat_chatspam.txt",
@@ -898,7 +845,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 						}
 						file.close();
 						
-						SDK::Output("ChatSpam", std::format("Loaded {} lines from {}", m_vChatSpamLines.size(), path).c_str(), {}, true, true);
+						SDK::Output("ChatSpam", std::format("Loaded {} lines from {}", m_vChatSpamLines.size(), path).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 						fileLoaded = true;
 						successfulPath = path;
 						break;
@@ -937,7 +884,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 							}
 							checkFile.close();
 							
-							SDK::Output("ChatSpam", std::format("Created and loaded default file at {}", defaultPath).c_str(), {}, true, true);
+							SDK::Output("ChatSpam", std::format("Created and loaded default file at {}", defaultPath).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 							fileLoaded = true;
 						}
 					}
@@ -950,7 +897,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 			
 			if (!fileLoaded || m_vChatSpamLines.empty())
 			{
-				SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, true, true);
+				SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 				m_vChatSpamLines.push_back("Put your chat spam lines in cat_chatspam.txt");
 				m_vChatSpamLines.push_back("ChatSpam is running but couldn't find cat_chatspam.txt");
 				m_vChatSpamLines.push_back("[Amalgam] Chat Spam is working!");
@@ -1033,7 +980,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 		// Final null check before calling engine
 		if (I::EngineClient)
 		{
-			SDK::Output("ChatSpam", std::format("Sending: {}", chatCommand).c_str(), {}, true, true);
+			SDK::Output("ChatSpam", std::format("Sending: {}", chatCommand).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			I::EngineClient->ClientCmd_Unrestricted(chatCommand.c_str());
 		}
 	}

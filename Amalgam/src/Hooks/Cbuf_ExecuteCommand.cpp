@@ -3,6 +3,7 @@
 #include "../Features/Commands/Commands.h"
 #include <functional>
 #include <regex>
+#include <sstream>
 
 MAKE_SIGNATURE(Cbuf_ExecuteCommand, "engine.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 48 8B 05 ? ? ? ? 48 8D 3D", 0x0);
 
@@ -12,10 +13,10 @@ enum cmd_source_t
 	src_command
 };
 
-static std::string sCmdString;
+static std::string s_sCmdString;
 
 #define PRE_STR "\x7\x7\x7\x7\x7\x7\x7"
-static std::vector<std::pair<std::string, std::string>> vStatic = {
+static std::vector<std::pair<std::string, std::string>> s_vStatic = {
     { "\\x1", "\x1" },
     { "\\x01", "\x1" },
     { "\\x2", PRE_STR"\x2" },
@@ -68,30 +69,30 @@ static std::vector<std::pair<std::string, std::string>> vStatic = {
 
     { "\\t", "\t" },
 };
-static std::vector<std::function<void()>> vDynamic = {
+static std::vector<std::function<void()>> s_vDynamic = {
     [&]()
     {
-        auto pResource = H::Entities.GetPR();
+        auto pResource = H::Entities.GetResource();
         if (!pResource)
             return;
 
         std::string sFind = "\\{self}";
-        std::string sReplace = pResource->m_pszPlayerName(I::EngineClient->GetLocalPlayer());
+        std::string sReplace = pResource->GetName(I::EngineClient->GetLocalPlayer());
 
         size_t iPos = 0;
         while (true)
         {
-            auto iFind = sCmdString.find(sFind, iPos);
+            auto iFind = s_sCmdString.find(sFind, iPos);
             if (iFind == std::string::npos)
                 break;
             
             iPos = iFind + sReplace.length();
-            sCmdString = sCmdString.replace(iFind, sFind.length(), sReplace);
+            s_sCmdString = s_sCmdString.replace(iFind, sFind.length(), sReplace);
         }
     },
     [&]()
     {
-        auto pResource = H::Entities.GetPR();
+        auto pResource = H::Entities.GetResource();
         if (!pResource)
             return;
 
@@ -106,12 +107,12 @@ static std::vector<std::function<void()>> vDynamic = {
         size_t iPos = 0;
         while (true)
         {
-            auto iFind = sCmdString.find(sFind, iPos);
+            auto iFind = s_sCmdString.find(sFind, iPos);
             if (iFind == std::string::npos)
                 break;
             
             iPos = iFind + sReplace.length();
-            sCmdString = sCmdString.replace(iFind, sFind.length(), sReplace);
+            s_sCmdString = s_sCmdString.replace(iFind, sFind.length(), sReplace);
         }
     },
     [&]()
@@ -120,7 +121,7 @@ static std::vector<std::function<void()>> vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(sCmdString, match, std::regex(sRegex));
+            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
             if (match.size() != 4)
                 break;
 
@@ -129,7 +130,7 @@ static std::vector<std::function<void()>> vDynamic = {
             int b = !match[3].str().empty() ? std::stoi(match[3]) : 255;
 
             Color_t tColor; tColor.SetRGB(r, g, b);
-            sCmdString = sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
+            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
         }
     },
     [&]()
@@ -138,7 +139,7 @@ static std::vector<std::function<void()>> vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(sCmdString, match, std::regex(sRegex));
+            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
             if (match.size() != 5)
                 break;
 
@@ -148,7 +149,7 @@ static std::vector<std::function<void()>> vDynamic = {
             int a = !match[4].str().empty() ? std::stoi(match[4]) : 255;
 
             Color_t tColor; tColor.SetRGB(r, g, b, a);
-            sCmdString = sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
+            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
         }
     },
     [&]()
@@ -157,7 +158,7 @@ static std::vector<std::function<void()>> vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(sCmdString, match, std::regex(sRegex));
+            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
             if (match.size() != 4)
                 break;
 
@@ -166,7 +167,7 @@ static std::vector<std::function<void()>> vDynamic = {
             int v = !match[3].str().empty() ? std::stoi(match[3]) : 100;
 
             Color_t tColor; tColor.SetHSV(h, s, v);
-            sCmdString = sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
+            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
         }
     },
     [&]()
@@ -175,7 +176,7 @@ static std::vector<std::function<void()>> vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(sCmdString, match, std::regex(sRegex));
+            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
             if (match.size() != 5)
                 break;
 
@@ -185,7 +186,7 @@ static std::vector<std::function<void()>> vDynamic = {
             int a = !match[4].str().empty() ? std::stoi(match[4]) : 255;
 
             Color_t tColor; tColor.SetHSV(h, s, v, a);
-            sCmdString = sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
+            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
         }
     },
     [&]()
@@ -194,18 +195,18 @@ static std::vector<std::function<void()>> vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(sCmdString, match, std::regex(sRegex));
+            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
             if (match.size() != 3)
                 break;
 
             int n = std::stoi(match[1]);
             auto str = match[2].str();
 
-            std::ostringstream sStream;
+            std::stringstream ssStream;
             for (int i = 0; i < n; i++)
-                sStream << str;
+                ssStream << str;
 
-            sCmdString = sCmdString.replace(match.position(), match.length(), sStream.str());
+            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), ssStream.str());
         }
     },
 };
@@ -220,41 +221,41 @@ MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
 
 	if (args.ArgC())
 	{
-		std::string sCommand = args[0];
-		std::deque<std::string> vArgs;
+        const char* sCommand = args[0];
+		std::deque<const char*> vArgs;
 		for (int i = 1; i < args.ArgC(); i++)
 			vArgs.push_back(args[i]);
 
         if (F::Commands.Run(sCommand, vArgs))
             return;
 
-		switch (FNV1A::Hash32(sCommand.c_str()))
+		switch (FNV1A::Hash32(sCommand))
 		{
 		case FNV1A::Hash32Const("say"):
 		case FNV1A::Hash32Const("say_team"):
 		{
-			sCmdString = args.m_pArgSBuffer;
-			sCmdString = sCmdString.replace(0, args.m_nArgv0Size, "");
+            s_sCmdString = args.m_pArgSBuffer;
+            s_sCmdString = s_sCmdString.replace(0, args.m_nArgv0Size, "");
 
-			for (auto& [sFind, sReplace] : vStatic)
+			for (auto& [sFind, sReplace] : s_vStatic)
 			{
 				size_t iPos = 0;
 				while (true)
 				{
-					auto iFind = sCmdString.find(sFind, iPos);
+					auto iFind = s_sCmdString.find(sFind, iPos);
 					if (iFind == std::string::npos)
 						break;
 
 					iPos = iFind + sReplace.length();
-					sCmdString = sCmdString.replace(iFind, sFind.length(), sReplace);
+                    s_sCmdString = s_sCmdString.replace(iFind, sFind.length(), sReplace);
 				}
 			}
-			for (auto& fFunction : vDynamic)
+			for (auto& fFunction : s_vDynamic)
                 fFunction();
 
-			sCmdString = std::format("{} {}", sCommand, sCmdString).substr(0, COMMAND_MAX_LENGTH - 1);
-			strncpy_s(args.m_pArgSBuffer, sCmdString.c_str(), COMMAND_MAX_LENGTH);
-			args.m_nArgv0Size = int(sCommand.length() + 1);
+            s_sCmdString = std::format("{} {}", sCommand, s_sCmdString).substr(0, COMMAND_MAX_LENGTH - 1);
+			strncpy_s(args.m_pArgSBuffer, s_sCmdString.c_str(), COMMAND_MAX_LENGTH);
+			args.m_nArgv0Size = int(strlen(sCommand)) + 1;
 		}
 		}
 	}

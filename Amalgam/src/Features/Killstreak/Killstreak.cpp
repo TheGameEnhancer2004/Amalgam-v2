@@ -9,13 +9,13 @@ void CKillstreak::ApplyKillstreak(int iLocalIdx)
 {
 	if (const auto& pLocal = H::Entities.GetLocal())
 	{
-		if (const auto& pPR = H::Entities.GetPR())
+		if (const auto& pResource = H::Entities.GetResource())
 		{
 			int iCurrentStreak = GetCurrentStreak();
-			pPR->SetStreak(iLocalIdx, kTFStreak_Kills, iCurrentStreak);
-			pPR->SetStreak(iLocalIdx, kTFStreak_KillsAll, iCurrentStreak);
-			pPR->SetStreak(iLocalIdx, kTFStreak_Ducks, iCurrentStreak);
-			pPR->SetStreak(iLocalIdx, kTFStreak_Duck_levelup, iCurrentStreak);
+			pResource->SetStreak(iLocalIdx, kTFStreak_Kills, iCurrentStreak);
+			pResource->SetStreak(iLocalIdx, kTFStreak_KillsAll, iCurrentStreak);
+			pResource->SetStreak(iLocalIdx, kTFStreak_Ducks, iCurrentStreak);
+			pResource->SetStreak(iLocalIdx, kTFStreak_Duck_levelup, iCurrentStreak);
 
 			pLocal->m_nStreaks(kTFStreak_Kills) = iCurrentStreak;
 			pLocal->m_nStreaks(kTFStreak_KillsAll) = iCurrentStreak;

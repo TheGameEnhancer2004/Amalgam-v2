@@ -1,5 +1,6 @@
 #pragma once
 #include "../../../../../SDK/SDK.h"
+#include <optional>
 
 #define MAX_CONTROL_POINTS 8
 #define MAX_PREVIOUS_POINTS 3

@@ -3,7 +3,7 @@
 
 class CMisc
 {
-	
+private:
 	void AutoJump(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void AutoJumpbug(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void AutoStrafe(CTFPlayer* pLocal, CUserCmd* pCmd);
@@ -14,10 +14,10 @@ class CMisc
 	void InstantRespawnMVM(CTFPlayer* pLocal);
 	void ExecBuyBot(CTFPlayer* pLocal);
 	void ResetBuyBot();
-	void NoiseSpam(CTFPlayer* pLocal);
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
+	void NoisemakerSpam(CTFPlayer* pLocal);
 
 	void CheatsBypass();
 	void WeaponSway();
@@ -50,7 +50,6 @@ public:
 	void PingReducer();
 	void UnlockAchievements();
 	void LockAchievements();
-	bool SteamRPC();
 	void AutoMvmReadyUp();
 
 	int m_iWishCmdrate = -1;
