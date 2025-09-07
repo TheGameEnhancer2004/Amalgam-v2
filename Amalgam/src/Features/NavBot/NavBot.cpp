@@ -639,7 +639,7 @@ bool CNavBot::NavToSentrySpot()
 
 void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot)
 {
-	if (!pLocal || !pLocal->IsAlive() || !pWeapon || !(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Players))
+	if (!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Players))
 		return;
 
 	if (!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::DormantThreats))
@@ -2935,7 +2935,7 @@ bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
 void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	static Timer tDoubletapRecharge{};
-	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value || !F::NavEngine.isReady())
+	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value || (pLocal && !pLocal->IsAlive()) || !F::NavEngine.isReady())
 	{
 		m_iStayNearTargetIdx = -1;
 		m_mAutoScopeCache.clear();
@@ -2948,7 +2948,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
 		return;
 
-	if (!pLocal || !pLocal->IsAlive() || !pWeapon || !pCmd)
+	if (!pLocal || !pWeapon || !pCmd)
 		return;
 
 	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK)
@@ -3022,7 +3022,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| EscapeDanger(pLocal)
 		|| GetHealth(pCmd, pLocal)
 		|| GetAmmo(pCmd, pLocal)
-		//|| RunReload( pLocal, pWeapon )
+		//|| RunReload(pLocal, pWeapon)
 		|| RunSafeReload(pLocal, pWeapon)
 		|| MoveInFormation(pLocal, pWeapon)
 		|| CaptureObjectives(pLocal, pWeapon)
@@ -3073,8 +3073,6 @@ void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
 		return;
 
 	m_vLocalBotPositions.clear();
-	if (!I::EngineClient->IsInGame() || !pLocal)
-		return;
 
 	auto pResource = H::Entities.GetResource();
 	if (!pResource)
@@ -3144,9 +3142,6 @@ std::optional<Vector> CNavBot::GetFormationOffset(CTFPlayer* pLocal, int positio
 	if (positionIndex <= 0)
 		return std::nullopt; // Leader has no offset
 	
-	// Calculate our desired position relative to the leader
-	Vector vOffset(0, 0, 0);
-	
 	// Calculate the movement direction of the leader
 	Vector vLeaderVelocity(0, 0, 0);
 
@@ -3187,9 +3182,7 @@ std::optional<Vector> CNavBot::GetFormationOffset(CTFPlayer* pLocal, int positio
 	
 	// Different formation styles:
 	// 1. Line formation (bots following one after another)
-	vOffset = (vDirection * -m_flFormationDistance * positionIndex);
-	
-	return vOffset;
+	return (vDirection * -m_flFormationDistance * positionIndex);
 }
 
 bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -3234,8 +3227,8 @@ bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	Vector vTargetPos = vLeaderPos + *vOffsetOpt;
 	
 	// If we're already close enough to our position, don't bother moving
-	float distToTarget = pLocal->GetAbsOrigin().DistToSqr(vTargetPos);
-	if (distToTarget <= pow(30.0f, 2))
+	float flDistToTarget = pLocal->GetAbsOrigin().DistToSqr(vTargetPos);
+	if (flDistToTarget <= pow(30.0f, 2))
 		return true;
 	
 	// Only try to move to the position if we're not already pathing to something important
@@ -3305,8 +3298,8 @@ void CNavBot::Draw(CTFPlayer* pLocal)
 
 	const auto& cColor = F::NavEngine.isPathing() ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value;
 	const auto& cReadyColor = bIsReady ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value;
-	auto local_area = F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin());
-	const int iInSpawn = local_area ? local_area->m_TFattributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_EXIT) : -1;
+	auto pLocalArea = F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin());
+	const int iInSpawn = pLocalArea ? pLocalArea->m_TFattributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_EXIT) : -1;
 	std::wstring sJob = L"None";
 	switch (F::NavEngine.current_priority)
 	{
@@ -3358,6 +3351,6 @@ void CNavBot::Draw(CTFPlayer* pLocal)
 	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("In spawn: {}", std::to_string(iInSpawn)).c_str());
-		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area flags: {}", std::to_string(local_area ? local_area->m_TFattributeFlags : -1)).c_str());
+		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area flags: {}", std::to_string(pLocalArea ? pLocalArea->m_TFattributeFlags : -1)).c_str());
 	}
 }

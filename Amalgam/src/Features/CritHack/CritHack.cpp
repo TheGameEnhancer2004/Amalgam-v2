@@ -309,7 +309,7 @@ int CCritHack::GetCritRequest(CUserCmd* pCmd, CTFWeaponBase* pWeapon)
 
 void CCritHack::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || !I::EngineClient->IsInGame())
+	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost())
 		return;
 
 	UpdateInfo(pLocal, pWeapon);
@@ -374,7 +374,7 @@ int CCritHack::PredictCmdNum(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 {
 	auto getCmdNum = [&](int iCommandNumber)
 		{
-			if (!pWeapon || !pLocal->IsAlive() || !I::EngineClient->IsInGame() || Vars::Misc::Game::AntiCheatCompatibility.Value
+			if (!pWeapon || !pLocal->IsAlive() || Vars::Misc::Game::AntiCheatCompatibility.Value
 				|| pLocal->IsCritBoosted() || pWeapon->m_flCritTime() > I::GlobalVars->curtime || !WeaponCanCrit(pWeapon))
 				return iCommandNumber;
 
