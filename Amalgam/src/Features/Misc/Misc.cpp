@@ -14,6 +14,7 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	NoisemakerSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
+	MicSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
 
@@ -502,6 +503,11 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	case FNV1A::Hash32Const("game_newmap"):
 		m_vChatSpamLines.clear();
 		m_iCurrentChatSpamIndex = 0;
+		if (ismicspam&& I::EngineClient)
+		{
+			I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
+			ismicspam= false;
+		}
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;
@@ -1139,4 +1145,43 @@ void CMisc::ResetBuyBot()
 {
 	m_buybot_step = 1;
 	m_buybot_clock = 0.0f;
+}
+
+void CMisc::MicSpam(CTFPlayer* pLocal)
+{
+	if (!I::EngineClient)
+	{
+		ismicspam= false;
+		return;
+	}
+
+	const bool shouldmicspam = Vars::Misc::Automation::Micspam.Value;
+
+	if (shouldmicspam)
+	{
+		if (m_tMicCvarRefresh.Run(1.0f))
+		{
+			I::EngineClient->ClientCmd_Unrestricted("voice_loopback 0");
+			I::EngineClient->ClientCmd_Unrestricted("voice_threshold 4000");
+			I::EngineClient->ClientCmd_Unrestricted("voice_forcemicrecord 1");
+			I::EngineClient->ClientCmd_Unrestricted("voice_avggain 0");
+		}
+	}
+
+	if (shouldmicspam && !ismicspam)
+	{
+		I::EngineClient->ClientCmd_Unrestricted("+voicerecord");
+		ismicspam= true;
+	}
+	else if (!shouldmicspam && ismicspam)
+	{
+		I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
+		ismicspam= false;
+	}
+
+	if (ismicspam&& (!I::EngineClient->IsInGame() || !I::EngineClient->IsConnected() || !pLocal))
+	{
+		I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
+		ismicspam= false;
+	}
 }

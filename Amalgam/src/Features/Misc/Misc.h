@@ -18,6 +18,7 @@ private:
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
 	void NoisemakerSpam(CTFPlayer* pLocal);
+	void MicSpam(CTFPlayer* pLocal);
 
 	void CheatsBypass();
 	void WeaponSway();
@@ -36,6 +37,9 @@ private:
 	std::vector<std::string> m_vChatSpamLines;
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
+
+	bool ismicspam= false;
+	Timer m_tMicCvarRefresh;
 
 	int m_buybot_step = 1;
 	float m_buybot_clock = 0.0f;
