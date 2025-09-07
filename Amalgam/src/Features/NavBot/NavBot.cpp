@@ -92,8 +92,7 @@ int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayer
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
 		return -1;
 #ifdef TEXTMODE
-	PlayerInfo_t pi{};
-	if (I::EngineClient->GetPlayerInfo(iPlayerIdx, &pi) && F::NamedPipe::IsLocalBot(pi.friendsID))
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
 		return 0;
 #endif
 
