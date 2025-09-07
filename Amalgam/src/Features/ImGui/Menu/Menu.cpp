@@ -68,21 +68,22 @@ void CMenu::DrawMenu()
 			PopStyleColor();
 		}
 
-		static int iTab = 0, iAimbotTab = 0, iVisualsTab = 0, iMiscTab = 0, iLogsTab = 0, iSettingsTab = 0;
+		static int iTab = 0, iAimbotTab = 0, iVisualsTab = 0, iHvHTab = 0, iMiscTab = 0, iLogsTab = 0, iSettingsTab = 0;
 		PushFont(F::Render.FontBold);
 		FTabs(
 			{
-				{ "AIMBOT", "GENERAL", "DRAW" },
-				{ "VISUALS", "ESP", "MISC##", "MENU" },
-				{ "MISC", "MAIN", "HVH", "NAVBOT"},
+				{ "AIMBOT", "GENERAL" },
+				{ "VISUALS", "ESP", "AIMDRAW", "MISC##", "MENU" },
+				{ "HVH", "MAIN" },
+				{ "MISC", "MAIN", "NAVBOT"},
 				{ "LOGS", "PLAYERLIST", "SETTINGS##", "OUTPUT" },
 				{ "SETTINGS", "CONFIG", "BINDS", "MATERIALS", "EXTRA" }
 			},
-			{ &iTab, &iAimbotTab, &iVisualsTab, &iMiscTab, &iLogsTab, &iSettingsTab },
+			{ &iTab, &iAimbotTab, &iVisualsTab, &iHvHTab, &iMiscTab, &iLogsTab, &iSettingsTab },
 			{ H::Draw.Scale(flSideSize - 16), H::Draw.Scale(36) },
 			{ H::Draw.Scale(8), H::Draw.Scale(8) + flOffset },
 			FTabsEnum::Vertical | FTabsEnum::HorizontalIcons | FTabsEnum::AlignLeft | FTabsEnum::BarLeft,
-			{ { ICON_MD_PERSON }, { ICON_MD_VISIBILITY }, { ICON_MD_ARTICLE }, { ICON_MD_IMPORT_CONTACTS }, { ICON_MD_SETTINGS } },
+			{ { ICON_MD_PERSON }, { ICON_MD_VISIBILITY }, { ICON_MD_SECURITY }, { ICON_MD_ARTICLE }, { ICON_MD_IMPORT_CONTACTS }, { ICON_MD_SETTINGS } },
 			{ H::Draw.Scale(10), 0 }, {},
 			{}, { H::Draw.Scale(22), 0 }
 		);
@@ -111,9 +112,10 @@ void CMenu::DrawMenu()
 				{
 				case 0: MenuAimbot(iAimbotTab); break;
 				case 1: MenuVisuals(iVisualsTab); break;
-				case 2: MenuMisc(iMiscTab); break;
-				case 3: MenuLogs(iLogsTab); break;
-				case 4: MenuSettings(iSettingsTab); break;
+				case 2: MenuHvH(iHvHTab); break;
+				case 3: MenuMisc(iMiscTab); break;
+				case 4: MenuLogs(iLogsTab); break;
+				case 5: MenuSettings(iSettingsTab); break;
 				}
 			}
 			else
@@ -343,110 +345,6 @@ void CMenu::MenuAimbot(int iTab)
 					FSlider(Vars::Aimbot::Melee::AutoEngie::AutoUpgradeDispenserLVL);
 					FSlider(Vars::Aimbot::Melee::AutoEngie::AutoUpgradeTeleporterLVL);
 				} EndSection();
-			}
-			EndTable();
-		}
-		break;
-	}
-	// Draw
-	case 1:
-	{
-		if (BeginTable("DrawTable", 2))
-		{
-			/* Column 1 */
-			TableNextColumn();
-			{
-				if (Section("Line", 8))
-				{
-					FColorPicker(Vars::Colors::Line, FColorPickerEnum::None, { -H::Draw.Scale(12), 0 });
-					FColorPicker(Vars::Colors::LineIgnoreZ);
-					FToggle(Vars::Visuals::Line::Enabled);
-					FSlider(Vars::Visuals::Line::DrawDuration);
-				} EndSection();
-				if (Section("Hitbox"))
-				{
-					FDropdown(Vars::Visuals::Hitbox::BonesEnabled, FDropdownEnum::None, -50);
-					FColorPicker(Vars::Colors::BoneHitboxEdge, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::BoneHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::BoneHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::BoneHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::TargetHitboxEdge, FColorPickerEnum::SameLine, { -H::Draw.Scale(50), H::Draw.Scale(20) }, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::TargetHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::TargetHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(20) });
-					FColorPicker(Vars::Colors::TargetHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
-
-					FDropdown(Vars::Visuals::Hitbox::BoundsEnabled, FDropdownEnum::None, -50);
-					FColorPicker(Vars::Colors::BoundHitboxEdge, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::BoundHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::BoundHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::BoundHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-
-					FSlider(Vars::Visuals::Hitbox::DrawDuration);
-				} EndSection();
-			}
-			/* Column 2 */
-			TableNextColumn();
-			{
-				if (Section("Simulation"))
-				{
-					FDropdown(Vars::Visuals::Simulation::PlayerPath, FDropdownEnum::Left, -20);
-					FColorPicker(Vars::Colors::PlayerPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::PlayerPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FDropdown(Vars::Visuals::Simulation::ProjectilePath, FDropdownEnum::Right, -20);
-					FColorPicker(Vars::Colors::ProjectilePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::ProjectilePathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FDropdown(Vars::Visuals::Simulation::TrajectoryPath, FDropdownEnum::Left, -20);
-					FColorPicker(Vars::Colors::TrajectoryPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::TrajectoryPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FDropdown(Vars::Visuals::Simulation::ShotPath, FDropdownEnum::Right, -20);
-					FColorPicker(Vars::Colors::ShotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::ShotPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FDropdown(Vars::Visuals::Simulation::SplashRadius, FDropdownEnum::None, -20);
-					FColorPicker(Vars::Colors::SplashRadius, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FColorPicker(Vars::Colors::SplashRadiusIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-					FToggle(Vars::Visuals::Simulation::Timed, FToggleEnum::Left);
-					FToggle(Vars::Visuals::Simulation::Box, FToggleEnum::Right);
-					FToggle(Vars::Visuals::Simulation::ProjectileCamera, FToggleEnum::Left);
-					FToggle(Vars::Visuals::Simulation::SwingLines, FToggleEnum::Right);
-					FSlider(Vars::Visuals::Simulation::DrawDuration);
-				} EndSection();
-				if (Vars::Debug::Options.Value)
-				{
-					if (Section("##Debug Part1", -8))
-					{
-						FDropdown(Vars::Visuals::Simulation::RealPath, FDropdownEnum::None, -20);
-						FColorPicker(Vars::Colors::RealPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-						FColorPicker(Vars::Colors::RealPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
-
-						FSlider(Vars::Visuals::Simulation::SeparatorSpacing, FSliderEnum::Left);
-						FSlider(Vars::Visuals::Simulation::SeparatorLength, FSliderEnum::Right);
-					} EndSection();
-					if (Section("##Debug Part2"))
-					{
-						FToggle(Vars::Visuals::Trajectory::Override);
-						FSlider(Vars::Visuals::Trajectory::OffsetX);
-						FSlider(Vars::Visuals::Trajectory::OffsetY);
-						FSlider(Vars::Visuals::Trajectory::OffsetZ);
-						FToggle(Vars::Visuals::Trajectory::Pipes);
-						FSlider(Vars::Visuals::Trajectory::Hull);
-						FSlider(Vars::Visuals::Trajectory::Speed);
-						FSlider(Vars::Visuals::Trajectory::Gravity);
-						FSlider(Vars::Visuals::Trajectory::LifeTime);
-						FSlider(Vars::Visuals::Trajectory::UpVelocity);
-						FSlider(Vars::Visuals::Trajectory::AngularVelocityX);
-						FSlider(Vars::Visuals::Trajectory::AngularVelocityY);
-						FSlider(Vars::Visuals::Trajectory::AngularVelocityZ);
-						FSlider(Vars::Visuals::Trajectory::Drag);
-						FSlider(Vars::Visuals::Trajectory::DragX);
-						FSlider(Vars::Visuals::Trajectory::DragY);
-						FSlider(Vars::Visuals::Trajectory::DragZ);
-						FSlider(Vars::Visuals::Trajectory::AngularDragX);
-						FSlider(Vars::Visuals::Trajectory::AngularDragY);
-						FSlider(Vars::Visuals::Trajectory::AngularDragZ);
-						FSlider(Vars::Visuals::Trajectory::MaxVelocity);
-						FSlider(Vars::Visuals::Trajectory::MaxAngularVelocity);
-					} EndSection();
-				}
 			}
 			EndTable();
 		}
@@ -795,8 +693,112 @@ void CMenu::MenuVisuals(int iTab)
 		}
 		break;
 	}
-	// Misc
+	// Draw
 	case 1:
+	{
+		if (BeginTable("DrawTable", 2))
+		{
+			/* Column 1 */
+			TableNextColumn();
+			{
+				if (Section("Line", 8))
+				{
+					FColorPicker(Vars::Colors::Line, FColorPickerEnum::None, { -H::Draw.Scale(12), 0 });
+					FColorPicker(Vars::Colors::LineIgnoreZ);
+					FToggle(Vars::Visuals::Line::Enabled);
+					FSlider(Vars::Visuals::Line::DrawDuration);
+				} EndSection();
+				if (Section("Hitbox"))
+				{
+					FDropdown(Vars::Visuals::Hitbox::BonesEnabled, FDropdownEnum::None, -50);
+					FColorPicker(Vars::Colors::BoneHitboxEdge, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::BoneHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::BoneHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::BoneHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::TargetHitboxEdge, FColorPickerEnum::SameLine, { -H::Draw.Scale(50), H::Draw.Scale(20) }, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::TargetHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::TargetHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(20) });
+					FColorPicker(Vars::Colors::TargetHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(20) });
+
+					FDropdown(Vars::Visuals::Hitbox::BoundsEnabled, FDropdownEnum::None, -50);
+					FColorPicker(Vars::Colors::BoundHitboxEdge, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::BoundHitboxEdgeIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::BoundHitboxFace, FColorPickerEnum::SameLine, { H::Draw.Scale(10), 0 }, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::BoundHitboxFaceIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+
+					FSlider(Vars::Visuals::Hitbox::DrawDuration);
+				} EndSection();
+			}
+			/* Column 2 */
+			TableNextColumn();
+			{
+				if (Section("Simulation"))
+				{
+					FDropdown(Vars::Visuals::Simulation::PlayerPath, FDropdownEnum::Left, -20);
+					FColorPicker(Vars::Colors::PlayerPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::PlayerPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FDropdown(Vars::Visuals::Simulation::ProjectilePath, FDropdownEnum::Right, -20);
+					FColorPicker(Vars::Colors::ProjectilePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::ProjectilePathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FDropdown(Vars::Visuals::Simulation::TrajectoryPath, FDropdownEnum::Left, -20);
+					FColorPicker(Vars::Colors::TrajectoryPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::TrajectoryPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FDropdown(Vars::Visuals::Simulation::ShotPath, FDropdownEnum::Right, -20);
+					FColorPicker(Vars::Colors::ShotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::ShotPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FDropdown(Vars::Visuals::Simulation::SplashRadius, FDropdownEnum::None, -20);
+					FColorPicker(Vars::Colors::SplashRadius, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FColorPicker(Vars::Colors::SplashRadiusIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+					FToggle(Vars::Visuals::Simulation::Timed, FToggleEnum::Left);
+					FToggle(Vars::Visuals::Simulation::Box, FToggleEnum::Right);
+					FToggle(Vars::Visuals::Simulation::ProjectileCamera, FToggleEnum::Left);
+					FToggle(Vars::Visuals::Simulation::SwingLines, FToggleEnum::Right);
+					FSlider(Vars::Visuals::Simulation::DrawDuration);
+				} EndSection();
+				if (Vars::Debug::Options.Value)
+				{
+					if (Section("##Debug Part1", -8))
+					{
+						FDropdown(Vars::Visuals::Simulation::RealPath, FDropdownEnum::None, -20);
+						FColorPicker(Vars::Colors::RealPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::RealPathIgnoreZ, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+
+						FSlider(Vars::Visuals::Simulation::SeparatorSpacing, FSliderEnum::Left);
+						FSlider(Vars::Visuals::Simulation::SeparatorLength, FSliderEnum::Right);
+					} EndSection();
+					if (Section("##Debug Part2"))
+					{
+						FToggle(Vars::Visuals::Trajectory::Override);
+						FSlider(Vars::Visuals::Trajectory::OffsetX);
+						FSlider(Vars::Visuals::Trajectory::OffsetY);
+						FSlider(Vars::Visuals::Trajectory::OffsetZ);
+						FToggle(Vars::Visuals::Trajectory::Pipes);
+						FSlider(Vars::Visuals::Trajectory::Hull);
+						FSlider(Vars::Visuals::Trajectory::Speed);
+						FSlider(Vars::Visuals::Trajectory::Gravity);
+						FSlider(Vars::Visuals::Trajectory::LifeTime);
+						FSlider(Vars::Visuals::Trajectory::UpVelocity);
+						FSlider(Vars::Visuals::Trajectory::AngularVelocityX);
+						FSlider(Vars::Visuals::Trajectory::AngularVelocityY);
+						FSlider(Vars::Visuals::Trajectory::AngularVelocityZ);
+						FSlider(Vars::Visuals::Trajectory::Drag);
+						FSlider(Vars::Visuals::Trajectory::DragX);
+						FSlider(Vars::Visuals::Trajectory::DragY);
+						FSlider(Vars::Visuals::Trajectory::DragZ);
+						FSlider(Vars::Visuals::Trajectory::AngularDragX);
+						FSlider(Vars::Visuals::Trajectory::AngularDragY);
+						FSlider(Vars::Visuals::Trajectory::AngularDragZ);
+						FSlider(Vars::Visuals::Trajectory::MaxVelocity);
+						FSlider(Vars::Visuals::Trajectory::MaxAngularVelocity);
+					} EndSection();
+				}
+			}
+			EndTable();
+		}
+		break;
+	}
+	// Misc
+	case 2:
 	{
 		if (BeginTable("VisualsMiscTable", 2))
 		{
@@ -946,7 +948,7 @@ void CMenu::MenuVisuals(int iTab)
 		break;
 	}
 	// Menu
-	case 2:
+	case 3:
 	{
 		if (BeginTable("MenuTable", 2))
 		{
@@ -1000,7 +1002,7 @@ void CMenu::MenuVisuals(int iTab)
 	}
 }
 
-void CMenu::MenuMisc(int iTab)
+void CMenu::MenuHvH(int iTab)
 {
 	using namespace ImGui;
 
@@ -1008,156 +1010,6 @@ void CMenu::MenuMisc(int iTab)
 	{
 	// Main
 	case 0:
-	{
-		if (BeginTable("MiscTable", 2))
-		{
-			/* Column 1 */
-			TableNextColumn();
-			{
-				if (Section("Movement"))
-				{
-					FDropdown(Vars::Misc::Movement::AutoStrafe);
-					PushTransparent(Vars::Misc::Movement::AutoStrafe.Value != Vars::Misc::Movement::AutoStrafeEnum::Directional);
-					{
-						FSlider(Vars::Misc::Movement::AutoStrafeTurnScale, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::AutoStrafeMaxDelta, FSliderEnum::Right);
-					}
-					PopTransparent();
-					FToggle(Vars::Misc::Movement::Bunnyhop, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::EdgeJump, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::AutoJumpbug, FToggleEnum::Left); // this is unreliable without setups, do not depend on it!
-					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::AutoRocketJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Right);
-				} EndSection();
-				if (Vars::Debug::Options.Value)
-				{
-					if (Section("##Debug"))
-					{
-						FSlider(Vars::Misc::Movement::TimingOffset);
-						FSlider(Vars::Misc::Movement::ChokeCount);
-						FSlider(Vars::Misc::Movement::ApplyAbove);
-					} EndSection();
-				}
-				if (Section("Automation"))
-				{
-					FDropdown(Vars::Misc::Automation::AntiBackstab, FDropdownEnum::Left); // pitch/fake _might_ slip up some auto backstabs
-					FDropdown(Vars::Misc::Automation::ForceClass, { "Off", "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {0,1,3,7,4,6,9,5,2,8}, FDropdownEnum::Right);
-					FToggle(Vars::Misc::Automation::AcceptItemDrops);
-					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
-					FToggle(Vars::Misc::Automation::TauntControl, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
-					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
-					FDropdown(Vars::Misc::Automation::AutoVotekick);
-					FToggle(Vars::Misc::Automation::ChatSpam::Enable, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
-					{
-						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Right | FSliderEnum::Clamp);
-						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
-						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
-					}
-					PopTransparent();
-					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
-				} EndSection();
-				if (Section("Auto-Item"))
-				{
-					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
-					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
-					FSlider(Vars::Misc::Automation::AutoItem::Interval);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
-				} EndSection();
-				if (Section("Mann vs. Machine", 8))
-				{
-					FToggle(Vars::Misc::MannVsMachine::InstantRespawn, FToggleEnum::Left);
-					FToggle(Vars::Misc::MannVsMachine::InstantRevive, FToggleEnum::Right);
-					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
-					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
-					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
-					{
-						FSlider(Vars::Misc::MannVsMachine::MaxCash);
-					}
-					PopTransparent();
-				} EndSection();
-			}
-
-			/* Column 2 */
-			TableNextColumn();
-			{
-				if (Section("Exploits", 8))
-				{
-					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
-					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::BreakShootSound, FToggleEnum::Right);
-					FTooltip("breaks weapon shoot sound by switching weapons (soldier only)");
-					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::PingReducer, FToggleEnum::Right);
-					PushTransparent(!Vars::Misc::Exploits::PingReducer.Value);
-					{
-						FSlider(Vars::Misc::Exploits::PingTarget);
-					}
-					PopTransparent();
-				} EndSection();
-				if (Section("Game", 8))
-				{
-					FToggle(Vars::Misc::Game::AntiCheatCompatibility, FToggleEnum::Left);
-					FToggle(Vars::Misc::Game::F2PChatBypass, FToggleEnum::Right);
-					FToggle(Vars::Misc::Game::NetworkFix, FToggleEnum::Left);
-					FToggle(Vars::Misc::Game::SetupBonesOptimization, FToggleEnum::Right);
-					FToggle(Vars::Misc::Game::VACBypass, FToggleEnum::Left);
-				} EndSection();
-				if (Vars::Debug::Options.Value)
-				{
-					if (Section("##Debug Anti cheat"))
-					{
-						FToggle(Vars::Misc::Game::AntiCheatCritHack);
-					} EndSection();
-				}
-				if (Section("Queueing"))
-				{
-					FDropdown(Vars::Misc::Queueing::ForceRegions);
-					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
-					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
-					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
-					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::Queueing::RQif.Value);
-					{
-						FSlider(Vars::Misc::Queueing::RQplt);
-						FToggle(Vars::Misc::Queueing::RQkick, FToggleEnum::Left);
-						FToggle(Vars::Misc::Queueing::RQLTM, FToggleEnum::Right);
-						FToggle(Vars::Misc::Queueing::RQIgnoreFriends, FToggleEnum::Left);
-					}
-					PopTransparent();
-				} EndSection();
-				if (Section("Sound"))
-				{
-					FDropdown(Vars::Misc::Sound::Block);
-					FToggle(Vars::Misc::Sound::HitsoundAlways, FToggleEnum::Left);
-					FToggle(Vars::Misc::Sound::RemoveDSP, FToggleEnum::Right);
-					FToggle(Vars::Misc::Sound::GiantWeaponSounds);
-				} EndSection();
-			}
-			EndTable();
-		}
-		break;
-	}
-	// HvH
-	case 1:
 	{
 		if (BeginTable("HvHTable", 2))
 		{
@@ -1301,8 +1153,171 @@ void CMenu::MenuMisc(int iTab)
 		}
 		break;
 	}
+	}
+}
+
+void CMenu::MenuMisc(int iTab)
+{
+	using namespace ImGui;
+
+	switch (iTab)
+	{
+	// Main
+	case 0:
+	{
+		if (BeginTable("MiscTable", 2))
+		{
+			/* Column 1 */
+			TableNextColumn();
+			{
+				if (Section("Movement"))
+				{
+					FDropdown(Vars::Misc::Movement::AutoStrafe);
+					PushTransparent(Vars::Misc::Movement::AutoStrafe.Value != Vars::Misc::Movement::AutoStrafeEnum::Directional);
+					{
+						FSlider(Vars::Misc::Movement::AutoStrafeTurnScale, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoStrafeMaxDelta, FSliderEnum::Right);
+					}
+					PopTransparent();
+					FToggle(Vars::Misc::Movement::Bunnyhop, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::EdgeJump, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoJumpbug, FToggleEnum::Left); // this is unreliable without setups, do not depend on it!
+					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoRocketJump, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Right);
+				} EndSection();
+				if (Vars::Debug::Options.Value)
+				{
+					if (Section("##Debug"))
+					{
+						FSlider(Vars::Misc::Movement::TimingOffset);
+						FSlider(Vars::Misc::Movement::ChokeCount);
+						FSlider(Vars::Misc::Movement::ApplyAbove);
+					} EndSection();
+				}
+				if (Section("Automation"))
+				{
+					FDropdown(Vars::Misc::Automation::AntiBackstab, FDropdownEnum::Left); // pitch/fake _might_ slip up some auto backstabs
+					FDropdown(Vars::Misc::Automation::ForceClass, { "Off", "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {0,1,3,7,4,6,9,5,2,8}, FDropdownEnum::Right);
+					FToggle(Vars::Misc::Automation::AcceptItemDrops);
+					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::TauntControl, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
+					FDropdown(Vars::Misc::Automation::AutoVotekick);
+				} EndSection();
+				if (Section("Auto-Item"))
+				{
+					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
+					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
+					FSlider(Vars::Misc::Automation::AutoItem::Interval);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
+				} EndSection();
+				if (Section("Mann vs. Machine", 8))
+				{
+					FToggle(Vars::Misc::MannVsMachine::InstantRespawn, FToggleEnum::Left);
+					FToggle(Vars::Misc::MannVsMachine::InstantRevive, FToggleEnum::Right);
+					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
+					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
+					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
+					{
+						FSlider(Vars::Misc::MannVsMachine::MaxCash);
+					}
+					PopTransparent();
+				} EndSection();
+			}
+
+			/* Column 2 */
+			TableNextColumn();
+			{
+				if (Section("Exploits", 8))
+				{
+					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
+					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::BreakShootSound, FToggleEnum::Right);
+					FTooltip("breaks weapon shoot sound by switching weapons (soldier only)");
+					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::PingReducer, FToggleEnum::Right);
+					PushTransparent(!Vars::Misc::Exploits::PingReducer.Value);
+					{
+						FSlider(Vars::Misc::Exploits::PingTarget);
+					}
+					PopTransparent();
+				} EndSection();
+				if (Section("Game", 8))
+				{
+					FToggle(Vars::Misc::Game::AntiCheatCompatibility, FToggleEnum::Left);
+					FToggle(Vars::Misc::Game::F2PChatBypass, FToggleEnum::Right);
+					FToggle(Vars::Misc::Game::NetworkFix, FToggleEnum::Left);
+					FToggle(Vars::Misc::Game::SetupBonesOptimization, FToggleEnum::Right);
+					FToggle(Vars::Misc::Game::VACBypass, FToggleEnum::Left);
+				} EndSection();
+				if (Vars::Debug::Options.Value)
+				{
+					if (Section("##Debug Anti cheat"))
+					{
+						FToggle(Vars::Misc::Game::AntiCheatCritHack);
+					} EndSection();
+				}
+				if (Section("Queueing"))
+				{
+					FDropdown(Vars::Misc::Queueing::ForceRegions);
+					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
+					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
+					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
+					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Queueing::RQif.Value);
+					{
+						FSlider(Vars::Misc::Queueing::RQplt);
+						FToggle(Vars::Misc::Queueing::RQkick, FToggleEnum::Left);
+						FToggle(Vars::Misc::Queueing::RQLTM, FToggleEnum::Right);
+						FToggle(Vars::Misc::Queueing::RQIgnoreFriends, FToggleEnum::Left);
+					}
+					PopTransparent();
+				} EndSection();
+				if (Section("Chat"))
+				{
+					FToggle(Vars::Misc::Automation::ChatSpam::Enable, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
+					{
+						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Right | FSliderEnum::Clamp);
+						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
+						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
+					}
+					PopTransparent();
+					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
+					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
+				} EndSection();
+				if (Section("Sound"))
+				{
+					FDropdown(Vars::Misc::Sound::Block);
+					FToggle(Vars::Misc::Sound::HitsoundAlways, FToggleEnum::Left);
+					FToggle(Vars::Misc::Sound::RemoveDSP, FToggleEnum::Right);
+					FToggle(Vars::Misc::Sound::GiantWeaponSounds);
+				} EndSection();
+			}
+			EndTable();
+		}
+		break;
+	}
 	// Navbot
-	case 2:
+	case 1:
 	{
 		if (BeginTable("NavbotTable", 2))
 		{

@@ -282,7 +282,7 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 	F::EnginePrediction.Start(pLocal, pCmd);
 	F::Aimbot.Run(pLocal, pWeapon, pCmd);
 	F::NavBot.Run(pLocal, pWeapon, pCmd);
-	F::NavEngine.Run(pCmd);
+	F::NavEngine.Run(pLocal, pWeapon, pCmd);
 	F::CritHack.Run(pLocal, pWeapon, pCmd);
 	F::NoSpread.Run(pLocal, pWeapon, pCmd);
 	F::Resolver.CreateMove(pLocal);

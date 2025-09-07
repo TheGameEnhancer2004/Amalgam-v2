@@ -18,6 +18,7 @@ private:
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
 	void NoisemakerSpam(CTFPlayer* pLocal);
+	void MicSpam(CTFPlayer* pLocal);
 
 	void CheatsBypass();
 	void WeaponSway();
@@ -37,8 +38,11 @@ private:
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
 
-	int m_buybot_step = 1;
-	float m_buybot_clock = 0.0f;
+	bool m_bIsMicspam = false;
+	Timer m_tMicCvarRefresh;
+
+	int m_iBuybotStep = 1;
+	float m_flBuybotClock = 0.0f;
 
 public:
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);

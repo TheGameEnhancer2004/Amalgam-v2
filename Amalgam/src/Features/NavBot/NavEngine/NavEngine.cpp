@@ -701,14 +701,10 @@ void CNavEngine::vischeckPath()
 
 static Timer blacklist_check_timer{};
 // Check if one of the crumbs is suddenly blacklisted
-void CNavEngine::checkBlacklist()
+void CNavEngine::checkBlacklist(CTFPlayer* pLocal)
 {
 	// Only check every 500ms
 	if (!blacklist_check_timer.Run(0.5f))
-		return;
-
-	auto pLocal = H::Entities.GetLocal();
-	if (!pLocal || !pLocal->IsAlive())
 		return;
 
 	// Local player is ubered and does not care about the blacklist
@@ -822,9 +818,8 @@ bool CNavEngine::isReady(bool bRoundCheck)
 		return false;
 	}
 
-	auto pLocal = H::Entities.GetLocal();
 	// Too early, the engine might not fully restart yet.
-	if (!tRestartTimer.Check(0.5f) || !pLocal || !pLocal->IsAlive())
+	if (!tRestartTimer.Check(0.5f))
 		return false;
 
 	if (!I::EngineClient->IsInGame())
@@ -840,7 +835,7 @@ bool CNavEngine::isReady(bool bRoundCheck)
 }
 
 
-void CNavEngine::Run(CUserCmd* pCmd)
+void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	static bool bWasOn = false;
 	if (!Vars::Misc::Movement::NavEngine::Enabled.Value)
@@ -850,10 +845,6 @@ void CNavEngine::Run(CUserCmd* pCmd)
 		bWasOn = true;
 		Reset(true);
 	}
-
-	auto pLocal = H::Entities.GetLocal();
-	if (!pLocal /*|| F::Ticks.m_bRecharge*/)
-		return;
 
 	if (!pLocal->IsAlive())
 	{
@@ -882,9 +873,9 @@ void CNavEngine::Run(CUserCmd* pCmd)
 	if (Vars::Misc::Movement::NavEngine::VischeckEnabled.Value && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 		vischeckPath();
 
-	checkBlacklist();
+	checkBlacklist(pLocal);
 
-	followCrumbs(pLocal, pCmd);
+	followCrumbs(pLocal, pWeapon, pCmd);
 
 	updateStuckTime();
 	map->updateIgnores();
@@ -938,7 +929,7 @@ void LookAtPath(CUserCmd* pCmd, const Vec2 vDest, const Vec3 vLocalEyePos, bool 
 	LastAngles = next;
 }
 
-void CNavEngine::followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd)
+void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	static Timer tLastJump;
 	static int iTicksSinceJump{ 0 };
@@ -1035,7 +1026,6 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd)
 			SDK::Output("CNavEngine", std::format("Spent too much time on the crumb, assuming were stuck, 2Dvelocity: ({},{})", fabsf(vel.Get2D().x), fabsf(vel.Get2D().y)).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	}
 
-	auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
 	//if ( !G::DoubleTap && !G::Warp )
 	{
 		// Detect when jumping is necessary.
@@ -1053,19 +1043,19 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd)
 				if (iWepID != TF_WEAPON_MINIGUN || !(pCmd->buttons & IN_ATTACK2))
 				{
 					bool bShouldJump = false;
-					float height_diff = crumbs[0].vec.z - pLocal->GetAbsOrigin().z;
+					float flHeightDiff = crumbs[0].vec.z - pLocal->GetAbsOrigin().z;
 
 					bool bPreventJump = false;
 					if (crumbs.size() > 1)
 					{
-						float next_height_diff = crumbs[0].vec.z - crumbs[1].vec.z;
-						if (next_height_diff < 0 && next_height_diff <= -PLAYER_JUMP_HEIGHT)
+						float flHeightDiff = crumbs[0].vec.z - crumbs[1].vec.z;
+						if (flHeightDiff < 0 && flHeightDiff <= -PLAYER_JUMP_HEIGHT)
 							bPreventJump = true;
 					}
 					if (!bPreventJump)
 					{
 						// Check if we need to jump
-						if (height_diff > pLocal->m_flStepSize() && height_diff <= PLAYER_JUMP_HEIGHT)
+						if (flHeightDiff > pLocal->m_flStepSize() && flHeightDiff <= PLAYER_JUMP_HEIGHT)
 							bShouldJump = true;
 						// Also jump if we're stuck and it might help
 						else if (inactivity.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2))
@@ -1101,8 +1091,6 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd)
 		}
 	}
 
-	const auto vLocalEyePos = pLocal->GetEyePosition();
-
 	if (G::Attacking != 1)
 	{
 		// Look at path (nav spin) (smooth nav)
@@ -1116,7 +1104,7 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd)
 			[[fallthrough]];
 		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Plain:
 		default:
-			LookAtPath(pCmd, { crumbs[0].vec.x, crumbs[0].vec.y }, vLocalEyePos, Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
+			LookAtPath(pCmd, { crumbs[0].vec.x, crumbs[0].vec.y }, pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
 			break;
 		}
 	}
@@ -1130,7 +1118,7 @@ void CNavEngine::Render()
 		return;
 
 	auto pLocal = H::Entities.GetLocal();
-	if (!pLocal || !pLocal->IsAlive() || !map)
+	if (!pLocal || !pLocal->IsAlive())
 		return;
 
 	/*if (!F::NavBot.m_vSlightDangerDrawlistNormal.empty())

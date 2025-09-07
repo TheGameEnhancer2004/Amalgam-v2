@@ -247,12 +247,12 @@ public:
 	void clearFreeBlacklist(BlacklistReason reason) { std::erase_if(map->free_blacklist, [&reason](const auto& entry) { return entry.second.value == reason.value; }); }
 
 	CNavParser::Crumb current_crumb;
-	void followCrumbs(CTFPlayer* pLocal, CUserCmd* pCmd);
+	void followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 
 	void vischeckPath();
-	void checkBlacklist();
+	void checkBlacklist(CTFPlayer* pLocal);
 	void updateStuckTime();
-	void Run(CUserCmd* pCmd);
+	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);
 	void Render();
 };

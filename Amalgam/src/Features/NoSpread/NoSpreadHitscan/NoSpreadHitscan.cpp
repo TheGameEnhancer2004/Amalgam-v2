@@ -66,7 +66,7 @@ std::string CNoSpreadHitscan::GetFormat(int iServerTime)
 
 void CNoSpreadHitscan::AskForPlayerPerf()
 {
-	if (!Vars::Aimbot::General::NoSpread.Value || !I::EngineClient->IsInGame())
+	if (!Vars::Aimbot::General::NoSpread.Value)
 		return Reset();
 
 	if (G::Choking)

@@ -19,6 +19,7 @@ private:
 
 	void MenuAimbot(int iTab);
 	void MenuVisuals(int iTab);
+	void MenuHvH(int iTab);
 	void MenuMisc(int iTab);
 	void MenuLogs(int iTab);
 	void MenuSettings(int iTab);
