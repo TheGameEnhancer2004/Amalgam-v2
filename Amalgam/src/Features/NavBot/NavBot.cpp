@@ -462,7 +462,7 @@ ClosestEnemy_t CNavBot::GetNearestPlayerDistance(CTFPlayer* pLocal, CTFWeaponBas
 
 bool CNavBot::IsEngieMode(CTFPlayer* pLocal)
 {
-	return Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::AutoEngie && (Vars::Aimbot::Melee::AutoEngie::AutoRepair.Value || Vars::Aimbot::Melee::AutoEngie::AutoUpgrade.Value) && pLocal && pLocal->IsAlive() && pLocal->m_iClass() == TF_CLASS_ENGINEER;
+	return Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::AutoEngie && (Vars::Aimbot::AutoEngie::AutoRepair.Value || Vars::Aimbot::AutoEngie::AutoUpgrade.Value) && pLocal && pLocal->IsAlive() && pLocal->m_iClass() == TF_CLASS_ENGINEER;
 }
 
 bool CNavBot::BlacklistedFromBuilding(CNavArea* pArea)

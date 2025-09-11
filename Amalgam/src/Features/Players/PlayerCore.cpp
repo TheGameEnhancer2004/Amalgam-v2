@@ -100,7 +100,10 @@ void CPlayerlistCore::LoadPlayerlist()
 	try
 	{
 		if (!std::filesystem::exists(F::Configs.m_sCorePath + "Players.json"))
+		{
+			F::PlayerUtils.m_bLoad = false;
 			return;
+		}
 
 		boost::property_tree::ptree tRead;
 		read_json(F::Configs.m_sCorePath + "Players.json", tRead);

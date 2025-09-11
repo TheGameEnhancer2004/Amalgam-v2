@@ -205,7 +205,8 @@ void CMenu::MenuAimbot(int iTab)
 					FDropdown(Vars::Aimbot::Healing::HealPriority);
 					FToggle(Vars::Aimbot::Healing::AutoHeal, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::Healing::AutoArrow, FToggleEnum::Right);
-					FToggle(Vars::Aimbot::Healing::AutoVaccinator, FToggleEnum::Left);
+					FToggle(Vars::Aimbot::Healing::AutoSandvich, FToggleEnum::Left);
+					FToggle(Vars::Aimbot::Healing::AutoVaccinator);
 					FToggle(Vars::Aimbot::Healing::ActivateOnVoice, FToggleEnum::Right);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
@@ -226,8 +227,9 @@ void CMenu::MenuAimbot(int iTab)
 				if (Section("Hitscan"))
 				{
 					FDropdown(Vars::Aimbot::Hitscan::Hitboxes, FDropdownEnum::Left);
-					FDropdown(Vars::Aimbot::Hitscan::Modifiers, FDropdownEnum::Right);
-					FSlider(Vars::Aimbot::Hitscan::PointScale);
+					FDropdown(Vars::Aimbot::Hitscan::MultipointHitboxes, FDropdownEnum::Right);
+					FDropdown(Vars::Aimbot::Hitscan::Modifiers);
+					FSlider(Vars::Aimbot::Hitscan::MultipointScale);
 					PushTransparent(!(Vars::Aimbot::Hitscan::Modifiers.Value & Vars::Aimbot::Hitscan::ModifiersEnum::Tapfire));
 					{
 						FSlider(Vars::Aimbot::Hitscan::TapfireDistance);
@@ -306,7 +308,6 @@ void CMenu::MenuAimbot(int iTab)
 						FToggle(Vars::Aimbot::Projectile::SplashGrates, FToggleEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::SplashRotateX, FSliderEnum::Left, Vars::Aimbot::Projectile::SplashRotateX[DEFAULT_BIND] < 0.f ? "random" : "%g");
 						FSlider(Vars::Aimbot::Projectile::SplashRotateY, FSliderEnum::Right, Vars::Aimbot::Projectile::SplashRotateY[DEFAULT_BIND] < 0.f ? "random" : "%g");
-						FSlider(Vars::Aimbot::Projectile::SplashNthRoot);
 						FSlider(Vars::Aimbot::Projectile::SplashCountDirect, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::SplashCountArc, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::SplashTraceInterval, FSliderEnum::Left);
@@ -338,12 +339,11 @@ void CMenu::MenuAimbot(int iTab)
 				}
 				if (Section("Auto engie", 8))
 				{
-					FDropdown(Vars::Aimbot::Melee::AutoEngie::AutoRepair);
-					FDropdown(Vars::Aimbot::Melee::AutoEngie::AutoUpgrade);
-					FDropdown(Vars::Aimbot::Melee::AutoEngie::AutoRepairPrio);
-					FSlider(Vars::Aimbot::Melee::AutoEngie::AutoUpgradeSentryLVL);
-					FSlider(Vars::Aimbot::Melee::AutoEngie::AutoUpgradeDispenserLVL);
-					FSlider(Vars::Aimbot::Melee::AutoEngie::AutoUpgradeTeleporterLVL);
+					FDropdown(Vars::Aimbot::AutoEngie::AutoRepair);
+					FDropdown(Vars::Aimbot::AutoEngie::AutoUpgrade);
+					FSlider(Vars::Aimbot::AutoEngie::AutoUpgradeSentryLVL);
+					FSlider(Vars::Aimbot::AutoEngie::AutoUpgradeDispenserLVL);
+					FSlider(Vars::Aimbot::AutoEngie::AutoUpgradeTeleporterLVL);
 				} EndSection();
 			}
 			EndTable();
@@ -674,7 +674,7 @@ void CMenu::MenuVisuals(int iTab)
 					SetNextWindowSize({ H::Draw.Scale(300), 0 });
 					if (FBeginPopup("OffscreenArrows"))
 					{
-						FSlider("Offset", &tGroup.m_iOffscreenArrowsOffset, 0, 1000, 25, "%i", FSliderEnum::Min | FSliderEnum::Precision);
+						FSlider("Offset", &tGroup.m_iOffscreenArrowsOffset, 0, 1000, 25, "%i", FSliderEnum::Precision);
 						FSlider("Max distance", &tGroup.m_flOffscreenArrowsMaxDistance, 0.f, 5000.f, 50.f, "%g", FSliderEnum::Min | FSliderEnum::Precision);
 
 						EndPopup();
@@ -1500,7 +1500,7 @@ void CMenu::MenuLogs(int iTab)
 						{
 							// tag bar
 							SetCursorPos({ vOriginalPos.x + lOffset, vOriginalPos.y });
-							if (BeginChild(std::format("TagBar{}", tPlayer.m_uAccountID).c_str(), { flWidth - lOffset - H::Draw.Scale(4), flHeight }, ImGuiWindowFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground))
+							if (BeginChild(std::format("TagBar{}", tPlayer.m_iUserID).c_str(), { flWidth - lOffset - H::Draw.Scale(4), flHeight }, ImGuiWindowFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground))
 							{
 								std::vector<PriorityLabel_t> vLabels = {};
 								std::vector<std::pair<PriorityLabel_t*, int>> vTags = {};
@@ -1547,13 +1547,13 @@ void CMenu::MenuLogs(int iTab)
 							bClicked = IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
 						}
 						SetCursorPos(vOriginalPos);
-						Button(std::format("##{}", tPlayer.m_uAccountID).c_str(), { flWidth, flHeight });
+						Button(std::format("##{}", tPlayer.m_iUserID).c_str(), { flWidth, flHeight });
 						bClicked = bClicked || IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
 
 						// popups
 						if (bClicked)
-							OpenPopup(std::format("Clicked{}", tPlayer.m_uAccountID).c_str());
-						if (FBeginPopup(std::format("Clicked{}", tPlayer.m_uAccountID).c_str()))
+							OpenPopup(std::format("Clicked{}", tPlayer.m_iUserID).c_str());
+						if (FBeginPopup(std::format("Clicked{}", tPlayer.m_iUserID).c_str()))
 						{
 							PushStyleVar(ImGuiStyleVar_ItemSpacing, { H::Draw.Scale(8), H::Draw.Scale(8) });
 

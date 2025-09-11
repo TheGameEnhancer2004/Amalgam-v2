@@ -7,7 +7,8 @@ class CAimbotMelee
 {
 private:
 	std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-	bool AimFriendlyBuilding(CBaseObject* pBuilding);
+	bool AimFriendlyBuilding(CTFPlayer* pLocal, CBaseObject* pBuilding);
+
 	std::vector<Target_t> SortTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 
 	int GetSwingTime(CTFWeaponBase* pWeapon, bool bVar = true);
@@ -20,9 +21,6 @@ private:
 
 	bool FindNearestBuildPoint(CBaseObject* pBuilding, CTFPlayer* pLocal, Vec3& vPoint);
 	bool RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
-
-	bool AimFriendlyBuilding(CTFPlayer* pLocal, CBaseObject* pBuilding);
-	std::vector<Target_t> GetTargetBuilding(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 
 	Vec3 m_vEyePos = {};
 	float m_flRange = 0.f;

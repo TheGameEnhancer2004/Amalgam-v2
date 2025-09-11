@@ -271,8 +271,8 @@ namespace Vars
 				FOV, Distance);
 			CVarEnum(Target, "Target", 0b0000001, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Players", "Sentries", "Dispensers", "Teleporters", "Stickies", "NPCs", "Bombs"),
-				Players = 1 << 0, Sentry = 1 << 1, Dispenser = 1 << 2, Teleporter = 1 << 3, Stickies = 1 << 4, NPCs = 1 << 5, Bombs = 1 << 6);
-
+				Players = 1 << 0, Sentry = 1 << 1, Dispenser = 1 << 2, Teleporter = 1 << 3, Stickies = 1 << 4, NPCs = 1 << 5, Bombs = 1 << 6,
+				Building = Sentry | Dispenser | Teleporter);
 			CVarEnum(Ignore, "Ignore", 0b00000001000, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Friends", "Party", "Unprioritized", "Invulnerable", "Invisible", "Unsimulated", "Dead ringer", "Vaccinator", "Disguised", "Taunting", "Team", "Sentry busters"),
 				Friends = 1 << 0, Party = 1 << 1, Unprioritized = 1 << 2, Invulnerable = 1 << 3, Invisible = 1 << 4, Unsimulated = 1 << 5, DeadRinger = 1 << 6, Vaccinator = 1 << 7, Disguised = 1 << 8, Taunting = 1 << 9, Team = 1 << 10, SentryBusters = 1 << 11);
@@ -301,10 +301,12 @@ namespace Vars
 			CVarEnum(Hitboxes, VA_LIST("Hitboxes", "Hitscan hitboxes"), 0b000111, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Head", "Body", "Pelvis", "Arms", "Legs", "##Divider", "Bodyaim if lethal", "Headshot only"),
 				Head = 1 << 0, Body = 1 << 1, Pelvis = 1 << 2, Arms = 1 << 3, Legs = 1 << 4, BodyaimIfLethal = 1 << 5, HeadshotOnly = 1 << 6);
+			CVarValues(MultipointHitboxes, "Multipoint hitboxes", 0b00000, DROPDOWN_MULTI, "All",
+				VA_LIST("Head", "Body", "Pelvis", "Arms", "Legs"));
 			CVarEnum(Modifiers, VA_LIST("Modifiers", "Hitscan modifiers"), 0b0100000, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Tapfire", "Wait for headshot", "Wait for charge", "Scoped only", "Auto scope", "Auto rev minigun", "Extinguish team", "Prefer medics"),
 				Tapfire = 1 << 0, WaitForHeadshot = 1 << 1, WaitForCharge = 1 << 2, ScopedOnly = 1 << 3, AutoScope = 1 << 4, AutoRev = 1 << 5, ExtinguishTeam = 1 << 6, PreferMedics = 1 << 7);
-			CVar(PointScale, "Point scale", 0.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 5.f, "%g%%");
+			CVar(MultipointScale, "Multipoint scale", 0.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 5.f, "%g%%");
 			CVar(TapfireDistance, "Tapfire distance", 1000.f, SLIDER_MIN | SLIDER_PRECISION, 250.f, 1000.f, 50.f);
 
 			CVar(BoneSizeSubtract, "Bone size subtract", 1.f, NOSAVE | DEBUGVAR | SLIDER_MIN, 0.f, 4.f, 0.25f);
@@ -366,9 +368,8 @@ namespace Vars
 			CVar(HuntsmanPullPoint, "Huntsman pull point", false, NOSAVE | DEBUGVAR);
 			CVar(SplashPoints, "Splash points", 100, NOSAVE | DEBUGVAR | SLIDER_MIN, 1, 400, 5);
 			CVar(SplashGrates, "Splash grates", true, NOSAVE | DEBUGVAR);
-			CVar(SplashRotateX, "Splash Rx", 0.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, -1.f, 360.f);
+			CVar(SplashRotateX, "Splash Rx", -1.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, -1.f, 360.f);
 			CVar(SplashRotateY, "Splash Ry", -1.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, -1.f, 360.f);
-			CVar(SplashNthRoot, "Splash Nth root", 1.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 0.5f, 2.f, 0.1f);
 			CVar(SplashCountDirect, "Direct splash count", 100, NOSAVE | DEBUGVAR | SLIDER_MIN, 1, 100);
 			CVar(SplashCountArc, "Arc splash count", 5, NOSAVE | DEBUGVAR | SLIDER_MIN, 1, 100);
 			CVar(SplashTraceInterval, "Splash trace interval", 10, NOSAVE | DEBUGVAR, 1, 10);
@@ -389,27 +390,24 @@ namespace Vars
 			CVar(AutodetAccountPing, "Auto detonate account for ping", true, DEBUGVAR);
 		SUBNAMESPACE_END(Projectile);
 
+		SUBNAMESPACE_BEGIN(AutoEngie)
+			CVarEnum(AutoRepair, "Auto repair", 0b111, DROPDOWN_MULTI, "Off",
+				VA_LIST("Sentrygun","Dispenser", "Teleporter"),
+				Sentry = 1 << 0, Dispenser = 1 << 1, Teleporter = 1 << 2);
+			CVarEnum(AutoUpgrade, "Auto upgrade", 0b111, DROPDOWN_MULTI, "Off",
+				VA_LIST("Sentrygun", "Dispenser", "Teleporter"),
+				Sentry = 1 << 0, Dispenser = 1 << 1, Teleporter = 1 << 2);
+
+			CVar(AutoUpgradeSentryLVL, "Sentry LVL", 3, SLIDER_CLAMP, 1, 3);
+			CVar(AutoUpgradeDispenserLVL, "Dispenser LVL", 3, SLIDER_CLAMP, 1, 3);
+			CVar(AutoUpgradeTeleporterLVL, "Teleporter LVL", 2, SLIDER_CLAMP, 1, 3);
+		SUBNAMESPACE_END(AutoEngie);
+
 		SUBNAMESPACE_BEGIN(Melee)
 			CVar(AutoBackstab, "Auto backstab", true);
 			CVar(IgnoreRazorback, "Ignore razorback", true);
 			CVar(SwingPrediction, "Swing prediction", false);
 			CVar(WhipTeam, "Whip team", false);
-
-			SUBNAMESPACE_BEGIN(AutoEngie)
-				CVarEnum(AutoRepair, "Auto repair", 0b111, DROPDOWN_MULTI, "Off",
-					VA_LIST("Sentrygun","Dispenser", "Teleporter"),
-					Sentry = 1 << 0, Dispenser = 1 << 1, Teleporter = 1 << 2);
-				CVarEnum(AutoRepairPrio, "Repair priority", 0, NONE, nullptr, 
-					VA_LIST("None", "Sentrygun", "Dispenser", "Teleporter"),
-					None, Sentry, Dispenser, Teleporter);
-				CVarEnum(AutoUpgrade, "Auto upgrade", 0b111, DROPDOWN_MULTI, "Off",
-					VA_LIST("Sentrygun", "Dispenser", "Teleporter"),
-					Sentry = 1 << 0, Dispenser = 1 << 1, Teleporter = 1 << 2);
-
-				CVar(AutoUpgradeSentryLVL, "Sentry LVL", 3, SLIDER_CLAMP, 1, 3);
-				CVar(AutoUpgradeDispenserLVL, "Dispenser LVL", 3, SLIDER_CLAMP, 1, 3);
-				CVar(AutoUpgradeTeleporterLVL, "Teleporter LVL", 2, SLIDER_CLAMP, 1, 3);
-			SUBNAMESPACE_END(AutoEngie);
 
 			CVar(SwingOffset, "Swing offset", -1, NOSAVE | DEBUGVAR, -1, 1);
 			CVar(SwingPredictLag, "Swing predict lag", true, NOSAVE | DEBUGVAR);
@@ -423,6 +421,7 @@ namespace Vars
 				None, PrioritizeTeam, PrioritizeFriends, FriendsOnly);
 			CVar(AutoHeal, "Auto heal", false);
 			CVar(AutoArrow, "Auto arrow", false);
+			CVar(AutoSandvich, "Auto sandvich", false);
 			CVar(AutoVaccinator, "Auto vaccinator", false);
 			CVar(ActivateOnVoice, "Activate on voice", false);
 
