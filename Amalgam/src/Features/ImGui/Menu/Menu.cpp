@@ -1526,7 +1526,7 @@ void CMenu::MenuLogs(int iTab)
 
 										GetWindowDrawList()->AddRectFilled(vDrawPos + vTagPos, { vDrawPos.x + vTagPos.x + flTagWidth, vDrawPos.y + vTagPos.y + flTagHeight }, tTagColor, H::Draw.Scale(4));
 										SetCursorPos({ vTagPos.x + H::Draw.Scale(5), vTagPos.y + H::Draw.Scale(3) });
-										TextColored(IsColorBright(tTagColor) ? ImVec4(0, 0, 0, 1) : ImVec4(1, 1, 1, 1), tTag.m_sName.c_str());
+										TextColored(VecToColor(tColor).Blend(tTag.m_tColor).IsColorBright() ? ImVec4(0, 0, 0, 1) : ImVec4(1, 1, 1, 1), tTag.m_sName.c_str());
 										if (iID)
 										{
 											SetCursorPos({ vTagPos.x + flTagWidth - H::Draw.Scale(22), vTagPos.y - H::Draw.Scale(2) });
@@ -2102,7 +2102,7 @@ void CMenu::MenuLogs(int iTab)
 							{
 								for (auto& [sName, tChild] : *tSub)
 								{
-									uint32_t uAccountID = std::stoi(sName);
+									uint32_t uAccountID = std::stoul(sName);
 									for (auto& [_, tTag] : tChild)
 									{
 										const std::string& sTag = tTag.data();
@@ -2122,7 +2122,7 @@ void CMenu::MenuLogs(int iTab)
 							{
 								for (auto& [sName, tAlias] : *tSub)
 								{
-									uint32_t uAccountID = std::stoi(sName);
+									uint32_t uAccountID = std::stoul(sName);
 									const std::string& sAlias = tAlias.data();
 
 									if (!sAlias.empty())

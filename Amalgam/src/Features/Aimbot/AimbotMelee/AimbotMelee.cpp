@@ -524,8 +524,7 @@ void CAimbotMelee::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd
 	if (RunSapper(pLocal, pWeapon, pCmd))
 		return;
 
-	std::vector<Target_t> vTargets;
-	vTargets = SortTargets(pLocal, pWeapon);
+	auto vTargets = SortTargets(pLocal, pWeapon);
 	if (vTargets.empty())
 		return;
 
