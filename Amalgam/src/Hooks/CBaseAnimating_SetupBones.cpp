@@ -1,6 +1,5 @@
 #include "../SDK/SDK.h"
 #include "../Features/Backtrack/Backtrack.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CBaseAnimating_SetupBones, "client.dll", "48 8B C4 44 89 40 ? 48 89 50 ? 55 53", 0x0);
 
@@ -35,4 +34,3 @@ MAKE_HOOK(CBaseAnimating_SetupBones, S::CBaseAnimating_SetupBones(), bool,
 
 	return true;
 }
-#endif

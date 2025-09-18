@@ -3,7 +3,6 @@
 #ifdef TEXTMODE
 
 #include "../../../SDK/SDK.h"
-#include "../../Configs/Configs.h"
 #include <string>
 
 namespace F::NamedPipe
@@ -12,12 +11,8 @@ namespace F::NamedPipe
     void Shutdown();
     void SendStatusUpdate(const std::string& status);
     void ExecuteCommand(const std::string& command);
-    void SendHealthUpdate(int health);
-    void SendPlayerClassUpdate(int playerClass);
     int GetCurrentPlayerClass();
     std::string GetCurrentLevelName();
-    void SendMapUpdate();
-    void SendServerInfo();
     int ReadBotIdFromFile();
 
     // Local bot tracking

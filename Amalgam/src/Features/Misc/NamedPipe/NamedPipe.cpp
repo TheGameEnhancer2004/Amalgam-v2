@@ -10,7 +10,6 @@
 #include "NamedPipe.h"
 #include "../../../SDK/SDK.h"
 #include "../../Players/PlayerUtils.h"
-#include "../../Configs/Configs.h"
 
 #include <windows.h>
 #include <thread>
@@ -30,7 +29,6 @@ namespace F::NamedPipe
 	std::ofstream logFile("C:\\pipe_log.txt", std::ios::app);
 	int botId = -1;
 
-	const int MAX_RECONNECT_ATTEMPTS = 10;
 	const int BASE_RECONNECT_DELAY_MS = 500;
 	const int MAX_RECONNECT_DELAY_MS = 10000;
 	int currentReconnectAttempts = 0;
@@ -51,8 +49,52 @@ namespace F::NamedPipe
 	void ConnectAndMaintainPipe();
 	void QueueMessage(const std::string& type, const std::string& content, bool isPriority);
 	void ProcessMessageQueue();
-	bool SafeWriteToPipe(const std::string& message);
 	int GetReconnectDelayMs();
+
+	std::string GetPlayerClassName()
+	{
+		int playerClass = GetCurrentPlayerClass();
+		switch (playerClass)
+		{
+		case 1: return "Scout";
+		case 2: return "Sniper";
+		case 3: return "Soldier";
+		case 4: return "Demoman";
+		case 5: return "Medic";
+		case 6: return "Heavy";
+		case 7: return "Pyro";
+		case 8: return "Spy";
+		case 9: return "Engineer";
+		default: return "N/A";
+		}
+	}
+
+	std::string GetHealthString()
+	{
+		if (I::EngineClient && I::EngineClient->IsInGame())
+		{
+			auto pLocal = H::Entities.GetLocal();
+			if (pLocal)
+			{
+				return std::to_string(pLocal->As<CTFPlayer>()->m_iHealth());
+			}
+		}
+		return "N/A";
+	}
+
+	std::string GetServerAddressString()
+	{
+		if (I::EngineClient)
+		{
+			if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
+			{
+				const char* addr = pNetChan->GetAddress();
+				if (addr && addr[0] != '\0' && std::string(addr) != "loopback")
+					return std::string(addr);
+			}
+		}
+		return "NONE";
+	}
 
 	void Log(const std::string& message)
 	{
@@ -99,7 +141,6 @@ namespace F::NamedPipe
 
 	int ReadBotIdFromFile()
 	{
-		// Use only environment variable now; no legacy file lookup
 		int envId = GetBotIdFromEnv();
 		if (envId == -1)
 		{
@@ -144,10 +185,8 @@ namespace F::NamedPipe
 
 	void SendStatusUpdate(const std::string& status)
 	{
-		// Queue the status update message with high priority
 		QueueMessage("Status", status, true);
 
-		// Process immediately if connected
 		if (hPipe != INVALID_HANDLE_VALUE)
 		{
 			ProcessMessageQueue();
@@ -158,40 +197,7 @@ namespace F::NamedPipe
 	{
 		Log("ExecuteCommand called with: " + command);
 
-		if (command == "debug navbot")
-		{
-			Log("Debug navbot command received, sending 'kill' to TF2 console");
-			if (I::EngineClient)
-			{
-				I::EngineClient->ClientCmd_Unrestricted("kill");
-				Log("'kill' command sent to TF2 console");
-				SendStatusUpdate("CommandExecuted:kill");
-			}
-			else
-			{
-				Log("Error: EngineClient is not available. 'kill' command not executed");
-				SendStatusUpdate("CommandFailed:kill");
-			}
-			return;
-		}
-
-		if (command.substr(0, 11) == "loadconfig ")
-		{
-			std::string configName = command.substr(11);
-			Log("Loading config: " + configName);
-
-			if (F::Configs.LoadConfig(configName, true))
-			{
-				Log("Config loaded successfully: " + configName);
-				SendStatusUpdate("ConfigLoaded:" + configName);
-			}
-			else
-			{
-				Log("Failed to load config: " + configName);
-				SendStatusUpdate("ConfigLoadFailed:" + configName);
-			}
-		}
-		else if (I::EngineClient)
+		if (I::EngineClient)
 		{
 			Log("EngineClient is available, sending command to TF2 console");
 			I::EngineClient->ClientCmd_Unrestricted(command.c_str());
@@ -203,12 +209,6 @@ namespace F::NamedPipe
 			Log("Error: EngineClient is not available. Command not executed: " + command);
 			SendStatusUpdate("CommandFailed:" + command);
 		}
-	}
-
-	void SendHealthUpdate(int health)
-	{
-		// Queue health update with medium priority
-		QueueMessage("Health", std::to_string(health), false);
 	}
 
 	int GetCurrentPlayerClass()
@@ -237,64 +237,9 @@ namespace F::NamedPipe
 		return -1;
 	}
 
-	void SendPlayerClassUpdate(int playerClass)
-	{
-		static int lastSentClass = -1;
-
-		if (playerClass == lastSentClass || playerClass < 1 || playerClass > 9)
-			return;
-
-		lastSentClass = playerClass;
-
-		std::string className;
-		switch (playerClass)
-		{
-		case 1: className = "Scout"; break;
-		case 2: className = "Sniper"; break;
-		case 3: className = "Soldier"; break;
-		case 4: className = "Demoman"; break;
-		case 5: className = "Medic"; break;
-		case 6: className = "Heavy"; break;
-		case 7: className = "Pyro"; break;
-		case 8: className = "Spy"; break;
-		case 9: className = "Engineer"; break;
-		default: className = "Unknown"; break;
-		}
-
-		// Queue player class update
-		QueueMessage("PlayerClass", className, false);
-	}
-
 	std::string GetCurrentLevelName()
 	{
 		return SDK::GetLevelName();
-	}
-
-	void SendMapUpdate()
-	{
-		static std::string lastSentMap = "";
-		std::string currentMap = GetCurrentLevelName();
-
-		if (currentMap == lastSentMap)
-			return;
-
-		lastSentMap = currentMap;
-
-		// Queue map update
-		QueueMessage("Map", currentMap, false);
-	}
-
-	void SendServerInfo()
-	{
-		// Queue server info update
-		QueueMessage("ServerInfo", "Player", false);
-	}
-
-	void UpdateBotInfo()
-	{
-		SendPlayerClassUpdate(GetCurrentPlayerClass());
-		SendMapUpdate();
-		SendServerInfo();
 	}
 
 	void BroadcastLocalBotId()
@@ -302,20 +247,16 @@ namespace F::NamedPipe
 		if (!I::EngineClient || !I::EngineClient->IsInGame())
 			return;
 
-		// Only proceed if we have a valid steam ID
 		auto pResource = H::Entities.GetResource();
 		if (!pResource)
 			return;
 
-		// Use the account ID from player resource
 		uint32_t uAccountID = pResource->m_iAccountID(I::EngineClient->GetLocalPlayer());
 		if (uAccountID != 0)
 		{
-			// Queue local bot broadcast with high priority
 			QueueMessage("LocalBot", std::to_string(uAccountID), true);
 			Log("Queued local bot ID broadcast: " + std::to_string(uAccountID));
 
-			// Process immediately if connected
 			if (hPipe != INVALID_HANDLE_VALUE)
 				ProcessMessageQueue();
 		}
@@ -341,7 +282,6 @@ namespace F::NamedPipe
 				localBots[friendsID] = true;
 				Log("Added local bot with friendsID: " + friendsIDstr);
 
-				// Try to find player information and add ignored tag
 				bool tagAdded = false;
 				if (auto pResource = H::Entities.GetResource())
 				{
@@ -351,7 +291,6 @@ namespace F::NamedPipe
 						{
 							const char* szName = pResource->m_szName(i);
 
-							// Add both IGNORED_TAG and FRIEND_TAG
 							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
 							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
 							Log("Marked local bot as ignored and friend: " + std::string(szName));
@@ -469,32 +408,6 @@ namespace F::NamedPipe
 				break;
 			}
 		}
-	}
-
-	bool SafeWriteToPipe(const std::string& message)
-	{
-		if (hPipe == INVALID_HANDLE_VALUE)
-		{
-			QueueMessage("Status", "QueuedMessage", false);
-			return false;
-		}
-
-		DWORD bytesWritten = 0;
-		BOOL success = WriteFile(hPipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL);
-
-		if (!success || bytesWritten != message.length())
-		{
-			DWORD error = GetLastError();
-			Log("WriteFile failed: " + std::to_string(error) + " - " + GetErrorMessage(error));
-
-			if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED)
-			{
-				CloseHandle(hPipe);
-				hPipe = INVALID_HANDLE_VALUE;
-			}
-			return false;
-		}
-		return true;
 	}
 
 	int GetReconnectDelayMs()
@@ -615,14 +528,29 @@ namespace F::NamedPipe
 				static int updateCounter = 0;
 				if (++updateCounter % 3 == 0)
 				{
-					QueueMessage("PlayerClass", std::to_string(GetCurrentPlayerClass()), false);
-					QueueMessage("Map", GetCurrentLevelName(), false);
-					QueueMessage("ServerInfo", "Player", false); // This will be populated by SendServerInfo internally
+					// Map info
+					std::string mapName = GetCurrentLevelName();
+					if (mapName.empty()) mapName = "N/A";
+					QueueMessage("Map", mapName, false);
+
+					// Server address
+					QueueMessage("Server", GetServerAddressString(), false);
+
+					// Player class and health
+					QueueMessage("PlayerClass", GetPlayerClassName(), false);
+					QueueMessage("Health", GetHealthString(), false);
+
 					ProcessMessageQueue();
 
 					if (I::EngineClient && I::EngineClient->IsInGame())
 					{
 						UpdateLocalBotIgnoreStatus();
+					}
+					else
+					{
+						// Not in game: ensure panel receives disconnect-ish state
+						QueueMessage("Status", "NotInGame", true);
+						ProcessMessageQueue();
 					}
 				}
 
