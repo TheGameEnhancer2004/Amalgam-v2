@@ -19,10 +19,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <regex>
 #include <unordered_map>
-#include <filesystem>
-#include <ShlObj.h>
+#include <cstdlib>
 
 namespace F::NamedPipe
 {
@@ -80,199 +78,35 @@ namespace F::NamedPipe
 		return message;
 	}
 
-	std::string GetTF2Folder()
+	int GetBotIdFromEnv()
 	{
-		// Try common Steam install paths first
-		std::vector<std::string> commonPaths = {
-			"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2",
-			"C:\\Program Files\\Steam\\steamapps\\common\\Team Fortress 2",
-			"D:\\Steam\\steamapps\\common\\Team Fortress 2",
-			"E:\\Steam\\steamapps\\common\\Team Fortress 2"
-		};
+		char* envVal = nullptr;
+		size_t len = 0;
 
-		for (const auto& path : commonPaths)
+		if (_dupenv_s(&envVal, &len, "BOTID") == 0 && envVal)
 		{
-			if (std::filesystem::exists(path))
+			int id = atoi(envVal);
+			free(envVal);
+			if (id > 0)
 			{
-				Log("Found TF2 folder at common path: " + path);
-				return path;
+				Log("Found BOTID environment variable: " + std::to_string(id));
+				return id;
 			}
 		}
 
-		// Try to get from the registry
-		char steamPath[MAX_PATH] = { 0 };
-		DWORD pathSize = sizeof(steamPath);
-		HKEY hKey;
-
-		if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
-		{
-			if (RegQueryValueExA(hKey, "SteamPath", NULL, NULL, (LPBYTE)steamPath, &pathSize) == ERROR_SUCCESS)
-			{
-				RegCloseKey(hKey);
-				std::string possiblePath = std::string(steamPath) + "\\steamapps\\common\\Team Fortress 2";
-				if (std::filesystem::exists(possiblePath))
-				{
-					Log("Found TF2 folder from registry: " + possiblePath);
-					return possiblePath;
-				}
-			}
-			RegCloseKey(hKey);
-		}
-
-		// Try config path as fallback
-		std::string configPath = F::Configs.m_sConfigPath;
-		Log("Using config path as fallback: " + configPath);
-		size_t pos = configPath.find_last_of("\\");
-		if (pos != std::string::npos)
-		{
-			std::string baseFolder = configPath.substr(0, pos);
-			Log("Derived base folder: " + baseFolder);
-			return baseFolder;
-		}
-
-		// Last resort - get exe path
-		char modulePath[MAX_PATH];
-		GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
-
-		std::string path = modulePath;
-		Log("Module path: " + path);
-		pos = path.find_last_of("\\");
-		if (pos != std::string::npos)
-			path = path.substr(0, pos);
-
-		Log("Final TF2 folder determination: " + path);
-		return path;
+		return -1;
 	}
 
 	int ReadBotIdFromFile()
 	{
-		// Get paths to check
-		std::string tf2Folder = GetTF2Folder();
-		std::string amalgamFolder = F::Configs.m_sConfigPath;
-
-		Log("Starting bot ID file search...");
-		Log("TF2 folder: " + tf2Folder);
-		Log("Amalgam folder: " + amalgamFolder);
-
-		std::regex botFileRegex("bot(\\d+)\\.txt");
-
-		// List of folders to check, in order of preference
-		std::vector<std::pair<std::string, std::string>> foldersToCheck = {
-			{tf2Folder, "TF2"},
-			{amalgamFolder, "Amalgam"},
-			{std::filesystem::current_path().string(), "Current Working Directory"}
-		};
-
-		// Try to find in each folder
-		for (const auto& [folder, folderName] : foldersToCheck)
+		// Use only environment variable now; no legacy file lookup
+		int envId = GetBotIdFromEnv();
+		if (envId == -1)
 		{
-			Log("Searching in " + folderName + " folder: " + folder);
-
-			if (!std::filesystem::exists(folder))
-			{
-				Log(folderName + " folder doesn't exist: " + folder);
-				continue;
-			}
-
-			try
-			{
-				for (const auto& entry : std::filesystem::directory_iterator(folder))
-				{
-					if (!entry.is_regular_file()) continue;
-
-					std::string filename = entry.path().filename().string();
-					Log("Found file: " + filename);
-
-					std::smatch match;
-					if (std::regex_match(filename, match, botFileRegex))
-					{
-						int botId = std::stoi(match[1]);
-						Log("Found bot ID " + std::to_string(botId) + " in " + folderName + " folder");
-						return botId;
-					}
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Log("Error searching " + folderName + " folder: " + std::string(e.what()));
-
-				// Try old-style FindFirstFile as backup
-				WIN32_FIND_DATA findFileData;
-				HANDLE hFind = FindFirstFile((folder + "\\*.txt").c_str(), &findFileData);
-				if (hFind != INVALID_HANDLE_VALUE)
-				{
-					do
-					{
-						std::string filename(findFileData.cFileName);
-						Log("Found file (FindFirstFile): " + filename);
-						std::smatch match;
-						if (std::regex_match(filename, match, botFileRegex))
-						{
-							int botId = std::stoi(match[1]);
-							Log("Found bot ID " + std::to_string(botId) + " in " + folderName + " folder using FindFirstFile");
-							FindClose(hFind);
-							return botId;
-						}
-					}
-					while (FindNextFile(hFind, &findFileData) != 0);
-					FindClose(hFind);
-				}
-				else
-				{
-					DWORD error = GetLastError();
-					Log("FindFirstFile failed in " + folderName + " folder: " + GetErrorMessage(error));
-				}
-			}
+			Log("BOTID environment variable not set. Using fallback ID 1.");
+			return 1;
 		}
-
-		// If no bot ID file was found, create one in the Amalgam folder
-		Log("No bot ID file found, attempting to create one");
-
-		// Try folders in reverse (write to TF2 folder last as it might require admin permissions)
-		for (auto it = foldersToCheck.rbegin(); it != foldersToCheck.rend(); ++it)
-		{
-			const auto& [folder, folderName] = *it;
-
-			if (!std::filesystem::exists(folder))
-			{
-				Log("Can't create file in " + folderName + " folder - folder doesn't exist");
-				continue;
-			}
-
-			try
-			{
-				std::string filepath = folder + "\\bot1.txt";
-				Log("Attempting to create " + filepath);
-
-				std::ofstream botFile(filepath);
-				if (botFile.is_open())
-				{
-					botFile << "This file is used to identify the bot instance. ID: 1";
-					botFile.close();
-
-					if (std::filesystem::exists(filepath))
-					{
-						Log("Successfully created bot ID file in " + folderName + " folder");
-						return 1;
-					}
-					else
-					{
-						Log("File creation reported success but file doesn't exist in " + folderName + " folder");
-					}
-				}
-				else
-				{
-					Log("Failed to open file for writing in " + folderName + " folder");
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Log("Exception creating file in " + folderName + " folder: " + std::string(e.what()));
-			}
-		}
-
-		Log("Failed to find or create any bot ID file");
-		return -1;
+		return envId;
 	}
 
 	void Initialize()
