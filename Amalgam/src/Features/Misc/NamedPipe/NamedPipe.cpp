@@ -322,23 +322,36 @@ namespace F::NamedPipe
 	{
 		BroadcastLocalBotId();
 
-		if (auto pResource = H::Entities.GetResource())
+		auto engine = I::EngineClient;
+		if (!engine || !engine->IsInGame())
+			return;
+
+		auto pResource = H::Entities.GetResource();
+		if (!pResource)
+			return;
+
+		int maxClients = engine->GetMaxClients();
+		if (maxClients <= 0 || maxClients > 128) maxClients = 64;
+
+		for (const auto& kv : localBots)
 		{
-			for (const auto& [friendsID, isLocal] : localBots)
+			const uint32_t friendsID = kv.first;
+			if (!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+				!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
 			{
-				if (!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-					!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
+				for (int i = 1; i <= maxClients; ++i)
 				{
-					for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+					if (!engine || !engine->IsInGame())
+						return;
+
+					if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
 					{
-						if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
-						{
-							const char* szName = pResource->m_szName(i);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
-							Log("Marked local bot as ignored and friend: " + std::string(szName));
-							break;
-						}
+						const char* szName = pResource->m_szName(i);
+						if (!szName) szName = "";
+						F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
+						F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
+						Log("Marked local bot as ignored and friend: " + std::string(szName));
+						break;
 					}
 				}
 			}
