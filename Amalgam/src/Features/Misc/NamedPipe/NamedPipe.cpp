@@ -20,6 +20,8 @@
 #include <string>
 #include <unordered_map>
 #include <cstdlib>
+#include <mutex>
+#include <vector>
 
 namespace F::NamedPipe
 {
@@ -44,6 +46,7 @@ namespace F::NamedPipe
 	std::vector<PendingMessage> messageQueue;
 
 	std::unordered_map<uint32_t, bool> localBots;
+    std::mutex localBotsMutex;
 
 
 	void ConnectAndMaintainPipe();
@@ -251,7 +254,15 @@ namespace F::NamedPipe
 		if (!pResource)
 			return;
 
-		uint32_t uAccountID = pResource->m_iAccountID(I::EngineClient->GetLocalPlayer());
+		int localIdx = I::EngineClient->GetLocalPlayer();
+		int maxClients = I::EngineClient->GetMaxClients();
+		if (maxClients <= 0 || maxClients > 128) maxClients = 64;
+		if (localIdx <= 0 || localIdx > maxClients)
+			return;
+		if (!pResource->m_bValid(localIdx))
+			return;
+
+		uint32_t uAccountID = pResource->m_iAccountID(localIdx);
 		if (uAccountID != 0)
 		{
 			QueueMessage("LocalBot", std::to_string(uAccountID), true);
@@ -274,28 +285,39 @@ namespace F::NamedPipe
 		{
 			try
 			{
-				uint32_t friendsID = std::stoull(friendsIDstr);
+				uint32_t friendsID = static_cast<uint32_t>(std::stoull(friendsIDstr));
 
 				// Don't skip messages from our own bot ID - we might have multiple instances
 				// with the same ID running
 
-				localBots[friendsID] = true;
+				{
+					std::lock_guard<std::mutex> lk(localBotsMutex);
+					localBots[friendsID] = true;
+				}
 				Log("Added local bot with friendsID: " + friendsIDstr);
 
 				bool tagAdded = false;
-				if (auto pResource = H::Entities.GetResource())
+				auto engine = I::EngineClient;
+				if (engine && engine->IsInGame())
 				{
-					for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+					if (auto pResource = H::Entities.GetResource())
 					{
-						if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
+						int maxClients = engine->GetMaxClients();
+						if (maxClients <= 0 || maxClients > 128) maxClients = 64;
+						for (int i = 1; i <= maxClients; i++)
 						{
-							const char* szName = pResource->m_szName(i);
-
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
-							Log("Marked local bot as ignored and friend: " + std::string(szName));
-							tagAdded = true;
-							break;
+							if (!pResource->m_bValid(i))
+								continue;
+							if (pResource->m_iAccountID(i) == friendsID)
+							{
+								const char* szName = pResource->m_szName(i);
+								if (!szName) szName = "";
+								F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
+								F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
+								Log("Marked local bot as ignored and friend: " + std::string(szName));
+								tagAdded = true;
+								break;
+							}
 						}
 					}
 				}
@@ -315,6 +337,7 @@ namespace F::NamedPipe
 		if (friendsID == 0)
 			return false;
 
+		std::lock_guard<std::mutex> lk(localBotsMutex);
 		return localBots.find(friendsID) != localBots.end();
 	}
 
@@ -333,9 +356,17 @@ namespace F::NamedPipe
 		int maxClients = engine->GetMaxClients();
 		if (maxClients <= 0 || maxClients > 128) maxClients = 64;
 
-		for (const auto& kv : localBots)
+		// Copy keys under lock to avoid holding lock while tagging
+		std::vector<uint32_t> localBotIds;
 		{
-			const uint32_t friendsID = kv.first;
+			std::lock_guard<std::mutex> lk(localBotsMutex);
+			localBotIds.reserve(localBots.size());
+			for (const auto& kv : localBots)
+				localBotIds.push_back(kv.first);
+		}
+
+		for (const auto& friendsID : localBotIds)
+		{
 			if (!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
 				!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
 			{
@@ -360,6 +391,7 @@ namespace F::NamedPipe
 
 	void ClearLocalBots()
 	{
+		std::lock_guard<std::mutex> lk(localBotsMutex);
 		localBots.clear();
 		Log("Cleared local bots list");
 	}
