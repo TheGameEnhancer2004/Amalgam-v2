@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CBaseAnimating_SetSequence, "client.dll", "40 53 48 83 EC ? 48 8B D9 39 91 ? ? ? ? 74 ? 89 91", 0x0);
 
@@ -17,5 +16,3 @@ MAKE_HOOK(CBaseAnimating_SetSequence, S::CBaseAnimating_SetSequence(), void,
 
 	CALL_ORIGINAL(rcx, nSequence);
 }
-
-#endif // TEXTMODE

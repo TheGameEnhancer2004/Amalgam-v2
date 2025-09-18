@@ -2,13 +2,15 @@
 #include "../../../SDK/SDK.h"
 #include "../../../SDK/Definitions/Steam/ISteamMatchmaking.h"
 #include "../../../SDK/Definitions/Steam/MatchmakingTypes.h"
+#include <vector>
+#include <string>
 
 class gameserveritem_t;
 
 class CAutoQueue : public ISteamMatchmakingServerListResponse
 {
 private:
-	// commserv
+	// Community servers
 	HServerListRequest m_hServerListRequest = nullptr;
 	std::vector<gameserveritem_t*> m_vCommunityServers;
 	float m_flLastServerSearch = 0.0f;
@@ -16,7 +18,7 @@ private:
 	std::string m_sCurrentServerIP;
 	bool m_bSearchingServers = false;
 	bool m_bConnectedToCommunityServer = false;
-	
+
 	void RunCommunityQueue();
 	void SearchCommunityServers();
 	void ConnectToServer(const gameserveritem_t* pServer);
@@ -26,10 +28,11 @@ private:
 	void CleanupServerList();
 	void HandleDisconnect();
 	void CheckServerTimeout();
-	
+
 public:
 	void Run();
-	
+
+	// ISteamMatchmakingServerListResponse
 	virtual void ServerResponded(HServerListRequest hRequest, int iServer) override;
 	virtual void ServerFailedToRespond(HServerListRequest hRequest, int iServer) override;
 	virtual void RefreshComplete(HServerListRequest hRequest, EMatchMakingServerResponse response) override;
