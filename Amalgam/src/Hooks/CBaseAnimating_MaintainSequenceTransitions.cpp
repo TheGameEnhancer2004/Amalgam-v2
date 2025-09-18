@@ -1,4 +1,5 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CBaseAnimating_MaintainSequenceTransitions, "client.dll", "4C 89 4C 24 ? 41 56", 0x0);
 
@@ -10,3 +11,4 @@ MAKE_HOOK(CBaseAnimating_MaintainSequenceTransitions, S::CBaseAnimating_Maintain
 		return CALL_ORIGINAL(rcx, boneSetup, flCycle, pos, q);
 #endif
 }
+#endif

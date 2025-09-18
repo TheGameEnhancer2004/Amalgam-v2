@@ -1,4 +1,5 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFPlayerShared_IsPlayerDominated, "client.dll", "48 89 5C 24 ? 48 89 74 24 ? 57 48 83 EC ? 48 63 F2 48 8B D9 E8", 0x0);
 MAKE_SIGNATURE(CTFClientScoreBoardDialog_UpdatePlayerList_IsPlayerDominated_Call, "client.dll", "84 C0 74 ? 45 84 FF 74", 0x0);
@@ -23,3 +24,4 @@ MAKE_HOOK(CTFPlayerShared_IsPlayerDominated, S::CTFPlayerShared_IsPlayerDominate
 
 	return bResult;
 }
+#endif

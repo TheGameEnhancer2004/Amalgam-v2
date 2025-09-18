@@ -1,11 +1,11 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41 56 41 57 48 8D AC 24", 0x0);
 
 MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
 	void* rcx, CBaseEntity* pOwner, const Vec3& vEyePosition, Vec3& vEyeAngles)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CBasePlayer_CalcViewModelView[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
@@ -55,5 +55,5 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 		vEyeAngles.z += Vars::Visuals::Viewmodel::Roll.Value * (bFlip ? -1 : 1);
 
 	CALL_ORIGINAL(rcx, pOwner, vNewEyePosition, vEyeAngles);
-#endif
 }
+#endif

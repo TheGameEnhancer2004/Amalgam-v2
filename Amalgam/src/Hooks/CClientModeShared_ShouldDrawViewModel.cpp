@@ -1,6 +1,6 @@
 #include "../SDK/SDK.h"
-
 #include "../Features/Visuals/Visuals.h"
+#ifndef TEXTMODE
 
 MAKE_HOOK(CClientModeShared_ShouldDrawViewModel, U::Memory.GetVirtual(I::ClientModeShared, 24), bool,
 	void* rcx)
@@ -19,3 +19,4 @@ MAKE_HOOK(CClientModeShared_ShouldDrawViewModel, U::Memory.GetVirtual(I::ClientM
 
 	return CALL_ORIGINAL(rcx);
 }
+#endif

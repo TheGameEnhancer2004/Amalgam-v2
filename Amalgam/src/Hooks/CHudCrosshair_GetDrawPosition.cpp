@@ -1,4 +1,5 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CHudCrosshair_GetDrawPosition, "client.dll", "48 8B C4 55 53 56 41 54 41 55", 0x0);
 
@@ -58,3 +59,4 @@ MAKE_HOOK(CHudCrosshair_GetDrawPosition, S::CHudCrosshair_GetDrawPosition(), voi
 	if (!bSet)
 		CALL_ORIGINAL(pX, pY, pbBehindCamera, angleCrosshairOffset);
 }
+#endif
