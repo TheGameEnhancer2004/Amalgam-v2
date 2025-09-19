@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41 56 41 57 48 8D AC 24", 0x0);
 
@@ -56,4 +55,3 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 
 	CALL_ORIGINAL(rcx, pOwner, vNewEyePosition, vEyeAngles);
 }
-#endif
