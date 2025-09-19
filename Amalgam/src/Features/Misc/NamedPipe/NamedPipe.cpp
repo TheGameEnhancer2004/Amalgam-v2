@@ -74,27 +74,22 @@ namespace F::NamedPipe
 
 	std::string GetHealthString()
 	{
-		if (I::EngineClient && I::EngineClient->IsInGame())
+		if (I::EngineClient->IsInGame())
 		{
 			auto pLocal = H::Entities.GetLocal();
 			if (pLocal)
-			{
 				return std::to_string(pLocal->As<CTFPlayer>()->m_iHealth());
-			}
 		}
 		return "N/A";
 	}
 
 	std::string GetServerAddressString()
 	{
-		if (I::EngineClient)
+		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
 		{
-			if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
-			{
-				const char* addr = pNetChan->GetAddress();
-				if (addr && addr[0] != '\0' && std::string(addr) != "loopback")
-					return std::string(addr);
-			}
+			const char* addr = pNetChan->GetAddress();
+			if (addr && addr[0] != '\0' && std::string(addr) != "loopback")
+				return std::string(addr);
 		}
 		return "NONE";
 	}
@@ -181,9 +176,7 @@ namespace F::NamedPipe
 	{
 		shouldRun = false;
 		if (pipeThread.joinable())
-		{
 			pipeThread.join();
-		}
 	}
 
 	void SendStatusUpdate(const std::string& status)
@@ -191,33 +184,25 @@ namespace F::NamedPipe
 		QueueMessage("Status", status, true);
 
 		if (hPipe != INVALID_HANDLE_VALUE)
-		{
 			ProcessMessageQueue();
-		}
 	}
 
 	void ExecuteCommand(const std::string& command)
 	{
 		Log("ExecuteCommand called with: " + command);
 
-		if (I::EngineClient)
-		{
-			Log("EngineClient is available, sending command to TF2 console");
-			I::EngineClient->ClientCmd_Unrestricted(command.c_str());
-			Log("Command sent to TF2 console: " + command);
-			SendStatusUpdate("CommandExecuted:" + command);
-		}
-		else
-		{
-			Log("Error: EngineClient is not available. Command not executed: " + command);
-			SendStatusUpdate("CommandFailed:" + command);
-		}
+		Log("EngineClient is available, sending command to TF2 console");
+		I::EngineClient->ClientCmd_Unrestricted(command.c_str());
+		Log("Command sent to TF2 console: " + command);
+		SendStatusUpdate("CommandExecuted:" + command);
 	}
 
 	int GetCurrentPlayerClass()
 	{
 		Log("GetCurrentPlayerClass called");
-		if (I::EngineClient && I::EngineClient->IsInGame())
+		
+		// You should make a caching system and run it in createmove so you dont have to check for in-game status every time
+		if (I::EngineClient->IsInGame())
 		{
 			Log("In game");
 			auto pLocal = H::Entities.GetLocal();
@@ -229,14 +214,11 @@ namespace F::NamedPipe
 				return playerClass;
 			}
 			else
-			{
 				Log("Local player not found");
-			}
 		}
 		else
-		{
-			Log("Not in game or EngineClient not available");
-		}
+			Log("Not in game");
+		
 		return -1;
 	}
 
@@ -247,7 +229,7 @@ namespace F::NamedPipe
 
 	void BroadcastLocalBotId()
 	{
-		if (!I::EngineClient || !I::EngineClient->IsInGame())
+		if (!I::EngineClient->IsInGame())
 			return;
 
 		auto pResource = H::Entities.GetResource();
@@ -298,7 +280,7 @@ namespace F::NamedPipe
 
 				bool tagAdded = false;
 				auto engine = I::EngineClient;
-				if (engine && engine->IsInGame())
+				if (engine->IsInGame())
 				{
 					if (auto pResource = H::Entities.GetResource())
 					{
@@ -346,7 +328,7 @@ namespace F::NamedPipe
 		BroadcastLocalBotId();
 
 		auto engine = I::EngineClient;
-		if (!engine || !engine->IsInGame())
+		if (!engine->IsInGame())
 			return;
 
 		auto pResource = H::Entities.GetResource();
@@ -372,7 +354,7 @@ namespace F::NamedPipe
 			{
 				for (int i = 1; i <= maxClients; ++i)
 				{
-					if (!engine || !engine->IsInGame())
+					if (!engine->IsInGame())
 						return;
 
 					if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
@@ -401,9 +383,7 @@ namespace F::NamedPipe
 		std::lock_guard<std::mutex> lock(messageQueueMutex);
 
 		if (isPriority || messageQueue.size() < 100)
-		{
 			messageQueue.push_back({ type, content, isPriority });
-		}
 		else
 		{
 			for (auto it = messageQueue.begin(); it != messageQueue.end(); ++it)
@@ -431,13 +411,9 @@ namespace F::NamedPipe
 		{
 			std::string message;
 			if (botId != -1)
-			{
 				message = std::to_string(botId) + ":" + it->type + ":" + it->content + "\n";
-			}
 			else
-			{
 				message = "0:" + it->type + ":" + it->content + "\n";
-			}
 
 			DWORD bytesWritten = 0;
 			BOOL success = WriteFile(hPipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL);
@@ -522,13 +498,9 @@ namespace F::NamedPipe
 						ProcessMessageQueue();
 
 						if (botId != -1)
-						{
 							Log("Using Bot ID: " + std::to_string(botId));
-						}
 						else
-						{
 							Log("Warning: Bot ID not set");
-						}
 
 						ClearLocalBots();
 					}
@@ -541,9 +513,7 @@ namespace F::NamedPipe
 					CloseHandle(overlapped.hEvent);
 				}
 				else
-				{
 					std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				}
 			}
 
 			if (hPipe != INVALID_HANDLE_VALUE)
@@ -587,10 +557,8 @@ namespace F::NamedPipe
 
 					ProcessMessageQueue();
 
-					if (I::EngineClient && I::EngineClient->IsInGame())
-					{
+					if (I::EngineClient->IsInGame())
 						UpdateLocalBotIgnoreStatus();
-					}
 					else
 					{
 						// Not in game: ensure panel receives disconnect-ish state
@@ -681,13 +649,9 @@ namespace F::NamedPipe
 									ExecuteCommand(content);
 								}
 								else if (messageType == "LocalBot")
-								{
 									ProcessLocalBotMessage(line);
-								}
 								else
-								{
 									Log("Received unknown message type: " + messageType);
-								}
 							}
 						}
 					}
@@ -698,13 +662,9 @@ namespace F::NamedPipe
 
 
 			if (hPipe == INVALID_HANDLE_VALUE)
-			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
 			else
-			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(333));
-			}
 		}
 
 
