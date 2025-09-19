@@ -907,9 +907,22 @@ namespace Vars
 			CVar(QueueDelay, "Queue delay", 5, SLIDER_MIN, 0, 10, 1, "%im");
 			CVar(RQif, "Requeue if...", false); // Dropdown?
 			CVar(RQplt, "Players LT", 12, SLIDER_MIN, 0, 100, 1, "%i");
+			CVar(RQpgt, "Players GT", 0, SLIDER_MIN, 0, 100, 1, "%i");
 			CVar(RQkick, "Kicked", false);
 			CVar(RQLTM, "dont RQLTM", false);
 			CVar(RQIgnoreFriends, "Ignore Friends", false);
+			CVar(RQnoAbandon, "RQ w/o abandon", false);
+			CVar(AutoCommunityQueue, "Auto community queue", false);
+			CVar(ServerSearchDelay, "Server search delay", 30, SLIDER_MIN, 10, 300, 5, "%is");
+			CVar(MaxTimeOnServer, "Max time on server", 600, SLIDER_MIN, 60, 3600, 30, "%is");
+			CVar(MinPlayersOnServer, "Min players on server", 6, SLIDER_MIN, 0, 32, 1, "%i");
+			CVar(MaxPlayersOnServer, "Max players on server", 24, SLIDER_MIN, 1, 32, 1, "%i");
+			CVar(RequireNavmesh, "Require navmesh", true);
+			CVar(AvoidPasswordServers, "Avoid password servers", true);
+			CVar(OnlyNonDedicatedServers, "Only non-dedicated servers", false);
+			CVar(OnlySteamNetworkingIPs, "Only SteamNetworking IPs (169.254.*)", false);
+			CVar(PreferSteamNickServers, "Prefer '*'s Server' format", true);
+			CVar(AutoMannUpQueue, "Auto MannUp queue", false);
 		SUBNAMESPACE_END(Queueing);
 
 		SUBNAMESPACE_BEGIN(MannVsMachine, Mann vs. Machine)

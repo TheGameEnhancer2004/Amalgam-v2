@@ -210,6 +210,9 @@ public:
 	// Are we currently pathing?
 	bool isPathing() { return !crumbs.empty(); }
 
+	// Helper for external checks
+	bool IsNavMeshLoaded() const { return map && map->state == CNavParser::NavState::Active; }
+
 	CNavFile* getNavFile() { return &map->navfile; }
 
 	// Get closest nav square to target vector

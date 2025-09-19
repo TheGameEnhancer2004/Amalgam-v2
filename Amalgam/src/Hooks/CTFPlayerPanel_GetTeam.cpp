@@ -1,6 +1,6 @@
 #include "../SDK/SDK.h"
-
 #include "../Features/Players/PlayerUtils.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFPlayerPanel_GetTeam, "client.dll", "8B 91 ? ? ? ? 83 FA ? 74 ? 48 8B 05", 0x0);
 MAKE_SIGNATURE(CTFTeamStatusPlayerPanel_Update, "client.dll", "40 56 57 48 83 EC ? 48 83 3D", 0x0);
@@ -61,7 +61,6 @@ MAKE_HOOK(CTFTeamStatusPlayerPanel_Update, S::CTFTeamStatusPlayerPanel_Update(),
 MAKE_HOOK(vgui_Panel_SetBgColor, S::vgui_Panel_SetBgColor(), void,
 	void* rcx, Color_t color)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayerPanel_GetTeam[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, color);
@@ -84,5 +83,5 @@ MAKE_HOOK(vgui_Panel_SetBgColor, S::vgui_Panel_SetBgColor(), void,
 	}
 
 	CALL_ORIGINAL(rcx, color);
-#endif
 }
+#endif

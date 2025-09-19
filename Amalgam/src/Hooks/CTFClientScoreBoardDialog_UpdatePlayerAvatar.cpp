@@ -1,6 +1,6 @@
 #include "../SDK/SDK.h"
-
 #include "../Features/Players/PlayerUtils.h"
+#ifndef TEXTMODE
 
 // are all of these even used? (i.e. CTFHudMatchStatus_UpdatePlayerAvatar)
 MAKE_SIGNATURE(CTFClientScoreBoardDialog_UpdatePlayerAvatar, "client.dll", "4D 85 C0 0F 84 ? ? ? ? 53 41 54 41 57", 0x0);
@@ -108,3 +108,4 @@ MAKE_HOOK(SectionedListPanel_SetItemFgColor, S::SectionedListPanel_SetItemFgColo
 
 	CALL_ORIGINAL(rcx, itemID, color);
 }
+#endif

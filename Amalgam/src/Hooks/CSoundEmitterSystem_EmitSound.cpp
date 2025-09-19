@@ -1,4 +1,5 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CSoundEmitterSystem_EmitSound, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 41 56 48 81 EC ? ? ? ? 49 8B D9", 0x0);
 //MAKE_SIGNATURE(S_StartDynamicSound, "engine.dll", "4C 8B DC 57 48 81 EC", 0x0);
@@ -175,3 +176,4 @@ MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 
 	return CALL_ORIGINAL(params);
 }
+#endif

@@ -98,7 +98,7 @@ void CAutoItem::GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPla
 		return;
 	}
 
-	const auto pAchievementMgr = U::Memory.CallVirtual<114, IAchievementMgr*>(I::EngineClient);
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
 
 	// Single item, rent or simply get via achievement, use fallback if needed and specified.
 	if (sItemDefs.find(',') == std::string::npos && sItemDefs.find(';') == std::string::npos)
@@ -284,7 +284,7 @@ void CAutoItem::EquipItem(CTFInventoryManager* pInventoryManager, CTFPlayerInven
 
 bool CAutoItem::UnlockAchievementItem(int iAchievementId)
 {
-	const auto pAchievementMgr = U::Memory.CallVirtual<114, IAchievementMgr*>(I::EngineClient);
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
 	if (pAchievementMgr && pAchievementMgr->GetAchievementByID(iAchievementId))
 	{
 		pAchievementMgr->AwardAchievement(iAchievementId);

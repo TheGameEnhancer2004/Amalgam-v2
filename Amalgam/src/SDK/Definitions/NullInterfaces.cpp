@@ -40,5 +40,8 @@ bool CNullInterfaces::Initialize()
 	S::Get_SteamNetworkingUtils.Call<ISteamNetworkingUtils*>(&I::SteamNetworkingUtils);
 	Validate(I::SteamNetworkingUtils);
 
+	I::SteamMatchmakingServers = I::SteamClient->GetISteamMatchmakingServers(hsNewUser, hsNewPipe, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION);
+	Validate(I::SteamMatchmakingServers);
+
 	return !m_bFailed;
 }
