@@ -101,6 +101,7 @@ public:
 	int GetLevel(uint32_t uAccountID);
 	uint64_t GetParty(int iIndex);
 	uint64_t GetParty(uint32_t uAccountID);
+	uint32_t GetLocalAccountID();
 };
 
 ADD_FEATURE_CUSTOM(CEntities, Entities, H);

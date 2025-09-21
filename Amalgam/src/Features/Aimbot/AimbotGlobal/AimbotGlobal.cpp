@@ -220,7 +220,7 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 
 #ifdef TEXTMODE
 		auto pResource = H::Entities.GetResource();
-		if (pResource && F::NamedPipe::IsLocalBot(pResource->m_iAccountID(pEntity->entindex())))
+		if (pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(pEntity->entindex())))
 			return true;
 #endif
 

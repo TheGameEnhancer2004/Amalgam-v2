@@ -92,7 +92,7 @@ int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayer
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
 		return -1;
 #ifdef TEXTMODE
-	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
 		return 0;
 #endif
 
@@ -3089,7 +3089,7 @@ void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
 			continue;
 #ifdef TEXTMODE
 		// Is this a local bot????
-		if (!F::NamedPipe::IsLocalBot(pResource->m_iAccountID(i)))
+		if (!F::NamedPipe.IsLocalBot(pResource->m_iAccountID(i)))
 			continue;
 #endif
 

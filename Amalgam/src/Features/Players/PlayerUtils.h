@@ -1,6 +1,6 @@
 #pragma once
 #include "../../SDK/SDK.h"
-#include <mutex>
+#include <shared_mutex>
 
 #define DEFAULT_TAG 0
 #define IGNORED_TAG (DEFAULT_TAG-1)
@@ -78,7 +78,7 @@ public:
 		0xE0, 0xB9, 0x8C,  // '์'
 		0xE0, 0xB9, 0xB9   // 'ู'
 	};
-	std::mutex m_mutex;
+	std::shared_mutex m_mutex;
 
 private:
 	std::vector<int> m_vDummy = {};

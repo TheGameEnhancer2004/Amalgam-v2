@@ -511,3 +511,8 @@ int CEntities::GetLevel(int iIndex) { return m_mILevels.contains(iIndex) ? m_mIL
 int CEntities::GetLevel(uint32_t uAccountID) { return m_mULevels.contains(uAccountID) ? m_mULevels[uAccountID] : -2; }
 uint64_t CEntities::GetParty(int iIndex) { return m_mIParty.contains(iIndex) ? m_mIParty[iIndex] : 0; }
 uint64_t CEntities::GetParty(uint32_t uAccountID) { return m_mUParty.contains(uAccountID) ? m_mUParty[uAccountID] : 0; }
+
+uint32_t CEntities::GetLocalAccountID()
+{
+	return m_uAccountID;
+}

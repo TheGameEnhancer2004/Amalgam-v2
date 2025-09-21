@@ -146,7 +146,7 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		{
 			if (F::Menu.m_bIsOpen)
 				I::MatSystemSurface->SetCursorAlwaysVisible(F::Menu.m_bIsOpen = false);
-			U::Core.m_bUnload = true;
+			U::Core.m_bUnload = G::Unload = true;
 		}
 	},
 	{

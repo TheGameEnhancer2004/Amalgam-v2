@@ -18,11 +18,7 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	CheatsBypass();
 	WeaponSway();
 
-	#ifdef TEXTMODE
-	static Timer tNamedPipeTimer{};
-	if (tNamedPipeTimer.Run(1.0f))
-		F::NamedPipe::UpdateLocalBotIgnoreStatus();
-	#endif
+	F::NamedPipe.Store(pLocal, true);
 
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);

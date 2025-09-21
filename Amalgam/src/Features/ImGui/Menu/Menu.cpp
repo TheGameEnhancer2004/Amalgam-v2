@@ -1447,9 +1447,9 @@ void CMenu::MenuLogs(int iTab)
 		{
 			if (I::EngineClient->IsInGame())
 			{
-				std::lock_guard lock(F::PlayerUtils.m_mutex);
-				const auto& vPlayers = F::PlayerUtils.m_vPlayerCache;
-
+				std::unique_lock lock(F::PlayerUtils.m_mutex);
+				const auto vPlayers = F::PlayerUtils.m_vPlayerCache;
+				lock.unlock();
 				std::unordered_map<uint64_t, std::vector<const ListPlayer*>> mParties = {};
 				std::unordered_map<uint64_t, float> mHues = {}; // don't just shift based on party id in the case that it will be similar
 				for (auto& tPlayer : vPlayers)

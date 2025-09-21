@@ -456,7 +456,7 @@ void CPlayerlistUtils::Store()
 			ProcessSpecialCharsInName(uAccountID, sName);
 
 		m_vPlayerCache.emplace_back(
-			pResource->GetName(n),
+			sName,
 			uAccountID,
 			pResource->m_iUserID(n),
 			pResource->m_iTeam(n),

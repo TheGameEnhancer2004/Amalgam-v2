@@ -11,6 +11,10 @@
 #include "../../Features/Resolver/Resolver.h"
 #include "../../Features/Visuals/Visuals.h"
 #include "../../Features/Killstreak/Killstreak.h"
+#ifdef TEXTMODE
+#include "../../Features/Misc/NamedPipe/NamedPipe.h"
+#endif
+
 
 bool CEventListener::Initialize()
 {
@@ -54,6 +58,8 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 	F::Misc.Event(pEvent, uHash);
 #ifndef TEXTMODE
 	F::Visuals.Event(pEvent, uHash);
+#else
+	F::NamedPipe.Event(pEvent, uHash);
 #endif
 	switch (uHash)
 	{

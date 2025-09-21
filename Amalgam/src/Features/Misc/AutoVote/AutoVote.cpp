@@ -16,13 +16,13 @@ void CAutoVote::UserMessage(bf_read& msgData)
 #ifdef TEXTMODE
 	if (auto pResource = H::Entities.GetResource(); pResource)
 	{
-		if (F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iTarget)))
+		if (F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iTarget)))
 		{
 			I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
 			return;
 		}
 
-		if (F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iCaller)))
+		if (F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iCaller)))
 		{
 			I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
 			return;

@@ -12,7 +12,7 @@ MAKE_HOOK(HostState_Shutdown, S::HostState_Shutdown(), void)
 		return CALL_ORIGINAL();
 #endif
 
-	U::Core.m_bUnload = true;
+	U::Core.m_bUnload = G::Unload = true;
 	CALL_ORIGINAL();
 }
 
@@ -23,6 +23,6 @@ MAKE_HOOK(HostState_Restart, S::HostState_Restart(), void)
 		return CALL_ORIGINAL();
 #endif
 
-	U::Core.m_bUnload = true;
+	U::Core.m_bUnload = G::Unload = true;
 	CALL_ORIGINAL();
 }

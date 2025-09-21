@@ -141,7 +141,7 @@ void CCore::Load()
 #endif
 	U::ConVars.Initialize();
 #ifdef TEXTMODE
-	F::NamedPipe::Initialize();
+	F::NamedPipe.Initialize();
 #endif
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
@@ -194,7 +194,7 @@ void CCore::Unload()
 
 	Sleep(250);
 #ifdef TEXTMODE
-	F::NamedPipe::Shutdown();
+	F::NamedPipe.Shutdown();
 #endif
 	U::ConVars.Unload();
 	F::Materials.UnloadMaterials();
