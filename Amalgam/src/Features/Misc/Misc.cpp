@@ -17,9 +17,9 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	MicSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
-
+#ifdef TEXTMODE
 	F::NamedPipe.Store(pLocal, true);
-
+#endif
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
 	RandomVotekick(pLocal);
