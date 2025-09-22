@@ -148,7 +148,7 @@ public:
 
 		explicit Map(const char* mapname) : navfile(mapname), mapname(mapname) { state = navfile.m_isOK ? NavState::Active : NavState::Unavailable; }
 
-		float LeastCostEstimate(void* start, void* end) override { return reinterpret_cast<CNavArea*>(start)->m_center.DistToSqr(reinterpret_cast<CNavArea*>(end)->m_center); }
+		float LeastCostEstimate(void* start, void* end) override { return reinterpret_cast<CNavArea*>(start)->m_center.DistTo(reinterpret_cast<CNavArea*>(end)->m_center); }
 
 		void AdjacentCost(void* main, std::vector<micropather::StateCost>* adjacent) override;
 
