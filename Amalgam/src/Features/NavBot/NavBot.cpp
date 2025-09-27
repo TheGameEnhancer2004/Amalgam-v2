@@ -92,7 +92,7 @@ int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayer
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
 		return -1;
 #ifdef TEXTMODE
-	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe::IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
 		return 0;
 #endif
 
@@ -2898,7 +2898,7 @@ void CNavBot::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCm
 		}
 
 		bool bResult = false;
-		Vector vPredictedPos = bSimple ? pEnemy->GetAbsOrigin() + pEnemy->GetAbsVelocity() * iMaxTicks : tStorage.m_vPredictedOrigin;
+		Vector vPredictedPos = bSimple ? pEnemy->GetAbsOrigin() + pEnemy->GetAbsVelocity() * TICKS_TO_TIME(iMaxTicks) : tStorage.m_vPredictedOrigin;
 		
 		auto pTargetNav = F::NavEngine.findClosestNavSquare(vPredictedPos);
 		if (pTargetNav)
@@ -2935,7 +2935,7 @@ bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
 void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	static Timer tDoubletapRecharge{};
-	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value || (pLocal && !pLocal->IsAlive()) || !F::NavEngine.isReady())
+	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value || !pLocal->IsAlive() || !F::NavEngine.isReady())
 	{
 		m_iStayNearTargetIdx = -1;
 		m_mAutoScopeCache.clear();
@@ -2948,7 +2948,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
 		return;
 
-	if (!pLocal || !pWeapon || !pCmd)
+	if (!pWeapon || !pCmd)
 		return;
 
 	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK)
@@ -3089,7 +3089,7 @@ void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
 			continue;
 #ifdef TEXTMODE
 		// Is this a local bot????
-		if (!F::NamedPipe::IsLocalBot(pResource->m_iAccountID(i)))
+		if (!F::NamedPipe.IsLocalBot(pResource->m_iAccountID(i)))
 			continue;
 #endif
 

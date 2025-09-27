@@ -75,7 +75,7 @@ void CMenu::DrawMenu()
 				{ "AIMBOT", "GENERAL" },
 				{ "VISUALS", "ESP", "AIMDRAW", "MISC##", "MENU" },
 				{ "HVH", "MAIN" },
-				{ "MISC", "MAIN", "NAVBOT"},
+				{ "MISC", "MAIN", "BOT"},
 				{ "LOGS", "PLAYERLIST", "SETTINGS##", "OUTPUT" },
 				{ "SETTINGS", "CONFIG", "BINDS", "MATERIALS", "EXTRA" }
 			},
@@ -1214,18 +1214,6 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
 					FDropdown(Vars::Misc::Automation::AutoVotekick);
 				} EndSection();
-				if (Section("Auto-Item"))
-				{
-					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
-					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
-					FSlider(Vars::Misc::Automation::AutoItem::Interval);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
-				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{
 					FToggle(Vars::Misc::MannVsMachine::InstantRespawn, FToggleEnum::Left);
@@ -1274,36 +1262,6 @@ void CMenu::MenuMisc(int iTab)
 						FToggle(Vars::Misc::Game::AntiCheatCritHack);
 					} EndSection();
 				}
-				if (Section("Queueing"))
-				{
-					FDropdown(Vars::Misc::Queueing::ForceRegions);
-					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
-					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
-					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
-					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::Queueing::RQif.Value);
-					{
-						FSlider(Vars::Misc::Queueing::RQplt);
-						FToggle(Vars::Misc::Queueing::RQkick, FToggleEnum::Left);
-						FToggle(Vars::Misc::Queueing::RQLTM, FToggleEnum::Right);
-						FToggle(Vars::Misc::Queueing::RQIgnoreFriends, FToggleEnum::Left);
-					}
-					PopTransparent();
-				} EndSection();
-				if (Section("Chat"))
-				{
-					FToggle(Vars::Misc::Automation::ChatSpam::Enable, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
-					{
-						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Right | FSliderEnum::Clamp);
-						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
-						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
-					}
-					PopTransparent();
-					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
-					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
-				} EndSection();
 				if (Section("Sound"))
 				{
 					FDropdown(Vars::Misc::Sound::Block);
@@ -1338,27 +1296,7 @@ void CMenu::MenuMisc(int iTab)
 					}
 					PopTransparent();
 				} EndSection();
-				if (Vars::Debug::Options.Value)
-				{
-					if (Section("##Debug Nav engine"))
-					{
-						FToggle(Vars::Misc::Movement::NavEngine::SafePathing);
-						FSlider(Vars::Misc::Movement::NavEngine::StickyIgnoreTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckDetectTime, FSliderEnum::Right);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckBlacklistTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckExpireTime, FSliderEnum::Right);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckTime, FSliderEnum::None);
-						FToggle(Vars::Misc::Movement::NavEngine::VischeckEnabled);
-						FSlider(Vars::Misc::Movement::NavEngine::VischeckTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::VischeckCacheTime, FSliderEnum::Right);
-					} EndSection();
-				}
-			}
-
-			/* Column 2 */
-			TableNextColumn();
-			{
-				if (Section("Navbot", 8))
+								if (Section("Navbot", 8))
 				{
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
@@ -1409,6 +1347,85 @@ void CMenu::MenuMisc(int iTab)
 						FTooltip("should double the performance of the movesim method by only checking every 2nd tick");
 					} EndSection();
 				}
+				if (Vars::Debug::Options.Value)
+				{
+					if (Section("##Debug Nav engine"))
+					{
+						FToggle(Vars::Misc::Movement::NavEngine::SafePathing);
+						FSlider(Vars::Misc::Movement::NavEngine::StickyIgnoreTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckDetectTime, FSliderEnum::Right);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckBlacklistTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckExpireTime, FSliderEnum::Right);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckTime, FSliderEnum::None);
+						FToggle(Vars::Misc::Movement::NavEngine::VischeckEnabled);
+						FSlider(Vars::Misc::Movement::NavEngine::VischeckTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::VischeckCacheTime, FSliderEnum::Right);
+					} EndSection();
+				}
+			}
+
+			/* Column 2 */
+			TableNextColumn();
+			{
+				if (Section("Auto-Item"))
+				{
+					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
+					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
+					FSlider(Vars::Misc::Automation::AutoItem::Interval);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
+				} EndSection();
+			if (Section("Queueing"))
+				{
+					FDropdown(Vars::Misc::Queueing::ForceRegions);
+					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
+                    FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
+					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Queueing::RQif.Value);
+					{
+						FSlider(Vars::Misc::Queueing::RQplt);
+						FSlider(Vars::Misc::Queueing::RQpgt);
+						FToggle(Vars::Misc::Queueing::RQkick, FToggleEnum::Left);
+						FToggle(Vars::Misc::Queueing::RQnoAbandon, FToggleEnum::Right);
+						FToggle(Vars::Misc::Queueing::RQIgnoreFriends, FToggleEnum::Left);
+						FToggle(Vars::Misc::Queueing::RQLTM, FToggleEnum::Right);
+					}
+					PopTransparent();
+					
+					FToggle(Vars::Misc::Queueing::AutoCommunityQueue, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Queueing::AutoCommunityQueue.Value);
+					{
+						FSlider(Vars::Misc::Queueing::ServerSearchDelay, FSliderEnum::Left);
+						FSlider(Vars::Misc::Queueing::MaxTimeOnServer, FSliderEnum::Right);
+						FSlider(Vars::Misc::Queueing::MinPlayersOnServer, FSliderEnum::Left);
+						FSlider(Vars::Misc::Queueing::MaxPlayersOnServer, FSliderEnum::Right);
+						FToggle(Vars::Misc::Queueing::RequireNavmesh, FToggleEnum::Left);
+						FToggle(Vars::Misc::Queueing::AvoidPasswordServers, FToggleEnum::Right);
+						FToggle(Vars::Misc::Queueing::OnlyNonDedicatedServers, FToggleEnum::Left);
+						FToggle(Vars::Misc::Queueing::OnlySteamNetworkingIPs, FToggleEnum::Right);
+						FToggle(Vars::Misc::Queueing::PreferSteamNickServers, FToggleEnum::Left);
+					}
+					PopTransparent();
+				} EndSection();
+				if (Section("Chat"))
+				{
+					FToggle(Vars::Misc::Automation::ChatSpam::Enable);
+					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
+					{
+						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Clamp);
+						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
+						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
+					}
+					PopTransparent();
+					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
+					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
+				} EndSection();
 			}
 			EndTable();
 		}
@@ -1430,9 +1447,9 @@ void CMenu::MenuLogs(int iTab)
 		{
 			if (I::EngineClient->IsInGame())
 			{
-				std::lock_guard lock(F::PlayerUtils.m_mutex);
-				const auto& vPlayers = F::PlayerUtils.m_vPlayerCache;
-
+				std::unique_lock lock(F::PlayerUtils.m_mutex);
+				const auto vPlayers = F::PlayerUtils.m_vPlayerCache;
+				lock.unlock();
 				std::unordered_map<uint64_t, std::vector<const ListPlayer*>> mParties = {};
 				std::unordered_map<uint64_t, float> mHues = {}; // don't just shift based on party id in the case that it will be similar
 				for (auto& tPlayer : vPlayers)

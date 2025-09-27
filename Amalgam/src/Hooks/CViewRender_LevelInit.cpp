@@ -24,6 +24,8 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 #ifndef TEXTMODE
 	F::Materials.ReloadMaterials();
 	F::Visuals.OverrideWorldTextures();
+	F::Killstreak.Reset();
+	F::Spectate.m_iIntendedTarget = -1;
 #endif
 
 	F::Backtrack.Reset();
@@ -34,8 +36,6 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	F::GameObjectiveController.Reset();
 	F::NavEngine.Reset();
 	F::NavBot.Reset();
-	F::Killstreak.Reset();
-	F::Spectate.m_iIntendedTarget = -1;
 
 	CALL_ORIGINAL(rcx);
 }

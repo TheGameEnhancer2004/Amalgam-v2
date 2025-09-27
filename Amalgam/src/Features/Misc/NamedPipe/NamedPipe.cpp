@@ -10,923 +10,543 @@
 #include "NamedPipe.h"
 #include "../../../SDK/SDK.h"
 #include "../../Players/PlayerUtils.h"
-#include "../../Configs/Configs.h"
 
-#include <windows.h>
-#include <thread>
-#include <atomic>
-#include <sstream>
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <regex>
-#include <unordered_map>
-#include <filesystem>
-#include <ShlObj.h>
+#include <sstream>
 
-namespace F::NamedPipe
+const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
+const int BASE_RECONNECT_DELAY_MS = 500;
+const int MAX_RECONNECT_DELAY_MS = 10000;
+
+void CNamedPipe::Initialize()
 {
-	HANDLE hPipe = INVALID_HANDLE_VALUE;
-	std::atomic<bool> shouldRun(true);
-	std::thread pipeThread;
-	std::ofstream logFile("C:\\pipe_log.txt", std::ios::app);
-	int botId = -1;
+	Log("NamedPipe::Initialize() called");
+	m_logFile.open("C:\\pipe_log.txt", std::ios::app);
+	if (!m_logFile.is_open())
+		std::cerr << "Failed to open log file" << std::endl;
 
-	const int MAX_RECONNECT_ATTEMPTS = 10;
-	const int BASE_RECONNECT_DELAY_MS = 500;
-	const int MAX_RECONNECT_DELAY_MS = 10000;
-	int currentReconnectAttempts = 0;
-	DWORD lastConnectAttemptTime = 0;
+	m_iBotId = ReadBotIdFromFile();
 
-	std::mutex messageQueueMutex;
-	struct PendingMessage
+	if (m_iBotId == -1)
+		Log("Failed to read bot ID from file");
+	else
+		Log("Bot ID read from file: " + std::to_string(m_iBotId));
+
+	m_mLocalBots.clear();
+	Log("Cleared local bots list on startup");
+
+	m_pipeThread = std::thread(ConnectAndMaintainPipe);
+	Log("Pipe thread started");
+}
+
+void CNamedPipe::Shutdown()
+{
+	m_shouldRun.store(false);
+	if (m_pipeThread.joinable())
+		m_pipeThread.join();
+}
+
+void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
+{
+	std::lock_guard lock(m_infoMutex);
+	if (bCreateMove)
 	{
-		std::string type;
-		std::string content;
-		bool isPriority;
-	};
-	std::vector<PendingMessage> messageQueue;
+		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
+		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
 
-	std::unordered_map<uint32_t, bool> localBots;
-
-
-	void ConnectAndMaintainPipe();
-	void QueueMessage(const std::string& type, const std::string& content, bool isPriority);
-	void ProcessMessageQueue();
-	bool SafeWriteToPipe(const std::string& message);
-	int GetReconnectDelayMs();
-
-	void Log(const std::string& message)
-	{
-		if (!logFile.is_open())
-		{
-			std::cerr << "Failed to open log file" << std::endl;
-			return;
-		}
-		logFile << message << std::endl;
-		logFile.flush();
-		OutputDebugStringA(("NamedPipe: " + message + "\n").c_str());
+		UpdateLocalBotIgnoreStatus();
+		return;
 	}
 
-	const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
+	if (!tInfo.m_uAccountID)
+		tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
+	tInfo.m_bInGame = I::EngineClient->IsInGame();
 
-	std::string GetErrorMessage(DWORD error)
+	if (!m_bSetMapName)
 	{
-		char* messageBuffer = nullptr;
-		size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-									 NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-		std::string message(messageBuffer, size);
-		LocalFree(messageBuffer);
-		return message;
+		tInfo.m_sCurrentMapName = SDK::GetLevelName();
+		m_bSetMapName = true;
 	}
 
-	std::string GetTF2Folder()
+	if (!m_bSetServerName)
 	{
-		// Try common Steam install paths first
-		std::vector<std::string> commonPaths = {
-			"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Team Fortress 2",
-			"C:\\Program Files\\Steam\\steamapps\\common\\Team Fortress 2",
-			"D:\\Steam\\steamapps\\common\\Team Fortress 2",
-			"E:\\Steam\\steamapps\\common\\Team Fortress 2"
-		};
-
-		for (const auto& path : commonPaths)
+		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
 		{
-			if (std::filesystem::exists(path))
+			const char* cAddr = pNetChan->GetAddress();
+			if (cAddr && cAddr[0] != '\0' && std::string(cAddr) != "loopback")
 			{
-				Log("Found TF2 folder at common path: " + path);
-				return path;
+				tInfo.m_sCurrentServer = std::string(cAddr);
+				m_bSetServerName = true;
 			}
 		}
+	}
+}
 
-		// Try to get from the registry
-		char steamPath[MAX_PATH] = { 0 };
-		DWORD pathSize = sizeof(steamPath);
-		HKEY hKey;
+void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
+{
+	switch (uHash)
+	{
+	case FNV1A::Hash32Const("client_disconnect"):
+	case FNV1A::Hash32Const("game_newmap"):
+		Reset();
+	}
+}
 
-		if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+void CNamedPipe::Reset()
+{
+	std::lock_guard lock(m_infoMutex);
+	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, "N/A", "N/A", tInfo.m_uAccountID, false);
+	m_bSetServerName = false;
+	m_bSetMapName = false;
+}
+
+void CNamedPipe::Log(std::string sMessage)
+{
+	std::lock_guard lock(m_logMutex);
+	if (!m_logFile.is_open())
+		return;
+
+	m_logFile << sMessage << std::endl;
+	m_logFile.flush();
+	OutputDebugStringA(("NamedPipe: " + sMessage + "\n").c_str());
+}
+
+std::string CNamedPipe::GetErrorMessage(DWORD dwError)
+{
+	char* cMessageBuffer = nullptr;
+	size_t uSize = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+								  NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&cMessageBuffer, 0, NULL);
+	std::string sMessage(cMessageBuffer, uSize);
+	LocalFree(cMessageBuffer);
+	return sMessage;
+}
+
+int CNamedPipe::GetBotIdFromEnv()
+{
+	char* cEnvVal = nullptr;
+	size_t len = 0;
+
+	if (_dupenv_s(&cEnvVal, &len, "BOTID") == 0 && cEnvVal)
+	{
+		int iId = atoi(cEnvVal);
+		free(cEnvVal);
+		if (iId > 0)
 		{
-			if (RegQueryValueExA(hKey, "SteamPath", NULL, NULL, (LPBYTE)steamPath, &pathSize) == ERROR_SUCCESS)
-			{
-				RegCloseKey(hKey);
-				std::string possiblePath = std::string(steamPath) + "\\steamapps\\common\\Team Fortress 2";
-				if (std::filesystem::exists(possiblePath))
-				{
-					Log("Found TF2 folder from registry: " + possiblePath);
-					return possiblePath;
-				}
-			}
-			RegCloseKey(hKey);
+			Log("Found BOTID environment variable: " + std::to_string(iId));
+			return iId;
 		}
-
-		// Try config path as fallback
-		std::string configPath = F::Configs.m_sConfigPath;
-		Log("Using config path as fallback: " + configPath);
-		size_t pos = configPath.find_last_of("\\");
-		if (pos != std::string::npos)
-		{
-			std::string baseFolder = configPath.substr(0, pos);
-			Log("Derived base folder: " + baseFolder);
-			return baseFolder;
-		}
-
-		// Last resort - get exe path
-		char modulePath[MAX_PATH];
-		GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
-
-		std::string path = modulePath;
-		Log("Module path: " + path);
-		pos = path.find_last_of("\\");
-		if (pos != std::string::npos)
-			path = path.substr(0, pos);
-
-		Log("Final TF2 folder determination: " + path);
-		return path;
 	}
 
-	int ReadBotIdFromFile()
+	return -1;
+}
+
+int CNamedPipe::ReadBotIdFromFile()
+{
+	int iEnvId = GetBotIdFromEnv();
+	if (iEnvId == -1)
 	{
-		// Get paths to check
-		std::string tf2Folder = GetTF2Folder();
-		std::string amalgamFolder = F::Configs.m_sConfigPath;
+		Log("BOTID environment variable not set. Using fallback ID 1.");
+		return 1;
+	}
+	return iEnvId;
+}
 
-		Log("Starting bot ID file search...");
-		Log("TF2 folder: " + tf2Folder);
-		Log("Amalgam folder: " + amalgamFolder);
+int CNamedPipe::GetReconnectDelayMs()
+{
+	int iDelay = std::min(
+		BASE_RECONNECT_DELAY_MS * (1 << std::min(m_iCurrentReconnectAttempts, 10)),
+		MAX_RECONNECT_DELAY_MS
+	);
 
-		std::regex botFileRegex("bot(\\d+)\\.txt");
+	int iJitter = iDelay * 0.2 * (static_cast<double>(rand()) / RAND_MAX - 0.5);
+	return iDelay + iJitter;
+}
 
-		// List of folders to check, in order of preference
-		std::vector<std::pair<std::string, std::string>> foldersToCheck = {
-			{tf2Folder, "TF2"},
-			{amalgamFolder, "Amalgam"},
-			{std::filesystem::current_path().string(), "Current Working Directory"}
-		};
+void CNamedPipe::ConnectAndMaintainPipe()
+{
+	F::NamedPipe.Log("ConnectAndMaintainPipe started");
+	srand(static_cast<unsigned int>(time(nullptr)));
 
-		// Try to find in each folder
-		for (const auto& [folder, folderName] : foldersToCheck)
+	while (F::NamedPipe.m_shouldRun.load())
+	{
+		DWORD dwCurrentTime = GetTickCount();
+		if (F::NamedPipe.m_hPipe == INVALID_HANDLE_VALUE)
 		{
-			Log("Searching in " + folderName + " folder: " + folder);
-
-			if (!std::filesystem::exists(folder))
+			int iReconnectDelay = F::NamedPipe.GetReconnectDelayMs();
+			if (dwCurrentTime - F::NamedPipe.m_dwLastConnectAttemptTime > static_cast<DWORD>(iReconnectDelay) || F::NamedPipe.m_dwLastConnectAttemptTime == 0)
 			{
-				Log(folderName + " folder doesn't exist: " + folder);
-				continue;
-			}
+				F::NamedPipe.m_dwLastConnectAttemptTime = dwCurrentTime;
+				F::NamedPipe.m_iCurrentReconnectAttempts++;
 
-			try
-			{
-				for (const auto& entry : std::filesystem::directory_iterator(folder))
+				F::NamedPipe.Log("Attempting to connect to pipe (attempt " + std::to_string(F::NamedPipe.m_iCurrentReconnectAttempts) +
+					", delay: " + std::to_string(iReconnectDelay) + "ms)");
+
+				OVERLAPPED tOverlapped = { 0 };
+				tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+				if (tOverlapped.hEvent == NULL)
 				{
-					if (!entry.is_regular_file()) continue;
-
-					std::string filename = entry.path().filename().string();
-					Log("Found file: " + filename);
-
-					std::smatch match;
-					if (std::regex_match(filename, match, botFileRegex))
-					{
-						int botId = std::stoi(match[1]);
-						Log("Found bot ID " + std::to_string(botId) + " in " + folderName + " folder");
-						return botId;
-					}
+					F::NamedPipe.Log("Failed to create connection event: " + std::to_string(GetLastError()));
+					std::this_thread::sleep_for(std::chrono::milliseconds(iReconnectDelay));
+					continue;
 				}
-			}
-			catch (const std::exception& e)
-			{
-				Log("Error searching " + folderName + " folder: " + std::string(e.what()));
 
-				// Try old-style FindFirstFile as backup
-				WIN32_FIND_DATA findFileData;
-				HANDLE hFind = FindFirstFile((folder + "\\*.txt").c_str(), &findFileData);
-				if (hFind != INVALID_HANDLE_VALUE)
+				F::NamedPipe.m_hPipe = CreateFile(
+					PIPE_NAME,
+					GENERIC_READ | GENERIC_WRITE,
+					0,
+					NULL,
+					OPEN_EXISTING,
+					FILE_FLAG_OVERLAPPED,
+					NULL);
+
+				if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
 				{
-					do
-					{
-						std::string filename(findFileData.cFileName);
-						Log("Found file (FindFirstFile): " + filename);
-						std::smatch match;
-						if (std::regex_match(filename, match, botFileRegex))
-						{
-							int botId = std::stoi(match[1]);
-							Log("Found bot ID " + std::to_string(botId) + " in " + folderName + " folder using FindFirstFile");
-							FindClose(hFind);
-							return botId;
-						}
-					}
-					while (FindNextFile(hFind, &findFileData) != 0);
-					FindClose(hFind);
-				}
-				else
-				{
-					DWORD error = GetLastError();
-					Log("FindFirstFile failed in " + folderName + " folder: " + GetErrorMessage(error));
-				}
-			}
-		}
+					F::NamedPipe.m_iCurrentReconnectAttempts = 0;
+					F::NamedPipe.Log("Connected to pipe");
 
-		// If no bot ID file was found, create one in the Amalgam folder
-		Log("No bot ID file found, attempting to create one");
+					DWORD dwPipeMode = PIPE_READMODE_MESSAGE;
+					SetNamedPipeHandleState(F::NamedPipe.m_hPipe, &dwPipeMode, NULL, NULL);
 
-		// Try folders in reverse (write to TF2 folder last as it might require admin permissions)
-		for (auto it = foldersToCheck.rbegin(); it != foldersToCheck.rend(); ++it)
-		{
-			const auto& [folder, folderName] = *it;
+					F::NamedPipe.QueueMessage("Status", "Connected", true);
+					F::NamedPipe.ProcessMessageQueue();
 
-			if (!std::filesystem::exists(folder))
-			{
-				Log("Can't create file in " + folderName + " folder - folder doesn't exist");
-				continue;
-			}
-
-			try
-			{
-				std::string filepath = folder + "\\bot1.txt";
-				Log("Attempting to create " + filepath);
-
-				std::ofstream botFile(filepath);
-				if (botFile.is_open())
-				{
-					botFile << "This file is used to identify the bot instance. ID: 1";
-					botFile.close();
-
-					if (std::filesystem::exists(filepath))
-					{
-						Log("Successfully created bot ID file in " + folderName + " folder");
-						return 1;
-					}
+					if (F::NamedPipe.m_iBotId != -1)
+						F::NamedPipe.Log("Using Bot ID: " + std::to_string(F::NamedPipe.m_iBotId));
 					else
-					{
-						Log("File creation reported success but file doesn't exist in " + folderName + " folder");
-					}
+						F::NamedPipe.Log("Warning: Bot ID not set");
+					F::NamedPipe.ClearLocalBots();
 				}
 				else
 				{
-					Log("Failed to open file for writing in " + folderName + " folder");
+					DWORD dwError = GetLastError();
+					F::NamedPipe.Log("Failed to connect to pipe: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
+				}
+				CloseHandle(tOverlapped.hEvent);
+			}
+			else
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+
+		if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
+		{
+			DWORD dwBytesAvail = 0;
+			if (!PeekNamedPipe(F::NamedPipe.m_hPipe, NULL, 0, NULL, &dwBytesAvail, NULL))
+			{
+				DWORD dwError = GetLastError();
+				if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED || dwError == ERROR_NO_DATA)
+				{
+					F::NamedPipe.Log("Pipe disconnected: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
+					CloseHandle(F::NamedPipe.m_hPipe);
+					F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+					continue;
 				}
 			}
-			catch (const std::exception& e)
+			F::NamedPipe.ProcessMessageQueue();
+
+			F::NamedPipe.QueueMessage("Status", "Heartbeat", true);
+			F::NamedPipe.ProcessMessageQueue();
+
+			static int iUpdateCounter = 0;
+			if (++iUpdateCounter % 3 == 0)
 			{
-				Log("Exception creating file in " + folderName + " folder: " + std::string(e.what()));
-			}
-		}
+				std::unique_lock lock(F::NamedPipe.m_infoMutex);
 
-		Log("Failed to find or create any bot ID file");
-		return -1;
-	}
+				// Client info
+				F::NamedPipe.QueueMessage("Map", F::NamedPipe.tInfo.m_sCurrentMapName, false);
+				F::NamedPipe.QueueMessage("Server", F::NamedPipe.tInfo.m_sCurrentServer, false);
+				F::NamedPipe.QueueMessage("PlayerClass", F::NamedPipe.GetPlayerClassName(F::NamedPipe.tInfo.m_iCurrentClass), false);
+				F::NamedPipe.QueueMessage("Health", std::to_string(F::NamedPipe.tInfo.m_iCurrentHealth), false);
+				F::NamedPipe.ProcessMessageQueue();
 
-	void Initialize()
-	{
-		Log("NamedPipe::Initialize() called");
-		botId = ReadBotIdFromFile();
-
-		std::stringstream ss;
-		if (botId == -1)
-		{
-			ss << "Failed to read bot ID from file";
-			Log(ss.str());
-		}
-		else
-		{
-			ss << "Bot ID read from file: " << botId;
-			Log(ss.str());
-		}
-
-		localBots.clear();
-		Log("Cleared local bots list on startup");
-
-		pipeThread = std::thread(ConnectAndMaintainPipe);
-		Log("Pipe thread started");
-	}
-
-	void Shutdown()
-	{
-		shouldRun = false;
-		if (pipeThread.joinable())
-		{
-			pipeThread.join();
-		}
-	}
-
-	void SendStatusUpdate(const std::string& status)
-	{
-		// Queue the status update message with high priority
-		QueueMessage("Status", status, true);
-
-		// Process immediately if connected
-		if (hPipe != INVALID_HANDLE_VALUE)
-		{
-			ProcessMessageQueue();
-		}
-	}
-
-	void ExecuteCommand(const std::string& command)
-	{
-		Log("ExecuteCommand called with: " + command);
-
-		if (command == "debug navbot")
-		{
-			Log("Debug navbot command received, sending 'kill' to TF2 console");
-			if (I::EngineClient)
-			{
-				I::EngineClient->ClientCmd_Unrestricted("kill");
-				Log("'kill' command sent to TF2 console");
-				SendStatusUpdate("CommandExecuted:kill");
-			}
-			else
-			{
-				Log("Error: EngineClient is not available. 'kill' command not executed");
-				SendStatusUpdate("CommandFailed:kill");
-			}
-			return;
-		}
-
-		if (command.substr(0, 11) == "loadconfig ")
-		{
-			std::string configName = command.substr(11);
-			Log("Loading config: " + configName);
-
-			if (F::Configs.LoadConfig(configName, true))
-			{
-				Log("Config loaded successfully: " + configName);
-				SendStatusUpdate("ConfigLoaded:" + configName);
-			}
-			else
-			{
-				Log("Failed to load config: " + configName);
-				SendStatusUpdate("ConfigLoadFailed:" + configName);
-			}
-		}
-		else if (I::EngineClient)
-		{
-			Log("EngineClient is available, sending command to TF2 console");
-			I::EngineClient->ClientCmd_Unrestricted(command.c_str());
-			Log("Command sent to TF2 console: " + command);
-			SendStatusUpdate("CommandExecuted:" + command);
-		}
-		else
-		{
-			Log("Error: EngineClient is not available. Command not executed: " + command);
-			SendStatusUpdate("CommandFailed:" + command);
-		}
-	}
-
-	void SendHealthUpdate(int health)
-	{
-		// Queue health update with medium priority
-		QueueMessage("Health", std::to_string(health), false);
-	}
-
-	int GetCurrentPlayerClass()
-	{
-		Log("GetCurrentPlayerClass called");
-		if (I::EngineClient && I::EngineClient->IsInGame())
-		{
-			Log("In game");
-			auto pLocal = H::Entities.GetLocal();
-			if (pLocal)
-			{
-				Log("Local player found");
-				int playerClass = pLocal->As<CTFPlayer>()->m_iClass();
-				Log("Player class: " + std::to_string(playerClass));
-				return playerClass;
-			}
-			else
-			{
-				Log("Local player not found");
-			}
-		}
-		else
-		{
-			Log("Not in game or EngineClient not available");
-		}
-		return -1;
-	}
-
-	void SendPlayerClassUpdate(int playerClass)
-	{
-		static int lastSentClass = -1;
-
-		if (playerClass == lastSentClass || playerClass < 1 || playerClass > 9)
-			return;
-
-		lastSentClass = playerClass;
-
-		std::string className;
-		switch (playerClass)
-		{
-		case 1: className = "Scout"; break;
-		case 2: className = "Sniper"; break;
-		case 3: className = "Soldier"; break;
-		case 4: className = "Demoman"; break;
-		case 5: className = "Medic"; break;
-		case 6: className = "Heavy"; break;
-		case 7: className = "Pyro"; break;
-		case 8: className = "Spy"; break;
-		case 9: className = "Engineer"; break;
-		default: className = "Unknown"; break;
-		}
-
-		// Queue player class update
-		QueueMessage("PlayerClass", className, false);
-	}
-
-	std::string GetCurrentLevelName()
-	{
-		return SDK::GetLevelName();
-	}
-
-	void SendMapUpdate()
-	{
-		static std::string lastSentMap = "";
-		std::string currentMap = GetCurrentLevelName();
-
-		if (currentMap == lastSentMap)
-			return;
-
-		lastSentMap = currentMap;
-
-		// Queue map update
-		QueueMessage("Map", currentMap, false);
-	}
-
-	void SendServerInfo()
-	{
-		// Queue server info update
-		QueueMessage("ServerInfo", "Player", false);
-	}
-
-	void UpdateBotInfo()
-	{
-		SendPlayerClassUpdate(GetCurrentPlayerClass());
-		SendMapUpdate();
-		SendServerInfo();
-	}
-
-	void BroadcastLocalBotId()
-	{
-		if (!I::EngineClient || !I::EngineClient->IsInGame())
-			return;
-
-		// Only proceed if we have a valid steam ID
-		auto pResource = H::Entities.GetResource();
-		if (!pResource)
-			return;
-
-		// Use the account ID from player resource
-		uint32_t uAccountID = pResource->m_iAccountID(I::EngineClient->GetLocalPlayer());
-		if (uAccountID != 0)
-		{
-			// Queue local bot broadcast with high priority
-			QueueMessage("LocalBot", std::to_string(uAccountID), true);
-			Log("Queued local bot ID broadcast: " + std::to_string(uAccountID));
-
-			// Process immediately if connected
-			if (hPipe != INVALID_HANDLE_VALUE)
-				ProcessMessageQueue();
-		}
-	}
-
-	void ProcessLocalBotMessage(const std::string& message)
-	{
-		std::istringstream iss(message);
-		std::string botNumber, messageType, friendsIDstr;
-		std::getline(iss, botNumber, ':');
-		std::getline(iss, messageType, ':');
-		std::getline(iss, friendsIDstr);
-
-		if (messageType == "LocalBot" && !friendsIDstr.empty())
-		{
-			try
-			{
-				uint32_t friendsID = std::stoull(friendsIDstr);
-
-				// Don't skip messages from our own bot ID - we might have multiple instances
-				// with the same ID running
-
-				localBots[friendsID] = true;
-				Log("Added local bot with friendsID: " + friendsIDstr);
-
-				// Try to find player information and add ignored tag
-				bool tagAdded = false;
-				if (auto pResource = H::Entities.GetResource())
+				if (!F::NamedPipe.tInfo.m_bInGame)
 				{
-					for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+					// Not in game: ensure panel receives disconnect-ish state
+					F::NamedPipe.QueueMessage("Status", "NotInGame", true);
+					F::NamedPipe.ProcessMessageQueue();
+				}
+				else
+				{
+					uint32_t uAccountID = F::NamedPipe.tInfo.m_uAccountID;
+					if (F::NamedPipe.tInfo.m_uAccountID != 0)
 					{
-						if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
-						{
-							const char* szName = pResource->m_szName(i);
+						F::NamedPipe.QueueMessage("LocalBot", std::to_string(F::NamedPipe.tInfo.m_uAccountID), true);
+						F::NamedPipe.Log("Queued local bot ID broadcast: " + std::to_string(F::NamedPipe.tInfo.m_uAccountID));
 
-							// Add both IGNORED_TAG and FRIEND_TAG
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
-							Log("Marked local bot as ignored and friend: " + std::string(szName));
-							tagAdded = true;
-							break;
+						if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
+							F::NamedPipe.ProcessMessageQueue();
+					}
+				}
+				lock.unlock();
+			}
+
+			char cBuffer[4096] = { 0 };
+			DWORD dwBytesRead = 0;
+			OVERLAPPED tOverlapped = { 0 };
+			tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			if (tOverlapped.hEvent != NULL)
+			{
+				if (dwBytesAvail > 0)
+				{
+					BOOL bReadSuccess = ReadFile(F::NamedPipe.m_hPipe, cBuffer, sizeof(cBuffer) - 1, &dwBytesRead, &tOverlapped);
+					if (!bReadSuccess && GetLastError() == ERROR_IO_PENDING)
+					{
+						DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
+						if (waitResult == WAIT_OBJECT_0)
+						{
+							if (!GetOverlappedResult(F::NamedPipe.m_hPipe, &tOverlapped, &dwBytesRead, FALSE))
+							{
+								F::NamedPipe.Log("GetOverlappedResult failed: " + std::to_string(GetLastError()));
+								CloseHandle(tOverlapped.hEvent);
+								CloseHandle(F::NamedPipe.m_hPipe);
+								F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+								continue;
+							}
+						}
+						else if (waitResult == WAIT_TIMEOUT)
+						{
+							CancelIo(F::NamedPipe.m_hPipe);
+							CloseHandle(tOverlapped.hEvent);
+							continue;
+						}
+						else
+						{
+							F::NamedPipe.Log("Wait failed: " + std::to_string(GetLastError()));
+							CloseHandle(tOverlapped.hEvent);
+							CloseHandle(F::NamedPipe.m_hPipe);
+							F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+							continue;
+						}
+					}
+					else if (!bReadSuccess)
+					{
+						F::NamedPipe.Log("ReadFile failed immediately: " + std::to_string(GetLastError()));
+						CloseHandle(tOverlapped.hEvent);
+						CloseHandle(F::NamedPipe.m_hPipe);
+						F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+						continue;
+					}
+
+					if (dwBytesRead > 0)
+					{
+						cBuffer[dwBytesRead] = '\0'; // Ensure null termination
+						std::string sMessage(cBuffer, dwBytesRead);
+						F::NamedPipe.Log("Received message: " + sMessage);
+
+						std::stringstream ss(sMessage);
+						std::string sLine;
+						while (std::getline(ss, sLine))
+						{
+							if (sLine.empty())
+								continue;
+
+							std::istringstream iss(sLine);
+							std::string sBotNumber, sMessageType, sContent;
+							std::getline(iss, sBotNumber, ':');
+							std::getline(iss, sMessageType, ':');
+							std::getline(iss, sContent);
+
+							if (sMessageType == "Command")
+							{
+								F::NamedPipe.Log("Executing command: " + sContent);
+								F::NamedPipe.ExecuteCommand(sContent);
+							}
+							else if (sMessageType == "LocalBot")
+								F::NamedPipe.ProcessLocalBotMessage(sContent);
+							else
+								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
 						}
 					}
 				}
-
-				if (!tagAdded)
-					Log("Could not find player info for friendsID: " + friendsIDstr + " to add tags");
-			}
-			catch (const std::exception& e)
-			{
-				Log("Error processing LocalBot message: " + std::string(e.what()));
+				CloseHandle(tOverlapped.hEvent);
 			}
 		}
-	}
 
-	bool IsLocalBot(uint32_t friendsID)
-	{
-		if (friendsID == 0)
-			return false;
-
-		return localBots.find(friendsID) != localBots.end();
-	}
-
-	void UpdateLocalBotIgnoreStatus()
-	{
-		BroadcastLocalBotId();
-
-		if (auto pResource = H::Entities.GetResource())
-		{
-			for (const auto& [friendsID, isLocal] : localBots)
-			{
-				if (!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-					!F::PlayerUtils.HasTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
-				{
-					for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
-					{
-						if (pResource->m_bValid(i) && pResource->m_iAccountID(i) == friendsID)
-						{
-							const char* szName = pResource->m_szName(i);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
-							F::PlayerUtils.AddTag(friendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
-							Log("Marked local bot as ignored and friend: " + std::string(szName));
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	void ClearLocalBots()
-	{
-		localBots.clear();
-		Log("Cleared local bots list");
-	}
-
-	void QueueMessage(const std::string& type, const std::string& content, bool isPriority = false)
-	{
-		std::lock_guard<std::mutex> lock(messageQueueMutex);
-
-		if (isPriority || messageQueue.size() < 100)
-		{
-			messageQueue.push_back({ type, content, isPriority });
-		}
+		if (F::NamedPipe.m_hPipe == INVALID_HANDLE_VALUE)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		else
-		{
-			for (auto it = messageQueue.begin(); it != messageQueue.end(); ++it)
-			{
-				if (!it->isPriority)
-				{
-					messageQueue.erase(it);
-					messageQueue.push_back({ type, content, isPriority });
-					break;
-				}
-			}
-		}
+			std::this_thread::sleep_for(std::chrono::milliseconds(333));
 	}
 
-	void ProcessMessageQueue()
 	{
-		if (hPipe == INVALID_HANDLE_VALUE) return;
+		std::lock_guard lock(F::NamedPipe.m_messageQueueMutex);
+		F::NamedPipe.m_vMessageQueue.clear();
+	}
 
-		std::lock_guard<std::mutex> lock(messageQueueMutex);
-		if (messageQueue.empty()) return;
-
-		int processCount = 0;
-		auto it = messageQueue.begin();
-		while (it != messageQueue.end() && processCount < 10)
+	if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
+	{
+		try
 		{
-			std::string message;
-			if (botId != -1)
+			if (F::NamedPipe.m_iBotId != -1)
 			{
-				message = std::to_string(botId) + ":" + it->type + ":" + it->content + "\n";
+				std::string sMessage = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting\n";
+				DWORD dwBytesWritten = 0;
+				WriteFile(F::NamedPipe.m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 			}
-			else
-			{
-				message = "0:" + it->type + ":" + it->content + "\n";
-			}
+		}
+		catch (...)
+		{
+			// Ignore any errors during shutdown
+		}
 
-			DWORD bytesWritten = 0;
-			BOOL success = WriteFile(hPipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL);
+		CloseHandle(F::NamedPipe.m_hPipe);
+		F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+	}
+	F::NamedPipe.Log("ConnectAndMaintainPipe ended");
+}
 
-			if (success && bytesWritten == message.length())
+void CNamedPipe::SendStatusUpdate(std::string sStatus)
+{
+	QueueMessage("Status", sStatus, true);
+	if (m_hPipe != INVALID_HANDLE_VALUE)
+		ProcessMessageQueue();
+}
+
+void CNamedPipe::ExecuteCommand(std::string sCommand)
+{
+	Log("ExecuteCommand called with: " + sCommand);
+
+	Log("EngineClient is available, sending command to TF2 console");
+	I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
+	Log("Command sent to TF2 console: " + sCommand);
+	SendStatusUpdate("CommandExecuted:" + sCommand);
+}
+
+void CNamedPipe::QueueMessage(std::string sType, std::string sContent, bool bIsPriority)
+{
+	std::lock_guard lock(m_messageQueueMutex);
+
+	if (bIsPriority || m_vMessageQueue.size() < 100)
+		m_vMessageQueue.push_back({ sType, sContent, bIsPriority });
+	else
+	{
+		for (auto it = m_vMessageQueue.begin(); it != m_vMessageQueue.end(); ++it)
+		{
+			if (!it->m_bIsPriority)
 			{
-				it = messageQueue.erase(it);
-				processCount++;
-			}
-			else
-			{
-				Log("Failed to write queued message: " + std::to_string(GetLastError()));
+				m_vMessageQueue.erase(it);
+				m_vMessageQueue.push_back({ sType, sContent, bIsPriority });
 				break;
 			}
 		}
 	}
+}
 
-	bool SafeWriteToPipe(const std::string& message)
+void CNamedPipe::ProcessMessageQueue()
+{
+	if (m_hPipe == INVALID_HANDLE_VALUE)
+		return;
+
+	std::lock_guard lock(m_messageQueueMutex);
+	if (m_vMessageQueue.empty()) 
+		return;
+
+	int processCount = 0;
+	auto it = m_vMessageQueue.begin();
+	while (it != m_vMessageQueue.end() && processCount < 10)
 	{
-		if (hPipe == INVALID_HANDLE_VALUE)
+		std::string sMessage;
+		if (m_iBotId != -1)
+			sMessage = std::to_string(m_iBotId) + ":" + it->m_sType + ":" + it->m_sContent + "\n";
+		else
+			sMessage = "0:" + it->m_sType + ":" + it->m_sContent + "\n";
+
+		DWORD dwBytesWritten = 0;
+		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
+		if (bSuccess && dwBytesWritten == sMessage.length())
 		{
-			QueueMessage("Status", "QueuedMessage", false);
-			return false;
+			it = m_vMessageQueue.erase(it);
+			processCount++;
 		}
-
-		DWORD bytesWritten = 0;
-		BOOL success = WriteFile(hPipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL);
-
-		if (!success || bytesWritten != message.length())
+		else
 		{
-			DWORD error = GetLastError();
-			Log("WriteFile failed: " + std::to_string(error) + " - " + GetErrorMessage(error));
+			Log("Failed to write queued message: " + std::to_string(GetLastError()));
+			break;
+		}
+	}
+}
 
-			if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED)
+bool CNamedPipe::IsLocalBot(uint32_t uAccountID)
+{
+	if (uAccountID == 0)
+		return false;
+
+	std::lock_guard lock(m_localBotsMutex);
+	return m_mLocalBots.find(uAccountID) != m_mLocalBots.end();
+}
+
+void CNamedPipe::ProcessLocalBotMessage(std::string sAccountID)
+{
+	if (!sAccountID.empty())
+	{
+		try
+		{
+			uint32_t uAccountID = static_cast<uint32_t>(std::stoull(sAccountID));
+
+			// Don't skip messages from our own bot ID - we might have multiple instances
+			// with the same ID running
+
 			{
-				CloseHandle(hPipe);
-				hPipe = INVALID_HANDLE_VALUE;
+				std::lock_guard lock(m_localBotsMutex);
+				m_mLocalBots[uAccountID] = true;
 			}
-			return false;
+			Log("Added local bot with friendsID: " + sAccountID);
 		}
-		return true;
+		catch (const std::exception& e)
+		{
+			Log("Error processing LocalBot message: " + std::string(e.what()));
+		}
+	}
+}
+
+void CNamedPipe::UpdateLocalBotIgnoreStatus()
+{
+	// Copy keys under lock to avoid holding lock while tagging
+	std::vector<uint32_t> vLocalBotIds;
+	{
+		std::unique_lock lock(m_localBotsMutex);
+		vLocalBotIds.reserve(m_mLocalBots.size());
+		for (const auto& kv : m_mLocalBots)
+			vLocalBotIds.push_back(kv.first);
+		lock.unlock();
 	}
 
-	int GetReconnectDelayMs()
+	for (const auto& uAccountID : vLocalBotIds)
 	{
-		int delay = std::min(
-			BASE_RECONNECT_DELAY_MS * (1 << std::min(currentReconnectAttempts, 10)),
-			MAX_RECONNECT_DELAY_MS
-		);
+		if (!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+			!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
+		{
+			const char* szName = I::SteamFriends->GetFriendPersonaName(CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual));
+			if (!szName) szName = "";
 
-		int jitter = delay * 0.2 * (static_cast<double>(rand()) / RAND_MAX - 0.5);
-		return delay + jitter;
+			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
+			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
+			Log("Marked local bot as ignored and friend: " + std::string(szName));
+			break;
+		}
 	}
+}
 
-	void ConnectAndMaintainPipe()
+void CNamedPipe::ClearLocalBots()
+{
+	std::lock_guard lock(m_localBotsMutex);
+	m_mLocalBots.clear();
+	Log("Cleared local bots list");
+}
+
+std::string CNamedPipe::GetPlayerClassName(int iPlayerClass)
+{
+	switch (iPlayerClass)
 	{
-		Log("ConnectAndMaintainPipe started");
-		srand(static_cast<unsigned int>(time(nullptr)));
-
-		while (shouldRun)
-		{
-			DWORD currentTime = GetTickCount();
-
-			if (hPipe == INVALID_HANDLE_VALUE)
-			{
-
-				int reconnectDelay = GetReconnectDelayMs();
-				if (currentTime - lastConnectAttemptTime > static_cast<DWORD>(reconnectDelay) || lastConnectAttemptTime == 0)
-				{
-					lastConnectAttemptTime = currentTime;
-					currentReconnectAttempts++;
-
-					Log("Attempting to connect to pipe (attempt " + std::to_string(currentReconnectAttempts) +
-						", delay: " + std::to_string(reconnectDelay) + "ms)");
-
-
-					OVERLAPPED overlapped = { 0 };
-					overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-					if (overlapped.hEvent == NULL)
-					{
-						Log("Failed to create connection event: " + std::to_string(GetLastError()));
-						std::this_thread::sleep_for(std::chrono::milliseconds(reconnectDelay));
-						continue;
-					}
-
-					hPipe = CreateFile(
-						PIPE_NAME,
-						GENERIC_READ | GENERIC_WRITE,
-						0,
-						NULL,
-						OPEN_EXISTING,
-						FILE_FLAG_OVERLAPPED,
-						NULL);
-
-					if (hPipe != INVALID_HANDLE_VALUE)
-					{
-
-						currentReconnectAttempts = 0;
-						Log("Connected to pipe");
-
-
-						DWORD pipeMode = PIPE_READMODE_MESSAGE;
-						SetNamedPipeHandleState(hPipe, &pipeMode, NULL, NULL);
-
-
-						QueueMessage("Status", "Connected", true);
-						ProcessMessageQueue();
-
-						if (botId != -1)
-						{
-							Log("Using Bot ID: " + std::to_string(botId));
-						}
-						else
-						{
-							Log("Warning: Bot ID not set");
-						}
-
-						ClearLocalBots();
-					}
-					else
-					{
-						DWORD error = GetLastError();
-						Log("Failed to connect to pipe: " + std::to_string(error) + " - " + GetErrorMessage(error));
-					}
-
-					CloseHandle(overlapped.hEvent);
-				}
-				else
-				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				}
-			}
-
-			if (hPipe != INVALID_HANDLE_VALUE)
-			{
-
-				DWORD bytesAvail = 0;
-				if (!PeekNamedPipe(hPipe, NULL, 0, NULL, &bytesAvail, NULL))
-				{
-					DWORD error = GetLastError();
-					if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_NO_DATA)
-					{
-						Log("Pipe disconnected: " + std::to_string(error) + " - " + GetErrorMessage(error));
-						CloseHandle(hPipe);
-						hPipe = INVALID_HANDLE_VALUE;
-						continue;
-					}
-				}
-
-
-				ProcessMessageQueue();
-
-
-				QueueMessage("Status", "Heartbeat", true);
-				ProcessMessageQueue();
-
-
-				static int updateCounter = 0;
-				if (++updateCounter % 3 == 0)
-				{
-					QueueMessage("PlayerClass", std::to_string(GetCurrentPlayerClass()), false);
-					QueueMessage("Map", GetCurrentLevelName(), false);
-					QueueMessage("ServerInfo", "Player", false); // This will be populated by SendServerInfo internally
-					ProcessMessageQueue();
-
-					if (I::EngineClient && I::EngineClient->IsInGame())
-					{
-						UpdateLocalBotIgnoreStatus();
-					}
-				}
-
-
-				char buffer[4096] = { 0 };
-				DWORD bytesRead = 0;
-
-
-				OVERLAPPED overlapped = { 0 };
-				overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-				if (overlapped.hEvent != NULL)
-				{
-
-					if (bytesAvail > 0)
-					{
-						BOOL readSuccess = ReadFile(hPipe, buffer, sizeof(buffer) - 1, &bytesRead, &overlapped);
-
-						if (!readSuccess && GetLastError() == ERROR_IO_PENDING)
-						{
-							DWORD waitResult = WaitForSingleObject(overlapped.hEvent, 1000);
-
-							if (waitResult == WAIT_OBJECT_0)
-							{
-								if (!GetOverlappedResult(hPipe, &overlapped, &bytesRead, FALSE))
-								{
-									Log("GetOverlappedResult failed: " + std::to_string(GetLastError()));
-									CloseHandle(overlapped.hEvent);
-									CloseHandle(hPipe);
-									hPipe = INVALID_HANDLE_VALUE;
-									continue;
-								}
-							}
-							else if (waitResult == WAIT_TIMEOUT)
-							{
-								CancelIo(hPipe);
-								CloseHandle(overlapped.hEvent);
-								continue;
-							}
-							else
-							{
-								Log("Wait failed: " + std::to_string(GetLastError()));
-								CloseHandle(overlapped.hEvent);
-								CloseHandle(hPipe);
-								hPipe = INVALID_HANDLE_VALUE;
-								continue;
-							}
-						}
-						else if (!readSuccess)
-						{
-							Log("ReadFile failed immediately: " + std::to_string(GetLastError()));
-							CloseHandle(overlapped.hEvent);
-							CloseHandle(hPipe);
-							hPipe = INVALID_HANDLE_VALUE;
-							continue;
-						}
-
-
-						if (bytesRead > 0)
-						{
-							buffer[bytesRead] = '\0'; // Ensure null termination
-							std::string message(buffer, bytesRead);
-							Log("Received message: " + message);
-
-
-							std::stringstream ss(message);
-							std::string line;
-
-							while (std::getline(ss, line))
-							{
-								if (line.empty()) continue;
-
-
-								std::istringstream iss(line);
-								std::string botNumber, messageType, content;
-								std::getline(iss, botNumber, ':');
-								std::getline(iss, messageType, ':');
-								std::getline(iss, content);
-
-								if (messageType == "Command")
-								{
-									Log("Executing command: " + content);
-									ExecuteCommand(content);
-								}
-								else if (messageType == "LocalBot")
-								{
-									ProcessLocalBotMessage(line);
-								}
-								else
-								{
-									Log("Received unknown message type: " + messageType);
-								}
-							}
-						}
-					}
-
-					CloseHandle(overlapped.hEvent);
-				}
-			}
-
-
-			if (hPipe == INVALID_HANDLE_VALUE)
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
-			else
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(333));
-			}
-		}
-
-
-		{
-			std::lock_guard<std::mutex> lock(messageQueueMutex);
-			messageQueue.clear();
-		}
-
-		if (hPipe != INVALID_HANDLE_VALUE)
-		{
-
-			try
-			{
-				if (botId != -1)
-				{
-					std::string message = std::to_string(botId) + ":Status:Disconnecting\n";
-					DWORD bytesWritten = 0;
-					WriteFile(hPipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL);
-				}
-			}
-			catch (...)
-			{
-				// Ignore any errors during shutdown
-			}
-
-			CloseHandle(hPipe);
-			hPipe = INVALID_HANDLE_VALUE;
-		}
-		Log("ConnectAndMaintainPipe ended");
+	case 1: return "Scout";
+	case 2: return "Sniper";
+	case 3: return "Soldier";
+	case 4: return "Demoman";
+	case 5: return "Medic";
+	case 6: return "Heavy";
+	case 7: return "Pyro";
+	case 8: return "Spy";
+	case 9: return "Engineer";
+	default: return "N/A";
 	}
 }
 

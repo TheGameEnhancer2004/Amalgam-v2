@@ -17,16 +17,9 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	MicSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
-
-	#ifdef TEXTMODE
-	if (I::EngineClient->IsInGame() && I::EngineClient->IsConnected())
-	{
-		static Timer tNamedPipeTimer{};
-		if (tNamedPipeTimer.Run(1.0f))
-			F::NamedPipe::UpdateLocalBotIgnoreStatus();
-	}
-	#endif
-
+#ifdef TEXTMODE
+	F::NamedPipe.Store(pLocal, true);
+#endif
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
 	RandomVotekick(pLocal);
@@ -626,7 +619,7 @@ void CMisc::PingReducer()
 
 void CMisc::UnlockAchievements()
 {
-	const auto pAchievementMgr = U::Memory.CallVirtual<114, IAchievementMgr*>(I::EngineClient);
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
 	if (pAchievementMgr)
 	{
 		I::SteamUserStats->RequestCurrentStats();
@@ -639,7 +632,7 @@ void CMisc::UnlockAchievements()
 
 void CMisc::LockAchievements()
 {
-	const auto pAchievementMgr = U::Memory.CallVirtual<114, IAchievementMgr*>(I::EngineClient);
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
 	if (pAchievementMgr)
 	{
 		I::SteamUserStats->RequestCurrentStats();
@@ -779,8 +772,6 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 	I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pResource->m_iUserID(iTarget)).c_str());
 }
 
-
-// lmaobox if(crash){(dontcrash)} method down here
 void CMisc::ChatSpam(CTFPlayer* pLocal)
 {
 	if (!Vars::Misc::Automation::ChatSpam::Enable.Value)
@@ -936,12 +927,9 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 	else
 		sChatCommand = "say \"" + sChatLine + "\"";
 
-	// Final null check before calling engine
-	if (I::EngineClient)
-	{
-		SDK::Output("ChatSpam", std::format("Sending: {}", sChatCommand).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-		I::EngineClient->ClientCmd_Unrestricted(sChatCommand.c_str());
-	}
+
+	SDK::Output("ChatSpam", std::format("Sending: {}", sChatCommand).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+	I::EngineClient->ClientCmd_Unrestricted(sChatCommand.c_str());
 }
 
 void CMisc::AutoMvmReadyUp()

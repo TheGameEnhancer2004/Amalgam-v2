@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-
 #include "../Features/Resolver/Resolver.h"
 #include "../Features/EnginePrediction/EnginePrediction.h"
 

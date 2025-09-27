@@ -124,7 +124,7 @@ void CNavParser::Map::AdjacentCost(void* main, std::vector<micropather::StateCos
 		{
 			if (vischeck_cache[key].vischeck_state)
 			{
-				const float cost = tConnection.area->m_center.DistToSqr(tArea.m_center);
+				const float cost = tConnection.area->m_center.DistTo(tArea.m_center);
 				adjacent->push_back(micropather::StateCost{ reinterpret_cast<void*>(tConnection.area), cost });
 			}
 		}
@@ -136,7 +136,7 @@ void CNavParser::Map::AdjacentCost(void* main, std::vector<micropather::StateCos
 			{
 				vischeck_cache[key] = CachedConnection{ TICKCOUNT_TIMESTAMP(60), 1 };
 
-				const float cost = points.next.DistToSqr(points.current);
+				const float cost = points.next.DistTo(points.current);
 				adjacent->push_back(micropather::StateCost{ reinterpret_cast<void*>(tConnection.area), cost });
 			}
 			else
@@ -777,7 +777,7 @@ void CNavEngine::updateStuckTime()
 
 void CNavEngine::Reset(bool bForced)
 {
-	abandonPath();
+	cancelPath();
 
 	const auto level_name = I::EngineClient->GetLevelName();
 	if (level_name)

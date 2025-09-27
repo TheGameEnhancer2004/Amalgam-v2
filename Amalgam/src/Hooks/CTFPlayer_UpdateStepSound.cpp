@@ -1,4 +1,5 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFPlayer_UpdateStepSound, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56 48 83 EC ? 4C 8B F2 48 8B F9 BA", 0x0);
 MAKE_SIGNATURE(CTFPlayer_FireEvent_UpdateStepSound_Call, "client.dll", "4D 85 F6 0F 84 ? ? ? ? 48 8D 8E", 0x0);
@@ -19,3 +20,4 @@ MAKE_HOOK(CTFPlayer_UpdateStepSound, S::CTFPlayer_UpdateStepSound(), void,
 
 	CALL_ORIGINAL(rcx, psurface, vecOrigin, vecVelocity);
 }
+#endif

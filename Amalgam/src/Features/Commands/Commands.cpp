@@ -114,7 +114,7 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		FNV1A::Hash32Const("cat_nav_search_spawnrooms"), 
 		[](const std::deque<const char*>& vArgs)
 		{
-			if (F::NavEngine.map && F::NavEngine.map->state == CNavParser::NavState::Active)
+			if (F::NavEngine.IsNavMeshLoaded())
 				F::NavEngine.map->UpdateRespawnRooms();
 		}
 	},
@@ -146,7 +146,7 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		{
 			if (F::Menu.m_bIsOpen)
 				I::MatSystemSurface->SetCursorAlwaysVisible(F::Menu.m_bIsOpen = false);
-			U::Core.m_bUnload = true;
+			U::Core.m_bUnload = G::Unload = true;
 		}
 	},
 	{
