@@ -11,6 +11,7 @@
 #include "../../Features/Resolver/Resolver.h"
 #include "../../Features/Visuals/Visuals.h"
 #include "../../Features/Killstreak/Killstreak.h"
+#include "../../Features/NavBot/NavEngine/NavEngine.h"
 #ifdef TEXTMODE
 #include "../../Features/Misc/NamedPipe/NamedPipe.h"
 #endif
@@ -72,6 +73,7 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 #ifndef TEXTMODE
 		F::Killstreak.PlayerSpawn(pEvent);
 #endif
+		F::NavEngine.cancelPath();
 		break;
 	case FNV1A::Hash32Const("revive_player_notify"):
 	{
