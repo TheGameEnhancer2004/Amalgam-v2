@@ -197,6 +197,7 @@
     <ClCompile Include="src\Hooks\CInput_ValidateUserCmd.cpp" />
     <ClCompile Include="src\Hooks\CTFWeaponBase_CanFireRandomCriticalShot.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_GetMinFOV.cpp" />
+	<ClCompile Include="src\Hooks\CWeaponMedigun_PrimaryAttack.cpp" />
     <ClCompile Include="include\Zydis\Zydis.c" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />
@@ -597,6 +598,7 @@
     <ClInclude Include="src\SDK\Definitions\Misc\CRangeCheckedVar.h" />
     <ClInclude Include="src\Features\Visuals\Groups\Groups.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IFileSystem.h" />
+	<ClInclude Include="src\SDK\Definitions\Interfaces\ILocalize.h" />
     <ClInclude Include="include\Zydis\Zydis.h" />
     <ClInclude Include="src\Features\AutoJoin\AutoJoin.h" />
     <ClInclude Include="src\Features\Killstreak\Killstreak.h" />

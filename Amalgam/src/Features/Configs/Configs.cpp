@@ -373,10 +373,9 @@ bool CConfigs::SaveConfig(const std::string& sConfigName, bool bNotify)
 		boost::property_tree::ptree tWrite;
 		{
 			boost::property_tree::ptree tSub;
-			for (auto it = F::Binds.m_vBinds.begin(); it != F::Binds.m_vBinds.end(); it++)
+			for (int iID = 0; iID < F::Binds.m_vBinds.size(); iID++)
 			{
-				int iID = std::distance(F::Binds.m_vBinds.begin(), it);
-				auto& tBind = *it;
+				auto& tBind = F::Binds.m_vBinds[iID];
 
 				boost::property_tree::ptree tChild;
 				SaveJson(tChild, "Name", tBind.m_sName);
@@ -419,10 +418,9 @@ bool CConfigs::SaveConfig(const std::string& sConfigName, bool bNotify)
 
 		{
 			boost::property_tree::ptree tSub;
-			for (auto it = F::Groups.m_vGroups.begin(); it != F::Groups.m_vGroups.end(); it++)
+			for (int iID = 0; iID < F::Groups.m_vGroups.size(); iID++)
 			{
-				int iID = std::distance(F::Groups.m_vGroups.begin(), it);
-				auto& tGroup = *it;
+				auto& tGroup = F::Groups.m_vGroups[iID];
 
 				boost::property_tree::ptree tChild;
 				SaveJson(tChild, "Name", tGroup.m_sName);
@@ -629,10 +627,9 @@ bool CConfigs::SaveVisual(const std::string& sConfigName, bool bNotify)
 
 		{
 			boost::property_tree::ptree tSub;
-			for (auto it = F::Groups.m_vGroups.begin(); it != F::Groups.m_vGroups.end(); it++)
+			for (int iID = 0; iID < F::Groups.m_vGroups.size(); iID++)
 			{
-				int iID = std::distance(F::Groups.m_vGroups.begin(), it);
-				auto& tGroup = *it;
+				auto& tGroup = F::Groups.m_vGroups[iID];
 
 				boost::property_tree::ptree tChild;
 				SaveJson(tChild, "Name", tGroup.m_sName);

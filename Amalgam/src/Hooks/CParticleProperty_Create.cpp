@@ -3,14 +3,15 @@
 
 #include "../Features/Simulation/ProjectileSimulation/ProjectileSimulation.h"
 
-MAKE_SIGNATURE(CParticleProperty_CreateName, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56 48 83 EC ? 48 8B 59 ? 49 8B F1", 0x0);
-MAKE_SIGNATURE(CParticleProperty_CreatePoint, "client.dll", "44 89 4C 24 ? 44 89 44 24 ? 53", 0x0);
-MAKE_SIGNATURE(CWeaponMedigun_UpdateEffects_CreateName_Call1, "client.dll", "E8 ? ? ? ? 49 8B CC F3 0F 11 74 24", 0x5);
-MAKE_SIGNATURE(CWeaponMedigun_UpdateEffects_CreateName_Call2, "client.dll", "E8 ? ? ? ? 41 8B 14 24 48 8B D8", 0x5);
-MAKE_SIGNATURE(CWeaponMedigun_ManageChargeEffect_CreateName_Call, "client.dll", "E8 ? ? ? ? 48 89 86 ? ? ? ? 48 89 BE", 0x5);
+MAKE_SIGNATURE(CParticleProperty_Create_Name, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56 48 83 EC ? 48 8B 59 ? 49 8B F1", 0x0);
+MAKE_SIGNATURE(CParticleProperty_Create_Point, "client.dll", "44 89 4C 24 ? 44 89 44 24 ? 53", 0x0);
+MAKE_SIGNATURE(CParticleProperty_AddControlPoint_Pointer, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 55 41 56 41 57 48 83 EC ? 4C 8B BC 24", 0x0);
+MAKE_SIGNATURE(CWeaponMedigun_UpdateEffects_CreateName_Call1, "client.dll", "49 8B CC F3 0F 11 74 24 ? 48 8B D8", 0x0);
+MAKE_SIGNATURE(CWeaponMedigun_UpdateEffects_CreateName_Call2, "client.dll", "41 8B 14 24 48 8B D8", 0x0);
+MAKE_SIGNATURE(CWeaponMedigun_ManageChargeEffect_CreateName_Call, "client.dll", "48 89 86 ? ? ? ? 48 89 BE ? ? ? ? 48 83 BE", 0x0);
 
-MAKE_HOOK(CParticleProperty_CreateName, S::CParticleProperty_CreateName(), void*,
-		  void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, const char* pszAttachmentName)
+MAKE_HOOK(CParticleProperty_Create_Name, S::CParticleProperty_Create_Name(), void*,
+	void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, const char* pszAttachmentName)
 {
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CParticleProperty_Create[DEFAULT_BIND])
@@ -93,8 +94,8 @@ MAKE_HOOK(CParticleProperty_CreateName, S::CParticleProperty_CreateName(), void*
 	return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, pszAttachmentName);
 }
 
-MAKE_HOOK(CParticleProperty_CreatePoint, S::CParticleProperty_CreatePoint(), void*,
-		  void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, int iAttachmentPoint, Vector vecOriginOffset)
+MAKE_HOOK(CParticleProperty_Create_Point, S::CParticleProperty_Create_Point(), void*,
+	void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, int iAttachmentPoint, Vector vecOriginOffset)
 {
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CParticleProperty_Create[DEFAULT_BIND])
@@ -152,53 +153,61 @@ MAKE_HOOK(CParticleProperty_CreatePoint, S::CParticleProperty_CreatePoint(), voi
             if (!bValid)
                 return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
 
-			bool bBlue = pLocal->m_iTeamNum() == TF_TEAM_BLUE;
-			switch (FNV1A::Hash32(Vars::Visuals::Effects::ProjectileTrail.Value.c_str()))
-			{
-			case FNV1A::Hash32Const("None"): return nullptr;
-			case FNV1A::Hash32Const("Rocket"): pszParticleName = "rockettrail"; break;
-			case FNV1A::Hash32Const("Critical"): pszParticleName = bBlue ? "critical_rocket_blue" : "critical_rocket_red"; break;
-			case FNV1A::Hash32Const("Energy"): pszParticleName = bBlue ? "drg_cow_rockettrail_normal_blue" : "drg_cow_rockettrail_normal"; break;
-			case FNV1A::Hash32Const("Charged"): pszParticleName = bBlue ? "drg_cow_rockettrail_charged_blue" : "drg_cow_rockettrail_charged"; break;
-			case FNV1A::Hash32Const("Ray"): pszParticleName = "drg_manmelter_projectile"; break;
-			case FNV1A::Hash32Const("Fireball"): pszParticleName = bBlue ? "spell_fireball_small_trail_blue" : "spell_fireball_small_trail_red"; break;
-			case FNV1A::Hash32Const("Teleport"): pszParticleName = bBlue ? "spell_teleport_blue" : "spell_teleport_red"; break;
-			case FNV1A::Hash32Const("Fire"): pszParticleName = "flamethrower"; break;
-			case FNV1A::Hash32Const("Flame"): pszParticleName = "flying_flaming_arrow"; break;
-			case FNV1A::Hash32Const("Sparks"): pszParticleName = bBlue ? "critical_rocket_bluesparks" : "critical_rocket_redsparks"; break;
-			case FNV1A::Hash32Const("Flare"): pszParticleName = bBlue ? "flaregun_trail_blue" : "flaregun_trail_red"; break;
-			case FNV1A::Hash32Const("Trail"): pszParticleName = bBlue ? "stickybombtrail_blue" : "stickybombtrail_red"; break;
-			case FNV1A::Hash32Const("Health"): pszParticleName = bBlue ? "healshot_trail_blue" : "healshot_trail_red"; break;
-			case FNV1A::Hash32Const("Smoke"): pszParticleName = "rockettrail_airstrike_line"; break;
-			case FNV1A::Hash32Const("Bubbles"): pszParticleName = bBlue ? "pyrovision_scorchshot_trail_blue" : "pyrovision_scorchshot_trail_red"; break;
-			case FNV1A::Hash32Const("Halloween"): pszParticleName = "halloween_rockettrail"; break;
-			case FNV1A::Hash32Const("Monoculus"): pszParticleName = "eyeboss_projectile"; break;
-			case FNV1A::Hash32Const("Sparkles"): pszParticleName = bBlue ? "burningplayer_rainbow_blue" : "burningplayer_rainbow_red"; break;
-			case FNV1A::Hash32Const("Rainbow"): pszParticleName = "flamethrower_rainbow"; break;
-			default: pszParticleName = Vars::Visuals::Effects::ProjectileTrail.Value.c_str();
-			}
-			break;
-		}
-		/*
-		// any additional trails
-		case FNV1A::Hash32Const("stunballtrail_blue_crit"):
-		case FNV1A::Hash32Const("stunballtrail_red_crit"):
-		case FNV1A::Hash32Const("critical_rocket_blue"):
-		case FNV1A::Hash32Const("critical_rocket_red"):
-		case FNV1A::Hash32Const("critical_rocket_bluesparks"):
-		case FNV1A::Hash32Const("critical_rocket_redsparks"):
-		case FNV1A::Hash32Const("flaregun_trail_crit_blue"):
-		case FNV1A::Hash32Const("flaregun_trail_crit_red"):
-		case FNV1A::Hash32Const("critical_pipe_blue"):
-		case FNV1A::Hash32Const("critical_pipe_red"):
-		case FNV1A::Hash32Const("critical_grenade_blue"):
-		case FNV1A::Hash32Const("critical_grenade_red"):
-		*/
-		case FNV1A::Hash32Const("rockettrail_airstrike_line"):
-			return nullptr;
-		}
-	}
+            bool bBlue = pLocal->m_iTeamNum() == TF_TEAM_BLUE;
+            switch (FNV1A::Hash32(Vars::Visuals::Effects::ProjectileTrail.Value.c_str()))
+            {
+            case FNV1A::Hash32Const("None"): return nullptr;
+            case FNV1A::Hash32Const("Rocket"): pszParticleName = "rockettrail"; break;
+            case FNV1A::Hash32Const("Critical"): pszParticleName = bBlue ? "critical_rocket_blue" : "critical_rocket_red"; break;
+            case FNV1A::Hash32Const("Energy"): pszParticleName = bBlue ? "drg_cow_rockettrail_normal_blue" : "drg_cow_rockettrail_normal"; break;
+            case FNV1A::Hash32Const("Charged"): pszParticleName = bBlue ? "drg_cow_rockettrail_charged_blue" : "drg_cow_rockettrail_charged"; break;
+            case FNV1A::Hash32Const("Ray"): pszParticleName = "drg_manmelter_projectile"; break;
+            case FNV1A::Hash32Const("Fireball"): pszParticleName = bBlue ? "spell_fireball_small_trail_blue" : "spell_fireball_small_trail_red"; break;
+            case FNV1A::Hash32Const("Teleport"): pszParticleName = bBlue ? "spell_teleport_blue" : "spell_teleport_red"; break;
+            case FNV1A::Hash32Const("Fire"): pszParticleName = "flamethrower"; break;
+            case FNV1A::Hash32Const("Flame"): pszParticleName = "flying_flaming_arrow"; break;
+            case FNV1A::Hash32Const("Sparks"): pszParticleName = bBlue ? "critical_rocket_bluesparks" : "critical_rocket_redsparks"; break;
+            case FNV1A::Hash32Const("Flare"): pszParticleName = bBlue ? "flaregun_trail_blue" : "flaregun_trail_red"; break;
+            case FNV1A::Hash32Const("Trail"): pszParticleName = bBlue ? "stickybombtrail_blue" : "stickybombtrail_red"; break;
+            case FNV1A::Hash32Const("Health"): pszParticleName = bBlue ? "healshot_trail_blue" : "healshot_trail_red"; break;
+            case FNV1A::Hash32Const("Smoke"): pszParticleName = "rockettrail_airstrike_line"; break;
+            case FNV1A::Hash32Const("Bubbles"): pszParticleName = bBlue ? "pyrovision_scorchshot_trail_blue" : "pyrovision_scorchshot_trail_red"; break;
+            case FNV1A::Hash32Const("Halloween"): pszParticleName = "halloween_rockettrail"; break;
+            case FNV1A::Hash32Const("Monoculus"): pszParticleName = "eyeboss_projectile"; break;
+            case FNV1A::Hash32Const("Sparkles"): pszParticleName = bBlue ? "burningplayer_rainbow_blue" : "burningplayer_rainbow_red"; break;
+            case FNV1A::Hash32Const("Rainbow"): pszParticleName = "flamethrower_rainbow"; break;
+            default: pszParticleName = Vars::Visuals::Effects::ProjectileTrail.Value.c_str();
+            }
+            break;
+        }
+        /*
+        // any additional trails
+        case FNV1A::Hash32Const("stunballtrail_blue_crit"):
+        case FNV1A::Hash32Const("stunballtrail_red_crit"):
+        case FNV1A::Hash32Const("critical_rocket_blue"):
+        case FNV1A::Hash32Const("critical_rocket_red"):
+        case FNV1A::Hash32Const("critical_rocket_bluesparks"):
+        case FNV1A::Hash32Const("critical_rocket_redsparks"):
+        case FNV1A::Hash32Const("flaregun_trail_crit_blue"):
+        case FNV1A::Hash32Const("flaregun_trail_crit_red"):
+        case FNV1A::Hash32Const("critical_pipe_blue"):
+        case FNV1A::Hash32Const("critical_pipe_red"):
+        case FNV1A::Hash32Const("critical_grenade_blue"):
+        case FNV1A::Hash32Const("critical_grenade_red"):
+        */
+        case FNV1A::Hash32Const("rockettrail_airstrike_line"): return nullptr;
+        }
+    }
 
 	return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
+}
+
+MAKE_HOOK(CParticleProperty_AddControlPoint_Pointer, S::CParticleProperty_AddControlPoint_Pointer(), void,
+    void* rcx, void* pEffect, int iPoint, CBaseEntity* pEntity, ParticleAttachment_t iAttachType, const char* pszAttachmentName, Vector vecOriginOffset)
+{
+    if (!pEffect)
+        return; // crash fix
+
+    CALL_ORIGINAL(rcx, pEffect, iPoint, pEntity, iAttachType, pszAttachmentName, vecOriginOffset);
 }
 #endif

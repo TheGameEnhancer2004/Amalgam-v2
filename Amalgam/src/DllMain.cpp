@@ -1,11 +1,10 @@
 #include <Windows.h>
 #include "Core/Core.h"
 #include "Utils/CrashLog/CrashLog.h"
-#include <format>
 
 DWORD WINAPI MainThread(LPVOID lpParam)
 {
-	U::CrashLog.Initialize();
+	U::CrashLog.Initialize(lpParam);
 	U::Core.Load();
 	U::Core.Loop();
 	U::CrashLog.Unload(); // 0xC0000409

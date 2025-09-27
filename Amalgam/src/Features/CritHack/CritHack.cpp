@@ -544,11 +544,11 @@ void CCritHack::StoreHealthHistory(int iIndex, int iHealth, bool bDamage)
 MAKE_SIGNATURE(CTFGameStats_FindPlayerStats, "server.dll", "4C 8B C1 48 85 D2 75", 0x0);
 MAKE_SIGNATURE(UTIL_PlayerByIndex, "server.dll", "48 83 EC ? 8B D1 85 C9 7E ? 48 8B 05", 0x0);
 
-static void* pCTFGameStats = nullptr;
+static void* s_pCTFGameStats = nullptr;
 MAKE_HOOK(CTFGameStats_FindPlayerStats, S::CTFGameStats_FindPlayerStats(), void*,
 	void* rcx, CBasePlayer* pPlayer)
 {
-	pCTFGameStats = rcx;
+	s_pCTFGameStats = rcx;
 	return CALL_ORIGINAL(rcx, pPlayer);
 }
 #endif
@@ -689,7 +689,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 	H::Draw.String(fFont, x + 5, y + (textBoxHeight / 2), leftColor, ALIGN_LEFT, leftText.c_str());
 	if (!rightText.empty())
 		H::Draw.String(fFont, x + boxWidth - 5, y + (textBoxHeight / 2), rightColor, ALIGN_RIGHT, rightText.c_str());
-	
+
 	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
 		H::Draw.String(fFont, x + boxWidth / 2, y - fFont.m_nTall - 2, Vars::Colors::IndicatorTextBad.Value, ALIGN_CENTER, "Anti-cheat compatibility");
 }
