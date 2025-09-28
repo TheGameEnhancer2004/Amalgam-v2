@@ -295,70 +295,75 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseFreetypeAVX2|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <BoostRoot Condition="'$(BoostRoot)'==''">C:\local\boost_1_87_0</BoostRoot>
+    <BoostInclude Condition="'$(BoostInclude)'=='' and Exists('$(BoostRoot)')">$(BoostRoot)</BoostInclude>
+    <BoostLibPath_x64 Condition="'$(BoostLibPath_x64)'=='' and Exists('$(BoostRoot)\lib64-msvc-14.3')">$(BoostRoot)\lib64-msvc-14.3</BoostLibPath_x64>
+    <BoostLibPath_Win32 Condition="'$(BoostLibPath_Win32)'=='' and Exists('$(BoostRoot)\lib32-msvc-14.3')">$(BoostRoot)\lib32-msvc-14.3</BoostLibPath_Win32>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugFreetype|x64'">
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugAVX2|x64'">
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugFreetypeAVX2|x64'">
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseTextmode|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseFreetype|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAVX2|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseTextmodeAVX2|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseFreetypeAVX2|x64'">
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
@@ -368,10 +373,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -379,10 +384,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -390,10 +395,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -401,10 +406,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -412,10 +417,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -423,10 +428,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -434,10 +439,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -445,10 +450,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -456,10 +461,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -467,10 +472,10 @@
     <OutDir>$(SolutionDir)output\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)$(Platform)$(Configuration)</TargetName>
-    <IncludePath>$(ProjectDir)include\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)include\;$(BoostInclude);$(IncludePath)</IncludePath>
     <ExecutablePath>$(VC_ExecutablePath_x64);$(CommonExecutablePath)</ExecutablePath>
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(BoostLibPath_Win32);$(BoostLibPath_x64);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <ExcludePath>$(CommonExcludePath);$(VC_ExecutablePath_x64);$(VC_LibraryPath_x64)</ExcludePath>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -1718,13 +1723,4 @@
     <Library Include="include\freetype\freetype.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\boost.1.87.0\build\boost.targets" Condition="Exists('..\packages\boost.1.87.0\build\boost.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>Данный проект ссылается на пакеты NuGet, отсутствующие на этом компьютере. Используйте восстановление пакетов NuGet, чтобы скачать их.  Дополнительную информацию см. по адресу: http://go.microsoft.com/fwlink/?LinkID=322105. Отсутствует следующий файл: {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\boost.1.87.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost.1.87.0\build\boost.targets'))" />
-  </Target>
 </Project>
