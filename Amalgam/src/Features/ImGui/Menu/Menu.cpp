@@ -1430,6 +1430,9 @@ void CMenu::MenuMisc(int iTab)
 					PopTransparent();
 					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
 					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::CallVoteSpam, FToggleEnum::Right);
 				} EndSection();
 			}
 			EndTable();

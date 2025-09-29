@@ -11,10 +11,12 @@
 
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	NoisemakerSpam(pLocal);
+	NoiseSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
 	MicSpam(pLocal);
+	AchievementSpam(pLocal);
+	CallVoteSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
 #ifdef TEXTMODE
@@ -292,13 +294,74 @@ void CMisc::InstantRespawnMVM(CTFPlayer* pLocal)
 	I::EngineClient->ServerCmdKeyValues(kv);
 }
 
-void CMisc::NoisemakerSpam(CTFPlayer* pLocal)
+void CMisc::NoiseSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Exploits::NoisemakerSpam.Value || !pLocal->IsAlive() || pLocal->IsAGhost()
-		|| pLocal->m_bUsingActionSlot() || pLocal->m_flNextNoiseMakerTime() > I::GlobalVars->curtime)
+	if (!Vars::Misc::Automation::NoiseSpam.Value || !pLocal)
 		return;
 
+	if (pLocal->m_bUsingActionSlot())
+		return;
+
+	static float flLastSpamTime = 0.0f;
+	float flCurrentTime = SDK::PlatFloatTime();
+	if (flCurrentTime - flLastSpamTime < 0.2f)
+		return;
+
+	flLastSpamTime = flCurrentTime;
 	I::EngineClient->ServerCmdKeyValues(new KeyValues("use_action_slot_item_server"));
+}
+
+void CMisc::CallVoteSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::CallVoteSpam.Value || !I::EngineClient->IsInGame() || !I::EngineClient->IsConnected())
+		return;
+
+	if (!m_tCallVoteSpamTimer.Run(1.0f))
+		return;
+
+	std::vector<std::string> voteOptions = {
+		"callvote changelevel cp_badlands",
+		"callvote changelevel cp_granary",
+		"callvote changelevel cp_well",
+		"callvote changelevel cp_5gorge",
+		"callvote changelevel cp_freight_final1",
+		"callvote changelevel cp_yukon_final",
+		"callvote changelevel cp_gravelpit",
+		"callvote changelevel cp_dustbowl",
+		"callvote changelevel cp_egypt_final",
+		"callvote changelevel cp_junction_final",
+		"callvote changelevel cp_steel",
+		"callvote changelevel ctf_2fort",
+		"callvote changelevel ctf_well",
+		"callvote changelevel ctf_sawmill",
+		"callvote changelevel ctf_turbine",
+		"callvote changelevel ctf_doublecross",
+		"callvote changelevel pl_badwater",
+		"callvote changelevel pl_goldrush",
+		"callvote changelevel pl_dustbowl",
+		"callvote changelevel pl_upward",
+		"callvote changelevel pl_thundermountain",
+		"callvote changelevel koth_harvest_final",
+		"callvote changelevel koth_nucleus",
+		"callvote changelevel koth_sawmill",
+		"callvote changelevel koth_viaduct",
+		"callvote changelevel cp_5gorge",
+		"callvote changelevel cp_dustbowl",
+		"callvote changelevel ctf_2fort",
+		"callvote changelevel ctf_doublecross",
+		"callvote changelevel ctf_turbine",
+		"callvote changelevel koth_brazil",
+		"callvote changelevel pl_badwater",
+		"callvote changelevel pl_pheonix",
+		"callvote changelevel plr_bananabay",
+		"callvote changelevel plr_hightower",
+		"callvote scrambleteams"
+	};
+
+	int randomIndex = SDK::RandomInt(0, static_cast<int>(voteOptions.size()) - 1);
+	std::string selectedVote = voteOptions[randomIndex];
+
+	I::ClientState->SendStringCmd(selectedVote.c_str());
 }
 
 void CMisc::CheatsBypass()
@@ -640,6 +703,81 @@ void CMisc::LockAchievements()
 			I::SteamUserStats->ClearAchievement(pAchievementMgr->GetAchievementByIndex(i)->GetName());
 		I::SteamUserStats->StoreStats();
 		I::SteamUserStats->RequestCurrentStats();
+	}
+}
+
+void CMisc::AchievementSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::AchievementSpam.Value || !pLocal || !pLocal->IsAlive())
+	{
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		return;
+	}
+
+	const auto pAchievementMgr = reinterpret_cast<IAchievementMgr* (*)()>(U::Memory.GetVirtual(I::EngineClient, 114))();
+	if (!pAchievementMgr)
+	{
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		return;
+	}
+
+	switch (m_eAchievementSpamState)
+	{
+	case AchievementSpamState::IDLE:
+	{
+		if (!m_tAchievementSpamTimer.Run(20.0f))
+			return;
+
+		// Do Androids Dream? achievement by default
+		// TODO: add a new column to edit achievement timer & number directly in cheat (like you did with autoitem)
+		int specificAchievementID = 2332;
+
+		IAchievement* pAchievement = nullptr;
+		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
+		{
+			IAchievement* pCurrentAchievement = pAchievementMgr->GetAchievementByIndex(i);
+			if (pCurrentAchievement && pCurrentAchievement->GetAchievementID() == specificAchievementID)
+			{
+				pAchievement = pCurrentAchievement;
+				break;
+			}
+		}
+
+		if (!pAchievement || !pAchievement->GetName())
+			return;
+
+		m_iAchievementSpamID = specificAchievementID;
+		m_sAchievementSpamName = pAchievement->GetName();
+		m_eAchievementSpamState = AchievementSpamState::CLEARING;
+		break;
+	}
+	case AchievementSpamState::CLEARING:
+	{
+		I::SteamUserStats->RequestCurrentStats();
+		I::SteamUserStats->ClearAchievement(m_sAchievementSpamName.c_str());
+		I::SteamUserStats->StoreStats();
+
+		m_tAchievementDelayTimer.Update();
+		m_eAchievementSpamState = AchievementSpamState::WAITING;
+		break;
+	}
+	case AchievementSpamState::WAITING:
+	{
+		if (!m_tAchievementDelayTimer.Run(0.1f))
+			return;
+
+		m_eAchievementSpamState = AchievementSpamState::AWARDING;
+		break;
+	}
+	case AchievementSpamState::AWARDING:
+	{
+		I::SteamUserStats->RequestCurrentStats();
+		pAchievementMgr->AwardAchievement(m_iAchievementSpamID);
+		I::SteamUserStats->StoreStats();
+
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		break;
+	}
 	}
 }
 
