@@ -1096,6 +1096,46 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			}
 		}
 
+		if (isDropCrumb)
+		{
+			constexpr float kDropSkipFloor = 18.f;
+			bool bDropCompleted = false;
+			const float heightBelow = crumbTarget.z - vLocalOrigin.z;
+			const float completionThreshold = std::max(kDropSkipFloor, activeCrumb.dropHeight * 0.5f);
+			if (heightBelow >= completionThreshold)
+				bDropCompleted = true;
+
+			if (!bDropCompleted && map)
+			{
+				if (const auto localArea = map->findClosestNavSquare(vLocalOrigin))
+				{
+					if (localArea != activeCrumb.navarea && activeCrumb.dropHeight > kDropSkipFloor)
+						bDropCompleted = true;
+				}
+			}
+
+			if (!bDropCompleted && crumbs.size() > 1)
+			{
+				Vector nextCheck = crumbs[1].vec;
+				nextCheck.z = vLocalOrigin.z;
+				const float nextReachRadius = std::max(kDefaultReachRadius, reachRadius + 12.f);
+				if (nextCheck.DistToSqr(vLocalOrigin) < nextReachRadius * nextReachRadius)
+					bDropCompleted = true;
+			}
+
+			if (bDropCompleted)
+			{
+				last_crumb = activeCrumb;
+				crumbs.erase(crumbs.begin());
+				time_spent_on_crumb.Update();
+				inactivity.Update();
+				crumbs_amount = crumbs.size();
+				if (!crumbs_amount)
+					return;
+				continue;
+			}
+		}
+
 		crumbs_amount = crumbs.size();
 		break;
 	}
