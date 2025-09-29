@@ -1,6 +1,7 @@
 #include "NavEngine.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
+#include <algorithm>
 #include <direct.h>
 
 std::optional<Vector> CNavParser::GetDormantOrigin(int iIndex)
@@ -105,9 +106,8 @@ void CNavParser::Map::AdjacentCost(void* main, std::vector<micropather::StateCos
 			continue;
 
 		auto points = F::NavParser.determinePoints(&tArea, tConnection.area);
-
-		// Apply dropdown
-		points.center = F::NavParser.handleDropdown(points.center, points.next);
+		const auto dropdown = F::NavParser.handleDropdown(points.center, points.next);
+		points.center = dropdown.adjustedPos;
 
 		float height_diff = points.center_next.z - points.center.z;
 
@@ -435,6 +435,8 @@ void CNavParser::Map::UpdateRespawnRooms()
 	}
 }
 
+
+// ??????
 bool CNavParser::IsPlayerPassableNavigation(Vector origin, Vector target, unsigned int mask)
 {
 	Vector tr = target - origin;
@@ -483,54 +485,62 @@ Vector CNavParser::GetForwardVector(Vector origin, Vector viewangles, float dist
 	return forward;
 }
 
-Vector CNavParser::handleDropdown(Vector current_pos, Vector next_pos)
+CNavParser::DropdownHint CNavParser::handleDropdown(const Vector& current_pos, const Vector& next_pos)
 {
-	Vector to_target = (next_pos - current_pos);
-	float height_diff = to_target.z;
+	DropdownHint hint{};
+	hint.adjustedPos = current_pos;
 
-	// Handle drops more carefully
-	if (height_diff < 0)
+	Vector to_target = next_pos - current_pos;
+	const float height_diff = to_target.z;
+
+	Vector horizontal = to_target;
+	horizontal.z = 0.f;
+	const float horizontal_length = horizontal.Length();
+
+	constexpr float kSmallDropGrace = 18.f;
+	constexpr float kEdgePadding = 8.f;
+
+	if (height_diff < 0.f)
 	{
-		float drop_distance = -height_diff;
-
-		// Small drops (less than jump height) - no special handling needed
-		if (drop_distance <= PLAYER_JUMP_HEIGHT)
-			return current_pos;
-
-		// Medium drops - move out a bit to prevent getting stuck
-		if (drop_distance <= PLAYER_HEIGHT)
+		const float drop_distance = -height_diff;
+		if (drop_distance > kSmallDropGrace && horizontal_length > 1.f)
 		{
-			to_target.z = 0;
-			to_target.Normalize();
-			QAngle angles;
-			Math::VectorAngles(to_target, angles);
-			Vector vec_angles(angles.x, angles.y, angles.z);
-			return GetForwardVector(current_pos, vec_angles, PLAYER_WIDTH * 1.5f);
-		}
-		// Large drops - move out significantly to prevent fall damage
-		to_target.z = 0;
-		to_target.Normalize();
-		QAngle angles;
-		Math::VectorAngles(to_target, angles);
-		Vector vec_angles(angles.x, angles.y, angles.z);
-		return GetForwardVector(current_pos, vec_angles, PLAYER_WIDTH * 2.5f);
-	}
-	// Handle upward movement
-	if (height_diff > 0)
-	{
-		// If it's within jump height, move closer to help with the jump
-		if (height_diff <= PLAYER_JUMP_HEIGHT)
-		{
-			to_target.z = 0;
-			to_target.Normalize();
-			QAngle angles;
-			Math::VectorAngles(-to_target, angles);
-			Vector vec_angles(angles.x, angles.y, angles.z);
-			return GetForwardVector(current_pos, vec_angles, PLAYER_WIDTH * 0.5f);
+			Vector direction = horizontal / horizontal_length;
+
+			// Distance to move forward before dropping. Favour wider moves for larger drops.
+			const float desiredAdvance = std::clamp(drop_distance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
+			const float maxAdvance = std::max(horizontal_length - kEdgePadding, 0.f);
+			float approach = desiredAdvance;
+			if (maxAdvance > 0.f)
+				approach = std::min(approach, maxAdvance);
+			else
+				approach = std::min(approach, horizontal_length * 0.8f);
+
+			const float minAdvance = std::min(horizontal_length * 0.95f, std::max(PLAYER_WIDTH * 0.6f, horizontal_length * 0.5f));
+			approach = std::max(approach, minAdvance);
+			approach = std::min(approach, horizontal_length * 0.95f);
+			hint.approachDistance = std::max(approach, 0.f);
+
+			hint.adjustedPos = current_pos + direction * hint.approachDistance;
+			hint.adjustedPos.z = current_pos.z;
+			hint.requiresDrop = true;
+			hint.dropHeight = drop_distance;
+			hint.approachDir = direction;
 		}
 	}
+	else if (height_diff > 0.f && horizontal_length > 1.f)
+	{
+		Vector direction = horizontal / horizontal_length;
 
-	return current_pos;
+		// Step back slightly to help with climbing onto the next area.
+		const float retreat = std::clamp(height_diff * 0.35f, PLAYER_WIDTH * 0.3f, PLAYER_WIDTH);
+		hint.adjustedPos = current_pos - direction * retreat;
+		hint.adjustedPos.z = current_pos.z;
+		hint.approachDir = -direction;
+		hint.approachDistance = retreat;
+	}
+
+	return hint;
 }
 
 NavPoints CNavParser::determinePoints(CNavArea* current, CNavArea* next)
@@ -640,11 +650,22 @@ bool CNavEngine::navTo(const Vector& destination, int priority, bool should_repa
 			auto next_area = reinterpret_cast<CNavArea*>(path.at(i + 1));
 
 			auto points = F::NavParser.determinePoints(area, next_area);
+			auto dropdown = F::NavParser.handleDropdown(points.center, points.next);
+			points.center = dropdown.adjustedPos;
 
-			points.center = F::NavParser.handleDropdown(points.center, points.next);
+			CNavParser::Crumb startCrumb{};
+			startCrumb.navarea = area;
+			startCrumb.vec = points.current;
+			crumbs.push_back(startCrumb);
 
-			crumbs.push_back({ area, points.current });
-			crumbs.push_back({ area, points.center });
+			CNavParser::Crumb centerCrumb{};
+			centerCrumb.navarea = area;
+			centerCrumb.vec = points.center;
+			centerCrumb.requiresDrop = dropdown.requiresDrop;
+			centerCrumb.dropHeight = dropdown.dropHeight;
+			centerCrumb.approachDistance = dropdown.approachDistance;
+			centerCrumb.approachDir = dropdown.approachDir;
+			crumbs.push_back(centerCrumb);
 		}
 		else
 			crumbs.push_back({ area, area->m_center });
@@ -752,18 +773,27 @@ void CNavEngine::updateStuckTime()
 	if (crumbs.empty())
 		return;
 
+	const bool isDropCrumb = crumbs[0].requiresDrop;
+	float flTrigger = Vars::Misc::Movement::NavEngine::StuckTime.Value / 2.f;
+	if (isDropCrumb)
+		flTrigger = Vars::Misc::Movement::NavEngine::StuckTime.Value;
+
 	// We're stuck, add time to connection
-	if (inactivity.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2))
+	if (inactivity.Check(flTrigger))
 	{
-		std::pair<CNavArea*, CNavArea*> key = last_crumb.navarea ? std::pair<CNavArea *, CNavArea *>(last_crumb.navarea, crumbs[0].navarea) : std::pair<CNavArea *, CNavArea *>(crumbs[0].navarea, crumbs[0].navarea);
+		std::pair<CNavArea*, CNavArea*> key = last_crumb.navarea ? std::pair<CNavArea*, CNavArea*>(last_crumb.navarea, crumbs[0].navarea) : std::pair<CNavArea*, CNavArea*>(crumbs[0].navarea, crumbs[0].navarea);
 
 		// Expires in 10 seconds
 		map->connection_stuck_time[key].expire_tick = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::StuckExpireTime.Value);
 		// Stuck for one tick
 		map->connection_stuck_time[key].time_stuck += 1;
 
-		// We are stuck for too long, blastlist node for a while and repath
-		if (map->connection_stuck_time[key].time_stuck > TIME_TO_TICKS(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value))
+		int detectTicks = TIME_TO_TICKS(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value);
+		if (isDropCrumb)
+			detectTicks += TIME_TO_TICKS(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value * 0.5f);
+
+		// We are stuck for too long, blacklist node for a while and repath
+		if (map->connection_stuck_time[key].time_stuck > detectTicks)
 		{
 			const auto expire_tick = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::StuckBlacklistTime.Value);
 			if (Vars::Debug::Logging.Value)
@@ -919,8 +949,7 @@ void LookAtPath(CUserCmd* pCmd, const Vec2 vDest, const Vec3 vLocalEyePos, bool 
 	Vec3 next{ vDest.x, vDest.y, vLocalEyePos.z };
 	next = Math::CalcAngle(vLocalEyePos, next);
 
-	const int aim_speed = 25; // how smooth nav is/ im cringing at this damn speed.
-	// activate nav spin and smoothen
+	const float aim_speed = static_cast<float>(Vars::Misc::Movement::NavEngine::LookAtPathSpeed.Value);
 	F::NavParser.DoSlowAim(next, aim_speed, LastAngles);
 	if (bSilent)
 		pCmd->viewangles = next;
@@ -946,10 +975,6 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		current_priority = 0;
 		return;
 	}
-
-	if (current_crumb.navarea != crumbs[0].navarea)
-		time_spent_on_crumb.Update();
-	current_crumb = crumbs[0];
 
 	// Ensure we do not try to walk downwards unless we are falling
 	static std::vector<float> fall_vec{};
@@ -985,43 +1010,109 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			reset_z = true;
 	}
 
-	Vector current_vec = crumbs[0].vec;
-	if (reset_z)
-		current_vec.z = vLocalOrigin.z;
+	constexpr float kDefaultReachRadius = 50.f;
+	constexpr float kDropReachRadius = 28.f;
 
-	// We are close enough to the crumb to have reached it
-	if (current_vec.DistToSqr(vLocalOrigin) < pow(50.0f, 2))
+	Vector crumbTarget{};
+	Vector moveTarget{};
+	Vector moveDir{};
+	bool isDropCrumb = false;
+	bool hasMoveDir = false;
+	float reachRadius = kDefaultReachRadius;
+
+	while (true)
 	{
-		last_crumb = crumbs[0];
-		crumbs.erase(crumbs.begin());
-		time_spent_on_crumb.Update();
-		if (!--crumbs_amount)
-			return;
-		inactivity.Update();
+		auto& activeCrumb = crumbs[0];
+		if (current_crumb.navarea != activeCrumb.navarea)
+			time_spent_on_crumb.Update();
+		current_crumb = activeCrumb;
+
+		isDropCrumb = activeCrumb.requiresDrop;
+		crumbTarget = activeCrumb.vec;
+		moveTarget = crumbTarget;
+
+		if (reset_z && !isDropCrumb)
+			crumbTarget.z = moveTarget.z = vLocalOrigin.z;
+		else if (reset_z)
+			moveTarget.z = vLocalOrigin.z;
+
+		moveDir = activeCrumb.approachDir;
+		moveDir.z = 0.f;
+		float dirLen = moveDir.Length();
+		if (dirLen < 0.01f && crumbs.size() > 1)
+		{
+			moveDir = crumbs[1].vec - activeCrumb.vec;
+			moveDir.z = 0.f;
+			dirLen = moveDir.Length();
+		}
+		hasMoveDir = dirLen > 0.01f;
+		if (hasMoveDir)
+		{
+			moveDir /= dirLen;
+			if (isDropCrumb)
+			{
+				float pushDistance = activeCrumb.approachDistance;
+				if (pushDistance <= 0.f)
+					pushDistance = std::clamp(activeCrumb.dropHeight * 0.35f, PLAYER_WIDTH * 0.6f, PLAYER_WIDTH * 2.5f);
+				else
+					pushDistance = std::clamp(pushDistance, PLAYER_WIDTH * 0.6f, PLAYER_WIDTH * 2.5f);
+
+				moveTarget += moveDir * pushDistance;
+			}
+		}
+		else
+			moveDir = {};
+
+		reachRadius = isDropCrumb ? kDropReachRadius : kDefaultReachRadius;
+		Vector crumbCheck = crumbTarget;
+		crumbCheck.z = vLocalOrigin.z;
+
+		if (crumbCheck.DistToSqr(vLocalOrigin) < reachRadius * reachRadius)
+		{
+			last_crumb = activeCrumb;
+			crumbs.erase(crumbs.begin());
+			time_spent_on_crumb.Update();
+			inactivity.Update();
+			crumbs_amount = crumbs.size();
+			if (!crumbs_amount)
+				return;
+			continue;
+		}
+
+		if (!isDropCrumb && crumbs.size() > 1)
+		{
+			Vector nextCheck = crumbs[1].vec;
+			nextCheck.z = vLocalOrigin.z;
+			if (nextCheck.DistToSqr(vLocalOrigin) < pow(50.0f, 2))
+			{
+				last_crumb = crumbs[1];
+				crumbs.erase(crumbs.begin(), std::next(crumbs.begin()));
+				time_spent_on_crumb.Update();
+				crumbs_amount = crumbs.size();
+				if (!crumbs_amount)
+					return;
+				inactivity.Update();
+				continue;
+			}
+		}
+
+		crumbs_amount = crumbs.size();
+		break;
 	}
 
-	current_vec = crumbs[0].vec;
-	if (reset_z)
-		current_vec.z = vLocalOrigin.z;
-
-	// We are close enough to the second crumb, Skip both (This is especially helpful with drop-downs)
-	if (crumbs.size() > 1 && crumbs[1].vec.DistToSqr(vLocalOrigin) < pow(50.0f, 2))
-	{
-		last_crumb = crumbs[1];
-		crumbs.erase(crumbs.begin(), std::next(crumbs.begin()));
-		time_spent_on_crumb.Update();
-		--crumbs_amount;
-		if (!--crumbs_amount)
-			return;
-		inactivity.Update();
-	}
 	// If we make any progress at all, reset this
 	// If we spend way too long on this crumb, ignore the logic below
-	else if (!time_spent_on_crumb.Check(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value))
+	if (!time_spent_on_crumb.Check(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value))
 	{
-		// 44.0f -> Revved brass beast, do not use z axis as jumping counts towards that. Yes this will mean long falls will trigger it, but that is not really bad.
+		// 44.0f -> Revved brass beast, do not use z axis as jumping counts towards that.
 		if (!vel.Get2D().IsZero(40.0f))
 			inactivity.Update();
+		else if (isDropCrumb)
+		{
+			if (hasMoveDir)
+				moveTarget += moveDir * (PLAYER_WIDTH * 0.75f);
+			inactivity.Update();
+		}
 		else if (Vars::Debug::Logging.Value)
 			SDK::Output("CNavEngine", std::format("Spent too much time on the crumb, assuming were stuck, 2Dvelocity: ({},{})", fabsf(vel.Get2D().x), fabsf(vel.Get2D().y)).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	}
@@ -1030,8 +1121,7 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	{
 		// Detect when jumping is necessary.
 		// 1. No jumping if zoomed (or revved)
-		// 2. Jump if it's necessary to do so based on z values
-		// 3. Jump if stuck (not getting closer) for more than stuck_time/2
+		// 2. Jump only after inactivity-based stuck detection (or explicit overrides)
 		if (pWeapon)
 		{
 			auto iWepID = pWeapon->GetWeaponID();
@@ -1043,9 +1133,7 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				if (iWepID != TF_WEAPON_MINIGUN || !(pCmd->buttons & IN_ATTACK2))
 				{
 					bool bShouldJump = false;
-					float flHeightDiff = crumbs[0].vec.z - pLocal->GetAbsOrigin().z;
-
-					bool bPreventJump = false;
+					bool bPreventJump = isDropCrumb;
 					if (crumbs.size() > 1)
 					{
 						float flHeightDiff = crumbs[0].vec.z - crumbs[1].vec.z;
@@ -1054,11 +1142,8 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 					}
 					if (!bPreventJump)
 					{
-						// Check if we need to jump
-						if (flHeightDiff > pLocal->m_flStepSize() && flHeightDiff <= PLAYER_JUMP_HEIGHT)
-							bShouldJump = true;
-						// Also jump if we're stuck and it might help
-						else if (inactivity.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2))
+						// Allow jumps only when inactivity timer says we're stuck
+						if (inactivity.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2))
 						{
 							auto pLocalNav = map->findClosestNavSquare(pLocal->GetAbsOrigin());
 							if (pLocalNav && !(pLocalNav->m_attributeFlags & (NAV_MESH_NO_JUMP | NAV_MESH_STAIRS)))
@@ -1104,12 +1189,12 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			[[fallthrough]];
 		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Plain:
 		default:
-			LookAtPath(pCmd, { crumbs[0].vec.x, crumbs[0].vec.y }, pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
+			LookAtPath(pCmd, { moveTarget.x, moveTarget.y }, pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
 			break;
 		}
 	}
 
-	SDK::WalkTo(pCmd, pLocal, current_vec);
+	SDK::WalkTo(pCmd, pLocal, moveTarget);
 }
 
 void CNavEngine::Render()

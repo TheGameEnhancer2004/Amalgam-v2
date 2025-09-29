@@ -111,6 +111,13 @@ void CMovementSimulation::Reset(PlayerStorage& tStorage)
 
 void CMovementSimulation::Store()
 {
+	if (Vars::Misc::Performance::DisableSimulations.Value)
+	{
+		m_mRecords.clear();
+		m_mSimTimes.clear();
+		return;
+	}
+
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ALL))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
@@ -207,6 +214,15 @@ void CMovementSimulation::Store()
 
 bool CMovementSimulation::Initialize(CBaseEntity* pEntity, PlayerStorage& tStorage, bool bHitchance, bool bStrafe)
 {
+	if (Vars::Misc::Performance::DisableSimulations.Value)
+	{
+		tStorage.m_pPlayer = pEntity && pEntity->IsPlayer() ? pEntity->As<CTFPlayer>() : nullptr;
+		tStorage.m_vPredictedOrigin = tStorage.m_pPlayer ? tStorage.m_pPlayer->m_vecOrigin() : Vec3();
+		tStorage.m_flSimTime = tStorage.m_pPlayer ? tStorage.m_pPlayer->m_flSimulationTime() : 0.f;
+		tStorage.m_bInitFailed = tStorage.m_bFailed = true;
+		return false;
+	}
+
 	if (!pEntity || !pEntity->IsPlayer() || !pEntity->As<CTFPlayer>()->IsAlive())
 	{
 		tStorage.m_bInitFailed = tStorage.m_bFailed = true;
@@ -638,6 +654,9 @@ void CMovementSimulation::RestoreBounds(CTFPlayer* pPlayer)
 
 void CMovementSimulation::RunTick(PlayerStorage& tStorage, bool bPath, std::function<void(CMoveData&)>* pCallback)
 {
+	if (Vars::Misc::Performance::DisableSimulations.Value)
+		return;
+
 	if (tStorage.m_bFailed || !tStorage.m_pPlayer || !tStorage.m_pPlayer->IsPlayer())
 		return;
 
@@ -734,6 +753,9 @@ void CMovementSimulation::Restore(PlayerStorage& tStorage)
 
 float CMovementSimulation::GetPredictedDelta(CBaseEntity* pEntity)
 {
+	if (Vars::Misc::Performance::DisableSimulations.Value)
+		return TICK_INTERVAL;
+
 	auto& vSimTimes = m_mSimTimes[pEntity->entindex()];
 	if (!vSimTimes.empty())
 	{

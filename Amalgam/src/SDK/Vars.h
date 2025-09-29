@@ -716,6 +716,14 @@ namespace Vars
 	NAMESPACE_END(Visuals);
 
 	NAMESPACE_BEGIN(Misc)
+		SUBNAMESPACE_BEGIN(Performance)
+#ifdef TEXTMODE
+			CVar(DisableSimulations, "Disable simulations", true);
+#else
+			CVar(DisableSimulations, "Disable simulations", false);
+#endif
+		SUBNAMESPACE_END(Performance);
+
 		SUBNAMESPACE_BEGIN(Movement)
 			CVarEnum(AutoStrafe, "Auto strafe", 0, NONE, nullptr,
 				VA_LIST("Off", "Legit", "Directional"),
@@ -744,6 +752,7 @@ namespace Vars
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
 					VA_LIST("Off", "Plain", "Silent"),
 					Off, Plain, Silent);
+				CVar(LookAtPathSpeed, "Look at path speed", 25, SLIDER_CLAMP, 0, 120);
 
 				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
 				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");

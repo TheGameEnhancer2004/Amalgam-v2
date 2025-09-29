@@ -136,8 +136,8 @@ public:
 	
 	const char* GetPlayerName(int iIndex, const char* sDefault, int* pType = nullptr);
 	
-	bool ContainsSpecialChars(const std::string& name);
-	void ProcessSpecialCharsInName(uint32_t uFriendsID, const std::string& name);
+	// bool ContainsSpecialChars(const std::string& name);
+	// void ProcessSpecialCharsInName(uint32_t uFriendsID, const std::string& name);
 	
 	std::vector<int>& GetPlayerTags(uint32_t uAccountID) { return m_mPlayerTags.contains(uAccountID) ? m_mPlayerTags[uAccountID] : m_vDummy; }
 	std::string* GetPlayerAlias(uint32_t uAccountID) { return m_mPlayerAliases.contains(uAccountID) ? &m_mPlayerAliases[uAccountID] : nullptr; }
