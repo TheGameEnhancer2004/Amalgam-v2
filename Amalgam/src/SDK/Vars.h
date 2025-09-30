@@ -716,6 +716,14 @@ namespace Vars
 	NAMESPACE_END(Visuals);
 
 	NAMESPACE_BEGIN(Misc)
+		SUBNAMESPACE_BEGIN(Performance)
+#ifdef TEXTMODE
+			CVar(DisableSimulations, "Disable simulations", true);
+#else
+			CVar(DisableSimulations, "Disable simulations", false);
+#endif
+		SUBNAMESPACE_END(Performance);
+
 		SUBNAMESPACE_BEGIN(Movement)
 			CVarEnum(AutoStrafe, "Auto strafe", 0, NONE, nullptr,
 				VA_LIST("Off", "Legit", "Directional"),
@@ -744,6 +752,7 @@ namespace Vars
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
 					VA_LIST("Off", "Plain", "Silent"),
 					Off, Plain, Silent);
+				CVar(LookAtPathSpeed, "Look at path speed", 25, SLIDER_CLAMP, 0, 120);
 
 				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
 				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
@@ -804,6 +813,7 @@ namespace Vars
 			CVar(AntiAutobalance, "Anti-autobalance", false);
 			CVar(TauntControl, "Taunt control", false);
 			CVar(KartControl, "Kart control", false);
+			CVar(AchievementSpam, "Achievement spam", false);
 			CVar(AutoF2Ignored, "Auto F2 ignored", false);
 			CVar(AutoF1Priority, "Auto F1 priority", false);
 			CVarEnum(AutoVotekick, "Auto votekick", 0, NONE, nullptr,
@@ -811,6 +821,8 @@ namespace Vars
 				Off, Random, Prio);
 			CVar(ForceClass, "Autojoin class", 0);
 			CVar(Micspam, "Micspam", false);
+			CVar(NoiseSpam, "Noise spam", false);
+			CVar(CallVoteSpam, "Callvote spam", false);
 			CVarEnum(VoiceCommandSpam, "Voice command spam", 0, NONE, nullptr,
 				VA_LIST("Off", "Random", "Medic", "Thanks", "Nice Shot", "Cheers", "Jeers", "Go Go Go", "Move Up", "Go Left", "Go Right", "Yes", "No", "Incoming", "Spy", "Sentry Ahead", "Need Teleporter", "Pootis", "Need Sentry", "Activate Charge", "Help", "Battle Cry"),
 				Off, Random, Medic, Thanks, NiceShot, Cheers, Jeers, GoGoGo, MoveUp, GoLeft, GoRight, Yes, No, Incoming, Spy, Sentry, NeedTeleporter, Pootis, NeedSentry, ActivateCharge, Help, BattleCry);
@@ -844,7 +856,6 @@ namespace Vars
 			CVar(EquipRegionUnlock, "Equip region unlock", false);
 			CVar(BreakShootSound, "Break shoot sound", false);
 			CVar(BackpackExpander, "Backpack expander", false);
-			CVar(NoisemakerSpam, "Noisemaker spam", false);
 			CVar(PingReducer, "Ping reducer", false);
 			CVar(PingTarget, "Ping", 1, SLIDER_CLAMP, 1, 100, 1);
 		SUBNAMESPACE_END(Exploits);

@@ -1284,12 +1284,17 @@ void CMenu::MenuMisc(int iTab)
 			{
 				if (Section("Nav Engine", 8))
 				{
-					FToggle(Vars::Misc::Movement::NavEngine::Enabled);
+					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
-						FToggle(Vars::Misc::Movement::NavEngine::PathInSetup);
-						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath, FDropdownEnum::Left);
-						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Right | FDropdownEnum::Multi, -30);
+						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
+						PushTransparent(Transparent || Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off);
+						{
+							FSlider(Vars::Misc::Movement::NavEngine::LookAtPathSpeed, FSliderEnum::None);
+						}
+						PopTransparent();
+						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -30);
 						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
@@ -1425,6 +1430,9 @@ void CMenu::MenuMisc(int iTab)
 					PopTransparent();
 					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
 					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::CallVoteSpam, FToggleEnum::Right);
 				} EndSection();
 			}
 			EndTable();

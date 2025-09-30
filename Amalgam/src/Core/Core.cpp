@@ -145,7 +145,7 @@ void CCore::Load()
 #endif
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
-
+	I::EngineClient->ClientCmd_Unrestricted("exec catexec");
 	SDK::Output("Amalgam", "Loaded", { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 }
 

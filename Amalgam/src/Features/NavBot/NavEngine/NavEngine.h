@@ -13,12 +13,12 @@
 class NavPoints
 {
 public:
-    Vector current;
-    Vector center;
-    // The above but on the "next" vector, used for height checks.
-    Vector center_next;
-    Vector next;
-    NavPoints(Vector A, Vector B, Vector C, Vector D) : current(A), center(B), center_next(C), next(D){};
+	Vector current;
+	Vector center;
+	// The above but on the "next" vector, used for height checks.
+	Vector center_next;
+	Vector next;
+	NavPoints(Vector A, Vector B, Vector C, Vector D) : current(A), center(B), center_next(C), next(D){};
 };
 
 enum Priority_list
@@ -93,8 +93,21 @@ public:
 
 	struct Crumb
 	{
-		CNavArea* navarea;
-		Vector vec;
+		CNavArea* navarea = nullptr;
+		Vector vec = {};
+		bool requiresDrop = false;
+		float dropHeight = 0.f;
+		float approachDistance = 0.f;
+		Vector approachDir = {};
+	};
+
+	struct DropdownHint
+	{
+		Vector adjustedPos = {};
+		bool requiresDrop = false;
+		float dropHeight = 0.f;
+		float approachDistance = 0.f;
+		Vector approachDir = {};
 	};
 
 	enum class NavState
@@ -128,7 +141,7 @@ public:
 
 	bool IsPlayerPassableNavigation(Vector origin, Vector target, unsigned int mask = MASK_PLAYERSOLID);
 
-	Vector handleDropdown(Vector current_pos, Vector next_pos);
+	DropdownHint handleDropdown(const Vector& current_pos, const Vector& next_pos);
 	NavPoints determinePoints(CNavArea* current, CNavArea* next);
 	class Map : public micropather::Graph
 	{

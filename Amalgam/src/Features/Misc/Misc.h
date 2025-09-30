@@ -17,8 +17,10 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
-	void NoisemakerSpam(CTFPlayer* pLocal);
 	void MicSpam(CTFPlayer* pLocal);
+	void AchievementSpam(CTFPlayer* pLocal);
+	void NoiseSpam(CTFPlayer* pLocal);
+	void CallVoteSpam(CTFPlayer* pLocal);
 
 	void CheatsBypass();
 	void WeaponSway();
@@ -40,6 +42,21 @@ private:
 
 	bool m_bIsMicspam = false;
 	Timer m_tMicCvarRefresh;
+
+	enum class AchievementSpamState
+	{
+		IDLE,
+		CLEARING,
+		WAITING,
+		AWARDING
+	};
+
+	AchievementSpamState m_eAchievementSpamState = AchievementSpamState::IDLE;
+	Timer m_tAchievementSpamTimer;
+	Timer m_tAchievementDelayTimer;
+	int m_iAchievementSpamID = 0;
+	std::string m_sAchievementSpamName = "";
+	Timer m_tCallVoteSpamTimer;
 
 	int m_iBuybotStep = 1;
 	float m_flBuybotClock = 0.0f;

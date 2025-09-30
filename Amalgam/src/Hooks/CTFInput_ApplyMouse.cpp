@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFInput_CAM_CapYaw, "client.dll", "40 53 48 83 EC ? 0F 29 74 24 ? 0F 28 F1", 0x0);
 MAKE_SIGNATURE(CTFInput_ApplyMouse, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 0F 29 74 24 ? 49 8B E8", 0x0);
@@ -55,4 +54,3 @@ MAKE_HOOK(CTFInput_CAM_CapYaw, S::CTFInput_CAM_CapYaw(), float,
 
 	return fVal;
 }
-#endif

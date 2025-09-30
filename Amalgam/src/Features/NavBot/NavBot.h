@@ -31,6 +31,8 @@ public:
 	std::wstring m_sFollowTargetName{};
 	std::wstring m_sEngineerTask{};
 	int m_iStayNearTargetIdx = -1;
+	std::optional<Vector> m_vCurrentCaptureSpot;
+	std::optional<Vector> m_vCurrentCaptureCenter;
 	ClosestEnemy_t GetNearestPlayerDistance(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 private:
 	// Controls the bot parameters like distance from enemy

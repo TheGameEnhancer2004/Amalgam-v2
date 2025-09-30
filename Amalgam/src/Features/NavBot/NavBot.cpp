@@ -12,6 +12,8 @@
 #include "../Simulation/MovementSimulation/MovementSimulation.h"
 #include "../CritHack/CritHack.h"
 #include <unordered_set>
+#include <cfloat>
+#include <cmath>
 
 bool CNavBot::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
 {
@@ -1691,41 +1693,54 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 
 std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam)
 {
-	static Vector vPreviousPosition;
-	static Vector vRandomizedPosition;
-
 	auto vPosition = F::CPController.GetClosestControlPoint(vLocalOrigin, iOurTeam);
 	if (!vPosition)
+	{
+		m_vCurrentCaptureSpot.reset();
+		m_vCurrentCaptureCenter.reset();
 		return std::nullopt;
+	}
 
-	// Get number of teammates on point
-	int iTeammatesOnPoint = 0;
+	if (!m_vCurrentCaptureCenter.has_value() || m_vCurrentCaptureCenter->DistToSqr(*vPosition) > 1.0f)
+	{
+		m_vCurrentCaptureCenter = *vPosition;
+		m_vCurrentCaptureSpot.reset();
+	}
+
 	constexpr float flCapRadius = 100.0f; // Approximate capture radius
+	constexpr float flThreatRadius = 800.0f; // Distance to check for enemies
+	constexpr float flOccupancyRadius = 28.0f;
+	const float flOccupancyRadiusSq = flOccupancyRadius * flOccupancyRadius;
+	const int iLocalIndex = I::EngineClient->GetLocalPlayer();
+
+	std::vector<Vector> vTeammatePositions;
+	vTeammatePositions.reserve(8);
+	int iTeammatesOnPoint = 0;
 
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_TEAMMATES))
 	{
-		if (pEntity->IsDormant() || pEntity->entindex() == I::EngineClient->GetLocalPlayer())
+		if (pEntity->IsDormant() || pEntity->entindex() == iLocalIndex)
 			continue;
 
 		auto pTeammate = pEntity->As<CTFPlayer>();
-		if (!pTeammate->IsAlive())
+		if (!pTeammate || !pTeammate->IsAlive())
 			continue;
 
-		if (pTeammate->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flCapRadius, 2))
+		Vector vTeammateOrigin = pTeammate->GetAbsOrigin();
+		vTeammatePositions.push_back(vTeammateOrigin);
+
+		if (vTeammateOrigin.DistToSqr(*vPosition) <= pow(flCapRadius, 2))
 			iTeammatesOnPoint++;
 	}
 
-	// Check for enemies near point
 	bool bEnemiesNear = false;
-	constexpr float flThreatRadius = 800.0f; // Distance to check for enemies
-
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 	{
 		if (pEntity->IsDormant())
 			continue;
 
 		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy->IsAlive())
+		if (!pEnemy || !pEnemy->IsAlive())
 			continue;
 
 		if (pEnemy->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flThreatRadius, 2))
@@ -1735,12 +1750,38 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		}
 	}
 
+	auto spotTakenByOther = [&](const Vector& spot) -> bool
+	{
+		for (const auto& teammatePos : vTeammatePositions)
+		{
+			Vector2D delta(teammatePos.x - spot.x, teammatePos.y - spot.y);
+			if (delta.LengthSqr() <= flOccupancyRadiusSq)
+				return true;
+		}
+		return false;
+	};
+
+	auto closestTeammateDistanceSq = [&](const Vector& spot) -> float
+	{
+		if (vTeammatePositions.empty())
+			return FLT_MAX;
+
+		float best = FLT_MAX;
+		for (const auto& teammatePos : vTeammatePositions)
+		{
+			Vector2D delta(teammatePos.x - spot.x, teammatePos.y - spot.y);
+			float distSq = delta.LengthSqr();
+			if (distSq < best)
+				best = distSq;
+		}
+		return best;
+	};
+
 	Vector vAdjustedPos = *vPosition;
 
-	// If enemies are near, take defensive positions
 	if (bEnemiesNear)
 	{
-		// Find nearby cover points
+		m_vCurrentCaptureSpot.reset();
 		for (auto tArea : F::NavEngine.getNavFile()->m_areas)
 		{
 			for (auto& tHidingSpot : tArea.m_hidingSpots)
@@ -1755,27 +1796,114 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 	}
 	else
 	{
-		// Only update position when needed
-		if (vPreviousPosition != *vPosition || !F::NavEngine.isPathing())
+		if (m_vCurrentCaptureSpot && spotTakenByOther(m_vCurrentCaptureSpot.value()))
+			m_vCurrentCaptureSpot.reset();
+
+		if (!m_vCurrentCaptureSpot)
 		{
-			vPreviousPosition = *vPosition;
+			const int iSlots = std::clamp(iTeammatesOnPoint + 1, 1, 8);
+			const float flBaseRadius = iSlots == 1 ? 0.0f : std::min(flCapRadius - 12.0f, 45.0f + 12.0f * static_cast<float>(iSlots - 1));
+			const int iPreferredSlot = iSlots > 0 ? (iLocalIndex % iSlots) : 0;
 
-			// Create spread out formation based on player index and class
-			constexpr float flBaseRadius = 120.0f;
+			auto adjustToNav = [&](Vector candidate)
+			{
+				if (F::NavEngine.IsNavMeshLoaded())
+				{
+					if (auto pArea = F::NavEngine.findClosestNavSquare(candidate))
+					{
+						Vector corrected = pArea->getNearestPoint(Vector2D(candidate.x, candidate.y));
+						corrected.z = pArea->m_center.z;
+						candidate = corrected;
+					}
+				}
+				return candidate;
+			};
 
-			// Add ourselves to the total amount
-			iTeammatesOnPoint++;
+			std::vector<Vector> vFallbackCandidates;
+			vFallbackCandidates.reserve(iSlots + 12);
 
-			// Add some randomization but keep formation
-			float flAngle = PI * 2 * (float)(I::EngineClient->GetLocalPlayer() % iTeammatesOnPoint) / iTeammatesOnPoint;
-			float flRadius = flBaseRadius + SDK::RandomFloat(-10.0f, 10.0f);
-			Vector vOffset(cos(flAngle) * flRadius, sin(flAngle) * flRadius, 0.0f);
+			for (int offset = 0; offset < iSlots; ++offset)
+			{
+				int slotIndex = (iPreferredSlot + offset) % iSlots;
+				float t = static_cast<float>(slotIndex) / static_cast<float>(iSlots);
+				float flAngle = t * PI * 2.0f;
 
-			vAdjustedPos += vOffset;
+				Vector candidate = *vPosition;
+				if (flBaseRadius > 1.0f)
+				{
+					candidate.x += cos(flAngle) * flBaseRadius;
+					candidate.y += sin(flAngle) * flBaseRadius;
+				}
+
+				candidate = adjustToNav(candidate);
+				vFallbackCandidates.push_back(candidate);
+
+				if (!spotTakenByOther(candidate))
+				{
+					m_vCurrentCaptureSpot = candidate;
+					break;
+				}
+			}
+
+			if (!m_vCurrentCaptureSpot)
+			{
+				for (int ring = 1; ring <= 2; ++ring)
+				{
+					float flRingRadius = std::min(flCapRadius - 12.0f, flBaseRadius + 14.0f * static_cast<float>(ring));
+					int iSegments = std::max(6, iSlots + ring * 2);
+					for (int seg = 0; seg < iSegments; ++seg)
+					{
+						float flAngle = (static_cast<float>(seg) / iSegments) * PI * 2.0f;
+						Vector candidate = *vPosition;
+						if (flRingRadius > 1.0f)
+						{
+							candidate.x += cos(flAngle) * flRingRadius;
+							candidate.y += sin(flAngle) * flRingRadius;
+						}
+
+						candidate = adjustToNav(candidate);
+						vFallbackCandidates.push_back(candidate);
+
+						if (!spotTakenByOther(candidate))
+						{
+							m_vCurrentCaptureSpot = candidate;
+							break;
+						}
+					}
+					if (m_vCurrentCaptureSpot)
+						break;
+				}
+			}
+
+			if (!m_vCurrentCaptureSpot)
+			{
+				vFallbackCandidates.push_back(adjustToNav(*vPosition));
+
+				Vector vBestCandidate = *vPosition;
+				float flBestScore = -1.0f;
+				for (const auto& candidate : vFallbackCandidates)
+				{
+					float flScore = closestTeammateDistanceSq(candidate);
+					if (flScore > flBestScore)
+					{
+						flBestScore = flScore;
+						vBestCandidate = candidate;
+					}
+				}
+
+				m_vCurrentCaptureSpot = vBestCandidate;
+			}
 		}
+
+		if (m_vCurrentCaptureSpot)
+			vAdjustedPos = m_vCurrentCaptureSpot.value();
 	}
-	// If close enough, don't move
-	if ((vAdjustedPos.DistToSqr(vLocalOrigin) <= pow(50.0f, 2)))
+
+	if (vLocalOrigin.DistToSqr(vAdjustedPos) <= pow(150.0f, 2))
+		vAdjustedPos.z = vLocalOrigin.z;
+
+	Vector2D vFlatDelta(vAdjustedPos.x - vLocalOrigin.x, vAdjustedPos.y - vLocalOrigin.y);
+	if (vFlatDelta.LengthSqr() <= pow(45.0f, 2))
 	{
 		m_bOverwriteCapture = true;
 		return std::nullopt;
@@ -3065,6 +3193,8 @@ void CNavBot::Reset( )
 	m_iMyDispenserIdx = -1;
 	m_vSniperSpots.clear( );
 	m_mAutoScopeCache.clear();
+	m_vCurrentCaptureSpot.reset();
+	m_vCurrentCaptureCenter.reset();
 }
 
 void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
