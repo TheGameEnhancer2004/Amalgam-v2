@@ -1213,6 +1213,12 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
 					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FToggle(Vars::Misc::Automation::AutoVoteMap, FToggleEnum::Right);
+					PushTransparent(!Vars::Misc::Automation::AutoVoteMap.Value);
+					{
+						FSlider(Vars::Misc::Automation::AutoVoteMapOption, FSliderEnum::Right);
+					}
+					PopTransparent();
 				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{

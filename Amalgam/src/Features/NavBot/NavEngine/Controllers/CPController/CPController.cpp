@@ -6,8 +6,6 @@ void CCPController::UpdateObjectiveResource()
 	m_pObjectiveResource = H::Entities.GetObjectiveResource();
 }
 
-// Don't constantly update the cap status
-static Timer tCapStatusUpdate{};
 void CCPController::UpdateControlPoints()
 {
 	// No objective resource, can't run
@@ -35,8 +33,15 @@ void CCPController::UpdateControlPoints()
 		tData.m_vPos = m_pObjectiveResource->m_vCPPositions(i);
 	}
 
-	if (tCapStatusUpdate.Run(1.f))
+	static float flNextCapStatusRefresh = 0.0f;
+	const bool bCanUseGlobalVars = I::GlobalVars && I::GlobalVars->curtime >= 0.0f;
+	const float flCurrentTime = bCanUseGlobalVars ? I::GlobalVars->curtime : 0.0f;
+	const bool bShouldRefresh = !bCanUseGlobalVars || flCurrentTime >= flNextCapStatusRefresh;
+
+	if (bShouldRefresh)
 	{
+		flNextCapStatusRefresh = bCanUseGlobalVars ? flCurrentTime + 1.0f : 0.0f;
+
 		for (int i = 0; i < iNumControlPoints; ++i)
 		{
 			auto& tData = m_aControlPointData[i];

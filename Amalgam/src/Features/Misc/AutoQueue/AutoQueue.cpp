@@ -49,6 +49,8 @@ void CAutoQueue::Run()
 
 		bool bInGame = I::EngineClient->IsInGame();
 		bool bIsLoadingMap = I::EngineClient->IsDrawingLoadingImage();
+		bool bIsConnected = I::EngineClient->IsConnected();
+		bool bHasNetChannel = I::ClientState && I::ClientState->m_NetChannel;
 
 		if (bIsLoadingMap && Vars::Misc::Queueing::RQLTM.Value)
 			return;
@@ -122,8 +124,9 @@ void CAutoQueue::Run()
 		}
 
 		bool bShouldQueue = !bQueuedOnce || (flCurrentTime - flLastQueueTime >= flQueueDelay);
+		bool bStillAttachedToServer = bInGame || bIsConnected || bHasNetChannel;
 
-		if (bShouldQueue && !bInGame && !bIsLoadingMap)
+		if (bShouldQueue && !bIsLoadingMap && !bStillAttachedToServer)
 		{
 			static bool bHasLoaded = false;
 			if (!bHasLoaded)

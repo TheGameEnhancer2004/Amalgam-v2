@@ -563,6 +563,13 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;
+		break;
+	case FNV1A::Hash32Const("vote_maps_changed"):
+		if (Vars::Misc::Automation::AutoVoteMap.Value)
+		{
+			I::EngineClient->ClientCmd_Unrestricted(std::format("next_map_vote {}", Vars::Misc::Automation::AutoVoteMapOption.Value).c_str());
+		}
+		break;
 	}
 }
 
