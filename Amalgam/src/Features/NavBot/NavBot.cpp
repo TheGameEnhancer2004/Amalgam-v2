@@ -9,8 +9,8 @@
 #include "../Ticks/Ticks.h"
 #include "../PacketManip/FakeLag/FakeLag.h"
 #include "../Misc/Misc.h"
-#include "../Simulation/MovementSimulation/MovementSimulation.h"
 #include "../CritHack/CritHack.h"
+#include "../FollowBot/FollowBot.h"
 #include <unordered_set>
 
 bool CNavBot::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
@@ -82,85 +82,6 @@ bool CNavBot::ShouldSearchAmmo(CTFPlayer* pLocal)
 	return false;
 }
 
-int CNavBot::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx)
-{
-	auto pEntity = I::ClientEntityList->GetClientEntity(iPlayerIdx)->As<CBaseEntity>();
-	if (!pEntity || !pEntity->IsPlayer())
-		return -1;
-
-	auto pPlayer = pEntity->As<CTFPlayer>();
-	if (!pPlayer->IsAlive() || pPlayer == pLocal)
-		return -1;
-#ifdef TEXTMODE
-	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
-		return 0;
-#endif
-
-	if (F::PlayerUtils.IsIgnored(iPlayerIdx))
-		return 0;
-
-	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iPlayerIdx)
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iPlayerIdx)
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invulnerable && pPlayer->IsInvulnerable() && G::SavedDefIndexes[SLOT_MELEE] != Heavy_t_TheHolidayPunch
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invisible && pPlayer->m_flInvisibility() && pPlayer->m_flInvisibility() >= Vars::Aimbot::General::IgnoreInvisible.Value / 100.f
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::DeadRinger && pPlayer->m_bFeignDeathReady()
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Taunting && pPlayer->IsTaunting()
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Disguised && pPlayer->InCond(TF_COND_DISGUISED))
-		return 0;
-
-	if (pPlayer->m_iTeamNum() == pLocal->m_iTeamNum())
-		return 0;
-
-	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Vaccinator)
-	{
-		switch (SDK::GetWeaponType(pWeapon))
-		{
-		case EWeaponType::HITSCAN:
-			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && SDK::AttribHookValue(0, "mod_pierce_resists_absorbs", pWeapon) != 0)
-				return 0;
-			break;
-		case EWeaponType::PROJECTILE:
-			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST) && (G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_FLAMETHROWER && G::SavedWepIds[SLOT_SECONDARY] == TF_WEAPON_FLAREGUN))
-				return 0;
-			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_COMPOUND_BOW)
-				return 0;
-			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST))
-				return 0;
-		}
-	}
-
-	return 1;
-}
-
-int CNavBot::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
-{
-	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
-	if (!pEntity || !pEntity->IsBuilding())
-		return -1;
-
-	auto pBuilding = pEntity->As<CBaseObject>();
-	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry) && pBuilding->IsSentrygun()
-		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Dispenser) && pBuilding->IsDispenser()
-		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Teleporter) && pBuilding->IsTeleporter())
-		return 1;
-
-	if (pLocal->m_iTeamNum() == pBuilding->m_iTeamNum())
-		return 1;
-
-	auto pOwner = pBuilding->m_hBuilder().Get();
-	if (pOwner)
-	{
-		if (F::PlayerUtils.IsIgnored(pOwner->entindex()))
-			return 0;
-
-		if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(pOwner->entindex())
-			|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(pOwner->entindex()))
-			return 0;
-	}
-
-	return 1;
-}
-
 bool CNavBot::ShouldAssist(CTFPlayer* pLocal, int iTargetIdx)
 {
 	auto pEntity = I::ClientEntityList->GetClientEntity(iTargetIdx);
@@ -198,8 +119,8 @@ std::vector<CObjectDispenser*> CNavBot::GetDispensers(CTFPlayer* pLocal)
 		auto pLocalNav = F::NavEngine.findClosestNavSquare(*vOrigin);
 
 		// This fixes the fact that players can just place dispensers in unreachable locations
-		if (pLocalNav->getNearestPoint(vOrigin2D).DistToSqr(*vOrigin) > pow(300.0f, 2) ||
-			pLocalNav->getNearestPoint(vOrigin2D).z - vOrigin->z > PLAYER_JUMP_HEIGHT)
+		if (pLocalNav->getNearestPoint(vOrigin2D).DistTo(*vOrigin) > 300.f ||
+			pLocalNav->getNearestPoint(vOrigin2D).z - vOrigin->z > PLAYER_CROUCHED_JUMP_HEIGHT)
 			continue;
 
 		vDispensers.push_back(pDispenser);
@@ -209,7 +130,7 @@ std::vector<CObjectDispenser*> CNavBot::GetDispensers(CTFPlayer* pLocal)
 	auto vLocalOrigin = pLocal->GetAbsOrigin();
 	std::sort(vDispensers.begin(), vDispensers.end(), [&](CBaseEntity* a, CBaseEntity* b) -> bool
 			  {
-				  return F::NavParser.GetDormantOrigin(a->entindex())->DistToSqr(vLocalOrigin) < F::NavParser.GetDormantOrigin(b->entindex())->DistToSqr(vLocalOrigin);
+				  return F::NavParser.GetDormantOrigin(a->entindex())->DistTo(vLocalOrigin) < F::NavParser.GetDormantOrigin(b->entindex())->DistTo(vLocalOrigin);
 			  });
 
 	return vDispensers;
@@ -230,7 +151,7 @@ std::vector<CBaseEntity*> CNavBot::GetEntities(CTFPlayer* pLocal, bool bHealth)
 	auto vLocalOrigin = pLocal->GetAbsOrigin();
 	std::sort(vEntities.begin(), vEntities.end(), [&](CBaseEntity* a, CBaseEntity* b) -> bool
 			  {
-				  return a->GetAbsOrigin().DistToSqr(vLocalOrigin) < b->GetAbsOrigin().DistToSqr(vLocalOrigin);
+				  return a->GetAbsOrigin().DistTo(vLocalOrigin) < b->GetAbsOrigin().DistTo(vLocalOrigin);
 			  });
 
 	return vEntities;
@@ -263,7 +184,7 @@ bool CNavBot::GetHealth(CUserCmd* pCmd, CTFPlayer* pLocal, bool bLowPrio)
 			vTotalEnts.insert(vTotalEnts.end(), vDispensers.begin(), vDispensers.end());
 			std::sort(vTotalEnts.begin(), vTotalEnts.end(), [&](CBaseEntity* a, CBaseEntity* b) -> bool
 					  {
-						  return a->GetAbsOrigin().DistToSqr(vLocalOrigin) < b->GetAbsOrigin().DistToSqr(vLocalOrigin);
+						  return a->GetAbsOrigin().DistTo(vLocalOrigin) < b->GetAbsOrigin().DistTo(vLocalOrigin);
 					  });
 		}
 
@@ -273,11 +194,11 @@ bool CNavBot::GetHealth(CUserCmd* pCmd, CTFPlayer* pLocal, bool bLowPrio)
 
 		if (vTotalEnts.size() > 1)
 		{
-			F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ePriority, true, pBestEnt->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2));
+			F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ePriority, true, pBestEnt->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f);
 			auto iFirstTargetPoints = F::NavEngine.crumbs.size();
 			F::NavEngine.cancelPath();
 
-			F::NavEngine.navTo(vTotalEnts.at(1)->GetAbsOrigin(), ePriority, true, vTotalEnts.at(1)->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2));
+			F::NavEngine.navTo(vTotalEnts.at(1)->GetAbsOrigin(), ePriority, true, vTotalEnts.at(1)->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f);
 			auto iSecondTargetPoints = F::NavEngine.crumbs.size();
 			F::NavEngine.cancelPath();
 
@@ -286,10 +207,10 @@ bool CNavBot::GetHealth(CUserCmd* pCmd, CTFPlayer* pLocal, bool bLowPrio)
 
 		if (pBestEnt)
 		{
-			if (F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ePriority, true, pBestEnt->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2)))
+			if (F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ePriority, true, pBestEnt->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f))
 			{
 				// Check if we are close enough to the health pack to pick it up (unless its not a health pack)
-				if (pBestEnt->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin()) < pow(75.0f, 2) && !pBestEnt->IsDispenser())
+				if (pBestEnt->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) < 75.0f && !pBestEnt->IsDispenser())
 				{
 					// Try to touch the health pack
 					auto pLocalNav = F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin());
@@ -344,7 +265,7 @@ bool CNavBot::GetAmmo(CUserCmd* pCmd, CTFPlayer* pLocal, bool bForce)
 			vTotalEnts.insert(vTotalEnts.end(), vDispensers.begin(), vDispensers.end());
 			std::sort(vTotalEnts.begin(), vTotalEnts.end(), [&](CBaseEntity* a, CBaseEntity* b) -> bool
 					  {
-						  return a->GetAbsOrigin().DistToSqr(vLocalOrigin) < b->GetAbsOrigin().DistToSqr(vLocalOrigin);
+						  return a->GetAbsOrigin().DistTo(vLocalOrigin) < b->GetAbsOrigin().DistTo(vLocalOrigin);
 					  });
 		}
 
@@ -354,11 +275,11 @@ bool CNavBot::GetAmmo(CUserCmd* pCmd, CTFPlayer* pLocal, bool bForce)
 
 		if (vTotalEnts.size() > 1)
 		{
-			F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ammo, true, pBestEnt->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2));
+			F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ammo, true, pBestEnt->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f);
 			const auto iFirstTargetPoints = F::NavEngine.crumbs.size();
 			F::NavEngine.cancelPath();
 
-			F::NavEngine.navTo(vTotalEnts.at(1)->GetAbsOrigin(), ammo, true, vTotalEnts.at(1)->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2));
+			F::NavEngine.navTo(vTotalEnts.at(1)->GetAbsOrigin(), ammo, true, vTotalEnts.at(1)->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f);
 			const auto iSecondTargetPoints = F::NavEngine.crumbs.size();
 			F::NavEngine.cancelPath();
 			pBestEnt = iSecondTargetPoints < iFirstTargetPoints ? vTotalEnts.at(1) : pBestEnt;
@@ -366,10 +287,10 @@ bool CNavBot::GetAmmo(CUserCmd* pCmd, CTFPlayer* pLocal, bool bForce)
 
 		if (pBestEnt)
 		{
-			if (F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ammo, true, pBestEnt->GetAbsOrigin().DistToSqr(vLocalOrigin) > pow(200.0f, 2)))
+			if (F::NavEngine.navTo(pBestEnt->GetAbsOrigin(), ammo, true, pBestEnt->GetAbsOrigin().DistTo(vLocalOrigin) > 200.f))
 			{
 				// Check if we are close enough to the ammo pack to pick it up (unless its not an ammo pack)
-				if (pBestEnt->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin()) < pow(75.0f, 2) && !pBestEnt->IsDispenser())
+				if (pBestEnt->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) < 75.0f && !pBestEnt->IsDispenser())
 				{
 					// Try to touch the ammo pack
 					auto pLocalNav = F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin());
@@ -430,34 +351,6 @@ void CNavBot::RefreshSniperSpots()
 	// If we have no sniper spots, just use nav areas marked as exposed. They're good enough for sniping.
 	if (m_vSniperSpots.empty() && !vExposedSpots.empty())
 		m_vSniperSpots = vExposedSpots;
-}
-
-ClosestEnemy_t CNavBot::GetNearestPlayerDistance(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
-{
-	float flMinDist = FLT_MAX;
-	int iBest = -1;
-
-	if (pLocal && pWeapon)
-	{
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
-		{
-			auto pPlayer = pEntity->As<CTFPlayer>();
-			if (!ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
-				continue;
-
-			auto vOrigin = F::NavParser.GetDormantOrigin(pPlayer->entindex());
-			if (!vOrigin)
-				continue;
-
-			auto flDist = pLocal->GetAbsOrigin().DistToSqr(*vOrigin);
-			if (flDist >= flMinDist)
-				continue;
-
-			flMinDist = flDist;
-			iBest = pPlayer->entindex();
-		}
-	}
-	return ClosestEnemy_t{ iBest, flMinDist };
 }
 
 bool CNavBot::IsEngieMode(CTFPlayer* pLocal)
@@ -711,7 +604,7 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 		if (!vOrigin)
 			continue;
 
-		vOrigin->z += PLAYER_JUMP_HEIGHT;
+		vOrigin->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		bool bShouldCheck = true;
 
@@ -724,20 +617,17 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 		for (auto [pCheckedPlayer, vCheckedOrigin] : vCheckedPlayerOrigins)
 		{
 			// If this origin is closer than a quarter of the min HU (or less than 100 HU) to a cached one, don't go through
-			// all nav areas again DistToSqr is much faster than DistTo which is why we use it here
+			// all nav areas again DistTo is much faster than DistTo which is why we use it here
 			float flDist = m_tSelectedConfig.m_flMinSlightDanger;
 
 			flDist *= 0.25f;
 			flDist = std::max(100.0f, flDist);
 
-			// Square the distance
-			flDist *= flDist;
-
-			if (vOrigin->DistToSqr(vCheckedOrigin) < flDist)
+			if (vOrigin->DistTo(vCheckedOrigin) < flDist)
 			{
 				bShouldCheck = false;
 
-				bool is_absolute_danger = flDist < pow(m_tSelectedConfig.m_flMinFullDanger, 2);
+				bool is_absolute_danger = flDist < m_tSelectedConfig.m_flMinFullDanger;
 				if (!is_absolute_danger && (false/*slight danger when capping*/ || F::NavEngine.current_priority != capture))
 				{
 					// The area is not visible by the player
@@ -761,21 +651,21 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 		// Now check which areas they are close to
 		for (auto& tArea : F::NavEngine.getNavFile()->m_areas)
 		{
-			float flDist = tArea.m_center.DistToSqr(*vOrigin);
+			float flDist = tArea.m_center.DistTo(*vOrigin);
 			float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
 			float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
 
 			// Not dangerous, Still don't bump
-			if (!ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
+			if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
 			{
 				flSlightDangerDist = PLAYER_WIDTH * 1.2f;
 				flFullDangerDist = PLAYER_WIDTH * 1.2f;
 			}
 
-			if (flDist < pow(flSlightDangerDist, 2))
+			if (flDist < flSlightDangerDist)
 			{
 				Vector vNavAreaPos = tArea.m_center;
-				vNavAreaPos.z += PLAYER_JUMP_HEIGHT;
+				vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 				// The area is not visible by the player
 				if (!F::NavParser.IsVectorVisibleNavigation(*vOrigin, vNavAreaPos, MASK_SHOT))
 					continue;
@@ -784,7 +674,7 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 				(*mToLoop)[pPlayer].push_back(&tArea);
 
 				// Just slightly dangerous, only mark as such if it's clear
-				if (flDist >= pow(flFullDangerDist, 2) && (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.current_priority != capture))
+				if (flDist >= flFullDangerDist && (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.current_priority != capture))
 				{
 					(*mToMark)[&tArea]++;
 					if ((*mToMark)[&tArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
@@ -800,13 +690,13 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 bool CNavBot::IsAreaValidForStayNear(Vector vEntOrigin, CNavArea* pArea, bool bFixLocalZ)
 {
 	if (bFixLocalZ)
-		vEntOrigin.z += PLAYER_JUMP_HEIGHT;
+		vEntOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 	auto vAreaOrigin = pArea->m_center;
-	vAreaOrigin.z += PLAYER_JUMP_HEIGHT;
+	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-	float flDist = vEntOrigin.DistToSqr(vAreaOrigin);
+	float flDist = vEntOrigin.DistTo(vAreaOrigin);
 	// Too close
-	if (flDist < pow(m_tSelectedConfig.m_flMinFullDanger, 2))
+	if (flDist < m_tSelectedConfig.m_flMinFullDanger)
 		return false;
 
 	// Blacklisted
@@ -814,7 +704,7 @@ bool CNavBot::IsAreaValidForStayNear(Vector vEntOrigin, CNavArea* pArea, bool bF
 		return false;
 
 	// Too far away
-	if (flDist > pow(m_tSelectedConfig.m_flMax, 2))
+	if (flDist > m_tSelectedConfig.m_flMax)
 		return false;
 
 	CGameTrace trace = {};
@@ -837,7 +727,7 @@ bool CNavBot::StayNearTarget(int iEntIndex)
 		return false;
 
 	// Add the vischeck height
-	vOrigin->z += PLAYER_JUMP_HEIGHT;
+	vOrigin->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 	// Use std::pair to avoid using the distance functions more than once
 	std::vector<std::pair<CNavArea*, float>> vGoodAreas{};
@@ -851,7 +741,7 @@ bool CNavBot::StayNearTarget(int iEntIndex)
 			continue;
 
 		// Good area found
-		vGoodAreas.emplace_back(&tArea, (*vOrigin).DistToSqr(vAreaOrigin));
+		vGoodAreas.emplace_back(&tArea, (*vOrigin).DistTo(vAreaOrigin));
 	}
 	// Sort based on distance
 	if (m_tSelectedConfig.m_bPreferFar)
@@ -877,7 +767,7 @@ bool CNavBot::StayNearTarget(int iEntIndex)
 
 int CNavBot::IsStayNearTargetValid(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex)
 {
-	int iShouldTarget = ShouldTarget(pLocal, pWeapon, iEntIndex);
+	int iShouldTarget = F::BotUtils.ShouldTarget(pLocal, pWeapon, iEntIndex);
 	int iResult = iEntIndex ? iShouldTarget : 0;
 	return iResult;
 }
@@ -889,7 +779,7 @@ std::optional<std::pair<CNavArea*, int>> CNavBot::FindClosestHidingSpot(CNavArea
 		vAlreadyRecursed.clear();
 
 	Vector vAreaOrigin = pArea->m_center;
-	vAreaOrigin.z += PLAYER_JUMP_HEIGHT;
+	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 	// Increment recursion index
 	iRecursionIndex++;
@@ -947,11 +837,11 @@ bool CNavBot::RunReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	float flBestDist = FLT_MAX;
 	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 	{
-		if (!ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
+		if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 			continue;
 
-		float flDist = pEntity->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin());
-		if (flDist > pow(flBestDist, 2))
+		float flDist = pEntity->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin());
+		if (flDist > flBestDist)
 			continue;
 
 		flBestDist = flDist;
@@ -962,7 +852,7 @@ bool CNavBot::RunReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		return false;
 
 	Vector vVischeckPoint = pClosestEnemy->GetAbsOrigin();
-	vVischeckPoint.z += PLAYER_JUMP_HEIGHT;
+	vVischeckPoint.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 	// Get the best non visible area
 	auto vBestArea = FindClosestHidingSpot(pLocalNav, vVischeckPoint, 5);
@@ -975,26 +865,26 @@ bool CNavBot::RunReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	return false;
 }
 
-slots CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
+int CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 {
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::ReloadWeapons))
-		return slots();
+		return -1;
 
 	// Priority too high
 	if (F::NavEngine.current_priority > capture)
-		return slots();
+		return -1;
 
 	// Dont try to reload in combat
-	if (F::NavEngine.current_priority == staynear && tClosestEnemy.m_flDist <= pow(500, 2)
-		|| tClosestEnemy.m_flDist <= pow(250, 2))
-		return slots();
+	if (F::NavEngine.current_priority == staynear && tClosestEnemy.m_flDist <= 500.f
+		|| tClosestEnemy.m_flDist <= 250.f)
+		return -1;
 
 	auto pPrimaryWeapon = pLocal->GetWeaponFromSlot(SLOT_PRIMARY);
 	auto pSecondaryWeapon = pLocal->GetWeaponFromSlot(SLOT_SECONDARY);
 	bool bCheckPrimary = !SDK::WeaponDoesNotUseAmmo(G::SavedWepIds[SLOT_PRIMARY], G::SavedDefIndexes[SLOT_PRIMARY], false);
 	bool bCheckSecondary = !SDK::WeaponDoesNotUseAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY], false);
 
-	float flDivider = F::NavEngine.current_priority < staynear && tClosestEnemy.m_flDist > pow(500, 2) ? 1.f : 3.f;
+	float flDivider = F::NavEngine.current_priority < staynear && tClosestEnemy.m_flDist > 500.f ? 1.f : 3.f;
 
 	CTFWeaponInfo* pWeaponInfo = nullptr;
 	bool bWeaponCantReload = false;
@@ -1003,7 +893,7 @@ slots CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEne
 		pWeaponInfo = pPrimaryWeapon->GetWeaponInfo();
 		bWeaponCantReload = (!pWeaponInfo || pWeaponInfo->iMaxClip1 < 0 || !pLocal->GetAmmoCount(pPrimaryWeapon->m_iPrimaryAmmoType())) && G::SavedWepIds[SLOT_PRIMARY] != TF_WEAPON_PARTICLE_CANNON && G::SavedWepIds[SLOT_PRIMARY] != TF_WEAPON_DRG_POMSON;
 		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_PRIMARY] < (pWeaponInfo->iMaxClip1 / flDivider))
-			return primary;
+			return SLOT_PRIMARY;
 	}
 
 	bool bFoundPrimaryWepInfo = pWeaponInfo;
@@ -1012,24 +902,16 @@ slots CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEne
 		pWeaponInfo = pSecondaryWeapon->GetWeaponInfo();
 		bWeaponCantReload = (!pWeaponInfo || pWeaponInfo->iMaxClip1 < 0 || !pLocal->GetAmmoCount(pSecondaryWeapon->m_iPrimaryAmmoType())) && G::SavedWepIds[SLOT_SECONDARY] != TF_WEAPON_RAYGUN;
 		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_SECONDARY] < (pWeaponInfo->iMaxClip1 / flDivider))
-			return secondary;
+			return SLOT_SECONDARY;
 	}
 
-	// We succeeded in finding a reload slot previously
-	// return our current slot to avoid getting stuck switching between our best weapon slot and reload weapon slot
-	/*if ( m_eLastReloadSlot && ( ( bCheckPrimary && ( !pPrimaryWeapon || !bFoundPrimaryWepInfo ) )
-		|| ( bCheckSecondary && ( !pSecondaryWeapon || !pWeaponInfo ) ) ) )
-	{
-		return m_eLastReloadSlot;
-	}*/
-
-	return slots();
+	return -1;
 }
 
 bool CNavBot::RunSafeReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	static Timer tReloadrunCooldown{};
-	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::ReloadWeapons) || !m_eLastReloadSlot && !G::Reloading)
+	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::ReloadWeapons) || m_iLastReloadSlot == -1 && !G::Reloading)
 	{
 		if (F::NavEngine.current_priority == run_safe_reload)
 			F::NavEngine.cancelPath();
@@ -1052,7 +934,7 @@ bool CNavBot::RunSafeReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		vCurrentDestination = pCrumbs->at(4).vec;
 
 	if (vCurrentDestination)
-		vCurrentDestination->z += PLAYER_JUMP_HEIGHT;
+		vCurrentDestination->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 	else
 	{
 		// Get closest enemy to vicheck
@@ -1063,11 +945,11 @@ bool CNavBot::RunSafeReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 			if (pEntity->IsDormant())
 				continue;
 
-			if (!ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
+			if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 				continue;
 
-			float flDist = pEntity->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin());
-			if (flDist > pow(flBestDist, 2))
+			float flDist = pEntity->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin());
+			if (flDist > flBestDist)
 				continue;
 
 			flBestDist = flDist;
@@ -1077,7 +959,7 @@ bool CNavBot::RunSafeReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (pClosestEnemy)
 		{
 			vCurrentDestination = pClosestEnemy->GetAbsOrigin();
-			vCurrentDestination->z += PLAYER_JUMP_HEIGHT;
+			vCurrentDestination->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 		}
 	}
 	// Get the best non visible area
@@ -1224,7 +1106,7 @@ bool CNavBot::StayNear(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (!vOrigin)
 			continue;
 
-		vSortedPlayers.push_back({ iPlayerIdx, vOrigin->DistToSqr(pLocal->GetAbsOrigin()) });
+		vSortedPlayers.push_back({ iPlayerIdx, vOrigin->DistTo(pLocal->GetAbsOrigin()) });
 	}
 	if (!vSortedPlayers.empty())
 	{
@@ -1253,7 +1135,7 @@ bool CNavBot::MeleeAttack(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestE
 	if (!pEntity || pEntity->IsDormant())
 		return F::NavEngine.current_priority == prio_melee;
 
-	if (iSlot != melee || m_eLastReloadSlot)
+	if (iSlot != SLOT_MELEE || m_iLastReloadSlot != -1)
 	{
 		if (F::NavEngine.current_priority == prio_melee)
 			F::NavEngine.cancelPath();
@@ -1281,7 +1163,7 @@ bool CNavBot::MeleeAttack(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestE
 	Vector vTargetOrigin = pPlayer->GetAbsOrigin();
 	Vector vLocalOrigin = pLocal->GetAbsOrigin();
 	// If we are close enough, don't even bother with using the navparser to get there
-	if (tClosestEnemy.m_flDist < pow(100.0f, 2) && bIsVisible)
+	if (tClosestEnemy.m_flDist < 100.0f && bIsVisible)
 	{
 		// Crouch if we are standing on someone
 		if (pLocal->m_hGroundEntity().Get() && pLocal->m_hGroundEntity().Get()->IsPlayer())
@@ -1296,7 +1178,7 @@ bool CNavBot::MeleeAttack(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestE
 	// Don't constantly path, it's slow.
 	// The closer we are, the more we should try to path
 	static Timer tMeleeCooldown{};
-	if (!tMeleeCooldown.Run(tClosestEnemy.m_flDist < pow(100.0f, 2) ? 0.2f : tClosestEnemy.m_flDist < pow(1000.0f, 2) ? 0.5f : 2.f) && F::NavEngine.isPathing())
+	if (!tMeleeCooldown.Run(tClosestEnemy.m_flDist < 100.f ? 0.2f : tClosestEnemy.m_flDist < 1000.f ? 0.5f : 2.f) && F::NavEngine.isPathing())
 		return F::NavEngine.current_priority == prio_melee;
 
 	// Just walk at the enemy l0l
@@ -1309,10 +1191,10 @@ bool CNavBot::IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bool bF
 {
 	if (bFixSentryZ)
 		vEntOrigin.z += 40.0f;
-	vAreaOrigin.z += PLAYER_JUMP_HEIGHT;
+	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 	// Too close to be valid
-	if (vEntOrigin.DistToSqr(vAreaOrigin) <= pow(1100.0f + HALF_PLAYER_WIDTH, 2))
+	if (vEntOrigin.DistTo(vAreaOrigin) <= 1100.f + HALF_PLAYER_WIDTH)
 		return false;
 
 	// Fails vischeck, bad
@@ -1337,7 +1219,7 @@ bool CNavBot::TryToSnipe(CBaseObject* pBulding)
 		// Not usable
 		if (!IsAreaValidForSnipe(*vOrigin, area.m_center, false))
 			continue;
-		vGoodAreas.push_back(std::pair<CNavArea*, float>(&area, area.m_center.DistToSqr(*vOrigin)));
+		vGoodAreas.push_back(std::pair<CNavArea*, float>(&area, area.m_center.DistTo(*vOrigin)));
 	}
 
 	// Sort based on distance
@@ -1356,7 +1238,7 @@ int CNavBot::IsSnipeTargetValid(CTFPlayer* pLocal, int iBuildingIdx)
 	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry))
 		return 0;
 
-	int iShouldTarget = ShouldTargetBuilding(pLocal, iBuildingIdx);
+	int iShouldTarget = F::BotUtils.ShouldTargetBuilding(pLocal, iBuildingIdx);
 	int iResult = iBuildingIdx ? iShouldTarget : 0;
 	return iResult;
 }
@@ -1459,7 +1341,7 @@ bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 	m_sEngineerTask = std::format(L"Build {}", building == dispenser ? L"dispenser" : L"sentry");
 	static float flPrevYaw = 0.0f;
 	// Try to build! we are close enough
-	if (vCurrentBuildingSpot && vCurrentBuildingSpot->DistToSqr(pLocal->GetAbsOrigin()) <= pow(building == dispenser ? 500.0f : 200.0f, 2))
+	if (vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= (building == dispenser ? 500.f : 200.f))
 	{
 		// TODO: Rotate our angle to a valid building spot ? also rotate building itself to face enemies ?
 		pCmd->viewangles.x = 20.0f;
@@ -1531,7 +1413,7 @@ bool CNavBot::SmackBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, CBaseObject* pBui
 
 	m_sEngineerTask = std::format(L"Smack {}", pBuilding->GetClassID() == ETFClassID::CObjectDispenser ? L"dispenser" : L"sentry");
 
-	if (pBuilding->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin()) <= pow(100.0f, 2) && pWeapon->GetSlot() == SLOT_MELEE)
+	if (pBuilding->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 100.f && pWeapon->GetSlot() == SLOT_MELEE)
 	{
 		pCmd->buttons |= IN_ATTACK;
 
@@ -1567,7 +1449,7 @@ bool CNavBot::EngineerLogic(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 			auto vSentryOrigin = F::NavParser.GetDormantOrigin(m_iMySentryIdx);
 			// Too far away, destroy it
 			// BUG Ahead, building isnt destroyed lol
-			if (!vSentryOrigin || vSentryOrigin->DistToSqr(pLocal->GetAbsOrigin()) >= pow(1800.0f, 2))
+			if (!vSentryOrigin || vSentryOrigin->DistTo(pLocal->GetAbsOrigin()) >= 1800.f)
 			{
 				// If we have a valid building
 				I::EngineClient->ClientCmd_Unrestricted("destroy 2");
@@ -1658,7 +1540,7 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 		if (!pTeammate->IsAlive())
 			continue;
 
-		if (pTeammate->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flCartRadius, 2))
+		if (pTeammate->GetAbsOrigin().DistTo(*vPosition) <= flCartRadius)
 			iTeammatesNearCart++;
 	}
 
@@ -1676,11 +1558,11 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 	}
 
 	// Adjust position, so it's not floating high up, provided the local player is close.
-	if (vLocalOrigin.DistToSqr(vAdjusted_pos) <= pow(150.0f, 2))
+	if (vLocalOrigin.DistTo(vAdjusted_pos) <= 150.f)
 		vAdjusted_pos.z = vLocalOrigin.z;
 
 	// If close enough, don't move (mostly due to lifts)
-	if (vAdjusted_pos.DistToSqr(vLocalOrigin) <= pow(15.0f, 2))
+	if (vAdjusted_pos.DistTo(vLocalOrigin) <= 15.f)
 	{
 		m_bOverwriteCapture = true;
 		return std::nullopt;
@@ -1711,7 +1593,7 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		if (!pTeammate->IsAlive())
 			continue;
 
-		if (pTeammate->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flCapRadius, 2))
+		if (pTeammate->GetAbsOrigin().DistTo(*vPosition) <= flCapRadius)
 			iTeammatesOnPoint++;
 	}
 
@@ -1728,7 +1610,7 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		if (!pEnemy->IsAlive())
 			continue;
 
-		if (pEnemy->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flThreatRadius, 2))
+		if (pEnemy->GetAbsOrigin().DistTo(*vPosition) <= flThreatRadius)
 		{
 			bEnemiesNear = true;
 			break;
@@ -1775,7 +1657,7 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		}
 	}
 	// If close enough, don't move
-	if ((vAdjustedPos.DistToSqr(vLocalOrigin) <= pow(50.0f, 2)))
+	if ((vAdjustedPos.DistTo(vLocalOrigin) <= 50.f))
 	{
 		m_bOverwriteCapture = true;
 		return std::nullopt;
@@ -1815,7 +1697,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 			if (vRocket)
 			{
 				// If close enough, don't move
-				if (vRocket->DistToSqr(pLocal->GetAbsOrigin()) <= pow(50.0f, 2))
+				if (vRocket->DistTo(pLocal->GetAbsOrigin()) <= 50.f)
 				{
 					m_bOverwriteCapture = true;
 					return std::nullopt;
@@ -1834,7 +1716,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 					if (!pEnemy->IsAlive())
 						continue;
 
-					if (pEnemy->GetAbsOrigin().DistToSqr(*vRocket) <= pow(flThreatRadius, 2))
+					if (pEnemy->GetAbsOrigin().DistTo(*vRocket) <= flThreatRadius)
 					{
 						bEnemiesNearRocket = true;
 						break;
@@ -1925,7 +1807,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 			if (!pEnemy->IsAlive())
 				continue;
 
-			if (pEnemy->GetAbsOrigin().DistToSqr(*vPosition) <= pow(flThreatRadius, 2))
+			if (pEnemy->GetAbsOrigin().DistTo(*vPosition) <= flThreatRadius)
 			{
 				bEnemiesNearAustralium = true;
 				break;
@@ -1933,7 +1815,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 		}
 		
 		// If enemies are near and we're not close, approach carefully
-		if (bEnemiesNearAustralium && pLocal->GetAbsOrigin().DistToSqr(*vPosition) > pow(300.0f, 2))
+		if (bEnemiesNearAustralium && pLocal->GetAbsOrigin().DistTo(*vPosition) > 300.f)
 		{
 			// Try to find a safer approach path
 			auto pClosestNav = F::NavEngine.findClosestNavSquare(*vPosition);
@@ -2080,11 +1962,11 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				float flBestDist = FLT_MAX;
 				for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 				{
-					if (!ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
+					if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 						continue;
 
-					float flDist = pEntity->GetAbsOrigin().DistToSqr(pClosestNav->m_center);
-					if (flDist > pow(flBestDist, 2))
+					float flDist = pEntity->GetAbsOrigin().DistTo(pClosestNav->m_center);
+					if (flDist > flBestDist)
 						continue;
 
 					flBestDist = flDist;
@@ -2095,12 +1977,12 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				if (pClosestEnemy && flBestDist <= 1000.f)
 				{
 					vVischeckPoint = pClosestEnemy->GetAbsOrigin();
-					vVischeckPoint->z += PLAYER_JUMP_HEIGHT;
+					vVischeckPoint->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 				}
 
 				if (auto vClosestSpot = FindClosestHidingSpot(pClosestNav, vVischeckPoint, 5))
 				{
-					if ((*vClosestSpot).first->m_center.DistToSqr(vLocalOrigin) <= pow(250.0f, 2))
+					if ((*vClosestSpot).first->m_center.DistTo(vLocalOrigin) <= 250.f)
 					{
 						F::NavEngine.cancelPath();
 						m_bDefending = true;
@@ -2142,8 +2024,8 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 			continue;
 
 		// Skip areas that are too close
-		float flDist = tArea.m_center.DistToSqr(pLocal->GetAbsOrigin());
-		if (flDist < pow(500.0f, 2))
+		float flDist = tArea.m_center.DistTo(pLocal->GetAbsOrigin());
+		if (flDist < 500.f)
 			continue;
 
 		vValidAreas.push_back(&tArea);
@@ -2170,8 +2052,8 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Strategy 1: Try to find areas that are far from current position
 	for (auto pArea : vValidAreas)
 	{
-		float flDist = pArea->m_center.DistToSqr(pLocal->GetAbsOrigin());
-		if (flDist > pow(2000.0f, 2))
+		float flDist = pArea->m_center.DistTo(pLocal->GetAbsOrigin());
+		if (flDist > 2000.f)
 			vPotentialTargets.push_back(pArea);
 	}
 
@@ -2180,8 +2062,8 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	{
 		for (auto pArea : vValidAreas)
 		{
-			float flDist = pArea->m_center.DistToSqr(pLocal->GetAbsOrigin());
-			if (flDist > pow(1000.0f, 2) && flDist <= pow(2000.0f, 2))
+			float flDist = pArea->m_center.DistTo(pLocal->GetAbsOrigin());
+			if (flDist > 1000.f && flDist <= 2000.f)
 				vPotentialTargets.push_back(pArea);
 		}
 	}
@@ -2231,8 +2113,8 @@ static bool IsPositionSafe(Vector vPos, int iLocalTeam)
 			if (pEntity->As<CTFGrenadePipebombProjectile>()->m_iType() != TF_GL_MODE_REMOTE_DETONATE)
 				continue;
 
-			float flDist = pEntity->m_vecOrigin().DistToSqr(vPos);
-			if (flDist < pow(Vars::Misc::Movement::NavBot::StickyDangerRange.Value, 2))
+			float flDist = pEntity->m_vecOrigin().DistTo(vPos);
+			if (flDist < Vars::Misc::Movement::NavBot::StickyDangerRange.Value)
 				return false;
 		}
 
@@ -2242,8 +2124,8 @@ static bool IsPositionSafe(Vector vPos, int iLocalTeam)
 			if (iClassId == ETFClassID::CTFProjectile_Rocket ||
 				(iClassId == ETFClassID::CTFGrenadePipebombProjectile && pEntity->As<CTFGrenadePipebombProjectile>()->m_iType() == TF_GL_MODE_REGULAR))
 			{
-				float flDist = pEntity->m_vecOrigin().DistToSqr(vPos);
-				if (flDist < pow(Vars::Misc::Movement::NavBot::ProjectileDangerRange.Value, 2))
+				float flDist = pEntity->m_vecOrigin().DistTo(vPos);
+				if (flDist < Vars::Misc::Movement::NavBot::ProjectileDangerRange.Value)
 					return false;
 			}
 		}
@@ -2287,7 +2169,7 @@ bool CNavBot::EscapeProjectiles(CTFPlayer* pLocal)
 
 		if (IsPositionSafe(tArea.m_center, pLocal->m_iTeamNum()))
 		{
-			float flDist = tArea.m_center.DistToSqr(pLocal->GetAbsOrigin());
+			float flDist = tArea.m_center.DistTo(pLocal->GetAbsOrigin());
 			vSafeAreas.push_back({ &tArea, flDist });
 		}
 	}
@@ -2423,11 +2305,11 @@ bool CNavBot::EscapeDanger(CTFPlayer* pLocal)
 					continue;
 			}
 
-			float flDistToReference = tArea.m_center.DistToSqr(vReferencePosition);
-			float flDistToCurrent = tArea.m_center.DistToSqr(pLocal->GetAbsOrigin());
+			float flDistToReference = tArea.m_center.DistTo(vReferencePosition);
+			float flDistToCurrent = tArea.m_center.DistTo(pLocal->GetAbsOrigin());
 			
 			// Only consider areas that are not too far away and reachable
-			if (flDistToCurrent < pow(2000.0f, 2))
+			if (flDistToCurrent < 2000.f)
 			{
 				// If we have a target, prioritize staying near it
 				float flScore = bHasTarget ? flDistToReference : flDistToCurrent;
@@ -2454,12 +2336,12 @@ bool CNavBot::EscapeDanger(CTFPlayer* pLocal)
 			bool bIsSafe = true;
 			for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
 			{
-				if (!ShouldTarget(pLocal, pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>(), pEntity->entindex()))
+				if (!F::BotUtils.ShouldTarget(pLocal, pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>(), pEntity->entindex()))
 					continue;
 
 				// If enemy is too close to this area, mark it as unsafe
-				float flDist = pEntity->GetAbsOrigin().DistToSqr(pArea.first->m_center);
-				if (flDist < pow(m_tSelectedConfig.m_flMinFullDanger * 1.2f, 2))
+				float flDist = pEntity->GetAbsOrigin().DistTo(pArea.first->m_center);
+				if (flDist < m_tSelectedConfig.m_flMinFullDanger * 1.2f)
 				{
 					bIsSafe = false;
 					break;
@@ -2488,7 +2370,7 @@ bool CNavBot::EscapeDanger(CTFPlayer* pLocal)
 			// Sort by distance to player
 			std::sort(vAreaPointers.begin(), vAreaPointers.end(), [&](CNavArea* a, CNavArea* b) -> bool
 			{
-				return a->m_center.DistToSqr(pLocal->GetAbsOrigin()) < b->m_center.DistToSqr(pLocal->GetAbsOrigin());
+				return a->m_center.DistTo(pLocal->GetAbsOrigin()) < b->m_center.DistTo(pLocal->GetAbsOrigin());
 			});
 
 			// Try to path to any non-blacklisted area
@@ -2552,372 +2434,32 @@ bool CNavBot::EscapeSpawn(CTFPlayer* pLocal)
 	return false;
 }
 
-slots CNavBot::GetBestSlot(CTFPlayer* pLocal, slots eActiveSlot, ClosestEnemy_t tClosestEnemy)
-{
-	if (Vars::Misc::Movement::NavBot::WeaponSlot.Value != Vars::Misc::Movement::NavBot::WeaponSlotEnum::Best)
-		return static_cast<slots>(Vars::Misc::Movement::NavBot::WeaponSlot.Value - 1);
-
-	if (pLocal && pLocal->IsAlive())
-	{
-		auto pClosestEnemy = I::ClientEntityList->GetClientEntity(tClosestEnemy.m_iEntIdx)->As<CTFPlayer>();
-		auto pPrimaryWeapon = pLocal->GetWeaponFromSlot(SLOT_PRIMARY);
-		auto pSecondaryWeapon = pLocal->GetWeaponFromSlot(SLOT_SECONDARY);
-		if (pPrimaryWeapon && pSecondaryWeapon)
-		{
-			int iPrimaryResAmmo = SDK::WeaponDoesNotUseAmmo(pPrimaryWeapon) ? -1 : pLocal->GetAmmoCount(pPrimaryWeapon->m_iPrimaryAmmoType());
-			int iSecondaryResAmmo = SDK::WeaponDoesNotUseAmmo(pSecondaryWeapon) ? -1 : pLocal->GetAmmoCount(pSecondaryWeapon->m_iPrimaryAmmoType());
-			switch (pLocal->m_iClass())
-			{
-			case TF_CLASS_SCOUT:
-			{
-				if ((!G::AmmoInSlot[SLOT_PRIMARY] && (!G::AmmoInSlot[SLOT_SECONDARY] || (iSecondaryResAmmo != -1 &&
-					iSecondaryResAmmo <= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 4))) && tClosestEnemy.m_flDist <= pow(200.f, 2))
-					return melee;
-
-				if (G::AmmoInSlot[SLOT_PRIMARY] && tClosestEnemy.m_flDist <= pow(800.f, 2))
-					return primary;
-
-				else if (G::AmmoInSlot[SLOT_SECONDARY])
-					return secondary;
-
-				break;
-			}
-			case TF_CLASS_HEAVY:
-			{
-				if (!G::AmmoInSlot[SLOT_PRIMARY] && (!G::AmmoInSlot[SLOT_SECONDARY] && iSecondaryResAmmo == 0) ||
-					(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch && (pClosestEnemy && !pClosestEnemy->IsTaunting() && pClosestEnemy->IsInvulnerable()) && tClosestEnemy.m_flDist < pow(400.f, 2)))
-					return melee;
-
-				else if ((!pClosestEnemy || tClosestEnemy.m_flDist <= pow(900.f, 2)) && G::AmmoInSlot[SLOT_PRIMARY])
-					return primary;
-
-				else if (G::AmmoInSlot[SLOT_SECONDARY] && G::SavedWepIds[SLOT_SECONDARY] == TF_WEAPON_SHOTGUN_HWG)
-					return secondary;
-
-				break;
-			}
-			case TF_CLASS_MEDIC:
-			{
-				/*if ( AutoMedic->FoundTarget )
-				{
-					return secondary;
-				}*/
-
-				if (!G::AmmoInSlot[SLOT_PRIMARY] ||
-					(tClosestEnemy.m_flDist <= pow(400.f, 2) && pClosestEnemy/* && !pPlayer->IsInvulnerable( )*/))
-					return melee;
-
-				return primary;
-			}
-			case TF_CLASS_SPY:
-			{
-				if (tClosestEnemy.m_flDist <= pow(250.0f, 2) && pClosestEnemy/* && !pPlayer->IsInvulnerable( )*/)
-					return melee;
-				else if (G::AmmoInSlot[SLOT_PRIMARY] || iPrimaryResAmmo)
-					return primary;
-
-				break;
-			}
-			case TF_CLASS_SNIPER:
-			{
-				// We have already skipped the targets which are invulnerable
-				// bool bPlayerInvuln = pPlayer && pPlayer->IsInvulnerable( );
-				int iPlayerLowHp = pClosestEnemy ? (pClosestEnemy->m_iHealth() < pClosestEnemy->GetMaxHealth() * 0.35f ? 2 : pClosestEnemy->m_iHealth() < pClosestEnemy->GetMaxHealth() * 0.75f) : -1;
-
-				if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] ||
-					(tClosestEnemy.m_flDist <= pow(200.0f, 2) && pClosestEnemy/*&& !bPlayerInvuln*/))
-					return melee;
-
-				if ((G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo) &&
-					(tClosestEnemy.m_flDist <= pow(300.0f, 2) && iPlayerLowHp > 1 /*&& !bPlayerInvuln*/))
-					return secondary;
-
-				// Keep the smg if the target we previosly tried shooting is running away
-				else if (eActiveSlot && eActiveSlot < 3 && G::AmmoInSlot[eActiveSlot - 1] &&
-						 (tClosestEnemy.m_flDist <= pow(800.0f, 2) && iPlayerLowHp > 1 /*&& !bPlayerInvuln*/))
-					break;
-
-				else if (G::AmmoInSlot[SLOT_PRIMARY])
-					return primary;
-
-				break;
-			}
-			case TF_CLASS_PYRO:
-			{
-				if (!G::AmmoInSlot[SLOT_PRIMARY] && (!G::AmmoInSlot[SLOT_SECONDARY] && iSecondaryResAmmo != -1 &&
-					iSecondaryResAmmo <= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 4) &&
-					(pClosestEnemy && tClosestEnemy.m_flDist <= pow(300.0f, 2)))
-					return melee;
-
-				if (G::AmmoInSlot[SLOT_PRIMARY] && (tClosestEnemy.m_flDist <= pow(550.0f, 2) || !pClosestEnemy))
-					return primary;
-				else if (G::AmmoInSlot[SLOT_SECONDARY])
-					return secondary;
-
-				break;
-			}
-			case TF_CLASS_SOLDIER:
-			{
-				auto pEnemyWeapon = pClosestEnemy ? pClosestEnemy->m_hActiveWeapon().Get()->As<CTFWeaponBase>() : nullptr;
-				bool bEnemyCanAirblast = pEnemyWeapon && pEnemyWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER && pEnemyWeapon->m_iItemDefinitionIndex() != Pyro_m_ThePhlogistinator;
-				bool bEnemyClose = pClosestEnemy && tClosestEnemy.m_flDist <= pow(250.0f, 2);
-				if ((eActiveSlot != primary || !G::AmmoInSlot[SLOT_PRIMARY] && iPrimaryResAmmo == 0) && bEnemyClose && (pClosestEnemy->m_iHealth() < 80 ? !G::AmmoInSlot[SLOT_SECONDARY] : pClosestEnemy->m_iHealth() >= 150 || G::AmmoInSlot[SLOT_SECONDARY] < 2))
-					return melee;
-
-				if (G::AmmoInSlot[SLOT_SECONDARY] && (bEnemyCanAirblast || (tClosestEnemy.m_flDist <= pow(350.0f, 2) && pClosestEnemy && pClosestEnemy->m_iHealth() <= 125)))
-					return secondary;
-				else if (G::AmmoInSlot[SLOT_PRIMARY])
-					return primary;
-
-				break;
-			}
-			case TF_CLASS_DEMOMAN:
-			{
-				if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] && (pClosestEnemy && tClosestEnemy.m_flDist <= pow(200.0f, 2)))
-					return melee;
-
-				if (G::AmmoInSlot[SLOT_PRIMARY] && (tClosestEnemy.m_flDist <= pow(800.0f, 2)))
-					return primary;
-				else if (G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo >= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 2)
-					return secondary;
-
-				break;
-			}
-			case TF_CLASS_ENGINEER:
-			{
-				auto pSentry = I::ClientEntityList->GetClientEntity(m_iMySentryIdx);
-				auto pDispenser = I::ClientEntityList->GetClientEntity(m_iMyDispenserIdx);
-				if (((pSentry && pSentry->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin()) <= pow(300.0f, 2)) || (pDispenser && pDispenser->GetAbsOrigin().DistToSqr(pLocal->GetAbsOrigin()) <= pow(500.0f, 2))) || (vCurrentBuildingSpot && vCurrentBuildingSpot->DistToSqr(pLocal->GetAbsOrigin()) <= pow(500.0f, 2)))
-				{
-					if (eActiveSlot >= melee && F::NavEngine.current_priority != prio_melee)
-						return eActiveSlot;
-					else
-						return melee;
-				}
-				else if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] && (pClosestEnemy && tClosestEnemy.m_flDist <= pow(200.0f, 2)))
-					return melee;
-				else if ((G::AmmoInSlot[SLOT_PRIMARY] || iPrimaryResAmmo) && (pClosestEnemy && tClosestEnemy.m_flDist <= pow(500.0f, 2)))
-					return primary;
-				else if (G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo)
-					return secondary;
-
-				break;
-			}
-			default:
-				break;
-			}
-		}
-	}
-	return eActiveSlot;
-}
-
 void CNavBot::UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy_t tClosestEnemy)
 {
 	static Timer tSlotTimer{};
 	if (!tSlotTimer.Run(0.2f))
 		return;
 
-	m_iCurrentSlot = pWeapon->GetSlot() + 1;
-
 	// Prioritize reloading
-	int iReloadSlot = GetReloadWeaponSlot(pLocal, tClosestEnemy);
-	m_eLastReloadSlot = static_cast<slots>(iReloadSlot);
+	int iReloadSlot = m_iLastReloadSlot = GetReloadWeaponSlot(pLocal, tClosestEnemy);
 
-	int iNewSlot = iReloadSlot ? iReloadSlot : (Vars::Misc::Movement::NavBot::WeaponSlot.Value ? GetBestSlot(pLocal, static_cast<slots>(m_iCurrentSlot), tClosestEnemy) : -1);
-	if (iNewSlot > -1)
+	// Special case for engineer bots
+	if (pLocal->m_iClass() == TF_CLASS_ENGINEER)
 	{
-		auto sCommand = "slot" + std::to_string(iNewSlot);
-		if (m_iCurrentSlot != iNewSlot)
-			I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
-	}
-}
-
-void CNavBot::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
-{
-	static bool bKeep = false;
-	static bool bShouldClearCache = false;
-	static Timer tScopeTimer{};
-	bool bIsClassic = pWeapon->GetWeaponID() == TF_WEAPON_SNIPERRIFLE_CLASSIC;
-	if (!Vars::Misc::Movement::NavBot::AutoScope.Value || pWeapon->GetWeaponID() != TF_WEAPON_SNIPERRIFLE && !bIsClassic && pWeapon->GetWeaponID() != TF_WEAPON_SNIPERRIFLE_DECAP)
-	{
-		bKeep = false;
-		m_mAutoScopeCache.clear();
-		return;
-	}
-
-	if (!Vars::Misc::Movement::NavBot::AutoScopeUseCachedResults.Value)
-		bShouldClearCache = true;
-
-	if (bShouldClearCache)
-	{
-		m_mAutoScopeCache.clear();
-		bShouldClearCache = false;
-	}
-	else if (m_mAutoScopeCache.size())
-		bShouldClearCache = true;
-
-	if (bIsClassic)
-	{
-		if (bKeep)
+		auto pSentry = I::ClientEntityList->GetClientEntity(m_iMySentryIdx);
+		auto pDispenser = I::ClientEntityList->GetClientEntity(m_iMyDispenserIdx);
+		if (((pSentry &&
+			pSentry->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 300.f) ||
+			(pDispenser &&
+			pDispenser->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 500.f)) ||
+			(vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= 500.f))
 		{
-			if (!(pCmd->buttons & IN_ATTACK))
-				pCmd->buttons |= IN_ATTACK;
-			if (tScopeTimer.Check(Vars::Misc::Movement::NavBot::AutoScopeCancelTime.Value)) // cancel classic charge
-				pCmd->buttons |= IN_JUMP;
-		}
-		if (!pLocal->OnSolid() && !(pCmd->buttons & IN_ATTACK))
-			bKeep = false;
-	}
-	else
-	{
-		if (bKeep)
-		{
-			if (pLocal->InCond(TF_COND_ZOOMED))
-			{
-				if (tScopeTimer.Check(Vars::Misc::Movement::NavBot::AutoScopeCancelTime.Value))
-				{
-					bKeep = false;
-					pCmd->buttons |= IN_ATTACK2;
-					return;
-				}
-			}
+			if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE || F::NavEngine.current_priority == prio_melee)
+				F::BotUtils.SetSlot(pLocal, pWeapon, SLOT_MELEE);
 		}
 	}
-
-	CNavArea* pCurrentDestinationArea = nullptr;
-	auto pCrumbs = F::NavEngine.getCrumbs();
-	if (pCrumbs->size() > 4)
-		pCurrentDestinationArea = pCrumbs->at(4).navarea;
-
-	auto vLocalOrigin = pLocal->GetAbsOrigin();
-	auto pLocalNav = pCurrentDestinationArea ? pCurrentDestinationArea : F::NavEngine.findClosestNavSquare(vLocalOrigin);
-	if (!pLocalNav)
-		return;
-
-	Vector vFrom = pLocalNav->m_center;
-	vFrom.z += PLAYER_JUMP_HEIGHT;
-
-	std::vector<std::pair<CBaseEntity*, float>> vEnemiesSorted;
-	for (auto pEnemy : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
-	{
-		if (pEnemy->IsDormant())
-			continue;
-
-		if (!ShouldTarget(pLocal, pWeapon, pEnemy->entindex()))
-			continue;
-
-		vEnemiesSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
-	}
-
-	for (auto pEnemyBuilding : H::Entities.GetGroup(EGroupType::BUILDINGS_ENEMIES))
-	{
-		if (pEnemyBuilding->IsDormant())
-			continue;
-
-		if (!ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()))
-			continue;
-
-		vEnemiesSorted.emplace_back(pEnemyBuilding, pEnemyBuilding->GetAbsOrigin().DistToSqr(vLocalOrigin));
-	}
-
-	if (vEnemiesSorted.empty())
-		return;
-
-	std::sort(vEnemiesSorted.begin(), vEnemiesSorted.end(), [&](std::pair<CBaseEntity*, float> a, std::pair<CBaseEntity*, float> b) -> bool { return a.second < b.second; });
-
-	auto CheckVisibility = [&](const Vec3& vTo, int iEntIndex) -> bool
-		{
-			CGameTrace trace = {};
-			CTraceFilterWorldAndPropsOnly filter = {};
-
-			// Trace from local pos first
-			SDK::Trace(Vector(vLocalOrigin.x, vLocalOrigin.y, vLocalOrigin.z + PLAYER_JUMP_HEIGHT), vTo, MASK_SHOT | CONTENTS_GRATE, &filter, &trace);
-			bool bHit = trace.fraction == 1.0f;
-			if (!bHit)
-			{
-				// Try to trace from our destination pos
-				SDK::Trace(vFrom, vTo, MASK_SHOT | CONTENTS_GRATE, &filter, &trace);
-				bHit = trace.fraction == 1.0f;
-			}
-
-			if (iEntIndex != -1)
-				m_mAutoScopeCache[iEntIndex] = bHit;
-
-			if (bHit)
-			{
-				if (bIsClassic)
-					pCmd->buttons |= IN_ATTACK;
-				else if (!pLocal->InCond(TF_COND_ZOOMED) && !(pCmd->buttons & IN_ATTACK2))
-					pCmd->buttons |= IN_ATTACK2;
-
-				tScopeTimer.Update();
-				return bKeep = true;
-			}
-			return false;
-		};
-
-	bool bSimple = Vars::Misc::Movement::NavBot::AutoScope.Value == Vars::Misc::Movement::NavBot::AutoScopeEnum::Simple;
-
-	int iMaxTicks = TIME_TO_TICKS(0.5f);
-	PlayerStorage tStorage;
-	for (auto [pEnemy, _] : vEnemiesSorted)
-	{
-		int iEntIndex = Vars::Misc::Movement::NavBot::AutoScopeUseCachedResults.Value ? pEnemy->entindex() : -1;
-		if (m_mAutoScopeCache.contains(iEntIndex))
-		{
-			if (m_mAutoScopeCache[iEntIndex])
-			{
-				if (bIsClassic)
-					pCmd->buttons |= IN_ATTACK;
-				else if (!pLocal->InCond(TF_COND_ZOOMED) && !(pCmd->buttons & IN_ATTACK2))
-					pCmd->buttons |= IN_ATTACK2;
-
-				tScopeTimer.Update();
-				bKeep = true;
-				break;
-			}
-			continue;
-		}
-
-		Vector vNonPredictedPos = pEnemy->GetAbsOrigin();
-		vNonPredictedPos.z += PLAYER_JUMP_HEIGHT;
-		if (CheckVisibility(vNonPredictedPos, iEntIndex))
-			return;
-
-		if (!bSimple)
-		{
-			F::MoveSim.Initialize(pEnemy, tStorage, false);
-			if (tStorage.m_bFailed)
-			{
-				F::MoveSim.Restore(tStorage);
-				continue;
-			}
-	
-			for (int i = 0; i < iMaxTicks; i++)
-				F::MoveSim.RunTick(tStorage);
-		}
-
-		bool bResult = false;
-		Vector vPredictedPos = bSimple ? pEnemy->GetAbsOrigin() + pEnemy->GetAbsVelocity() * TICKS_TO_TIME(iMaxTicks) : tStorage.m_vPredictedOrigin;
-		
-		auto pTargetNav = F::NavEngine.findClosestNavSquare(vPredictedPos);
-		if (pTargetNav)
-		{
-			Vector vTo = pTargetNav->m_center;
-
-			// If player is in the air dont try to vischeck nav areas below him, check the predicted position instead
-			if (!pEnemy->As<CBasePlayer>()->OnSolid() && vTo.DistToSqr(vPredictedPos) >= pow(400.f, 2))
-				vTo = vPredictedPos;
-
-			vTo.z += PLAYER_JUMP_HEIGHT;
-			bResult = CheckVisibility(vTo, iEntIndex);
-		}
-		if (!bSimple)
-			F::MoveSim.Restore(tStorage);
-
-		if (bResult)
-			break;
-	}
+	else if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
+		F::BotUtils.SetSlot(pLocal, pWeapon, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
 bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
@@ -2934,11 +2476,10 @@ bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
 
 void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	static Timer tDoubletapRecharge{};
-	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value || !pLocal->IsAlive() || !F::NavEngine.isReady())
+	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value ||
+		!pLocal->IsAlive() || F::NavEngine.current_priority == followbot || F::FollowBot.m_bActive || !F::NavEngine.isReady())
 	{
 		m_iStayNearTargetIdx = -1;
-		m_mAutoScopeCache.clear();
 		return;
 	}
 
@@ -2948,16 +2489,16 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
 		return;
 
-	if (!pWeapon || !pCmd)
+	if (!pWeapon)
 		return;
 
 	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK)
 		return;
 
-	AutoScope(pLocal, pWeapon, pCmd);
-
 	UpdateLocalBotPositions(pLocal);
-	//Recharge doubletap every n seconds
+
+	// Recharge doubletap every n seconds
+	static Timer tDoubletapRecharge{};
 	if (Vars::Misc::Movement::NavBot::RechargeDT.Value && IsWeaponValidForDT(pWeapon))
 	{
 		if (!F::Ticks.m_bRechargeQueue &&
@@ -2971,8 +2512,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	RefreshSniperSpots();
 	RefreshLocalBuildings(pLocal);
-	auto tClosestEnemy = GetNearestPlayerDistance(pLocal, pWeapon);
-	RefreshBuildingSpots(pLocal, pLocal->GetWeaponFromSlot(SLOT_MELEE), tClosestEnemy);
+	RefreshBuildingSpots(pLocal, pLocal->GetWeaponFromSlot(SLOT_MELEE), F::BotUtils.m_tClosestEnemy);
 
 	// Update the distance config
 	switch (pLocal->m_iClass())
@@ -2991,22 +2531,8 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_tSelectedConfig = CONFIG_MID_RANGE;
 	}
 
-	// Spin up the minigun if there are enemies nearby or if we had an active aimbot target 
-	if (pWeapon->GetWeaponID() == TF_WEAPON_MINIGUN)
-	{
-		static Timer tSpinupTimer{};
-		auto pEntity = I::ClientEntityList->GetClientEntity(tClosestEnemy.m_iEntIdx);
-		if (pEntity && pEntity->As<CTFPlayer>()->IsAlive() && !pEntity->As<CTFPlayer>()->IsInvulnerable() && pWeapon->HasAmmo())
-		{
-			if (G::AimTarget.m_iEntIndex && G::AimTarget.m_iDuration || tClosestEnemy.m_flDist <= pow(800.f, 2))
-				tSpinupTimer.Update();
-			if (!tSpinupTimer.Check(3.f)) // 3 seconds until unrev
-				pCmd->buttons |= IN_ATTACK2;
-		}
-	}
-
-	UpdateSlot(pLocal, pWeapon, tClosestEnemy);
-	UpdateEnemyBlacklist(pLocal, pWeapon, m_iCurrentSlot);
+	UpdateSlot(pLocal, pWeapon, F::BotUtils.m_tClosestEnemy);
+	UpdateEnemyBlacklist(pLocal, pWeapon, F::BotUtils.m_iCurrentSlot);
 
 	// TODO:
 	// Add engie logic and target sentries logic. (Done)
@@ -3018,7 +2544,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	if (EscapeSpawn(pLocal)
 		|| EscapeProjectiles(pLocal)
-		|| MeleeAttack(pCmd, pLocal, m_iCurrentSlot, tClosestEnemy)
+		|| MeleeAttack(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| EscapeDanger(pLocal)
 		|| GetHealth(pCmd, pLocal)
 		|| GetAmmo(pCmd, pLocal)
@@ -3026,7 +2552,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| RunSafeReload(pLocal, pWeapon)
 		|| MoveInFormation(pLocal, pWeapon)
 		|| CaptureObjectives(pLocal, pWeapon)
-		|| EngineerLogic(pCmd, pLocal, tClosestEnemy)
+		|| EngineerLogic(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
 		|| SnipeSentries(pLocal)
 		|| StayNear(pLocal, pWeapon)
 		|| GetHealth(pCmd, pLocal, true)
@@ -3046,7 +2572,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		case prio_melee:
 		case health:
 		case danger:
-			pPlayer = I::ClientEntityList->GetClientEntity(tClosestEnemy.m_iEntIdx)->As<CTFPlayer>();
+			pPlayer = I::ClientEntityList->GetClientEntity(F::BotUtils.m_tClosestEnemy.m_iEntIdx)->As<CTFPlayer>();
 			F::CritHack.m_bForce = pPlayer && !pPlayer->IsDormant() && pPlayer->m_iHealth() >= pWeapon->GetDamage();
 			break;
 		default:
@@ -3056,15 +2582,14 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	}
 }
 
-void CNavBot::Reset( )
+void CNavBot::Reset()
 {
 	// Make it run asap
 	tRefreshSniperspotsTimer -= 60;
 	m_iStayNearTargetIdx = -1;
 	m_iMySentryIdx = -1;
 	m_iMyDispenserIdx = -1;
-	m_vSniperSpots.clear( );
-	m_mAutoScopeCache.clear();
+	m_vSniperSpots.clear();
 }
 
 void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)
@@ -3227,8 +2752,8 @@ bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	Vector vTargetPos = vLeaderPos + *vOffsetOpt;
 	
 	// If we're already close enough to our position, don't bother moving
-	float flDistToTarget = pLocal->GetAbsOrigin().DistToSqr(vTargetPos);
-	if (flDistToTarget <= pow(30.0f, 2))
+	float flDistToTarget = pLocal->GetAbsOrigin().DistTo(vTargetPos);
+	if (flDistToTarget <= 30.f)
 		return true;
 	
 	// Only try to move to the position if we're not already pathing to something important
@@ -3240,7 +2765,7 @@ bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	static Vector vLastTargetPos;
 	
 	// Check if we're trying to path to the same position but repeatedly failing
-	if (vLastTargetPos.DistToSqr(vTargetPos) <= pow(50.0f, 2) && !F::NavEngine.isPathing())
+	if (vLastTargetPos.DistTo(vTargetPos) <= 50.f && !F::NavEngine.isPathing())
 	{
 		iConsecutiveFailures++;
 		
@@ -3258,10 +2783,8 @@ bool CNavBot::MoveInFormation(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 			return true; // Skip this attempt and try again with new formation distance
 		}
 	}
-	else if (vLastTargetPos.DistToSqr(vTargetPos) > pow(50.0f, 2))
-	{
+	else if (vLastTargetPos.DistTo(vTargetPos) > 50.f)
 		iConsecutiveFailures = 0;
-	}
 	vLastTargetPos = vTargetPos;
 	// Try to navigate to our position in formation
 	if (F::NavEngine.navTo(vTargetPos, patrol, true, !F::NavEngine.isPathing()))
@@ -3298,7 +2821,7 @@ void CNavBot::Draw(CTFPlayer* pLocal)
 
 	const auto& cColor = F::NavEngine.isPathing() ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value;
 	const auto& cReadyColor = bIsReady ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value;
-	auto pLocalArea = F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin());
+	auto pLocalArea = F::NavEngine.IsNavMeshLoaded() ? F::NavEngine.findClosestNavSquare(pLocal->GetAbsOrigin()) : nullptr;
 	const int iInSpawn = pLocalArea ? pLocalArea->m_TFattributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_EXIT) : -1;
 	std::wstring sJob = L"None";
 	switch (F::NavEngine.current_priority)
@@ -3310,7 +2833,7 @@ void CNavBot::Draw(CTFPlayer* pLocal)
 		sJob = L"Get health (Low-Prio)";
 		break;
 	case staynear:
-		sJob = std::format(L"Follow enemy ( {} )", m_sFollowTargetName.data());
+		sJob = std::format(L"Stalk enemy ({})", m_sFollowTargetName.data());
 		break;
 	case run_reload:
 		sJob = L"Run reload";
@@ -3341,6 +2864,9 @@ void CNavBot::Draw(CTFPlayer* pLocal)
 		break;
 	case danger:
 		sJob = L"Escape danger";
+		break;
+	case followbot:
+		sJob = L"FollowBot";
 		break;
 	default:
 		break;

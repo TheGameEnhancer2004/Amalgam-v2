@@ -1114,9 +1114,11 @@
     <ClCompile Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.cpp" />
     <ClCompile Include="src\Features\Aimbot\AutoHeal\AutoHeal.cpp" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
+    <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />
     <ClCompile Include="src\Features\Misc\AutoItem\AutoItem.cpp" />
     <ClCompile Include="src\Features\Misc\NamedPipe\NamedPipe.cpp" />
+    <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
     <ClCompile Include="src\Features\NavBot\NavBot.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\Controller.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.cpp" />
@@ -1433,9 +1435,11 @@
     <ClInclude Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.h" />
     <ClInclude Include="src\Features\Aimbot\AutoHeal\AutoHeal.h" />
     <ClInclude Include="src\Features\AutoJoin\AutoJoin.h" />
+    <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
     <ClInclude Include="src\Features\Killstreak\Killstreak.h" />
     <ClInclude Include="src\Features\Misc\AutoItem\AutoItem.h" />
     <ClInclude Include="src\Features\Misc\NamedPipe\NamedPipe.h" />
+    <ClInclude Include="src\Features\NavBot\BotUtils.h" />
     <ClInclude Include="src\Features\NavBot\NavBot.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\Controller.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.h" />

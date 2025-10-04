@@ -7,6 +7,7 @@
 #include "../Features/Visuals/Visuals.h"
 #include "../Features/Visuals/Materials/Materials.h"
 #include "../Features/Navbot/NavEngine/NavEngine.h"
+#include "../Features/FollowBot/FollowBot.h"
 
 MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::ClientModeShared, 39), bool,
 	void* rcx, const CViewSetup* pSetup)
@@ -30,6 +31,7 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	if (!F::CameraWindow.m_bDrawing)
 	{
 		F::NavEngine.Render();
+		F::FollowBot.Render();
 		F::Visuals.DrawEffects();
 		F::Chams.m_mEntities.clear();
 		if (!I::EngineVGui->IsGameUIVisible() && F::Materials.m_bLoaded)

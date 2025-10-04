@@ -39,7 +39,6 @@ private:
 	int m_iCurrentChatSpamIndex = 0;
 
 	bool m_bIsMicspam = false;
-	Timer m_tMicCvarRefresh;
 
 	int m_iBuybotStep = 1;
 	float m_flBuybotClock = 0.0f;

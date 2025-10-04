@@ -451,12 +451,16 @@ namespace ImGui
 			ImDrawList* pDrawList = GetForegroundDrawList();
 			ImVec2 vPos = pPosOverride ? *pPosOverride : !vRowSizes.empty() ? vRowSizes.back().m_vPos : ImVec2();
 			ImVec2 vSize = pSizeOverride ? *pSizeOverride : !vRowSizes.empty() ? vRowSizes.back().m_vSize : ImVec2();
-
+			/*
 			std::deque<std::string> vWraps = WrapText(sTooltip, H::Draw.Scale(flWrapWidth));
+			
 			ImVec2 vText = { 0, H::Draw.Scale(9) + vWraps.size() * H::Draw.Scale(16) };
 			for (auto& sText : vWraps)
 				vText.x = std::max(CalcTextSize(sText.c_str()).x, vText.x);
+			*/
+			ImVec2 vText = CalcTextSize(sTooltip);
 			vText.x += GetStyle().WindowPadding.x * 2;
+			vText.y += H::Draw.Scale(14);
 			if (fmodf(vText.x, 2.f))
 				vText.x += 1;
 
@@ -481,11 +485,11 @@ namespace ImGui
 
 			vPos.x += vText.x / 2;
 			vPos.x += GetStyle().WindowPadding.x;
-			for (size_t i = 0; i < vWraps.size(); i++)
+			//for (size_t i = 0; i < vWraps.size(); i++)
 			{
-				auto& sText = vWraps[i];
+				//auto& sText = vWraps[i];
 				//vTextSize.x = CalcTextSize(sText.c_str()).x;
-				pDrawList->AddText({ vPos.x - vText.x / 2, vPos.y + H::Draw.Scale(6) + H::Draw.Scale(16) * i }, F::Render.Active, sText.c_str());
+				pDrawList->AddText({ vPos.x - vText.x / 2, vPos.y + H::Draw.Scale(6) /*+ H::Draw.Scale(16) * i*/ }, F::Render.Active, sTooltip/*sText.c_str()*/);
 			}
 
 			PopFont();

@@ -1,5 +1,5 @@
 #pragma once
-#include "NavEngine/NavEngine.h"
+#include "BotUtils.h"
 
 enum slots
 {
@@ -16,12 +16,6 @@ enum building
     sentry    = 2
 };
 
-struct ClosestEnemy_t
-{	
-	int m_iEntIdx;
-	float m_flDist;
-};
-
 class CNavBot
 {
 public:
@@ -31,7 +25,6 @@ public:
 	std::wstring m_sFollowTargetName{};
 	std::wstring m_sEngineerTask{};
 	int m_iStayNearTargetIdx = -1;
-	ClosestEnemy_t GetNearestPlayerDistance(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 private:
 	// Controls the bot parameters like distance from enemy
 	struct bot_class_config
@@ -52,12 +45,10 @@ private:
 	std::vector<Vector> m_vSniperSpots;
 	std::vector<Vector>  m_vBuildingSpots;
 	std::optional<Vector> vCurrentBuildingSpot;
-	std::unordered_map<int, bool> m_mAutoScopeCache;
 	int m_iMySentryIdx = -1;
 	int m_iMyDispenserIdx = -1;
 	int m_iBuildAttempts = 0;
-	int m_iCurrentSlot = primary;
-	slots m_eLastReloadSlot = slots();
+	int m_iLastReloadSlot = -1;
 
 	std::vector<std::pair<uint32_t, Vector>> m_vLocalBotPositions;
 	int m_iPositionInFormation = -1;
@@ -68,8 +59,6 @@ private:
 	bool m_bOverwriteCapture = false;
 private:
 	bool ShouldAssist(CTFPlayer* pLocal, int iTargetIdx);
-	int ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx);
-	int ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
 
 	// Get entities of given itemtypes (Used for health/ammo)
 	// Use true for health packs, use false for ammo packs
@@ -130,10 +119,8 @@ private:
 	bool EscapeProjectiles(CTFPlayer* pLocal);
 	bool EscapeSpawn(CTFPlayer* pLocal);
 
-	slots GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
-	slots GetBestSlot(CTFPlayer* pLocal, slots eActiveSlot, ClosestEnemy_t tClosestEnemy);
+	int GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
 	void UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy_t tClosestEnemy);
-	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 public:
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset();

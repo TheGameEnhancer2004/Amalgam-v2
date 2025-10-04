@@ -33,6 +33,7 @@ void CPlayerlistCore::SavePlayerlist()
 				F::Configs.SaveJson(tChild, "Name", tTag.m_sName);
 				F::Configs.SaveJson(tChild, "Color", tTag.m_tColor);
 				F::Configs.SaveJson(tChild, "Priority", tTag.m_iPriority);
+				F::Configs.SaveJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
 				F::Configs.SaveJson(tChild, "Label", tTag.m_bLabel);
 
 				tSub.put_child(std::to_string(F::PlayerUtils.IndexToTag(iID)), tChild);
@@ -112,14 +113,14 @@ void CPlayerlistCore::LoadPlayerlist()
 		F::PlayerUtils.m_mPlayerAliases.clear();
 		F::PlayerUtils.m_mBotIgnoreData.clear();
 		F::PlayerUtils.m_vTags = {
-			{ "Default", { 200, 200, 200, 255 }, 0, false, false, true },
-			{ "Ignored", { 200, 200, 200, 255 }, -1, false, true, true },
-			{ "Cheater", { 255, 100, 100, 255 }, 1, false, true, true },
-			{ "Friend", { 100, 255, 100, 255 }, 0, true, false, true },
-			{ "Party", { 100, 50, 255, 255 }, 0, true, false, true },
-			{ "F2P", { 255, 255, 255, 255 }, 0, true, false, true },
-			{ "Friend Ignore", { 255, 100, 100, 255 }, -1, false, true, true },
-			{ "Bot Ignore", { 255, 100, 100, 255 }, -1, false, true, true }
+			{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
+			{ "Ignored", { 200, 200, 200, 255 }, -1, 0, false, true, true },
+			{ "Cheater", { 255, 100, 100, 255 }, 1, 0, false, true, true },
+			{ "Friend", { 100, 255, 100, 255 }, 0, 2, true, false, true },
+			{ "Party", { 100, 50, 255, 255 }, 0, 1, true, false, true },
+			{ "F2P", { 255, 255, 255, 255 }, 0, 0, true, false, true },
+			{ "Friend Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true },
+			{ "Bot Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true }
 		};
 
 		if (auto tSub = tRead.get_child_optional("Config"))
@@ -130,6 +131,7 @@ void CPlayerlistCore::LoadPlayerlist()
 				F::Configs.LoadJson(tChild, "Name", tTag.m_sName);
 				F::Configs.LoadJson(tChild, "Color", tTag.m_tColor);
 				F::Configs.LoadJson(tChild, "Priority", tTag.m_iPriority);
+				F::Configs.LoadJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
 				F::Configs.LoadJson(tChild, "Label", tTag.m_bLabel);
 
 				int iID = F::PlayerUtils.TagToIndex(std::stoi(sName));
@@ -138,6 +140,7 @@ void CPlayerlistCore::LoadPlayerlist()
 					F::PlayerUtils.m_vTags[iID].m_sName = tTag.m_sName;
 					F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
 					F::PlayerUtils.m_vTags[iID].m_iPriority = tTag.m_iPriority;
+					F::PlayerUtils.m_vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
 					F::PlayerUtils.m_vTags[iID].m_bLabel = tTag.m_bLabel;
 				}
 				else

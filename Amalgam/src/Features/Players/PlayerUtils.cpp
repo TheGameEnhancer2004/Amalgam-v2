@@ -205,6 +205,12 @@ int CPlayerlistUtils::GetPriority(uint32_t uAccountID, bool bCache)
 	if (HasTag(uAccountID, TagToIndex(IGNORED_TAG)))
 		return m_vTags[TagToIndex(IGNORED_TAG)].m_iPriority;
 
+	else if (HasTag(uAccountID, TagToIndex(FRIEND_IGNORE_TAG)))
+		return m_vTags[TagToIndex(FRIEND_IGNORE_TAG)].m_iPriority;
+
+	else if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
+		return m_vTags[TagToIndex(BOT_IGNORE_TAG)].m_iPriority;
+
 	std::vector<int> vPriorities;
 	if (m_mPlayerTags.contains(uAccountID))
 	{
@@ -245,6 +251,63 @@ int CPlayerlistUtils::GetPriority(int iIndex, bool bCache)
 		return H::Entities.GetPriority(iIndex);
 
 	return GetPriority(GetAccountID(iIndex));
+}
+
+int CPlayerlistUtils::GetFollowPriority(uint32_t uAccountID, bool bCache)
+{
+	if (bCache)
+		return H::Entities.GetFollowPriority(uAccountID);
+
+	const int iDefault = m_vTags[TagToIndex(DEFAULT_TAG)].m_iFollowPriority;
+	if (!uAccountID)
+		return iDefault;
+
+	std::vector<int> vPriorities;
+	if (m_mPlayerTags.contains(uAccountID))
+	{
+		for (auto& iID : m_mPlayerTags[uAccountID])
+		{
+			auto pTag = GetTag(iID);
+			if (pTag && !pTag->m_bLabel)
+			{
+				if (pTag->m_iFollowPriority < 0)
+					return -1;
+
+				vPriorities.push_back(pTag->m_iFollowPriority);
+			}
+		}
+	}
+	if (H::Entities.IsFriend(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(FRIEND_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iFollowPriority);
+	}
+	if (H::Entities.InParty(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(PARTY_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iFollowPriority);
+	}
+	if (H::Entities.IsF2P(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(F2P_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iFollowPriority);
+	}
+	if (vPriorities.empty())
+		return iDefault;
+
+	std::sort(vPriorities.begin(), vPriorities.end(), std::greater<int>());
+	return vPriorities.front();
+}
+
+int CPlayerlistUtils::GetFollowPriority(int iIndex, bool bCache)
+{
+	if (bCache)
+		return H::Entities.GetFollowPriority(iIndex);
+
+	return GetFollowPriority(GetAccountID(iIndex));
 }
 
 PriorityLabel_t* CPlayerlistUtils::GetSignificantTag(uint32_t uAccountID, int iMode)

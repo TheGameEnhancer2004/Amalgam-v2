@@ -9,9 +9,9 @@
 #include "../Features/Resolver/Resolver.h"
 #include "../Features/Spectate/Spectate.h"
 #include "../Features/NavBot/NavEngine/Controllers/Controller.h"
-#include "../Features/NavBot/NavEngine/NavEngine.h"
 #include "../Features/NavBot/NavBot.h"
 #include "../Features/Killstreak/Killstreak.h"
+#include "../Features/FollowBot/FollowBot.h"
 
 MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	void* rcx)
@@ -36,6 +36,8 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	F::GameObjectiveController.Reset();
 	F::NavEngine.Reset();
 	F::NavBot.Reset();
+	F::BotUtils.Reset();
+	F::FollowBot.Reset();
 
 	CALL_ORIGINAL(rcx);
 }

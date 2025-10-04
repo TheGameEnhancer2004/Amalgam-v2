@@ -6,7 +6,8 @@
 #define PLAYER_WIDTH		49.0f
 #define HALF_PLAYER_WIDTH	PLAYER_WIDTH / 2.0f
 #define PLAYER_HEIGHT		83.0f
-#define PLAYER_JUMP_HEIGHT	72.0f
+#define PLAYER_CROUCHED_JUMP_HEIGHT	72.0f
+#define PLAYER_JUMP_HEIGHT	50.0f
 
 #define TICKCOUNT_TIMESTAMP(seconds) (I::GlobalVars->tickcount + static_cast<int>((seconds) / I::GlobalVars->interval_per_tick))
 
@@ -35,7 +36,8 @@ enum Priority_list
 	engineer,
 	health,
 	escape_spawn,
-	danger
+	danger,
+	followbot
 };
 
 // Basic Blacklist reasons, you can add your own externally and use them
@@ -88,7 +90,6 @@ public:
 	std::optional<Vector> GetDormantOrigin(int iIndex);
 	bool IsVectorVisibleNavigation(Vector from, Vector to, unsigned int mask = MASK_SHOT_HULL);
 	static bool IsSetupTime();
-	void DoSlowAim(Vector& input_angle, float speed, Vector viewangles);
 	Vector GetForwardVector(Vector origin, Vector viewangles, float distance);
 
 	struct Crumb
@@ -255,6 +256,7 @@ public:
 	void vischeckPath();
 	void checkBlacklist(CTFPlayer* pLocal);
 	void updateStuckTime();
+
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);
 	void Render();

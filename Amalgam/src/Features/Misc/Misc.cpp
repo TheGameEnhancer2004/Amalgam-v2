@@ -1095,14 +1095,22 @@ void CMisc::MicSpam(CTFPlayer* pLocal)
 		}
 		return;
 	}
+	
+	static auto voice_loopback = U::ConVars.FindVar("voice_loopback");
+	if (voice_loopback->GetBool())
+		voice_loopback->SetValue(0);
 
-	if (m_tMicCvarRefresh.Run(1.0f))
-	{
-		I::EngineClient->ClientCmd_Unrestricted("voice_loopback 0");
-		I::EngineClient->ClientCmd_Unrestricted("voice_threshold 4000");
-		I::EngineClient->ClientCmd_Unrestricted("voice_forcemicrecord 1");
-		I::EngineClient->ClientCmd_Unrestricted("voice_avggain 0");
-	}
+	static auto voice_threshold = U::ConVars.FindVar("voice_threshold");
+	if (voice_threshold->GetInt() != 4000)
+		voice_threshold->SetValue(4000);
+
+	static auto voice_forcemicrecord = U::ConVars.FindVar("voice_forcemicrecord");
+	if (!voice_forcemicrecord->GetBool())
+		voice_forcemicrecord->SetValue(1);
+
+	static auto voice_avggain = U::ConVars.FindVar("voice_avggain");
+	if (voice_avggain->GetInt() != 0)
+		voice_avggain->SetValue(0);
 
 	if (!m_bIsMicspam)
 	{
