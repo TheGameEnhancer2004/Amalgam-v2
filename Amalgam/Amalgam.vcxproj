@@ -1181,6 +1181,7 @@
     <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
     <ClCompile Include="src\Hooks\CInput_ValidateUserCmd.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_SOCreated.cpp" />
+    <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
     <ClCompile Include="src\Hooks\CTFRocketLauncher_CheckReloadMisfire.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_FireBullet.cpp" />
     <ClCompile Include="src\Hooks\CBaseEntity_ResetLatched.cpp" />

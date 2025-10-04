@@ -217,6 +217,9 @@
     <ClCompile Include="src\Hooks\Host_IsSecureServerAllowed.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\ValveRandom.cpp" />
     <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
+    <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
+    <ClCompile Include="src\Hooks\CDynamicProp_TestCollision.cpp" />
+    <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -626,6 +629,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoom.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoomShim.h" />
     <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
+    <ClInclude Include="src\Features\NavBot\BotUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
