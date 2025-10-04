@@ -3005,10 +3005,10 @@ public:
     unsigned long long m_InputItems[CRAFTING_SLOTS_INPUTPANELS];
     const int *m_ItemPanelCriteria[CRAFTING_SLOTS_INPUTPANELS];
 
-    byte pad1[144];
+    byte pad1[128];
     int m_iCurrentlySelectedRecipe;
 
-    byte pad2[72];
+    byte pad2[68];
 
     int m_iCraftingAttempts;
 };
