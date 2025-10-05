@@ -1,6 +1,9 @@
 #include "AutoQueue.h"
 #include "../../Players/PlayerUtils.h"
 #include "../../NavBot/NavEngine/NavEngine.h"
+#ifdef TEXTMODE
+#include "../NamedPipe/NamedPipe.h"
+#endif
 #include <fstream>
 #include <direct.h>
 #include <algorithm>
@@ -84,15 +87,22 @@ void CAutoQueue::Run()
 
 						if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
 						{
-							uint32_t uFriendsID = pResource->m_iAccountID(i);
+							const uint32_t uFriendsID = pResource->m_iAccountID(i);
 
-							if (H::Entities.IsFriend(uFriendsID) ||
+#ifdef TEXTMODE
+							if (uFriendsID && F::NamedPipe.IsLocalBot(uFriendsID))
+							{
+								bShouldCount = false;
+							}
+#endif
+
+							if (bShouldCount && (H::Entities.IsFriend(uFriendsID) ||
 								H::Entities.InParty(uFriendsID) ||
 								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
 								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
 								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
 								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG)))
+								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG))))
 							{
 								bShouldCount = false;
 							}
