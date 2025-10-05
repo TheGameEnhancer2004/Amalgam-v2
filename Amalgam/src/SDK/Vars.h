@@ -1052,6 +1052,7 @@ namespace Vars
 		CVar(CInput_GetUserCmd, "CInput_GetUserCmd", true, NOSAVE | DEBUGVAR);
 		CVar(CInput_ValidateUserCmd, "CInput_ValidateUserCmd", true, NOSAVE | DEBUGVAR);
 		CVar(CInventoryManager_ShowItemsPickedUp, "CInventoryManager_ShowItemsPickedUp", true, NOSAVE | DEBUGVAR);
+		CVar(CItemModelPanel_OnTick, "CItemModelPanel_OnTick", true, NOSAVE | DEBUGVAR);
 		CVar(CL_CheckForPureServerWhitelist, "CL_CheckForPureServerWhitelist", true, NOSAVE | DEBUGVAR);
 		CVar(CL_Move, "CL_Move", true, NOSAVE | DEBUGVAR);
 		CVar(CL_ProcessPacketEntities, "CL_ProcessPacketEntities", true, NOSAVE | DEBUGVAR);
