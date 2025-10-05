@@ -81,6 +81,20 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		}
 	},
 	{
+		FNV1A::Hash32Const("cat_criteria"),
+		[](const std::deque<const char*>& vArgs)
+		{
+			if (!I::TFPartyClient)
+			{
+				SDK::Output("TFPartyClient interface unavailable");
+				return;
+			}
+
+			I::TFPartyClient->LoadSavedCasualCriteria();
+			SDK::Output("Loaded saved casual criteria.");
+		}
+	},
+	{
 		FNV1A::Hash32Const("cat_load"), 
 		[](const std::deque<const char*>& vArgs)
 		{
