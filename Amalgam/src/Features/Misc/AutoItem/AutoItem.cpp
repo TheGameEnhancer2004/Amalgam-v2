@@ -1,10 +1,18 @@
 #include "AutoItem.h"
 #include "../../../BytePatches/BytePatches.h"
+#include <array>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 MAKE_SIGNATURE(CStorePage_DoPreviewItem, "client.dll", "40 53 48 81 EC ? ? ? ? 0F B7 DA", 0x0);
 MAKE_SIGNATURE(CCraftingPanel_Craft, "client.dll", "48 89 5C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 55 41 54 41 55 41 56 41 57 48 8B EC 48 83 EC ? FF 81", 0x0);
+
+namespace
+{
+	constexpr std::array<item_definition_index_t, 12> kPreferredNoisemakerDefs{
+		280, 281, 282, 283, 284, 286, 288, 362, 364, 365, 493, 542
+	};
+}
 
 bool CAutoItem::Craft(CTFPlayerInventory* pLocalInventory, std::vector<item_definition_index_t> vItemDefs)
 {
@@ -65,6 +73,23 @@ bool CAutoItem::Craft(CTFPlayerInventory* pLocalInventory, std::vector<item_defi
 void CAutoItem::Rent(item_definition_index_t iItemDef)
 {
 	S::CStorePage_DoPreviewItem.Call<void>(nullptr, iItemDef);
+}
+
+item_definition_index_t CAutoItem::SelectNoisemaker(CTFPlayerInventory* pLocalInventory)
+{
+	for (auto iItemDef : kPreferredNoisemakerDefs)
+	{
+		if (pLocalInventory->GetFirstItemOfItemDef(iItemDef))
+			return iItemDef;
+	}
+
+	if (pLocalInventory->GetFirstItemOfItemDef(m_iNoisemakerDefIndex))
+		return m_iNoisemakerDefIndex;
+
+	if (m_iFallbackNoisemakerDefIndex != m_iNoisemakerDefIndex && pLocalInventory->GetFirstItemOfItemDef(m_iFallbackNoisemakerDefIndex))
+		return m_iFallbackNoisemakerDefIndex;
+
+	return -1;
 }
 
 AchivementItem_t* CAutoItem::IsAchievementItem(item_definition_index_t iItemDef)
@@ -328,8 +353,14 @@ void CAutoItem::Run(CTFPlayer* pLocal)
 			EquipItem(pInventoryManager, pLocalInventory, iClass, slots[(offset + 2) % 3], Vars::Misc::Automation::AutoItem::ThirdHat.Value);
 			offset = (offset + 1) % 3;
 		}
-		if (Vars::Misc::Automation::AutoItem::Enable.Value & Vars::Misc::Automation::AutoItem::EnableEnum::Noisemaker 
-			&& pLocalInventory->GetFirstItemOfItemDef(m_iNoisemakerDefIndex))
-			EquipItem(pInventoryManager, pLocalInventory, iClass, 9, m_iNoisemakerDefIndex, false, false);
+		if (Vars::Misc::Automation::AutoItem::Enable.Value & Vars::Misc::Automation::AutoItem::EnableEnum::Noisemaker)
+		{
+			auto iNoisemakerToEquip = SelectNoisemaker(pLocalInventory);
+			if (iNoisemakerToEquip != -1)
+			{
+				m_iNoisemakerDefIndex = iNoisemakerToEquip;
+				EquipItem(pInventoryManager, pLocalInventory, iClass, 9, iNoisemakerToEquip, false, false);
+			}
+		}
 	}
 }
