@@ -16,6 +16,7 @@ void CAutoQueue::Run()
 	static bool bQueuedOnce = false;
 	static bool bWasInGame = false;
 	static bool bWasDisconnected = false;
+	static bool bQueuedFromRQif = false;
 
 	// Auto Mann Up queue
 	if (Vars::Misc::Queueing::AutoMannUpQueue.Value)
@@ -47,36 +48,32 @@ void CAutoQueue::Run()
 
 	if (Vars::Misc::Queueing::AutoCasualQueue.Value)
 	{
-		if (I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default))
-			return;
-
+		float flCurrentTime = I::EngineClient->Time();
 		bool bInGame = I::EngineClient->IsInGame();
 		bool bIsLoadingMap = I::EngineClient->IsDrawingLoadingImage();
 		bool bIsConnected = I::EngineClient->IsConnected();
 		bool bHasNetChannel = I::ClientState && I::ClientState->m_NetChannel;
+		bool bIsQueued = I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default);
+
+		if (bIsLoadingMap && bIsQueued)
+		{
+			I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
+			SDK::Output("AutoQueue", "Loading screen active, canceling casual queue", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+			bQueuedFromRQif = false;
+			flLastQueueTime = flCurrentTime;
+			bIsQueued = false;
+		}
 
 		if (bIsLoadingMap && Vars::Misc::Queueing::RQLTM.Value)
 			return;
 
-		float flCurrentTime = I::EngineClient->Time();
 		float flQueueDelay = Vars::Misc::Queueing::QueueDelay.Value == 0 ? 20.0f : Vars::Misc::Queueing::QueueDelay.Value * 60.0f;
 
-		if (bWasInGame && !bInGame && !bIsLoadingMap)
-		{
-			bWasDisconnected = true;
-
-			if (Vars::Misc::Queueing::RQif.Value && Vars::Misc::Queueing::RQkick.Value)
-			{
-				flLastQueueTime = 0.0f;
-			}
-		}
-
-		bWasInGame = bInGame;
+		int nPlayerCount = 0;
+		bool bRQConditionMet = false;
 
 		if (bInGame && Vars::Misc::Queueing::RQif.Value)
 		{
-			int nPlayerCount = 0;
-
 			if (auto pResource = H::Entities.GetResource())
 			{
 				for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
@@ -118,18 +115,57 @@ void CAutoQueue::Run()
 			int nPlayersGT = Vars::Misc::Queueing::RQpgt.Value;
 			if ((nPlayersLT > 0 && nPlayerCount < nPlayersLT) || (nPlayersGT > 0 && nPlayerCount > nPlayersGT))
 			{
-				if (Vars::Misc::Queueing::RQnoAbandon.Value)
-				{
-					I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
-					flLastQueueTime = flCurrentTime;
-				}
-				else
-				{
-					I::TFGCClientSystem->AbandonCurrentMatch();
-					bWasInGame = false;
-					bWasDisconnected = true;
-					flLastQueueTime = 0.0f;
-				}
+				bRQConditionMet = true;
+			}
+		}
+
+		if (bIsQueued && bQueuedFromRQif)
+		{
+			bool bMaintainQueue = Vars::Misc::Queueing::RQif.Value && bInGame && bRQConditionMet;
+
+			if (!bMaintainQueue)
+			{
+				I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
+				SDK::Output("AutoQueue", "RQif conditions cleared, canceling casual queue", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+				bQueuedFromRQif = false;
+				flLastQueueTime = flCurrentTime;
+				bIsQueued = false;
+			}
+		}
+
+		if (bIsQueued)
+		{
+			bWasInGame = bInGame;
+			return;
+		}
+
+		if (bWasInGame && !bInGame && !bIsLoadingMap)
+		{
+			bWasDisconnected = true;
+
+			if (Vars::Misc::Queueing::RQif.Value && Vars::Misc::Queueing::RQkick.Value)
+			{
+				flLastQueueTime = 0.0f;
+			}
+		}
+
+		bWasInGame = bInGame;
+
+		if (bInGame && Vars::Misc::Queueing::RQif.Value && bRQConditionMet)
+		{
+			if (Vars::Misc::Queueing::RQnoAbandon.Value)
+			{
+				I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
+				flLastQueueTime = flCurrentTime;
+				bQueuedFromRQif = true;
+			}
+			else
+			{
+				I::TFGCClientSystem->AbandonCurrentMatch();
+				bWasInGame = false;
+				bWasDisconnected = true;
+				flLastQueueTime = 0.0f;
+				bQueuedFromRQif = false;
 			}
 		}
 
@@ -149,12 +185,14 @@ void CAutoQueue::Run()
 			flLastQueueTime = flCurrentTime;
 			bQueuedOnce = true;
 			bWasDisconnected = false;
+			bQueuedFromRQif = false;
 		}
 	}
 	else
 	{
 		bQueuedOnce = false;
 		flLastQueueTime = 0.0f;
+		bQueuedFromRQif = false;
 	}
 
 	if (Vars::Misc::Queueing::AutoCommunityQueue.Value)
