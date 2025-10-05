@@ -1677,9 +1677,74 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 		vAdjusted_pos += vOffset;
 	}
 
+	CNavArea* pCartArea = nullptr;
+	if (F::NavEngine.IsNavMeshLoaded())
+	{
+		if (auto pNavFile = F::NavEngine.getNavFile())
+		{
+			constexpr float flPlanarTolerance = 120.0f;
+			constexpr float flMaxHeightDiff = 32.0f;
+			const Vector vCartPos = *vPosition;
+
+			auto isAreaUsable = [&](CNavArea* pArea) -> bool
+			{
+				if (!pArea)
+					return false;
+
+				const float flAreaZ = pArea->GetZ(vCartPos.x, vCartPos.y);
+				return std::fabs(flAreaZ - vCartPos.z) <= flMaxHeightDiff;
+			};
+
+			auto findGroundArea = [&]() -> CNavArea*
+			{
+				CNavArea* pBest = nullptr;
+				float flBestDist = FLT_MAX;
+
+				for (auto& area : pNavFile->m_areas)
+				{
+					if (!area.IsOverlapping(vCartPos, flPlanarTolerance))
+						continue;
+
+					const float flAreaZ = area.GetZ(vCartPos.x, vCartPos.y);
+					const float flZDiff = std::fabs(flAreaZ - vCartPos.z);
+					if (flZDiff > flMaxHeightDiff)
+						continue;
+
+					const float flDist = area.m_center.DistToSqr(vCartPos);
+					if (flDist < flBestDist)
+					{
+						flBestDist = flDist;
+						pBest = &area;
+					}
+				}
+
+				return pBest;
+			};
+
+			CNavArea* pInitialArea = F::NavEngine.findClosestNavSquare(vCartPos);
+			pCartArea = isAreaUsable(pInitialArea) ? pInitialArea : findGroundArea();
+
+			if (pCartArea)
+			{
+				Vector2D planarTarget(vAdjusted_pos.x, vAdjusted_pos.y);
+				Vector vSnapped = pCartArea->getNearestPoint(planarTarget);
+				vAdjusted_pos = vSnapped;
+			}
+			else
+			{
+				vAdjusted_pos.z = vCartPos.z;
+			}
+		}
+	}
+
 	// Adjust position, so it's not floating high up, provided the local player is close.
 	if (vLocalOrigin.DistToSqr(vAdjusted_pos) <= pow(150.0f, 2))
-		vAdjusted_pos.z = vLocalOrigin.z;
+	{
+		if (pCartArea)
+			vAdjusted_pos.z = pCartArea->GetZ(vAdjusted_pos.x, vAdjusted_pos.y);
+		else
+			vAdjusted_pos.z = vPosition->z;
+	}
 
 	// If close enough, don't move (mostly due to lifts)
 	if (vAdjusted_pos.DistToSqr(vLocalOrigin) <= pow(15.0f, 2))
