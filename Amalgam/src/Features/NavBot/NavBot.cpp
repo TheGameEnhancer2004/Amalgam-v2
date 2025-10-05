@@ -1683,7 +1683,7 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 		if (auto pNavFile = F::NavEngine.getNavFile())
 		{
 			constexpr float flPlanarTolerance = 120.0f;
-			constexpr float flMaxHeightDiff = 32.0f;
+			constexpr float flMaxHeightDiff = 120.0f;
 			const Vector vCartPos = *vPosition;
 
 			auto isAreaUsable = [&](CNavArea* pArea) -> bool
