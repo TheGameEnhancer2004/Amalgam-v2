@@ -78,36 +78,38 @@ void CAutoQueue::Run()
 			{
 				for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
 				{
-					if (pResource->m_iUserID(i) != -1)
+					if (!pResource->m_bValid(i) || !pResource->m_bConnected(i) || pResource->m_iUserID(i) == -1)
+						continue;
+
+					if (pResource->IsFakePlayer(i))
+						continue;
+
+					bool bShouldCount = true;
+					const uint32_t uFriendsID = pResource->m_iAccountID(i);
+
+					if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
 					{
-						bool bShouldCount = true;
-
-						if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
-						{
-							const uint32_t uFriendsID = pResource->m_iAccountID(i);
-
 #ifdef TEXTMODE
-							if (uFriendsID && F::NamedPipe.IsLocalBot(uFriendsID))
-							{
-								bShouldCount = false;
-							}
+						if (uFriendsID && F::NamedPipe.IsLocalBot(uFriendsID))
+						{
+							bShouldCount = false;
+						}
 #endif
 
-							if (bShouldCount && (H::Entities.IsFriend(uFriendsID) ||
-								H::Entities.InParty(uFriendsID) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG))))
-							{
-								bShouldCount = false;
-							}
+						if (bShouldCount && (H::Entities.IsFriend(uFriendsID) ||
+							H::Entities.InParty(uFriendsID) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG))))
+						{
+							bShouldCount = false;
 						}
-
-						if (bShouldCount)
-							nPlayerCount++;
 					}
+
+					if (bShouldCount)
+						nPlayerCount++;
 				}
 			}
 
