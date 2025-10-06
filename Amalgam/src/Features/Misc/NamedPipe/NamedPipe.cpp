@@ -116,10 +116,8 @@ void CNamedPipe::Log(std::string sMessage)
 		return;
 
 	m_logFile << sMessage << std::endl;
-					else if (sMessageType == "CPCapture")
-						F::NamedPipe.ProcessCaptureReservationMessage(sContent);
-					else
-						F::NamedPipe.Log("Received unknown message type: " + sMessageType);
+	m_logFile.flush();
+	OutputDebugStringA(("NamedPipe: " + sMessage + "\n").c_str());
 }
 
 std::string CNamedPipe::GetErrorMessage(DWORD dwError)
