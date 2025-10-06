@@ -1756,13 +1756,53 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 	return vAdjusted_pos;
 }
 
+void CNavBot::ClaimCaptureSpot(const Vector& vSpot, int iPointIdx)
+{
+#ifdef TEXTMODE
+	const std::optional<int> oPreviousIndex = m_iCurrentCapturePointIdx;
+	if (iPointIdx >= 0)
+	{
+		const bool bChangedPoint = !oPreviousIndex || *oPreviousIndex != iPointIdx;
+		const bool bChangedSpot = !m_vLastClaimedCaptureSpot || m_vLastClaimedCaptureSpot->DistToSqr(vSpot) > 1.0f;
+		if (bChangedPoint && oPreviousIndex)
+			F::NamedPipe.AnnounceCaptureSpotRelease(SDK::GetLevelName(), *oPreviousIndex);
+		if (bChangedPoint || bChangedSpot || m_tCaptureClaimRefresh.Run(0.6f))
+		{
+			F::NamedPipe.AnnounceCaptureSpotClaim(SDK::GetLevelName(), iPointIdx, vSpot, 1.5f);
+			m_tCaptureClaimRefresh.Update();
+		}
+	}
+#else
+	(void)vSpot;
+	(void)iPointIdx;
+#endif
+	m_vLastClaimedCaptureSpot = vSpot;
+	m_iCurrentCapturePointIdx = iPointIdx;
+}
+
+void CNavBot::ReleaseCaptureSpotClaim()
+{
+	const bool bHadClaim = m_iCurrentCapturePointIdx.has_value() || m_vLastClaimedCaptureSpot.has_value();
+#ifdef TEXTMODE
+	if (m_iCurrentCapturePointIdx)
+		F::NamedPipe.AnnounceCaptureSpotRelease(SDK::GetLevelName(), *m_iCurrentCapturePointIdx);
+#endif
+	m_vLastClaimedCaptureSpot.reset();
+	m_iCurrentCapturePointIdx.reset();
+	if (bHadClaim)
+		m_tCaptureClaimRefresh -= 10.f;
+}
+
 std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam)
 {
-	auto vPosition = F::CPController.GetClosestControlPoint(vLocalOrigin, iOurTeam);
+	const auto tControlPointInfo = F::CPController.GetClosestControlPointInfo(vLocalOrigin, iOurTeam);
+	std::optional<Vector> vPosition = tControlPointInfo ? std::optional<Vector>(tControlPointInfo->second) : std::nullopt;
+	const int iControlPointIdx = tControlPointInfo ? tControlPointInfo->first : -1;
 	if (!vPosition)
 	{
 		m_vCurrentCaptureSpot.reset();
 		m_vCurrentCaptureCenter.reset();
+		ReleaseCaptureSpotClaim();
 		return std::nullopt;
 	}
 
@@ -1815,14 +1855,29 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		}
 	}
 
+#ifdef TEXTMODE
+	std::vector<Vector> vReservedSpots;
+	if (iControlPointIdx != -1)
+		vReservedSpots = F::NamedPipe.GetReservedCaptureSpots(SDK::GetLevelName(), iControlPointIdx, H::Entities.GetLocalAccountID());
+#endif
+
 	auto spotTakenByOther = [&](const Vector& spot) -> bool
 	{
+#ifdef TEXTMODE
+		for (const auto& reserved : vReservedSpots)
+		{
+			Vector2D delta(reserved.x - spot.x, reserved.y - spot.y);
+			if (delta.LengthSqr() <= flOccupancyRadiusSq)
+				return true;
+		}
+#else
 		for (const auto& teammatePos : vTeammatePositions)
 		{
 			Vector2D delta(teammatePos.x - spot.x, teammatePos.y - spot.y);
 			if (delta.LengthSqr() <= flOccupancyRadiusSq)
 				return true;
 		}
+#endif
 		return false;
 	};
 
@@ -1963,6 +2018,11 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 		if (m_vCurrentCaptureSpot)
 			vAdjustedPos = m_vCurrentCaptureSpot.value();
 	}
+
+	if (m_vCurrentCaptureSpot && iControlPointIdx != -1)
+		ClaimCaptureSpot(*m_vCurrentCaptureSpot, iControlPointIdx);
+	else
+		ReleaseCaptureSpotClaim();
 
 	if (vLocalOrigin.DistToSqr(vAdjustedPos) <= pow(150.0f, 2))
 		vAdjustedPos.z = vLocalOrigin.z;
@@ -3260,6 +3320,7 @@ void CNavBot::Reset( )
 	m_mAutoScopeCache.clear();
 	m_vCurrentCaptureSpot.reset();
 	m_vCurrentCaptureCenter.reset();
+	ReleaseCaptureSpotClaim();
 }
 
 void CNavBot::UpdateLocalBotPositions(CTFPlayer* pLocal)

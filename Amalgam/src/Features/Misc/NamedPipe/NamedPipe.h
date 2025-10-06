@@ -29,6 +29,18 @@ private:
 	};
 	std::vector<PendingMessage> m_vMessageQueue;
 
+	struct CaptureSpotReservation
+	{
+		std::string m_sMap;
+		int m_iPointIndex = -1;
+		Vector m_vSpot{};
+		uint32_t m_uOwnerAccountID = 0;
+		int m_iBotId = -1;
+		double m_flExpiresAt = 0.0;
+	};
+	std::mutex m_captureMutex;
+	std::vector<CaptureSpotReservation> m_vCaptureReservations;
+
 	std::mutex m_localBotsMutex;
 	std::unordered_map<uint32_t, bool> m_mLocalBots;
 
@@ -63,6 +75,9 @@ private:
 	void ProcessLocalBotMessage(std::string sAccountID);
 	void UpdateLocalBotIgnoreStatus();
 	void ClearLocalBots();
+	void ProcessCaptureReservationMessage(const std::string& sContent);
+	void ClearCaptureReservations();
+	void PurgeExpiredCaptureReservations();
 
 	std::mutex m_logMutex;
 	void Log(std::string sMessage);
@@ -72,6 +87,9 @@ public:
 	void Shutdown();
 
 	bool IsLocalBot(uint32_t uAccountID);
+	void AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx, const Vector& vSpot, float flDurationSeconds = 1.0f);
+	void AnnounceCaptureSpotRelease(const std::string& sMap, int iPointIdx);
+	std::vector<Vector> GetReservedCaptureSpots(const std::string& sMap, int iPointIdx, uint32_t uIgnoreAccountID = 0);
 
 	void Store(CTFPlayer* pLocal = nullptr, bool bCreateMove = false);
 	void Event(IGameEvent* pEvent, uint32_t uHash);

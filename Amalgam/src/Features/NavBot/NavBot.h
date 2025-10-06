@@ -33,6 +33,9 @@ public:
 	int m_iStayNearTargetIdx = -1;
 	std::optional<Vector> m_vCurrentCaptureSpot;
 	std::optional<Vector> m_vCurrentCaptureCenter;
+	std::optional<int> m_iCurrentCapturePointIdx;
+	std::optional<Vector> m_vLastClaimedCaptureSpot;
+	Timer m_tCaptureClaimRefresh;
 	ClosestEnemy_t GetNearestPlayerDistance(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 private:
 	// Controls the bot parameters like distance from enemy
@@ -136,6 +139,8 @@ private:
 	slots GetBestSlot(CTFPlayer* pLocal, slots eActiveSlot, ClosestEnemy_t tClosestEnemy);
 	void UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy_t tClosestEnemy);
 	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
+	void ClaimCaptureSpot(const Vector& vSpot, int iPointIdx);
+	void ReleaseCaptureSpotClaim();
 public:
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset();
