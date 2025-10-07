@@ -1,5 +1,5 @@
-#include "../SDK/SDK.h"
 #ifndef TEXTMODE
+#include "../SDK/SDK.h"
 
 MAKE_HOOK(CTFGCClientSystem_UpdateAssignedLobby, S::CTFGCClientSystem_UpdateAssignedLobby(), bool,
 	void* rcx)

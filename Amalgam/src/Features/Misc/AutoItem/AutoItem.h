@@ -1,5 +1,6 @@
 #pragma once
 #include "../../../SDK/SDK.h"
+#include <array>
 #include <chrono>
 
 struct AchivementItem_t
@@ -20,6 +21,7 @@ private:
 
 	void GetAndEquipWeapon(CTFInventoryManager* pInventoryManager, CTFPlayerInventory* pLocalInventory, std::string sItemDefs, int iClass, int iSlot);
 	void EquipItem(CTFInventoryManager* pInventoryManager, CTFPlayerInventory* pLocalInventory, int iClass, int iSlot, item_definition_index_t iItemDef, bool bGet = true, bool bRent = false);
+	item_definition_index_t SelectNoisemaker(CTFPlayerInventory* pLocalInventory);
 
 	std::array<std::vector<std::string>, 3> aCraftGroups{ {{"-1"}, {"-1"}, {"-1"}} };
 	std::unordered_map<item_definition_index_t, AchivementItem_t> m_mAchievementItems{
@@ -77,6 +79,7 @@ private:
 	};
 
 	item_definition_index_t m_iNoisemakerDefIndex = 536;
+	item_definition_index_t m_iFallbackNoisemakerDefIndex = 536;
 public:
 	CAutoItem()
 	{
@@ -89,6 +92,8 @@ public:
         // We only want to use the Christmas noisemaker around Christmas time, let's use the 1st of December till 12th of January
         if ((month == 11 && day >= 1) || (!month && day <= 12))
             m_iNoisemakerDefIndex = 673;
+
+		m_iFallbackNoisemakerDefIndex = m_iNoisemakerDefIndex;
 	}
 
 	void Rent(item_definition_index_t iItemDef);

@@ -302,7 +302,7 @@ void CBotUtils::LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool b
 	Vec3 vWishAng{ vDest.x, vDest.y, vLocalEyePos.z };
 	vWishAng = Math::CalcAngle(vLocalEyePos, vWishAng);
 
-	DoSlowAim(vWishAng, 25.f, m_vLastAngles);
+	DoSlowAim(vWishAng, static_cast<float>(Vars::Misc::Movement::BotUtils::LookAtPathSpeed.Value), m_vLastAngles);
 	if (bSilent)
 		pCmd->viewangles = vWishAng;
 	else

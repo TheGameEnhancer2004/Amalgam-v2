@@ -11,10 +11,12 @@
 
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	NoisemakerSpam(pLocal);
+	NoiseSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
 	MicSpam(pLocal);
+	AchievementSpam(pLocal);
+	CallVoteSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
 #ifdef TEXTMODE
@@ -292,13 +294,68 @@ void CMisc::InstantRespawnMVM(CTFPlayer* pLocal)
 	I::EngineClient->ServerCmdKeyValues(kv);
 }
 
-void CMisc::NoisemakerSpam(CTFPlayer* pLocal)
+void CMisc::NoiseSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Exploits::NoisemakerSpam.Value || !pLocal->IsAlive() || pLocal->IsAGhost()
-		|| pLocal->m_bUsingActionSlot() || pLocal->m_flNextNoiseMakerTime() > I::GlobalVars->curtime)
+	if (!Vars::Misc::Automation::NoiseSpam.Value || pLocal->m_bUsingActionSlot())
 		return;
 
+	static float flLastSpamTime = 0.0f;
+	float flCurrentTime = SDK::PlatFloatTime();
+	if (flCurrentTime - flLastSpamTime < 0.2f)
+		return;
+
+	flLastSpamTime = flCurrentTime;
 	I::EngineClient->ServerCmdKeyValues(new KeyValues("use_action_slot_item_server"));
+}
+
+void CMisc::CallVoteSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::CallVoteSpam.Value || !m_tCallVoteSpamTimer.Run(1.0f))
+		return;
+
+	std::vector<std::string> vVoteOptions = {
+		"callvote changelevel cp_badlands",
+		"callvote changelevel cp_granary",
+		"callvote changelevel cp_well",
+		"callvote changelevel cp_5gorge",
+		"callvote changelevel cp_freight_final1",
+		"callvote changelevel cp_yukon_final",
+		"callvote changelevel cp_gravelpit",
+		"callvote changelevel cp_dustbowl",
+		"callvote changelevel cp_egypt_final",
+		"callvote changelevel cp_junction_final",
+		"callvote changelevel cp_steel",
+		"callvote changelevel ctf_2fort",
+		"callvote changelevel ctf_well",
+		"callvote changelevel ctf_sawmill",
+		"callvote changelevel ctf_turbine",
+		"callvote changelevel ctf_doublecross",
+		"callvote changelevel pl_badwater",
+		"callvote changelevel pl_goldrush",
+		"callvote changelevel pl_dustbowl",
+		"callvote changelevel pl_upward",
+		"callvote changelevel pl_thundermountain",
+		"callvote changelevel koth_harvest_final",
+		"callvote changelevel koth_nucleus",
+		"callvote changelevel koth_sawmill",
+		"callvote changelevel koth_viaduct",
+		"callvote changelevel cp_5gorge",
+		"callvote changelevel cp_dustbowl",
+		"callvote changelevel ctf_2fort",
+		"callvote changelevel ctf_doublecross",
+		"callvote changelevel ctf_turbine",
+		"callvote changelevel koth_brazil",
+		"callvote changelevel pl_badwater",
+		"callvote changelevel pl_pheonix",
+		"callvote changelevel plr_bananabay",
+		"callvote changelevel plr_hightower",
+		"callvote scrambleteams"
+	};
+
+	int iRandomIndex = SDK::RandomInt(0, static_cast<int>(vVoteOptions.size()) - 1);
+	std::string strSelectedVote = vVoteOptions[iRandomIndex];
+
+	I::ClientState->SendStringCmd(strSelectedVote.c_str());
 }
 
 void CMisc::CheatsBypass()
@@ -500,6 +557,13 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;
+		break;
+	case FNV1A::Hash32Const("vote_maps_changed"):
+		if (Vars::Misc::Automation::AutoVoteMap.Value)
+		{
+			I::EngineClient->ClientCmd_Unrestricted(std::format("next_map_vote {}", Vars::Misc::Automation::AutoVoteMapOption.Value).c_str());
+		}
+		break;
 	}
 }
 
@@ -647,6 +711,81 @@ void CMisc::LockAchievements()
 	}
 }
 
+void CMisc::AchievementSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::AchievementSpam.Value || !pLocal || !pLocal->IsAlive())
+	{
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		return;
+	}
+
+	const auto pAchievementMgr = reinterpret_cast<IAchievementMgr* (*)()>(U::Memory.GetVirtual(I::EngineClient, 114))();
+	if (!pAchievementMgr)
+	{
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		return;
+	}
+
+	switch (m_eAchievementSpamState)
+	{
+	case AchievementSpamState::IDLE:
+	{
+		if (!m_tAchievementSpamTimer.Run(20.0f))
+			return;
+
+		// Do Androids Dream? achievement by default
+		// TODO: add a new column to edit achievement timer & number directly in cheat (like you did with autoitem)
+		int specificAchievementID = 2332;
+
+		IAchievement* pAchievement = nullptr;
+		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
+		{
+			IAchievement* pCurrentAchievement = pAchievementMgr->GetAchievementByIndex(i);
+			if (pCurrentAchievement && pCurrentAchievement->GetAchievementID() == specificAchievementID)
+			{
+				pAchievement = pCurrentAchievement;
+				break;
+			}
+		}
+
+		if (!pAchievement || !pAchievement->GetName())
+			return;
+
+		m_iAchievementSpamID = specificAchievementID;
+		m_sAchievementSpamName = pAchievement->GetName();
+		m_eAchievementSpamState = AchievementSpamState::CLEARING;
+		break;
+	}
+	case AchievementSpamState::CLEARING:
+	{
+		I::SteamUserStats->RequestCurrentStats();
+		I::SteamUserStats->ClearAchievement(m_sAchievementSpamName.c_str());
+		I::SteamUserStats->StoreStats();
+
+		m_tAchievementDelayTimer.Update();
+		m_eAchievementSpamState = AchievementSpamState::WAITING;
+		break;
+	}
+	case AchievementSpamState::WAITING:
+	{
+		if (!m_tAchievementDelayTimer.Run(0.1f))
+			return;
+
+		m_eAchievementSpamState = AchievementSpamState::AWARDING;
+		break;
+	}
+	case AchievementSpamState::AWARDING:
+	{
+		I::SteamUserStats->RequestCurrentStats();
+		pAchievementMgr->AwardAchievement(m_iAchievementSpamID);
+		I::SteamUserStats->StoreStats();
+
+		m_eAchievementSpamState = AchievementSpamState::IDLE;
+		break;
+	}
+	}
+}
+
 void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 {
 	if (!Vars::Misc::Automation::VoiceCommandSpam.Value || !pLocal->IsAlive())
@@ -662,10 +801,10 @@ void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 		{
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Random:
 			{
-				int menu = SDK::RandomInt(0, 2);
-				int command = SDK::RandomInt(0, 8);
-				std::string cmd = "voicemenu " + std::to_string(menu) + " " + std::to_string(command);
-				I::EngineClient->ClientCmd_Unrestricted(cmd.c_str());
+				int iMenu = SDK::RandomInt(0, 2);
+				int iCommand = SDK::RandomInt(0, 8);
+				std::string sCmd = "voicemenu " + std::to_string(iMenu) + " " + std::to_string(iCommand);
+				I::EngineClient->ClientCmd_Unrestricted(sCmd.c_str());
 			}
 			break;
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Medic:
@@ -778,159 +917,143 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 
 void CMisc::ChatSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Automation::ChatSpam::Enable.Value)
+	auto ResetChatTimer = [&]()
 	{
 		m_tChatSpamTimer.Update();
+	};
+
+	if (!Vars::Misc::Automation::ChatSpam::Enable.Value)
+	{
+		ResetChatTimer();
 		return;
 	}
 
 	if (!pLocal->IsAlive() || !pLocal->IsInValidTeam() || pLocal->m_iClass() == TF_CLASS_UNDEFINED)
 	{
-		m_tChatSpamTimer.Update();
+		ResetChatTimer();
 		return;
 	}
 
-	if (m_vChatSpamLines.empty())
+	auto EnsureChatLinesLoaded = [&]() -> bool
 	{
-		char szGamePath[MAX_PATH];
+		if (!m_vChatSpamLines.empty())
+			return true;
+
+		auto LoadLinesFrom = [&](const std::string& sPath) -> bool
+		{
+			std::ifstream file(sPath);
+			if (!file.is_open())
+				return false;
+
+			std::vector<std::string> vLines = {};
+			std::string sLine;
+			while (std::getline(file, sLine))
+			{
+				if (!sLine.empty())
+					vLines.push_back(sLine);
+			}
+
+			if (vLines.empty())
+				return false;
+
+			m_vChatSpamLines = std::move(vLines);
+			m_iCurrentChatSpamIndex = 0;
+			SDK::Output("ChatSpam", std::format("Loaded {} lines from {}", m_vChatSpamLines.size(), sPath).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+			return true;
+		};
+
+		char szGamePath[MAX_PATH] = {};
 		GetModuleFileNameA(GetModuleHandleA("tf_win64.exe"), szGamePath, MAX_PATH);
 		std::string sGameDir = szGamePath;
-		size_t uLastSlash = sGameDir.find_last_of("\\/");
-		if (uLastSlash != std::string::npos)
-			sGameDir = sGameDir.substr(0, uLastSlash);
+		if (const size_t uLastSlash = sGameDir.find_last_of("\\/"); uLastSlash != std::string::npos)
+			sGameDir.resize(uLastSlash);
 
-		// Debug info
 		SDK::Output("ChatSpam", "Loading chat lines from file", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 
-		std::vector<std::string> vPathsToTry = {
+		const std::vector<std::string> vCandidatePaths = {
 			"cat_chatspam.txt",
 			sGameDir + "\\tf\\cat_chatspam.txt"
 		};
 
-		bool bFileLoaded = false;
-		std::string sSuccessfulPath;
-
-		for (const auto& sPath : vPathsToTry)
+		for (const auto& sPath : vCandidatePaths)
 		{
-			std::ifstream file(sPath);
-			if (file.is_open())
-			{
-				std::string sLine;
-				while (std::getline(file, sLine))
-				{
-					if (!sLine.empty())
-						m_vChatSpamLines.push_back(sLine);
-				}
-				file.close();
-
-				SDK::Output("ChatSpam", std::format("Loaded {} lines from {}", m_vChatSpamLines.size(), sPath).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-				bFileLoaded = true;
-				sSuccessfulPath = sPath;
-				break;
-			}
+			if (LoadLinesFrom(sPath))
+				return true;
 		}
 
-		if (!bFileLoaded)
+		const std::string sDefaultPath = sGameDir + "\\tf\\cat_chatspam.txt";
+		std::ofstream newFile(sDefaultPath);
+		if (newFile.is_open())
 		{
-			std::string sDefaultPath = sGameDir + "\\tf\\cat_chatspam.txt";
-			std::ofstream newFile(sDefaultPath);
+			newFile << "This is a default message from cat_chatspam.txt\n";
+			newFile << "Edit this file tf/cat_chatspam.txt\n";
+			newFile << "Each line will be sent as a separate message\n";
+			newFile << "[Amalgam] Chat Spam is working!\n";
+			newFile << "Put your chat spam lines in this file\n";
+			newFile.close();
 
-			if (newFile.is_open())
-			{
-				newFile << "This is a default message from cat_chatspam.txt\n";
-				newFile << "Edit this file tf/cat_chatspam.txt\n";
-				newFile << "Each line will be sent as a separate message\n";
-				newFile << "[Amalgam] Chat Spam is working!\n";
-				newFile << "Put your chat spam lines in this file\n";
-				newFile.close();
-
-				std::ifstream checkFile(sDefaultPath);
-				if (checkFile.is_open())
-				{
-					std::string sLine;
-					while (std::getline(checkFile, sLine))
-					{
-						if (!sLine.empty())
-							m_vChatSpamLines.push_back(sLine);
-					}
-					checkFile.close();
-
-					SDK::Output("ChatSpam", std::format("Created and loaded default file at {}", sDefaultPath).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-					bFileLoaded = true;
-				}
-			}
+			if (LoadLinesFrom(sDefaultPath))
+				return true;
 		}
 
-		if (!bFileLoaded || m_vChatSpamLines.empty())
-		{
-			SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-			m_vChatSpamLines.push_back("Put your chat spam lines in cat_chatspam.txt");
-			m_vChatSpamLines.push_back("ChatSpam is running but couldn't find cat_chatspam.txt");
-			m_vChatSpamLines.push_back("[Amalgam] Chat Spam is working!");
-		}
-	}
+		SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+		m_vChatSpamLines = {
+			"Put your chat spam lines in cat_chatspam.txt",
+			"ChatSpam is running but couldn't find cat_chatspam.txt",
+			"[Amalgam] Chat Spam is working!"
+		};
+		m_iCurrentChatSpamIndex = 0;
 
-	if (m_vChatSpamLines.empty())
+		return true;
+	};
+
+	if (!EnsureChatLinesLoaded() || m_vChatSpamLines.empty())
 		return;
 
-	// Enforce reasonable spam interval to prevent overwhelming the engine
 	float flSpamInterval = Vars::Misc::Automation::ChatSpam::Interval.Value;
-	if (flSpamInterval <= 0.2f) // Increased minimum interval to be safer
+	if (flSpamInterval < 0.2f)
 		flSpamInterval = 0.2f;
 
 	if (!m_tChatSpamTimer.Run(flSpamInterval))
 		return;
 
-	// Get chat line safely
-	std::string sChatLine;
-	const size_t uLineCount = m_vChatSpamLines.size();
-
-	if (uLineCount == 0)
-		return;
-
-	if (Vars::Misc::Automation::ChatSpam::Randomize.Value)
+	auto FetchNextChatLine = [&]() -> std::string
 	{
-		// Safer random index generation
-		int iMax = static_cast<int>(uLineCount) - 1;
-		if (iMax < 0) iMax = 0;
-		int iRandomIndex = SDK::RandomInt(0, iMax);
+		const size_t uLineCount = m_vChatSpamLines.size();
+		if (!uLineCount)
+			return {};
 
-		// Double-check bounds for safety
-		if (iRandomIndex >= 0 && iRandomIndex < static_cast<int>(uLineCount))
-			sChatLine = m_vChatSpamLines[iRandomIndex];
-		else
-			sChatLine = "[ChatSpam]";
-	}
-	else
-	{
-		// Reset index if invalid
+		if (Vars::Misc::Automation::ChatSpam::Randomize.Value)
+		{
+			int iMax = static_cast<int>(uLineCount) - 1;
+			if (iMax < 0)
+				iMax = 0;
+			const int iRandomIndex = SDK::RandomInt(0, iMax);
+			if (iRandomIndex >= 0 && iRandomIndex < static_cast<int>(uLineCount))
+				return m_vChatSpamLines[iRandomIndex];
+			return "[ChatSpam]";
+		}
+
 		if (m_iCurrentChatSpamIndex < 0 || m_iCurrentChatSpamIndex >= static_cast<int>(uLineCount))
 			m_iCurrentChatSpamIndex = 0;
 
-		// Extra safety check
-		if (m_iCurrentChatSpamIndex >= 0 && m_iCurrentChatSpamIndex < static_cast<int>(uLineCount))
-		{
-			sChatLine = m_vChatSpamLines[m_iCurrentChatSpamIndex];
-			m_iCurrentChatSpamIndex = (m_iCurrentChatSpamIndex + 1) % static_cast<int>(uLineCount);
-		}
-		else
-		{
-			sChatLine = "[ChatSpam]";
-			m_iCurrentChatSpamIndex = 0;
-		}
-	}
+		const std::string& sLine = m_vChatSpamLines[m_iCurrentChatSpamIndex];
+		m_iCurrentChatSpamIndex = (m_iCurrentChatSpamIndex + 1) % static_cast<int>(uLineCount);
+		return sLine;
+	};
 
-	// Limit message length to prevent buffer issues
+	std::string sChatLine = FetchNextChatLine();
+	if (sChatLine.empty())
+		return;
+
 	if (sChatLine.length() > 150)
-		sChatLine = sChatLine.substr(0, 150);
+		sChatLine.resize(150);
 
-	// Build the chat command
 	std::string sChatCommand;
 	if (Vars::Misc::Automation::ChatSpam::TeamChat.Value)
 		sChatCommand = "say_team \"" + sChatLine + "\"";
 	else
 		sChatCommand = "say \"" + sChatLine + "\"";
-
 
 	SDK::Output("ChatSpam", std::format("Sending: {}", sChatCommand).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	I::EngineClient->ClientCmd_Unrestricted(sChatCommand.c_str());
@@ -1090,7 +1213,11 @@ void CMisc::ResetBuyBot()
 
 void CMisc::MicSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Automation::Micspam.Value || !pLocal->IsInValidTeam())
+	const bool bShouldMicspam = Vars::Misc::Automation::Micspam.Value
+		&& pLocal->IsInValidTeam()
+		&& pLocal->m_iClass() != TF_CLASS_UNDEFINED;
+
+	if (!bShouldMicspam)
 	{
 		if (m_bIsMicspam)
 		{
@@ -1100,6 +1227,7 @@ void CMisc::MicSpam(CTFPlayer* pLocal)
 		return;
 	}
 	
+	// Do we still need these??
 	static auto voice_loopback = U::ConVars.FindVar("voice_loopback");
 	if (voice_loopback->GetBool())
 		voice_loopback->SetValue(0);
@@ -1120,10 +1248,5 @@ void CMisc::MicSpam(CTFPlayer* pLocal)
 	{
 		I::EngineClient->ClientCmd_Unrestricted("+voicerecord");
 		m_bIsMicspam = true;
-	}
-	else
-	{
-		I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
-		m_bIsMicspam = false;
 	}
 }

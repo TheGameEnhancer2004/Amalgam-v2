@@ -1,4 +1,3 @@
-#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Chams/Chams.h"
@@ -12,6 +11,9 @@
 MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::ClientModeShared, 39), bool,
 	void* rcx, const CViewSetup* pSetup)
 {
+#ifdef TEXTMODE
+	return false;
+#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CClientModeShared_DoPostScreenSpaceEffects[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pSetup);
@@ -42,5 +44,5 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	}
 
 	return CALL_ORIGINAL(rcx, pSetup);
-}
 #endif
+}

@@ -718,6 +718,23 @@ namespace Vars
 	NAMESPACE_END(Visuals);
 
 	NAMESPACE_BEGIN(Misc)
+
+/*
+I dont think this is a good idea to disable simulations completely:
+	1. Proj aim still runs and fails because there is no projectile/movement prediction (if you dont want it to run just dont give your bots projectile weapons)
+	2. Auto-scope also partially breaks if you disable simulations
+	3. In general a lot of features still partially run despite there being no point
+	4. People will start to complain because they might not even know this exists
+*/
+/*
+		SUBNAMESPACE_BEGIN(Performance)
+#ifdef TEXTMODE
+			CVar(DisableSimulations, "Disable simulations", true);
+#else
+			CVar(DisableSimulations, "Disable simulations", false);
+#endif
+		SUBNAMESPACE_END(Performance);
+*/
 		SUBNAMESPACE_BEGIN(Movement)
 			CVarEnum(AutoStrafe, "Auto strafe", 0, NONE, nullptr,
 				VA_LIST("Off", "Legit", "Directional"),
@@ -760,6 +777,7 @@ namespace Vars
 			SUBNAMESPACE_END(NavEngine);
 
 			SUBNAMESPACE_BEGIN(BotUtils)
+				CVar(LookAtPathSpeed, "Look at path speed", 25, SLIDER_CLAMP, 0, 120);
 				CVarEnum(WeaponSlot, "Force weapon", 0, NONE, nullptr,
 					VA_LIST("Off", "Best", "Primary", "Secondary", "Melee", "PDA"),
 					Off, Best, Primary, Secondary, Melee, PDA);
@@ -835,6 +853,7 @@ namespace Vars
 			CVar(AntiAutobalance, "Anti-autobalance", false);
 			CVar(TauntControl, "Taunt control", false);
 			CVar(KartControl, "Kart control", false);
+			CVar(AchievementSpam, "Achievement spam", false);
 			CVar(AutoF2Ignored, "Auto F2 ignored", false);
 			CVar(AutoF1Priority, "Auto F1 priority", false);
 			CVarEnum(AutoVotekick, "Auto votekick", 0, NONE, nullptr,
@@ -842,10 +861,14 @@ namespace Vars
 				Off, Random, Prio);
 			CVar(ForceClass, "Autojoin class", 0);
 			CVar(Micspam, "Micspam", false);
+			CVar(NoiseSpam, "Noise spam", false);
+			CVar(CallVoteSpam, "Callvote spam", false);
 			CVarEnum(VoiceCommandSpam, "Voice command spam", 0, NONE, nullptr,
 				VA_LIST("Off", "Random", "Medic", "Thanks", "Nice Shot", "Cheers", "Jeers", "Go Go Go", "Move Up", "Go Left", "Go Right", "Yes", "No", "Incoming", "Spy", "Sentry Ahead", "Need Teleporter", "Pootis", "Need Sentry", "Activate Charge", "Help", "Battle Cry"),
 				Off, Random, Medic, Thanks, NiceShot, Cheers, Jeers, GoGoGo, MoveUp, GoLeft, GoRight, Yes, No, Incoming, Spy, Sentry, NeedTeleporter, Pootis, NeedSentry, ActivateCharge, Help, BattleCry);
-			
+			CVar(AutoVoteMap, "Auto vote map", true);
+			CVar(AutoVoteMapOption, "", 2, SLIDER_CLAMP, 0, 2, 1, "%i");
+
 			SUBNAMESPACE_BEGIN(ChatSpam)
 				CVar(Enable, "Chat spam", false);
 				CVar(Interval, "Interval", 3.0f, SLIDER_CLAMP | SLIDER_PRECISION, 0.5f, 10.0f, 0.5f, "%0.1fs");
@@ -875,7 +898,6 @@ namespace Vars
 			CVar(EquipRegionUnlock, "Equip region unlock", false);
 			CVar(BreakShootSound, "Break shoot sound", false);
 			CVar(BackpackExpander, "Backpack expander", false);
-			CVar(NoisemakerSpam, "Noisemaker spam", false);
 			CVar(PingReducer, "Ping reducer", false);
 			CVar(PingTarget, "Ping", 1, SLIDER_CLAMP, 1, 100, 1);
 		SUBNAMESPACE_END(Exploits);

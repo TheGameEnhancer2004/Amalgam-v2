@@ -14,11 +14,11 @@
 #include "../Features/Visuals/Notifications/Notifications.h"
 #include "../Features/NavBot/NavBot.h"
 #include "../Features/Aimbot/AutoHeal/AutoHeal.h"
-#ifndef TEXTMODE
 
 MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 	void* rcx, int iMode)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::IEngineVGui_Paint[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, iMode);
@@ -68,5 +68,5 @@ MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 		}
 		H::Draw.End();
 	}
-}
 #endif
+}

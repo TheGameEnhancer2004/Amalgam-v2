@@ -1,6 +1,9 @@
 #include "AutoQueue.h"
 #include "../../Players/PlayerUtils.h"
 #include "../../NavBot/NavEngine/NavEngine.h"
+#ifdef TEXTMODE
+#include "../NamedPipe/NamedPipe.h"
+#endif
 #include <fstream>
 #include <direct.h>
 #include <algorithm>
@@ -13,6 +16,7 @@ void CAutoQueue::Run()
 	static bool bQueuedOnce = false;
 	static bool bWasInGame = false;
 	static bool bWasDisconnected = false;
+	static bool bQueuedFromRQif = false;
 
 	// Auto Mann Up queue
 	if (Vars::Misc::Queueing::AutoMannUpQueue.Value)
@@ -44,17 +48,98 @@ void CAutoQueue::Run()
 
 	if (Vars::Misc::Queueing::AutoCasualQueue.Value)
 	{
-		if (I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default))
-			return;
-
+		float flCurrentTime = I::EngineClient->Time();
 		bool bInGame = I::EngineClient->IsInGame();
 		bool bIsLoadingMap = I::EngineClient->IsDrawingLoadingImage();
+		bool bIsConnected = I::EngineClient->IsConnected();
+		bool bHasNetChannel = I::ClientState && I::ClientState->m_NetChannel;
+		bool bIsQueued = I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default);
+
+		if (bIsLoadingMap && bIsQueued)
+		{
+			I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
+			SDK::Output("AutoQueue", "Loading screen active, canceling casual queue", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+			bQueuedFromRQif = false;
+			flLastQueueTime = flCurrentTime;
+			bIsQueued = false;
+		}
 
 		if (bIsLoadingMap && Vars::Misc::Queueing::RQLTM.Value)
 			return;
 
-		float flCurrentTime = I::EngineClient->Time();
 		float flQueueDelay = Vars::Misc::Queueing::QueueDelay.Value == 0 ? 20.0f : Vars::Misc::Queueing::QueueDelay.Value * 60.0f;
+
+		int nPlayerCount = 0;
+		bool bRQConditionMet = false;
+
+		if (bInGame && Vars::Misc::Queueing::RQif.Value)
+		{
+			if (auto pResource = H::Entities.GetResource())
+			{
+				for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+				{
+					if (!pResource->m_bValid(i) || !pResource->m_bConnected(i) || pResource->m_iUserID(i) == -1)
+						continue;
+
+					if (pResource->IsFakePlayer(i))
+						continue;
+
+					bool bShouldCount = true;
+					const uint32_t uFriendsID = pResource->m_iAccountID(i);
+
+					if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
+					{
+#ifdef TEXTMODE
+						if (uFriendsID && F::NamedPipe.IsLocalBot(uFriendsID))
+						{
+							bShouldCount = false;
+						}
+#endif
+
+						if (bShouldCount && (H::Entities.IsFriend(uFriendsID) ||
+							H::Entities.InParty(uFriendsID) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
+							F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG))))
+						{
+							bShouldCount = false;
+						}
+					}
+
+					if (bShouldCount)
+						nPlayerCount++;
+				}
+			}
+
+			int nPlayersLT = Vars::Misc::Queueing::RQplt.Value;
+			int nPlayersGT = Vars::Misc::Queueing::RQpgt.Value;
+			if ((nPlayersLT > 0 && nPlayerCount < nPlayersLT) || (nPlayersGT > 0 && nPlayerCount > nPlayersGT))
+			{
+				bRQConditionMet = true;
+			}
+		}
+
+		if (bIsQueued && bQueuedFromRQif)
+		{
+			bool bMaintainQueue = Vars::Misc::Queueing::RQif.Value && bInGame && bRQConditionMet;
+
+			if (!bMaintainQueue)
+			{
+				I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
+				SDK::Output("AutoQueue", "RQif conditions cleared, canceling casual queue", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+				bQueuedFromRQif = false;
+				flLastQueueTime = flCurrentTime;
+				bIsQueued = false;
+			}
+		}
+
+		if (bIsQueued)
+		{
+			bWasInGame = bInGame;
+			return;
+		}
 
 		if (bWasInGame && !bInGame && !bIsLoadingMap)
 		{
@@ -68,62 +153,28 @@ void CAutoQueue::Run()
 
 		bWasInGame = bInGame;
 
-		if (bInGame && Vars::Misc::Queueing::RQif.Value)
+		if (bInGame && Vars::Misc::Queueing::RQif.Value && bRQConditionMet)
 		{
-			int nPlayerCount = 0;
-
-			if (auto pResource = H::Entities.GetResource())
+			if (Vars::Misc::Queueing::RQnoAbandon.Value)
 			{
-				for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
-				{
-					if (pResource->m_iUserID(i) != -1)
-					{
-						bool bShouldCount = true;
-
-						if (Vars::Misc::Queueing::RQIgnoreFriends.Value)
-						{
-							uint32_t uFriendsID = pResource->m_iAccountID(i);
-
-							if (H::Entities.IsFriend(uFriendsID) ||
-								H::Entities.InParty(uFriendsID) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)) ||
-								F::PlayerUtils.HasTag(uFriendsID, F::PlayerUtils.TagToIndex(PARTY_TAG)))
-							{
-								bShouldCount = false;
-							}
-						}
-
-						if (bShouldCount)
-							nPlayerCount++;
-					}
-				}
+				I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
+				flLastQueueTime = flCurrentTime;
+				bQueuedFromRQif = true;
 			}
-
-			int nPlayersLT = Vars::Misc::Queueing::RQplt.Value;
-			int nPlayersGT = Vars::Misc::Queueing::RQpgt.Value;
-			if ((nPlayersLT > 0 && nPlayerCount < nPlayersLT) || (nPlayersGT > 0 && nPlayerCount > nPlayersGT))
+			else
 			{
-				if (Vars::Misc::Queueing::RQnoAbandon.Value)
-				{
-					I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
-					flLastQueueTime = flCurrentTime;
-				}
-				else
-				{
-					I::TFGCClientSystem->AbandonCurrentMatch();
-					bWasInGame = false;
-					bWasDisconnected = true;
-					flLastQueueTime = 0.0f;
-				}
+				I::TFGCClientSystem->AbandonCurrentMatch();
+				bWasInGame = false;
+				bWasDisconnected = true;
+				flLastQueueTime = 0.0f;
+				bQueuedFromRQif = false;
 			}
 		}
 
 		bool bShouldQueue = !bQueuedOnce || (flCurrentTime - flLastQueueTime >= flQueueDelay);
+		bool bStillAttachedToServer = bInGame || bIsConnected || bHasNetChannel;
 
-		if (bShouldQueue && !bInGame && !bIsLoadingMap)
+		if (bShouldQueue && !bIsLoadingMap && !bStillAttachedToServer)
 		{
 			static bool bHasLoaded = false;
 			if (!bHasLoaded)
@@ -136,12 +187,14 @@ void CAutoQueue::Run()
 			flLastQueueTime = flCurrentTime;
 			bQueuedOnce = true;
 			bWasDisconnected = false;
+			bQueuedFromRQif = false;
 		}
 	}
 	else
 	{
 		bQueuedOnce = false;
 		flLastQueueTime = 0.0f;
+		bQueuedFromRQif = false;
 	}
 
 	if (Vars::Misc::Queueing::AutoCommunityQueue.Value)

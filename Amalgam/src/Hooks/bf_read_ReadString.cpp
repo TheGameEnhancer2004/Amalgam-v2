@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Players/PlayerUtils.h"
@@ -54,3 +55,4 @@ MAKE_HOOK(bf_read_ReadString, S::bf_read_ReadString(), bool,
 
 	return bReturn;
 }
+#endif

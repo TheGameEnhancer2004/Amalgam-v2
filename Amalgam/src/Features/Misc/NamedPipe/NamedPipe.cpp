@@ -13,10 +13,17 @@
 
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+#include <algorithm>
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
 const int MAX_RECONNECT_DELAY_MS = 10000;
+
+static double GetNowSeconds()
+{
+	return static_cast<double>(GetTickCount64()) / 1000.0;
+}
 
 void CNamedPipe::Initialize()
 {
@@ -34,6 +41,7 @@ void CNamedPipe::Initialize()
 
 	m_mLocalBots.clear();
 	Log("Cleared local bots list on startup");
+	ClearCaptureReservations();
 
 	m_pipeThread = std::thread(ConnectAndMaintainPipe);
 	Log("Pipe thread started");
@@ -98,6 +106,7 @@ void CNamedPipe::Reset()
 	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, "N/A", "N/A", tInfo.m_uAccountID, false);
 	m_bSetServerName = false;
 	m_bSetMapName = false;
+	ClearCaptureReservations();
 }
 
 void CNamedPipe::Log(std::string sMessage)
@@ -215,6 +224,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					else
 						F::NamedPipe.Log("Warning: Bot ID not set");
 					F::NamedPipe.ClearLocalBots();
+					F::NamedPipe.ClearCaptureReservations();
 				}
 				else
 				{
@@ -352,6 +362,8 @@ void CNamedPipe::ConnectAndMaintainPipe()
 							}
 							else if (sMessageType == "LocalBot")
 								F::NamedPipe.ProcessLocalBotMessage(sContent);
+							else if (sMessageType == "CPCapture")
+								F::NamedPipe.ProcessCaptureReservationMessage(sContent);
 							else
 								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
 						}
@@ -474,6 +486,84 @@ bool CNamedPipe::IsLocalBot(uint32_t uAccountID)
 	return m_mLocalBots.find(uAccountID) != m_mLocalBots.end();
 }
 
+void CNamedPipe::AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx, const Vector& vSpot, float flDurationSeconds)
+{
+	if (sMap.empty() || iPointIdx < 0)
+		return;
+
+	const double flExpiry = GetNowSeconds() + flDurationSeconds;
+	{
+		std::lock_guard lock(m_captureMutex);
+		bool bUpdated = false;
+		for (auto& reservation : m_vCaptureReservations)
+		{
+			if (reservation.m_sMap == sMap && reservation.m_iPointIndex == iPointIdx && reservation.m_uOwnerAccountID == tInfo.m_uAccountID)
+			{
+				reservation.m_vSpot = vSpot;
+				reservation.m_flExpiresAt = flExpiry;
+				reservation.m_iBotId = m_iBotId;
+				bUpdated = true;
+				break;
+			}
+		}
+		if (!bUpdated)
+		{
+			CaptureSpotReservation tReservation{};
+			tReservation.m_sMap = sMap;
+			tReservation.m_iPointIndex = iPointIdx;
+			tReservation.m_vSpot = vSpot;
+			tReservation.m_uOwnerAccountID = tInfo.m_uAccountID;
+			tReservation.m_iBotId = m_iBotId;
+			tReservation.m_flExpiresAt = flExpiry;
+			m_vCaptureReservations.emplace_back(tReservation);
+		}
+	}
+
+	std::ostringstream oss;
+	oss << std::fixed << std::setprecision(2) << "Claim|" << sMap << '|' << iPointIdx << '|' << vSpot.x << '|' << vSpot.y << '|' << vSpot.z
+		<< '|' << tInfo.m_uAccountID << '|' << flDurationSeconds << '|' << m_iBotId;
+	QueueMessage("CPCapture", oss.str(), true);
+	if (m_hPipe != INVALID_HANDLE_VALUE)
+		ProcessMessageQueue();
+}
+
+void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointIdx)
+{
+	if (sMap.empty() || iPointIdx < 0)
+		return;
+
+	{
+		std::lock_guard lock(m_captureMutex);
+		m_vCaptureReservations.erase(std::remove_if(m_vCaptureReservations.begin(), m_vCaptureReservations.end(),
+			[&](const CaptureSpotReservation& reservation)
+			{
+				return reservation.m_sMap == sMap && reservation.m_iPointIndex == iPointIdx && reservation.m_uOwnerAccountID == tInfo.m_uAccountID;
+			}), m_vCaptureReservations.end());
+	}
+
+	std::ostringstream oss;
+	oss << "Release|" << sMap << '|' << iPointIdx << '|' << tInfo.m_uAccountID;
+	QueueMessage("CPCapture", oss.str(), true);
+	if (m_hPipe != INVALID_HANDLE_VALUE)
+		ProcessMessageQueue();
+}
+
+std::vector<Vector> CNamedPipe::GetReservedCaptureSpots(const std::string& sMap, int iPointIdx, uint32_t uIgnoreAccountID)
+{
+	PurgeExpiredCaptureReservations();
+	std::vector<Vector> vReserved;
+	std::lock_guard lock(m_captureMutex);
+	for (const auto& reservation : m_vCaptureReservations)
+	{
+		if (reservation.m_sMap != sMap || reservation.m_iPointIndex != iPointIdx)
+			continue;
+		if (uIgnoreAccountID != 0 && reservation.m_uOwnerAccountID == uIgnoreAccountID)
+			continue;
+		vReserved.push_back(reservation.m_vSpot);
+	}
+	return vReserved;
+}
+
 void CNamedPipe::ProcessLocalBotMessage(std::string sAccountID)
 {
 	if (!sAccountID.empty())
@@ -531,6 +621,103 @@ void CNamedPipe::ClearLocalBots()
 	std::lock_guard lock(m_localBotsMutex);
 	m_mLocalBots.clear();
 	Log("Cleared local bots list");
+}
+
+void CNamedPipe::ClearCaptureReservations()
+{
+	std::lock_guard lock(m_captureMutex);
+	m_vCaptureReservations.clear();
+}
+
+void CNamedPipe::PurgeExpiredCaptureReservations()
+{
+	std::lock_guard lock(m_captureMutex);
+	const double flNow = GetNowSeconds();
+	m_vCaptureReservations.erase(std::remove_if(m_vCaptureReservations.begin(), m_vCaptureReservations.end(),
+		[&](const CaptureSpotReservation& reservation)
+		{
+			return reservation.m_flExpiresAt < flNow;
+		}), m_vCaptureReservations.end());
+}
+
+void CNamedPipe::ProcessCaptureReservationMessage(const std::string& sContent)
+{
+	if (sContent.empty())
+		return;
+
+	std::vector<std::string> vTokens;
+	{
+		std::stringstream ss(sContent);
+		std::string sToken;
+		while (std::getline(ss, sToken, '|'))
+			vTokens.emplace_back(sToken);
+	}
+
+	if (vTokens.empty())
+		return;
+
+	const std::string& sCommand = vTokens.front();
+	if (sCommand == "Claim")
+	{
+		if (vTokens.size() < 9)
+			return;
+
+		const std::string& sMap = vTokens[1];
+		int iPointIdx = std::stoi(vTokens[2]);
+		Vector vSpot{};
+		vSpot.x = std::stof(vTokens[3]);
+		vSpot.y = std::stof(vTokens[4]);
+		vSpot.z = std::stof(vTokens[5]);
+		uint32_t uOwner = static_cast<uint32_t>(std::stoull(vTokens[6]));
+		float flDuration = std::stof(vTokens[7]);
+		int iBotId = std::stoi(vTokens[8]);
+
+		const double flExpiry = GetNowSeconds() + flDuration;
+
+		{
+			std::lock_guard lock(m_captureMutex);
+			bool bUpdated = false;
+			for (auto& reservation : m_vCaptureReservations)
+			{
+				if (reservation.m_sMap == sMap && reservation.m_iPointIndex == iPointIdx && reservation.m_uOwnerAccountID == uOwner)
+				{
+					reservation.m_vSpot = vSpot;
+					reservation.m_flExpiresAt = flExpiry;
+					reservation.m_iBotId = iBotId;
+					bUpdated = true;
+					break;
+				}
+			}
+
+			if (!bUpdated)
+			{
+				CaptureSpotReservation tReservation{};
+				tReservation.m_sMap = sMap;
+				tReservation.m_iPointIndex = iPointIdx;
+				tReservation.m_vSpot = vSpot;
+				tReservation.m_uOwnerAccountID = uOwner;
+				tReservation.m_iBotId = iBotId;
+				tReservation.m_flExpiresAt = flExpiry;
+				m_vCaptureReservations.emplace_back(tReservation);
+			}
+		}
+	}
+	else if (sCommand == "Release")
+	{
+		if (vTokens.size() < 4)
+			return;
+
+		const std::string& sMap = vTokens[1];
+		int iPointIdx = std::stoi(vTokens[2]);
+		uint32_t uOwner = static_cast<uint32_t>(std::stoull(vTokens[3]));
+
+		std::lock_guard lock(m_captureMutex);
+		m_vCaptureReservations.erase(std::remove_if(m_vCaptureReservations.begin(), m_vCaptureReservations.end(),
+			[&](const CaptureSpotReservation& reservation)
+			{
+				return reservation.m_sMap == sMap && reservation.m_iPointIndex == iPointIdx && reservation.m_uOwnerAccountID == uOwner;
+			}), m_vCaptureReservations.end());
+	}
 }
 
 std::string CNamedPipe::GetPlayerClassName(int iPlayerClass)

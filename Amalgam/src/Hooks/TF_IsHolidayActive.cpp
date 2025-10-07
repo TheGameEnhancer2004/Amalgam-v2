@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 enum EHoliday
@@ -33,3 +34,4 @@ MAKE_HOOK(TF_IsHolidayActive, S::TF_IsHolidayActive(), bool,
 	
 	return dwRetAddr == dwDesired ? true : CALL_ORIGINAL(eHoliday);
 }
+#endif

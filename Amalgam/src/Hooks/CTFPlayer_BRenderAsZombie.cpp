@@ -1,5 +1,5 @@
-#include "../SDK/SDK.h"
 #ifndef TEXTMODE
+#include "../SDK/SDK.h"
 
 MAKE_SIGNATURE(CTFPlayer_BRenderAsZombie, "client.dll", "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 B9 ? ? ? ? E8 ? ? ? ? 84 C0", 0x0);
 MAKE_SIGNATURE(CTFRagdoll_CreateTFRagdoll_BRenderAsZombie_Call, "client.dll", "84 C0 74 ? C6 87 ? ? ? ? ? 48 8B 06", 0x0);

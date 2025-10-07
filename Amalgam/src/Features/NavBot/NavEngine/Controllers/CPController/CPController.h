@@ -1,6 +1,7 @@
 #pragma once
 #include "../../../../../SDK/SDK.h"
 #include <optional>
+#include <utility>
 
 #define MAX_CONTROL_POINTS 8
 #define MAX_PREVIOUS_POINTS 3
@@ -46,6 +47,7 @@ private:
 public:
 	// Get the closest Control Point we can cap
 	std::optional<Vector> GetClosestControlPoint(Vector vPos, int iTeam);
+	std::optional<std::pair<int, Vector>> GetClosestControlPointInfo(Vector vPos, int iTeam);
 
 	void Init();
 	void Update();

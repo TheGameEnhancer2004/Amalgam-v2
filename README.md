@@ -8,7 +8,7 @@
   
   [![Download](.github/assets/download.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64Release.zip)
   [![PDB](.github/assets/pdb.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleasePDB.zip)
-  [![Download AVX2](.github/assets/download_avx2.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseAVX2.zip)
+  [![Download AVX2](.github/assets/download_avx2.svg)](https://nightly.link/mlemlody/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseAVX2.zip)
   [![PDB AVX2](.github/assets/pdb.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseAVX2PDB.zip)
   <br>
   [![Freetype](.github/assets/freetype.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseFreetype.zip)
@@ -16,7 +16,7 @@
   [![Freetype AVX2](.github/assets/freetype_avx2.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseFreetypeAVX2.zip)
   [![PDB Freetype AVX2](.github/assets/pdb.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseFreetypeAVX2PDB.zip)
   <br>
-  [![Textmode](.github/assets/textmode.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmode.zip)
+  [![Textmode](.github/assets/textmode.svg)](https://nightly.link/mlemlody/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmode.zip)
   [![PDB Textmode](.github/assets/pdb.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodePDB.zip)
   [![Textmode AVX2](.github/assets/textmode_avx2.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodeAVX2.zip)
   [![PDB Textmode AVX2](.github/assets/pdb.svg)](https://nightly.link/TheGameEnhancer2004/Amalgam-v2/workflows/msbuild/master/Amalgamx64ReleaseTextmodeAVX2PDB.zip)

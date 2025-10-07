@@ -1212,6 +1212,12 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
 					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FToggle(Vars::Misc::Automation::AutoVoteMap, FToggleEnum::Right);
+					PushTransparent(!Vars::Misc::Automation::AutoVoteMap.Value);
+					{
+						FSlider(Vars::Misc::Automation::AutoVoteMapOption, FSliderEnum::Right);
+					}
+					PopTransparent();
 				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{
@@ -1283,12 +1289,12 @@ void CMenu::MenuMisc(int iTab)
 			{
 				if (Section("Nav Engine"))
 				{
-					FToggle(Vars::Misc::Movement::NavEngine::Enabled);
+					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
-						FToggle(Vars::Misc::Movement::NavEngine::PathInSetup);
-						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath, FDropdownEnum::Left);
-						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Right | FDropdownEnum::Multi, -30);
+						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
+						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -30);
 						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
@@ -1306,7 +1312,6 @@ void CMenu::MenuMisc(int iTab)
 							PushTransparent(Transparent || !Vars::Misc::Movement::NavBot::RechargeDT.Value);
 							FSlider(Vars::Misc::Movement::NavBot::RechargeDTDelay, FSliderEnum::None);
 							PopTransparent();
-							
 							FDropdown(Vars::Misc::Movement::NavBot::Preferences);
 							FDropdown(Vars::Misc::Movement::NavBot::Blacklist);
 							PushTransparent(Transparent || !(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::NormalThreats));
@@ -1332,6 +1337,12 @@ void CMenu::MenuMisc(int iTab)
 				} EndSection();
 				if (Section("Bot Utils"))
 				{
+					PushTransparent(!Vars::Misc::Movement::NavEngine::LookAtPath.Value && !Vars::Misc::Movement::FollowBot::LookAtPath.Value);
+					{
+						FSlider(Vars::Misc::Movement::BotUtils::LookAtPathSpeed, FSliderEnum::None);
+						FTooltip("Specifies how smooth the viewangles will change when using 'Look at path' in nav engine or followbot");
+					}
+					PopTransparent();
 					FDropdown(Vars::Misc::Automation::ForceClass, { "Off", "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {0,1,3,7,4,6,9,5,2,8}, FDropdownEnum::Left);
 					FDropdown(Vars::Misc::Movement::BotUtils::WeaponSlot, FDropdownEnum::Right);
 					FDropdown(Vars::Misc::Movement::BotUtils::AutoScope);
@@ -1379,17 +1390,16 @@ void CMenu::MenuMisc(int iTab)
 						FTooltip("Use nav engine when unable to reach current target.");
 					PopTransparent();
 					FDropdown(Vars::Misc::Movement::FollowBot::Targets, FDropdownEnum::Right);
-
 					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
 					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
 						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
 						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
 						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
 					PopTransparent();
-
 					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);
 					FTooltip("Allowed amount of path nodes.\nExceeding that abandons the target.");
 					FSlider(Vars::Misc::Movement::FollowBot::MinPriority, FSliderEnum::Right);
+					FTooltip("Minimal priority at which followbot starts to target a player.\nOverrides playerlist follow priority minimum allowing to change which targets followbot selects depending on this config");
 					FSlider(Vars::Misc::Movement::FollowBot::ActivationDistance, FSliderEnum::Left);
 					FTooltip("Distance to target at which followbot starts to move.");
 					FSlider(Vars::Misc::Movement::FollowBot::MaxDistance, FSliderEnum::Right);
@@ -1460,6 +1470,9 @@ void CMenu::MenuMisc(int iTab)
 					PopTransparent();
 					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
 					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::CallVoteSpam, FToggleEnum::Right);
 				} EndSection();
 			}
 			EndTable();

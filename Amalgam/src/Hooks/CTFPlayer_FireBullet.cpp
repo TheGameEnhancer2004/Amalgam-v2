@@ -1,4 +1,3 @@
-#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Visuals.h"
@@ -134,4 +133,3 @@ MAKE_HOOK(CTFPlayer_FireBullet, S::CTFPlayer_FireBullet(), void,
 		H::Particles.ParticleTracer(sString.c_str(), trace.startpos, trace.endpos, iIndex, iAttachment, true);
 	}
 }
-#endif

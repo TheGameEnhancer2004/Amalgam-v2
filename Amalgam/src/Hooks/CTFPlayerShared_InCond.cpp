@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFPlayerShared_InCond, "client.dll", "48 89 5C 24 ? 57 48 83 EC ? 8B DA 48 8B F9 83 FA ? 7D", 0x0);
 MAKE_SIGNATURE(CTFPlayer_ShouldDraw_InCond_Call, "client.dll", "84 C0 74 ? 32 C0 48 8B 74 24", 0x0);
@@ -60,4 +59,3 @@ MAKE_HOOK(CTFPlayerShared_InCond, S::CTFPlayerShared_InCond(), bool,
 
 	return CALL_ORIGINAL(rcx, nCond);
 }
-#endif

@@ -1,5 +1,5 @@
-#include "../SDK/SDK.h"
 #ifndef TEXTMODE
+#include "../SDK/SDK.h"
 
 MAKE_SIGNATURE(CTFWeaponBase_GetShootSound, "client.dll", "40 55 56 41 56 48 83 EC ? 80 B9", 0x0);
 
