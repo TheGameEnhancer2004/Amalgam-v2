@@ -220,7 +220,6 @@ static inline void AntiCheatCompatibility(CUserCmd* pCmd, bool* pSendPacket)
 				pCmd->viewangles = vHistory[0].m_vAngle + Vec3(0.f, REAL_EPSILON * 2);
 			vHistory[0].m_vAngle = pCmd->viewangles;
 			vHistory[0].m_bSendingPacket = *pSendPacket = vHistory[1].m_bSendingPacket;
-			G::Choking = !*pSendPacket;
 		}
 
 		// prevent aim snap checks
@@ -241,7 +240,6 @@ static inline void AntiCheatCompatibility(CUserCmd* pCmd, bool* pSendPacket)
 				pCmd->viewangles.y += SNAP_NOISE_EPSILON * 2;
 				vHistory[0].m_vAngle = pCmd->viewangles;
 				vHistory[0].m_bSendingPacket = *pSendPacket = vHistory[1].m_bSendingPacket;
-				G::Choking = !*pSendPacket;
 			}
 		}
 	}
@@ -269,41 +267,39 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 
 	UpdateInfo(pLocal, pWeapon, pCmd);
 #ifndef TEXTMODE
-	F::Spectate.CreateMove(pCmd);
+		F::Spectate.CreateMove(pCmd);
 #endif
-	F::Backtrack.CreateMove(pCmd);
-	F::Misc.RunPre(pLocal, pCmd);
-	F::AutoJoin.Run(pLocal);
-	F::AutoItem.Run(pLocal);
-	F::GameObjectiveController.Update();
+		F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
+		F::Misc.RunPre(pLocal, pCmd);
+		F::AutoJoin.Run(pLocal);
+		F::AutoItem.Run(pLocal);
+		F::GameObjectiveController.Update();
 
-	F::Backtrack.BacktrackToCrosshair(pCmd);
-	F::BotUtils.Run(pLocal, pWeapon, pCmd);
-
-	F::EnginePrediction.Start(pLocal, pCmd);
-	F::Aimbot.Run(pLocal, pWeapon, pCmd);
-	F::FollowBot.Run(pLocal, pWeapon, pCmd);
-	F::NavBot.Run(pLocal, pWeapon, pCmd);
-	F::NavEngine.Run(pLocal, pWeapon, pCmd);
-	F::CritHack.Run(pLocal, pWeapon, pCmd);
-	F::NoSpread.Run(pLocal, pWeapon, pCmd);
-	F::Resolver.CreateMove(pLocal);
-	F::EnginePrediction.End(pLocal, pCmd);
-
-	F::Misc.RunPost(pLocal, pCmd, *pSendPacket);
-	F::PacketManip.Run(pLocal, pWeapon, pCmd, pSendPacket);
+		F::BotUtils.Run(pLocal, pWeapon, pCmd);
+	F::Ticks.Start(pLocal, pCmd);
+		F::Aimbot.Run(pLocal, pWeapon, pCmd);
+	F::Ticks.End(pLocal, pCmd);
+		F::FollowBot.Run(pLocal, pWeapon, pCmd);
+		F::NavBot.Run(pLocal, pWeapon, pCmd);
+		F::NavEngine.Run(pLocal, pWeapon, pCmd);
+		F::CritHack.Run(pLocal, pWeapon, pCmd);
+		F::NoSpread.Run(pLocal, pWeapon, pCmd);
+		F::Resolver.CreateMove(pLocal);
+		F::Misc.RunPost(pLocal, pCmd, *pSendPacket);
+		F::PacketManip.Run(pLocal, pWeapon, pCmd, pSendPacket);
 #ifndef TEXTMODE
-	F::Visuals.CreateMove(pLocal, pWeapon);
+		F::Visuals.CreateMove(pLocal, pWeapon);
 #endif
-	F::Ticks.CreateMove(pLocal, pCmd, pSendPacket);
-	F::AntiAim.Run(pLocal, pWeapon, pCmd, *pSendPacket);
-	F::NoSpreadHitscan.AskForPlayerPerf();
-
-	G::Choking = !*pSendPacket;
-	G::LastUserCmd = pCmd;
+		F::Ticks.CreateMove(pLocal, pCmd, pSendPacket);
+		F::AntiAim.Run(pLocal, pWeapon, pCmd, *pSendPacket);
+		F::NoSpreadHitscan.AskForPlayerPerf();
+	F::EnginePrediction.End(pLocal, pCmd);
 
 	AntiCheatCompatibility(pCmd, pSendPacket);
 #ifndef TEXTMODE
 	LocalAnimations(pLocal, pCmd, *pSendPacket);
 #endif
+
+	G::Choking = !*pSendPacket;
+	G::LastUserCmd = pCmd;
 }

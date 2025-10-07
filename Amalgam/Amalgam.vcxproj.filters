@@ -198,6 +198,7 @@
     <ClCompile Include="src\Hooks\CTFWeaponBase_CanFireRandomCriticalShot.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_GetMinFOV.cpp" />
     <ClCompile Include="src\Hooks\CWeaponMedigun_PrimaryAttack.cpp" />
+    <ClCompile Include="src\Hooks\IMaterialSystem_FindTexture.cpp" />
     <ClCompile Include="include\Zydis\Zydis.c" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />

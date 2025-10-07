@@ -65,7 +65,7 @@ int CBacktrack::GetAnticipatedChoke(int iMethod)
 	return iAnticipatedChoke;
 }
 
-void CBacktrack::CreateMove(CUserCmd* pCmd)
+void CBacktrack::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
 		return;
@@ -74,6 +74,9 @@ void CBacktrack::CreateMove(CUserCmd* pCmd)
 	pCmd->tick_count += TIME_TO_TICKS(GetFakeInterp());
 	if (!Vars::Visuals::Removals::Lerp.Value && !Vars::Visuals::Removals::Interpolation.Value)
 		pCmd->tick_count -= TIME_TO_TICKS(G::Lerp);
+
+	// Performs tick_count manipulations if aiming at a record manually
+	BacktrackToCrosshair(pLocal, pWeapon, pCmd);
 }
 
 void CBacktrack::SendLerp()
@@ -466,23 +469,18 @@ std::optional<TickRecord> CBacktrack::GetHitRecord(CBaseEntity* pEntity, CTFWeap
 		}
 	}
 
-	InfoOut = { flMinDist, flMinFov, bInsideRecord };
+	InfoOut = CrosshairRecordInfo_t{ flMinDist, flMinFov, bInsideRecord };
 	return pReturnRecord;
 }
 
-void CBacktrack::BacktrackToCrosshair(CUserCmd* pCmd)
+void CBacktrack::BacktrackToCrosshair(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	auto pLocal = H::Entities.GetLocal();
-	if (!pCmd || !pLocal || !pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
-		return;
-
-	auto pWeapon = H::Entities.GetWeapon();
-	if (!pWeapon)
+	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
 		return;
 
 	if (G::Attacking == 1 && G::CanPrimaryAttack)
 	{
-		const Vec3 vShootPos = pLocal->GetShootPos();
+		const Vec3 vShootPos = F::Ticks.GetShootPos();
 		const Vec3 vAngles = pCmd->viewangles;
 
 		std::vector<std::pair<TickRecord, CrosshairRecordInfo_t>> vValidRecords;
@@ -505,14 +503,14 @@ void CBacktrack::BacktrackToCrosshair(CUserCmd* pCmd)
 			auto pFinalTick = std::ranges::min_element(vValidRecords,
 				[&](const std::pair<TickRecord, CrosshairRecordInfo_t>& a, const std::pair<TickRecord, CrosshairRecordInfo_t>& b)
 				{
-					const bool bInsideBoth = a.second.bInsideThisRecord && b.second.bInsideThisRecord;
-					const bool bNotInsideRecords = !a.second.bInsideThisRecord && !b.second.bInsideThisRecord;
+					const bool bInsideBoth = a.second.m_bInsideThisRecord && b.second.m_bInsideThisRecord;
+					const bool bNotInsideRecords = !a.second.m_bInsideThisRecord && !b.second.m_bInsideThisRecord;
 
 					const bool bResult =
 					{
-							bInsideBoth ? a.second.flMinDist < b.second.flMinDist :
-							bNotInsideRecords ? a.second.flFov < b.second.flFov :
-							a.second.bInsideThisRecord
+							bInsideBoth ? a.second.m_flMinDist < b.second.m_flMinDist :
+							bNotInsideRecords ? a.second.m_flFov < b.second.m_flFov :
+							a.second.m_bInsideThisRecord
 					};
 					return bResult;
 				});
