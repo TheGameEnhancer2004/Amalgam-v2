@@ -449,7 +449,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 	bool bSimple = Vars::Misc::Movement::BotUtils::AutoScope.Value == Vars::Misc::Movement::BotUtils::AutoScopeEnum::Simple;
 
 	int iMaxTicks = TIME_TO_TICKS(0.5f);
-	PlayerStorage tStorage;
+	MoveStorage tStorage;
 	for (auto [pEnemy, _] : vEnemiesSorted)
 	{
 		int iEntIndex = Vars::Misc::Movement::BotUtils::AutoScopeUseCachedResults.Value ? pEnemy->entindex() : -1;
