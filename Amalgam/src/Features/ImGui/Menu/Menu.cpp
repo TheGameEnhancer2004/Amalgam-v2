@@ -820,13 +820,11 @@ void CMenu::MenuVisuals(int iTab)
 						FSlider(Vars::Visuals::UI::ZoomFieldOfView);
 					}
 					PopTransparent();
-					/*
 					PushTransparent(!Vars::Visuals::UI::AspectRatio.Value);
 					{
 						FSlider(Vars::Visuals::UI::AspectRatio);
 					}
 					PopTransparent();
-					*/
 					FToggle(Vars::Visuals::UI::RevealScoreboard, FToggleEnum::Left);
 					FToggle(Vars::Visuals::UI::ScoreboardUtility, FToggleEnum::Right);
 					FToggle(Vars::Visuals::UI::ScoreboardColors, FToggleEnum::Left);
