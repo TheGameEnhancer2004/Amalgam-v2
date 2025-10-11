@@ -1,4 +1,3 @@
-#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 #include "../Features/Visuals/Chams/Chams.h"
@@ -7,10 +6,14 @@
 #include "../Features/Visuals/Visuals.h"
 #include "../Features/Visuals/Materials/Materials.h"
 #include "../Features/Navbot/NavEngine/NavEngine.h"
+#include "../Features/FollowBot/FollowBot.h"
 
 MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::ClientModeShared, 39), bool,
 	void* rcx, const CViewSetup* pSetup)
 {
+#ifdef TEXTMODE
+	return false;
+#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CClientModeShared_DoPostScreenSpaceEffects[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pSetup);
@@ -30,6 +33,7 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	if (!F::CameraWindow.m_bDrawing)
 	{
 		F::NavEngine.Render();
+		F::FollowBot.Render();
 		F::Visuals.DrawEffects();
 		F::Chams.m_mEntities.clear();
 		if (!I::EngineVGui->IsGameUIVisible() && F::Materials.m_bLoaded)
@@ -40,5 +44,5 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	}
 
 	return CALL_ORIGINAL(rcx, pSetup);
-}
 #endif
+}

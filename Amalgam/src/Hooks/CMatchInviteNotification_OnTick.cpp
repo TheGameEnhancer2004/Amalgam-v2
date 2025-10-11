@@ -1,3 +1,4 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
 
 MAKE_SIGNATURE(CMatchInviteNotification_OnTick, "client.dll", "40 53 48 83 EC ? 48 8B D9 E8 ? ? ? ? F7 83", 0x0);
@@ -15,3 +16,4 @@ MAKE_HOOK(CMatchInviteNotification_OnTick, S::CMatchInviteNotification_OnTick(),
 
 	CALL_ORIGINAL(rcx);
 }
+#endif

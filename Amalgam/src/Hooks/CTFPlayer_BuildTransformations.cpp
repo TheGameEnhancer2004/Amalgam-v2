@@ -1,5 +1,4 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFPlayer_BuildTransformations, "client.dll", "48 8B C4 48 89 58 ? 48 89 68 ? 57 41 54", 0x0);
 
@@ -19,4 +18,3 @@ MAKE_HOOK(CTFPlayer_BuildTransformations, S::CTFPlayer_BuildTransformations(), v
 
 	pPlayer->m_fFlags() = iOriginal;
 }
-#endif

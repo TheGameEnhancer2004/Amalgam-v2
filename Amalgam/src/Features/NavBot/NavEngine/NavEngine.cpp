@@ -1,8 +1,7 @@
-#include "NavEngine.h"
+#include "../BotUtils.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
-#include <algorithm>
-#include <direct.h>
+#include "../../FollowBot/FollowBot.h"
 
 std::optional<Vector> CNavParser::GetDormantOrigin(int iIndex)
 {
@@ -69,26 +68,6 @@ bool CNavParser::IsVectorVisibleNavigation(Vector from, Vector to, unsigned int 
 	return trace_visible.fraction == 1.0f;
 }
 
-void CNavParser::DoSlowAim(Vector& input_angle, float speed, Vector viewangles)
-{
-	// Yaw
-	if (viewangles.y != input_angle.y)
-	{
-		Vector slow_delta = input_angle - viewangles;
-
-		while (slow_delta.y > 180)
-			slow_delta.y -= 360;
-		while (slow_delta.y < -180)
-			slow_delta.y += 360;
-
-		slow_delta /= speed;
-		input_angle = viewangles + slow_delta;
-
-		// Clamp as we changed angles
-		Math::ClampAngles(input_angle);
-	}
-}
-
 void CNavParser::Map::AdjacentCost(void* main, std::vector<micropather::StateCost>* adjacent)
 {
 	CNavArea& tArea = *reinterpret_cast<CNavArea*>(main);
@@ -112,12 +91,12 @@ void CNavParser::Map::AdjacentCost(void* main, std::vector<micropather::StateCos
 		float height_diff = points.center_next.z - points.center.z;
 
 		// Too high for us to jump!
-		if (height_diff > PLAYER_JUMP_HEIGHT)
+		if (height_diff > PLAYER_CROUCHED_JUMP_HEIGHT)
 			continue;
 
-		points.current.z += PLAYER_JUMP_HEIGHT;
-		points.center.z += PLAYER_JUMP_HEIGHT;
-		points.next.z += PLAYER_JUMP_HEIGHT;
+		points.current.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+		points.center.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+		points.next.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		const auto key = std::pair<CNavArea*, CNavArea*>(&tArea, tConnection.area);
 		if (vischeck_cache.count(key))
@@ -152,7 +131,7 @@ CNavArea* CNavParser::Map::findClosestNavSquare(const Vector& vec)
 		return nullptr;
 
 	auto vec_corrected = vec;
-	vec_corrected.z += PLAYER_JUMP_HEIGHT;
+	vec_corrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 	float overall_best_dist = FLT_MAX, best_dist = FLT_MAX;
 	// If multiple candidates for LocalNav have been found, pick the closest
 	CNavArea* overall_best_square = nullptr, * best_square = nullptr;
@@ -177,7 +156,7 @@ CNavArea* CNavParser::Map::findClosestNavSquare(const Vector& vec)
 			continue;
 
 		auto center_corrected = i.m_center;
-		center_corrected.z += PLAYER_JUMP_HEIGHT;
+		center_corrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		// Check if we are within x and y bounds of an area
 		if (!i.IsOverlapping(vec) || !F::NavParser.IsVectorVisibleNavigation(vec_corrected, center_corrected))
@@ -226,13 +205,13 @@ void CNavParser::Map::updateIgnores()
 				auto player_origin = F::NavParser.GetDormantOrigin(pPlayer->entindex());
 				if (player_origin)
 				{
-					player_origin.value().z += PLAYER_JUMP_HEIGHT;
+					player_origin.value().z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 					// Actual player check
 					for (auto& i : navfile.m_areas)
 					{
 						Vector area = i.m_center;
-						area.z += PLAYER_JUMP_HEIGHT;
+						area.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 						// Check if player is close to us
 						float flDistSqr = player_origin.value().DistToSqr(area);
@@ -283,7 +262,7 @@ void CNavParser::Map::updateIgnores()
 
 							// For dormant sentries we need to add the jump height to the z
 							// if ( pSentry->IsDormant( ) )
-							building_origin->z += PLAYER_JUMP_HEIGHT;
+							building_origin->z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 							// Define range tiers for sentry danger
 							const float flHighDangerRange = 900.0f; // Full blacklist
@@ -294,7 +273,7 @@ void CNavParser::Map::updateIgnores()
 							for (auto& i : navfile.m_areas)
 							{
 								Vector area = i.m_center;
-								area.z += PLAYER_JUMP_HEIGHT;
+								area.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 								
 								float flDistSqr = building_origin->DistToSqr(area);
 								
@@ -625,7 +604,6 @@ bool CNavEngine::navTo(const Vector& destination, int priority, bool should_repa
 
 	CNavArea* start_area = map->findClosestNavSquare(pLocal->GetAbsOrigin());
 	CNavArea* dest_area = map->findClosestNavSquare(destination);
-
 	if (!start_area || !dest_area)
 		return false;
 
@@ -701,10 +679,10 @@ void CNavEngine::vischeckPath()
 		auto key = std::pair<CNavArea*, CNavArea*>(current_crumb.navarea, next_crumb.navarea);
 
 		auto current_center = current_crumb.vec;
-		current_center.z += PLAYER_JUMP_HEIGHT;
+		current_center.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		auto next_center = next_crumb.vec;
-		next_center.z += PLAYER_JUMP_HEIGHT;
+		next_center.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 		
 		// Check if we can pass, if not, abort pathing and mark as bad
 		if (!F::NavParser.IsPlayerPassableNavigation(current_center, next_center))
@@ -809,32 +787,19 @@ void CNavEngine::Reset(bool bForced)
 {
 	cancelPath();
 
-	const auto level_name = I::EngineClient->GetLevelName();
-	if (level_name)
+	static std::string sPath = std::filesystem::current_path().string();
+	if (std::string sLevelName = I::EngineClient->GetLevelName(); !sLevelName.empty())
 	{
 		if (map)
 			map->Reset();
 
-		if (bForced || !map || map->mapname != level_name)
+		if (bForced || !map || map->mapname != sLevelName)
 		{
-			char* p, cwd[MAX_PATH + 1], lvl_name[256];
-			std::string nav_path;
-			strncpy_s(lvl_name, level_name, 255);
-			lvl_name[255] = 0;
-			p = std::strrchr(lvl_name, '.');
-			if (!p)
-				return;
-
-			*p = 0;
-
-			p = _getcwd(cwd, sizeof(cwd));
-			if (!p)
-				return;
-
-			nav_path = std::format("{}/tf/{}.nav", cwd, lvl_name);
+			sLevelName.erase(sLevelName.find_last_of('.'));
+			std::string sNavPath = std::format("{}\\tf\\{}.nav", sPath, sLevelName);
 			if (Vars::Debug::Logging.Value)
-				SDK::Output("NavEngine", std::format("Nav File location: {}", nav_path).c_str(), { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
-			map = std::make_unique<CNavParser::Map>(nav_path.c_str());
+				SDK::Output("NavEngine", std::format("Nav File location: {}", sNavPath).c_str(), { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
+			map = std::make_unique<CNavParser::Map>(sNavPath.c_str());
 		}
 	}
 }
@@ -876,7 +841,7 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		Reset(true);
 	}
 
-	if (!pLocal->IsAlive())
+	if (!pLocal->IsAlive() || F::FollowBot.m_bActive)
 	{
 		cancelPath();
 		return;
@@ -941,21 +906,6 @@ bool CanJumpIfScoped(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	auto iWeaponID = pWeapon->GetWeaponID();
 	return iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ? !pWeapon->As<CTFSniperRifleClassic>()->m_bCharging() : !pLocal->InCond(TF_COND_ZOOMED);
-}
-
-void LookAtPath(CUserCmd* pCmd, const Vec2 vDest, const Vec3 vLocalEyePos, bool bSilent)
-{
-	static Vec3 LastAngles{};
-	Vec3 next{ vDest.x, vDest.y, vLocalEyePos.z };
-	next = Math::CalcAngle(vLocalEyePos, next);
-
-	const float aim_speed = static_cast<float>(Vars::Misc::Movement::NavEngine::LookAtPathSpeed.Value);
-	F::NavParser.DoSlowAim(next, aim_speed, LastAngles);
-	if (bSilent)
-		pCmd->viewangles = next;
-	else
-		I::EngineClient->SetViewAngles(next);
-	LastAngles = next;
 }
 
 void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
@@ -1229,7 +1179,7 @@ void CNavEngine::followCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			[[fallthrough]];
 		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Plain:
 		default:
-			LookAtPath(pCmd, { moveTarget.x, moveTarget.y }, pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
+			F::BotUtils.LookAtPath(pCmd, Vec2( moveTarget.x, moveTarget.y ), pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
 			break;
 		}
 	}
@@ -1282,7 +1232,7 @@ void CNavEngine::Render()
 		Vector vOrigin = pLocal->GetAbsOrigin();
 		auto pArea = map->findClosestNavSquare(vOrigin);
 		auto vEdge = pArea->getNearestPoint(Vector2D(vOrigin.x, vOrigin.y));
-		vEdge.z += PLAYER_JUMP_HEIGHT;
+		vEdge.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 		H::Draw.RenderBox(vEdge, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Color_t(255, 0, 0, 255), false);
 		H::Draw.RenderWireframeBox(vEdge, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Color_t(255, 0, 0, 255), false);
 

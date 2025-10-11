@@ -1114,9 +1114,11 @@
     <ClCompile Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.cpp" />
     <ClCompile Include="src\Features\Aimbot\AutoHeal\AutoHeal.cpp" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
+    <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />
     <ClCompile Include="src\Features\Misc\AutoItem\AutoItem.cpp" />
     <ClCompile Include="src\Features\Misc\NamedPipe\NamedPipe.cpp" />
+    <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
     <ClCompile Include="src\Features\NavBot\NavBot.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\Controller.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.cpp" />
@@ -1179,6 +1181,7 @@
     <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
     <ClCompile Include="src\Hooks\CInput_ValidateUserCmd.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_SOCreated.cpp" />
+    <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
     <ClCompile Include="src\Hooks\CTFRocketLauncher_CheckReloadMisfire.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_FireBullet.cpp" />
     <ClCompile Include="src\Hooks\CBaseEntity_ResetLatched.cpp" />
@@ -1259,6 +1262,7 @@
     <ClCompile Include="src\Hooks\CHLClient_LevelShutdown.cpp" />
     <ClCompile Include="src\Hooks\IEngineVGui_Paint.cpp" />
     <ClCompile Include="src\Hooks\CInput_GetUserCmd.cpp" />
+    <ClCompile Include="src\Hooks\IMaterialSystem_FindTexture.cpp" />
     <ClCompile Include="src\Hooks\IMatSystemSurface_OnScreenSizeChanged.cpp" />
     <ClCompile Include="src\Hooks\IPanel_PaintTraverse.cpp" />
     <ClCompile Include="src\Hooks\ISteamFriends_GetFriendPersonaName.cpp" />
@@ -1434,9 +1438,11 @@
     <ClInclude Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.h" />
     <ClInclude Include="src\Features\Aimbot\AutoHeal\AutoHeal.h" />
     <ClInclude Include="src\Features\AutoJoin\AutoJoin.h" />
+    <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
     <ClInclude Include="src\Features\Killstreak\Killstreak.h" />
     <ClInclude Include="src\Features\Misc\AutoItem\AutoItem.h" />
     <ClInclude Include="src\Features\Misc\NamedPipe\NamedPipe.h" />
+    <ClInclude Include="src\Features\NavBot\BotUtils.h" />
     <ClInclude Include="src\Features\NavBot\NavBot.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\Controller.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.h" />
@@ -1491,6 +1497,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\IInput.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IKeyValuesSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\ILocalize.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IMemAlloc.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IPanel.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IStudioRender.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IUniformRandomStream.h" />
@@ -1518,6 +1525,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CModel.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IEngineTrace.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CParticleProperty.h" />
+    <ClInclude Include="src\SDK\Definitions\Main\CPredictionCopy.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\CRangeCheckedVar.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CSniperDot.h" />
     <ClInclude Include="src\SDK\Definitions\Main\IAchievementMgr.h" />

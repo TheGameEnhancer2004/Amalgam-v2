@@ -296,10 +296,7 @@ void CMisc::InstantRespawnMVM(CTFPlayer* pLocal)
 
 void CMisc::NoiseSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Automation::NoiseSpam.Value || !pLocal)
-		return;
-
-	if (pLocal->m_bUsingActionSlot())
+	if (!Vars::Misc::Automation::NoiseSpam.Value || pLocal->m_bUsingActionSlot())
 		return;
 
 	static float flLastSpamTime = 0.0f;
@@ -313,13 +310,10 @@ void CMisc::NoiseSpam(CTFPlayer* pLocal)
 
 void CMisc::CallVoteSpam(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Automation::CallVoteSpam.Value || !I::EngineClient->IsInGame() || !I::EngineClient->IsConnected())
+	if (!Vars::Misc::Automation::CallVoteSpam.Value || !m_tCallVoteSpamTimer.Run(1.0f))
 		return;
 
-	if (!m_tCallVoteSpamTimer.Run(1.0f))
-		return;
-
-	std::vector<std::string> voteOptions = {
+	std::vector<std::string> vVoteOptions = {
 		"callvote changelevel cp_badlands",
 		"callvote changelevel cp_granary",
 		"callvote changelevel cp_well",
@@ -358,10 +352,10 @@ void CMisc::CallVoteSpam(CTFPlayer* pLocal)
 		"callvote scrambleteams"
 	};
 
-	int randomIndex = SDK::RandomInt(0, static_cast<int>(voteOptions.size()) - 1);
-	std::string selectedVote = voteOptions[randomIndex];
+	int iRandomIndex = SDK::RandomInt(0, static_cast<int>(vVoteOptions.size()) - 1);
+	std::string strSelectedVote = vVoteOptions[iRandomIndex];
 
-	I::ClientState->SendStringCmd(selectedVote.c_str());
+	I::ClientState->SendStringCmd(strSelectedVote.c_str());
 }
 
 void CMisc::CheatsBypass()
@@ -632,19 +626,23 @@ int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
 		{
 			auto TargetIsBehind = [&]()
 				{
+					const float flCompDist = 0.0625f;
+					const float flSqCompDist = 0.0884f;
+
 					Vec3 vToTarget = (pLocal->m_vecOrigin() - pTargetPos.first).To2D();
 					const float flDist = vToTarget.Normalize();
-					if (!flDist)
+					if (flDist < flSqCompDist)
 						return true;
 
-					float flTolerance = 0.0625f;
-					float flExtra = 2.f * flTolerance / flDist; // account for origin compression
+					const float flExtra = 2.f * flCompDist / flDist; // account for origin compression
 					float flPosVsTargetViewMinDot = 0.f - 0.0031f - flExtra;
 
 					Vec3 vTargetForward; Math::AngleVectors(pCmd->viewangles, &vTargetForward);
 					vTargetForward.Normalize2D();
 
-					return vToTarget.Dot(vTargetForward) > flPosVsTargetViewMinDot;
+					const float flPosVsTargetViewDot = vToTarget.Dot(vTargetForward); // Behind?
+
+					return flPosVsTargetViewDot > flPosVsTargetViewMinDot;
 				};
 
 			if (!TargetIsBehind())
@@ -803,10 +801,10 @@ void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 		{
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Random:
 			{
-				int menu = SDK::RandomInt(0, 2);
-				int command = SDK::RandomInt(0, 8);
-				std::string cmd = "voicemenu " + std::to_string(menu) + " " + std::to_string(command);
-				I::EngineClient->ClientCmd_Unrestricted(cmd.c_str());
+				int iMenu = SDK::RandomInt(0, 2);
+				int iCommand = SDK::RandomInt(0, 8);
+				std::string sCmd = "voicemenu " + std::to_string(iMenu) + " " + std::to_string(iCommand);
+				I::EngineClient->ClientCmd_Unrestricted(sCmd.c_str());
 			}
 			break;
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Medic:
@@ -930,7 +928,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 		return;
 	}
 
-	if (!pLocal || !pLocal->IsAlive() || !pLocal->IsInValidTeam() || pLocal->m_iClass() == TF_CLASS_UNDEFINED)
+	if (!pLocal->IsAlive() || !pLocal->IsInValidTeam() || pLocal->m_iClass() == TF_CLASS_UNDEFINED)
 	{
 		ResetChatTimer();
 		return;
@@ -1228,6 +1226,23 @@ void CMisc::MicSpam(CTFPlayer* pLocal)
 		}
 		return;
 	}
+	
+	// Do we still need these??
+	static auto voice_loopback = U::ConVars.FindVar("voice_loopback");
+	if (voice_loopback->GetBool())
+		voice_loopback->SetValue(0);
+
+	static auto voice_threshold = U::ConVars.FindVar("voice_threshold");
+	if (voice_threshold->GetInt() != 4000)
+		voice_threshold->SetValue(4000);
+
+	static auto voice_forcemicrecord = U::ConVars.FindVar("voice_forcemicrecord");
+	if (!voice_forcemicrecord->GetBool())
+		voice_forcemicrecord->SetValue(1);
+
+	static auto voice_avggain = U::ConVars.FindVar("voice_avggain");
+	if (voice_avggain->GetInt() != 0)
+		voice_avggain->SetValue(0);
 
 	if (!m_bIsMicspam)
 	{

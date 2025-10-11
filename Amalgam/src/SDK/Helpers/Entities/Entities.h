@@ -49,6 +49,8 @@ private:
 
 	std::unordered_map<int, int> m_mIPriorities = {};
 	std::unordered_map<uint32_t, int> m_mUPriorities = {};
+	std::unordered_map<int, int> m_mIFollowPriorities = {};
+	std::unordered_map<uint32_t, int> m_mUFollowPriorities = {};
 	std::unordered_map<int, bool> m_mIFriends = {};
 	std::unordered_map<uint32_t, bool> m_mUFriends = {};
 	std::unordered_map<int, uint64_t> m_mIParty = {};
@@ -91,6 +93,8 @@ public:
 
 	int GetPriority(int iIndex);
 	int GetPriority(uint32_t uAccountID);
+	int GetFollowPriority(int iIndex);
+	int GetFollowPriority(uint32_t uAccountID);
 	bool IsFriend(int iIndex);
 	bool IsFriend(uint32_t uAccountID);
 	bool InParty(int iIndex);

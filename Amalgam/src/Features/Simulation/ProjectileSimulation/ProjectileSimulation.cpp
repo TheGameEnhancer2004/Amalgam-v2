@@ -300,9 +300,6 @@ void CProjectileSimulation::GetInfo(CBaseEntity* pProjectile, ProjectileInfo& tP
 
 bool CProjectileSimulation::Initialize(ProjectileInfo& tProjInfo, bool bSimulate, bool bWorld)
 {
-	if (Vars::Misc::Performance::DisableSimulations.Value)
-		return false;
-
 	if (!m_pEnv)
 		m_pEnv = I::Physics->CreateEnvironment();
 
@@ -556,9 +553,6 @@ bool CProjectileSimulation::Initialize(ProjectileInfo& tProjInfo, bool bSimulate
 
 void CProjectileSimulation::RunTick(ProjectileInfo& tProjInfo, bool bPath) // bug: per frame projectile trace can cause inconsistencies?
 {
-	if (Vars::Misc::Performance::DisableSimulations.Value)
-		return;
-
 	if (!m_pEnv)
 		return;
 

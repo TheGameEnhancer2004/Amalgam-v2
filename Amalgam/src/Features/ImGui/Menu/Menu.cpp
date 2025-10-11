@@ -1201,8 +1201,7 @@ void CMenu::MenuMisc(int iTab)
 				}
 				if (Section("Automation"))
 				{
-					FDropdown(Vars::Misc::Automation::AntiBackstab, FDropdownEnum::Left); // pitch/fake _might_ slip up some auto backstabs
-					FDropdown(Vars::Misc::Automation::ForceClass, { "Off", "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {0,1,3,7,4,6,9,5,2,8}, FDropdownEnum::Right);
+					FDropdown(Vars::Misc::Automation::AntiBackstab); // pitch/fake _might_ slip up some auto backstabs
 					FToggle(Vars::Misc::Automation::AcceptItemDrops);
 					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
@@ -1286,18 +1285,13 @@ void CMenu::MenuMisc(int iTab)
 			/* Column 1 */
 			TableNextColumn();
 			{
-				if (Section("Nav Engine", 8))
+				if (Section("Nav Engine"))
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
-						PushTransparent(Transparent || Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off);
-						{
-							FSlider(Vars::Misc::Movement::NavEngine::LookAtPathSpeed, FSliderEnum::None);
-						}
-						PopTransparent();
 						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -30);
 						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
@@ -1305,23 +1299,16 @@ void CMenu::MenuMisc(int iTab)
 					}
 					PopTransparent();
 				} EndSection();
-								if (Section("Navbot", 8))
+				if (Section("Navbot"))
 				{
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FToggle(Vars::Misc::Movement::NavBot::Enabled);
 						PushTransparent(!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value);
 						{
-							FDropdown(Vars::Misc::Movement::NavBot::WeaponSlot);
 							FDropdown(Vars::Misc::Movement::NavBot::RechargeDT);
 							PushTransparent(Transparent || !Vars::Misc::Movement::NavBot::RechargeDT.Value);
 							FSlider(Vars::Misc::Movement::NavBot::RechargeDTDelay, FSliderEnum::None);
-							PopTransparent();
-							FDropdown(Vars::Misc::Movement::NavBot::AutoScope);
-							PushTransparent(Transparent || !Vars::Misc::Movement::NavBot::AutoScope.Value);
-							{
-								FSlider(Vars::Misc::Movement::NavBot::AutoScopeCancelTime, FSliderEnum::None);
-							}
 							PopTransparent();
 							FDropdown(Vars::Misc::Movement::NavBot::Preferences);
 							FDropdown(Vars::Misc::Movement::NavBot::Blacklist);
@@ -1346,19 +1333,36 @@ void CMenu::MenuMisc(int iTab)
 					}
 					PopTransparent();
 				} EndSection();
+				if (Section("Bot Utils"))
+				{
+					PushTransparent(!Vars::Misc::Movement::NavEngine::LookAtPath.Value && !Vars::Misc::Movement::FollowBot::LookAtPath.Value);
+					{
+						FSlider(Vars::Misc::Movement::BotUtils::LookAtPathSpeed, FSliderEnum::None);
+						FTooltip("Specifies how smooth the viewangles will change when using 'Look at path' in nav engine or followbot");
+					}
+					PopTransparent();
+					FDropdown(Vars::Misc::Automation::ForceClass, { "Off", "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {0,1,3,7,4,6,9,5,2,8}, FDropdownEnum::Left);
+					FDropdown(Vars::Misc::Movement::BotUtils::WeaponSlot, FDropdownEnum::Right);
+					FDropdown(Vars::Misc::Movement::BotUtils::AutoScope);
+					PushTransparent(!Vars::Misc::Movement::BotUtils::AutoScope.Value);
+					{
+						FSlider(Vars::Misc::Movement::BotUtils::AutoScopeCancelTime, FSliderEnum::None);
+					}
+					PopTransparent();
+				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
+					if (Section("##Debug Bot Utils"))
+					{
+						FToggle(Vars::Misc::Movement::BotUtils::AutoScopeUseCachedResults);
+						FTooltip("should increase performance of autoscope by only checking every 2nd tick");
+					} EndSection();
 					if (Section("##Debug Navbot"))
 					{
 						FSlider(Vars::Misc::Movement::NavBot::StickyDangerRange);
 						FSlider(Vars::Misc::Movement::NavBot::ProjectileDangerRange);
-						FToggle(Vars::Misc::Movement::NavBot::AutoScopeUseCachedResults);
-						FTooltip("should double the performance of the movesim method by only checking every 2nd tick");
 					} EndSection();
-				}
-				if (Vars::Debug::Options.Value)
-				{
-					if (Section("##Debug Nav engine"))
+					if (Section("##Debug Nav Engine"))
 					{
 						FToggle(Vars::Misc::Movement::NavEngine::SafePathing);
 						FSlider(Vars::Misc::Movement::NavEngine::StickyIgnoreTime, FSliderEnum::Left);
@@ -1376,6 +1380,36 @@ void CMenu::MenuMisc(int iTab)
 			/* Column 2 */
 			TableNextColumn();
 			{
+				if (Section("Followbot"))
+				{
+					FToggle(Vars::Misc::Movement::FollowBot::Enabled);
+					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
+						FDropdown(Vars::Misc::Movement::FollowBot::UseNav, FDropdownEnum::Left);
+						FTooltip("Use nav engine when unable to reach current target.");
+					PopTransparent();
+					FDropdown(Vars::Misc::Movement::FollowBot::Targets, FDropdownEnum::Right);
+					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
+					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
+						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
+						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
+						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
+					PopTransparent();
+					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);
+					FTooltip("Allowed amount of path nodes.\nExceeding that abandons the target.");
+					FSlider(Vars::Misc::Movement::FollowBot::MinPriority, FSliderEnum::Right);
+					FTooltip("Minimal priority at which followbot starts to target a player.\nOverrides playerlist follow priority minimum allowing to change which targets followbot selects depending on this config");
+					FSlider(Vars::Misc::Movement::FollowBot::ActivationDistance, FSliderEnum::Left);
+					FTooltip("Distance to target at which followbot starts to move.");
+					FSlider(Vars::Misc::Movement::FollowBot::MaxDistance, FSliderEnum::Right);
+					FTooltip("Max distance at which followbot abandons the target.");
+					PushTransparent(!Vars::Misc::Movement::FollowBot::UseNav.Value);
+						FSlider(Vars::Misc::Movement::FollowBot::MaxScanDistance);
+						FTooltip("Max distance at which followbot can no longer see the target.\nOnly affects mav mesh pathfinding");
+					PopTransparent();
+					FToggle(Vars::Misc::Movement::FollowBot::DrawPath, FToggleEnum::Left);
+					FColorPicker(Vars::Colors::FollowbotPathLine, FColorPickerEnum::SameLine);
+					FColorPicker(Vars::Colors::FollowbotPathBox, FColorPickerEnum::SameLine);
+				} EndSection();
 				if (Section("Auto-Item"))
 				{
 					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
@@ -1388,12 +1422,12 @@ void CMenu::MenuMisc(int iTab)
 					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
 					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
 				} EndSection();
-			if (Section("Queueing"))
+				if (Section("Queueing", 8))
 				{
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-                    FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
 					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
 					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Queueing::RQif.Value);
@@ -1406,7 +1440,7 @@ void CMenu::MenuMisc(int iTab)
 						FToggle(Vars::Misc::Queueing::RQLTM, FToggleEnum::Right);
 					}
 					PopTransparent();
-					
+
 					FToggle(Vars::Misc::Queueing::AutoCommunityQueue, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Queueing::AutoCommunityQueue.Value);
 					{
@@ -1422,7 +1456,7 @@ void CMenu::MenuMisc(int iTab)
 					}
 					PopTransparent();
 				} EndSection();
-				if (Section("Chat"))
+				if (Section("Chat", 8))
 				{
 					FToggle(Vars::Misc::Automation::ChatSpam::Enable);
 					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
@@ -1823,7 +1857,7 @@ void CMenu::MenuLogs(int iTab)
 			static int iID = -1;
 			static PriorityLabel_t tTag = {};
 
-			auto vTable = WidgetTable(3, H::Draw.Scale(56), { GetWindowWidth() / 2, GetWindowWidth() / 2 - H::Draw.Scale(90) - GetStyle().WindowPadding.x });
+			auto vTable = WidgetTable(3, H::Draw.Scale(80), { GetWindowWidth() / 2, GetWindowWidth() / 2 - H::Draw.Scale(90) - GetStyle().WindowPadding.x });
 
 			if (BeginWidgetTable(0, vTable))
 			{
@@ -1847,6 +1881,7 @@ void CMenu::MenuLogs(int iTab)
 				{
 					SetCursorPosY(GetCursorPos().y + H::Draw.Scale(12));
 					FSlider("Priority", &tTag.m_iPriority, -10, 10);
+					FSlider("Followbot priority", &tTag.m_iFollowPriority, -1, 10);
 				}
 				PopTransparent();
 			} EndChild();
@@ -1875,6 +1910,7 @@ void CMenu::MenuLogs(int iTab)
 						F::PlayerUtils.m_vTags[iID].m_sName = tTag.m_sName;
 						F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
 						F::PlayerUtils.m_vTags[iID].m_iPriority = tTag.m_iPriority;
+						F::PlayerUtils.m_vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
 						F::PlayerUtils.m_vTags[iID].m_bLabel = tTag.m_bLabel;
 					}
 					else
@@ -1891,7 +1927,7 @@ void CMenu::MenuLogs(int iTab)
 				{
 					int _iID = std::distance(F::PlayerUtils.m_vTags.begin(), it);
 
-					ImVec2 vOriginalPos = { !_tTag.m_bLabel ? GetStyle().WindowPadding.x : GetWindowWidth() * 2 / 3 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(96 + 36 * y) };
+					ImVec2 vOriginalPos = { !_tTag.m_bLabel ? GetStyle().WindowPadding.x : GetWindowWidth() * 2 / 3 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(120 + 36 * y) };
 
 					// background
 					float flWidth = GetWindowWidth() * (_tTag.m_bLabel ? 1.f / 3 : 2.f / 3) - GetStyle().WindowPadding.x * 1.5f;
@@ -1917,7 +1953,17 @@ void CMenu::MenuLogs(int iTab)
 					if (!_tTag.m_bLabel)
 					{
 						SetCursorPos({ vOriginalPos.x + flWidth / 2, vOriginalPos.y + H::Draw.Scale(7) });
+						if (_tTag.m_iPriority < 0)
+							IconImage(ICON_MD_FAVORITE);
+						else
+							IconImage(ICON_MD_HEART_BROKEN, ImVec4(0.867f, 0.18f, 0.267f, 1.f));
+						SetCursorPos({ vOriginalPos.x + flWidth / 2 + H::Draw.Scale(20), vOriginalPos.y + H::Draw.Scale(7) });
 						FText(std::format("{}", _tTag.m_iPriority).c_str());
+
+						SetCursorPos({ vOriginalPos.x + flWidth / 2 + flWidth / 4, vOriginalPos.y + H::Draw.Scale(7) });
+						IconImage(ICON_MD_DIRECTIONS_RUN);
+						SetCursorPos({ vOriginalPos.x + flWidth / 2 + flWidth / 4 + H::Draw.Scale(20), vOriginalPos.y + H::Draw.Scale(7) });
+						FText(std::format("{}", _tTag.m_iFollowPriority).c_str());
 					}
 
 					// buttons / icons
@@ -1950,6 +1996,7 @@ void CMenu::MenuLogs(int iTab)
 						tTag.m_sName = _tTag.m_sName;
 						tTag.m_tColor = _tTag.m_tColor;
 						tTag.m_iPriority = _tTag.m_iPriority;
+						tTag.m_iFollowPriority = _tTag.m_iFollowPriority;
 						tTag.m_bLabel = _tTag.m_bLabel;
 					}
 					if (bDelete)
@@ -1996,8 +2043,8 @@ void CMenu::MenuLogs(int iTab)
 				};
 
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
-			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(80) }); FText("Priorities");
-			SetCursorPos({ GetWindowWidth() * 2 / 3 + H::Draw.Scale(9), H::Draw.Scale(80) }); FText("Labels");
+			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(120) }); FText("Priorities");
+			SetCursorPos({ GetWindowWidth() * 2 / 3 + H::Draw.Scale(9), H::Draw.Scale(120) }); FText("Labels");
 			PopStyleColor();
 
 			std::vector<std::pair<std::vector<PriorityLabel_t>::iterator, PriorityLabel_t>> vPriorities = {}, vLabels = {};
@@ -2023,6 +2070,9 @@ void CMenu::MenuLogs(int iTab)
 					if (a.second.m_iPriority != b.second.m_iPriority)
 						return a.second.m_iPriority > b.second.m_iPriority;
 
+					if (a.second.m_iFollowPriority != b.second.m_iFollowPriority)
+						return a.second.m_iFollowPriority > b.second.m_iFollowPriority;
+
 					return a.second.m_sName < b.second.m_sName;
 				});
 			std::sort(vLabels.begin(), vLabels.end(), [&](const auto& a, const auto& b) -> bool
@@ -2030,6 +2080,9 @@ void CMenu::MenuLogs(int iTab)
 					// sort by priority if unequal
 					if (a.second.m_iPriority != b.second.m_iPriority)
 						return a.second.m_iPriority > b.second.m_iPriority;
+
+					if (a.second.m_iFollowPriority != b.second.m_iFollowPriority)
+						return a.second.m_iFollowPriority > b.second.m_iFollowPriority;
 
 					return a.second.m_sName < b.second.m_sName;
 				});
@@ -2046,7 +2099,7 @@ void CMenu::MenuLogs(int iTab)
 				drawTag(pair.first, pair.second, iLabels);
 				iLabels++;
 			}
-			SetCursorPos({ 0, H::Draw.Scale(60 + 36 * std::max(iPriorities, iLabels)) }); DebugDummy({ 0, H::Draw.Scale(28) });
+			SetCursorPos({ 0, H::Draw.Scale(84 + 36 * std::max(iPriorities, iLabels)) }); DebugDummy({ 0, H::Draw.Scale(28) });
 		} EndSection();
 		{
 			PushDisabled(F::PlayerUtils.m_bLoad);
@@ -2096,12 +2149,12 @@ void CMenu::MenuLogs(int iTab)
 							mPlayerAliases.clear();
 							mAs.clear();
 							vTags = {
-								{ "Default", { 200, 200, 200, 255 }, 0, false, false, true },
-								{ "Ignored", { 200, 200, 200, 255 }, -1, false, true, true },
-								{ "Cheater", { 255, 100, 100, 255 }, 1, false, true, true },
-								{ "Friend", { 100, 255, 100, 255 }, 0, true, false, true },
-								{ "Party", { 100, 100, 255, 255 }, 0, true, false, true },
-								{ "F2P", { 255, 255, 255, 255 }, 0, true, false, true }
+								{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
+								{ "Ignored", { 200, 200, 200, 255 }, -1, 0, false, true, true },
+								{ "Cheater", { 255, 100, 100, 255 }, 1, 0, false, true, true },
+								{ "Friend", { 100, 255, 100, 255 }, 0, 2, true, false, true },
+								{ "Party", { 100, 100, 255, 255 }, 0, 1, true, false, true },
+								{ "F2P", { 255, 255, 255, 255 }, 0, 0, true, false, true }
 							};
 
 							if (auto tSub = tRead.get_child_optional("Config"))
@@ -2112,6 +2165,7 @@ void CMenu::MenuLogs(int iTab)
 									F::Configs.LoadJson(tChild, "Name", tTag.m_sName);
 									F::Configs.LoadJson(tChild, "Color", tTag.m_tColor);
 									F::Configs.LoadJson(tChild, "Priority", tTag.m_iPriority);
+									F::Configs.LoadJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
 									F::Configs.LoadJson(tChild, "Label", tTag.m_bLabel);
 
 									int iID = F::PlayerUtils.TagToIndex(std::stoi(sName));
@@ -2120,6 +2174,7 @@ void CMenu::MenuLogs(int iTab)
 										vTags[iID].m_sName = tTag.m_sName;
 										vTags[iID].m_tColor = tTag.m_tColor;
 										vTags[iID].m_iPriority = tTag.m_iPriority;
+										vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
 										vTags[iID].m_bLabel = tTag.m_bLabel;
 									}
 									else

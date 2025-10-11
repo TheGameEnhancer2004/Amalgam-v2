@@ -2,6 +2,7 @@
 
 #include "../Aimbot.h"
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
+#include "../../EnginePrediction/EnginePrediction.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Visuals/Visuals.h"
 
@@ -132,24 +133,24 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 	int iSimTicks = GetSwingTime(pWeapon), iSwingTicks = GetSwingTime(pWeapon, false);
 
-	if ((Vars::Aimbot::Melee::SwingPrediction.Value || m_iDoubletapTicks) && G::CanPrimaryAttack && pWeapon->m_flSmackTime() < 0.f)
+	if ((Vars::Aimbot::Melee::SwingPrediction.Value && iSimTicks || m_iDoubletapTicks) && G::CanPrimaryAttack && pWeapon->m_flSmackTime() < 0.f)
 	{
-		std::unordered_map<int, PlayerStorage> mStorage;
+		std::unordered_map<int, MoveStorage> mStorage;
 
 		F::MoveSim.Initialize(pLocal, mStorage[I::EngineClient->GetLocalPlayer()], false, !m_iDoubletapTicks);
 		for (auto& tTarget : vTargets)
 			F::MoveSim.Initialize(tTarget.m_pEntity, mStorage[tTarget.m_pEntity->entindex()], false);
 
 		int iMax = std::max(iSimTicks, m_iDoubletapTicks);
-		int iLocal = iMax; bool bSwung = false;
-		for (int i = 0; i < iLocal; i++) // intended for plocal to collide with targets
+		int iTicks = iMax; bool bSwung = false;
+		for (int i = 0; i < iTicks; i++) // intended for plocal to collide with targets
 		{
 			{
 				auto& tStorage = mStorage[I::EngineClient->GetLocalPlayer()];
 
 				if (!bSwung && (!m_iDoubletapTicks || Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity() || iMax - i <= iSwingTicks))
 				{
-					iLocal = std::min(i + iSwingTicks, iMax), bSwung = true;
+					iTicks = std::min(i + iSwingTicks, iMax), bSwung = true;
 					if (!iSwingTicks)
 						break;
 
@@ -162,7 +163,13 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				}
 				if (m_iDoubletapTicks && Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity())
 					F::Ticks.AntiWarp(pLocal, pCmd->viewangles.y, tStorage.m_MoveData.m_flForwardMove, tStorage.m_MoveData.m_flSideMove, iMax - i - 1);
+
 				F::MoveSim.RunTick(tStorage);
+				m_mRecordMap[I::EngineClient->GetLocalPlayer()].emplace_front(
+					pLocal->m_flSimulationTime() + TICKS_TO_TIME(i + 1),
+					tStorage.m_MoveData.m_vecAbsOrigin,
+					pLocal->m_vecMins(), pLocal->m_vecMaxs()
+				);
 			}
 
 			if (i < iSimTicks - m_iDoubletapTicks)
@@ -211,7 +218,7 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			F::MoveSim.Restore(tStorage);
 	}
 
-	m_bShouldSwing = m_iDoubletapTicks <= (iSwingTicks) || Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity();
+	m_bShouldSwing = m_iDoubletapTicks <= iSwingTicks || Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity();
 }
 
 bool CAimbotMelee::CanBackstab(CBaseEntity* pTarget, CTFPlayer* pLocal, Vec3 vEyeAngles)
@@ -231,14 +238,38 @@ bool CAimbotMelee::CanBackstab(CBaseEntity* pTarget, CTFPlayer* pLocal, Vec3 vEy
 		}
 	}
 
-	Vec3 vToTarget = (pTarget->GetAbsOrigin() - m_vEyePos).To2D();
+	Vec3 vEyePos = m_vEyePos;
+	const float flCompDist = 0.0625f;
+	const float flSqCompDist = 0.0884f;
+
+	if (auto pCmd = G::CurrentUserCmd;
+		m_mRecordMap[pLocal->entindex()].empty() && pCmd->viewangles != vEyeAngles && G::CanPrimaryAttack)
+	{	// repredict, prevent prediction error causing miss
+		CUserCmd tOldCmd = *pCmd;
+		Vec3 vOldAngles = I::EngineClient->GetViewAngles();
+		int iOldAttacking = G::Attacking;
+		bool bOldSilent = G::PSilentAngles;
+		F::EnginePrediction.End(pLocal, pCmd);
+
+		G::Attacking = true;
+		Aim(pCmd, vEyeAngles);
+		F::Ticks.Start(pLocal, pCmd);
+		vEyePos = pLocal->GetShootPos();
+		F::EnginePrediction.End(pLocal, pCmd);
+
+		*pCmd = tOldCmd;
+		I::EngineClient->SetViewAngles(vOldAngles);
+		G::Attacking = iOldAttacking;
+		G::PSilentAngles = bOldSilent;
+		F::Ticks.Start(pLocal, pCmd);
+	}
+
+	Vec3 vToTarget = (pTarget->GetAbsOrigin() - vEyePos).To2D();
 	const float flDist = vToTarget.Normalize();
-	if (!flDist)
+	if (flDist < flSqCompDist)
 		return false;
 
-	float flTolerance = 0.0625f;
-	float flExtra = 2.f * flTolerance / flDist; // account for origin compression
-
+	const float flExtra = 2.f * flCompDist / flDist; // account for origin compression
 	float flPosVsTargetViewMinDot = 0.f + 0.0031f + flExtra;
 	float flPosVsOwnerViewMinDot = 0.5f + flExtra;
 	float flViewAnglesMinDot = -0.3f + 0.0031f; // 0.00306795676297 ?
@@ -332,7 +363,7 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 		tTarget.m_pEntity->m_vecMins() = pRecord->m_vMins + 0.125f; // account for origin compression
 		tTarget.m_pEntity->m_vecMaxs() = pRecord->m_vMaxs - 0.125f;
 
-		Vec3 vDiff = { 0, 0, std::clamp(m_vEyePos.z - pRecord->m_vOrigin.z, tTarget.m_pEntity->m_vecMins().z, tTarget.m_pEntity->m_vecMaxs().z) };
+		Vec3 vDiff = { 0, 0, std::clamp(m_vEyePos.z - pRecord->m_vOrigin.z, pRecord->m_vMins.z, pRecord->m_vMaxs.z) };
 		tTarget.m_vPos = pRecord->m_vOrigin + vDiff;
 		Aim(G::CurrentUserCmd->viewangles, Math::CalcAngle(m_vEyePos, tTarget.m_vPos), tTarget.m_vAngleTo);
 
@@ -349,7 +380,7 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 
 		if (bReturn && Vars::Aimbot::Melee::AutoBackstab.Value && pWeapon->GetWeaponID() == TF_WEAPON_KNIFE)
 			bReturn = CanBackstab(tTarget.m_pEntity, pLocal, tTarget.m_vAngleTo);
-
+		
 		tTarget.m_pEntity->SetAbsOrigin(vRestoreOrigin);
 		tTarget.m_pEntity->m_vecMins() = vRestoreMins;
 		tTarget.m_pEntity->m_vecMaxs() = vRestoreMaxs;
@@ -368,10 +399,10 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 		{
 			auto vAngle = Math::CalcAngle(m_vEyePos, tTarget.m_vPos);
 
-			Vec3 vForward = Vec3(); Math::AngleVectors(vAngle, &vForward);
-			Vec3 vTraceEnd = m_vEyePos + (vForward * flRange);
+			Math::AngleVectors(vAngle, &vForward);
+			vTraceEnd = m_vEyePos + (vForward * flRange);
 
-			SDK::Trace(m_vEyePos, vTraceEnd, MASK_SHOT | CONTENTS_GRATE, &filter, &trace);
+			SDK::TraceHull(m_vEyePos, vTraceEnd, vSwingMins, vSwingMaxs, MASK_SOLID, &filter, &trace);
 			if (trace.m_pEnt && trace.m_pEnt == tTarget.m_pEntity)
 				return 2;
 		}
@@ -422,11 +453,11 @@ bool CAimbotMelee::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 // assume angle calculated outside with other overload
 void CAimbotMelee::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 {
-	bool bDoubleTap = F::Ticks.m_bDoubletap || F::Ticks.GetTicks(H::Entities.GetWeapon()) || F::Ticks.m_bSpeedhack;
+	bool bUnsure = F::Ticks.IsTimingUnsure() || F::Ticks.GetTicks(H::Entities.GetWeapon());
 	switch (iMethod)
 	{
 	case Vars::Aimbot::General::AimTypeEnum::Plain:
-		if (G::Attacking != 1 && !bDoubleTap)
+		if (G::Attacking != 1 && !bUnsure)
 			break;
 		[[fallthrough]];
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
@@ -435,7 +466,7 @@ void CAimbotMelee::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 		I::EngineClient->SetViewAngles(vAngle);
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Silent:
-		if (G::Attacking == 1 || bDoubleTap)
+		if (G::Attacking == 1 || bUnsure)
 		{
 			SDK::FixMovement(pCmd, vAngle);
 			pCmd->viewangles = vAngle;
@@ -445,6 +476,7 @@ void CAimbotMelee::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		SDK::FixMovement(pCmd, vAngle);
 		pCmd->viewangles = vAngle;
+		G::SilentAngles = true;
 	}
 }
 

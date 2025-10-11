@@ -266,6 +266,7 @@ public:
 		return false;
 	}
 
+	VIRTUAL(GetPredDescMap, datamap_t*, 15, this);
 	//VIRTUAL(IsPlayer, bool, 132, this);
 	VIRTUAL(IsBaseCombatCharacter, bool, 133, this);
 	//VIRTUAL(IsNPC, bool, 135, this);
@@ -291,6 +292,7 @@ public:
 		return vOut;
 	}
 
+	int GetIntermediateDataSize();
 	Vec3 GetSize();
 	Vec3 GetOffset();
 	Vec3 GetCenter();

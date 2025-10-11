@@ -2192,7 +2192,9 @@ enum EWeaponSlot
 {
 	SLOT_PRIMARY,
 	SLOT_SECONDARY,
-	SLOT_MELEE
+	SLOT_MELEE,
+	SLOT_PDA1,
+	SLOT_PDA2
 };
 
 enum ProjectileType_t

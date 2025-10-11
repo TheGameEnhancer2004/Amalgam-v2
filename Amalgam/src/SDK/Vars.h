@@ -259,6 +259,8 @@ namespace Vars
 		CVar(NavbotPath, "Navbot path color", Color_t(255, 255, 0, 255), VISUAL);
 		CVar(NavbotArea, "Navbot area color", Color_t(0, 255, 0, 255), VISUAL);
 		CVar(NavbotBlacklist, "Navbot blacklisted color", Color_t(255, 0, 0, 255), VISUAL);
+		CVar(FollowbotPathLine, "Followbot path line color", Color_t(255, 255, 0, 255), VISUAL);
+		CVar(FollowbotPathBox, "Followbot path box color", Color_t(255, 255, 0, 255), VISUAL);
 	NAMESPACE_END(Colors);
 
 	NAMESPACE_BEGIN(Aimbot)
@@ -623,7 +625,7 @@ namespace Vars
 			CVarValues(SkyboxChanger, "Skybox changer", std::string("Off"), VISUAL | DROPDOWN_CUSTOM, nullptr,
 				VA_LIST("Off"));
 			CVarValues(WorldTexture, "World texture", std::string("Default"), VISUAL | DROPDOWN_CUSTOM, nullptr,
-				"Default", "Dev", "Camo", "Black", "White", "Flat");
+				"Default", "Dev", "Camo", "Black", "White", "Gray", "Flat");
 			CVar(NearPropFade, "Near prop fade", false, VISUAL);
 			CVar(NoPropFade, "No prop fade", false, VISUAL);
 		SUBNAMESPACE_END(World);
@@ -716,6 +718,15 @@ namespace Vars
 	NAMESPACE_END(Visuals);
 
 	NAMESPACE_BEGIN(Misc)
+
+/*
+I dont think this is a good idea to disable simulations completely:
+	1. Proj aim still runs and fails because there is no projectile/movement prediction (if you dont want it to run just dont give your bots projectile weapons)
+	2. Auto-scope also partially breaks if you disable simulations
+	3. In general a lot of features still partially run despite there being no point
+	4. People will start to complain because they might not even know this exists
+*/
+/*
 		SUBNAMESPACE_BEGIN(Performance)
 #ifdef TEXTMODE
 			CVar(DisableSimulations, "Disable simulations", true);
@@ -723,7 +734,7 @@ namespace Vars
 			CVar(DisableSimulations, "Disable simulations", false);
 #endif
 		SUBNAMESPACE_END(Performance);
-
+*/
 		SUBNAMESPACE_BEGIN(Movement)
 			CVarEnum(AutoStrafe, "Auto strafe", 0, NONE, nullptr,
 				VA_LIST("Off", "Legit", "Directional"),
@@ -752,7 +763,6 @@ namespace Vars
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
 					VA_LIST("Off", "Plain", "Silent"),
 					Off, Plain, Silent);
-				CVar(LookAtPathSpeed, "Look at path speed", 25, SLIDER_CLAMP, 0, 120);
 
 				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
 				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
@@ -766,6 +776,19 @@ namespace Vars
 				CVar(VischeckCacheTime, "Vischeck cache time", 240, NOSAVE | DEBUGVAR | SLIDER_MIN, 10, 500, 10, "%is");
 			SUBNAMESPACE_END(NavEngine);
 
+			SUBNAMESPACE_BEGIN(BotUtils)
+				CVar(LookAtPathSpeed, "Look at path speed", 25, SLIDER_CLAMP, 0, 120);
+				CVarEnum(WeaponSlot, "Force weapon", 0, NONE, nullptr,
+					VA_LIST("Off", "Best", "Primary", "Secondary", "Melee", "PDA"),
+					Off, Best, Primary, Secondary, Melee, PDA);
+			
+				CVarEnum(AutoScope, "Auto scope", 0, NONE, nullptr,
+					VA_LIST("Off", "Simple", "MoveSim"),
+					Off, Simple, MoveSim);
+				CVar(AutoScopeCancelTime, "Auto scope cancel time", 3, SLIDER_MIN, 1, 5, 1, "%is");
+				CVar(AutoScopeUseCachedResults, "Auto scope use cached results", true, NOSAVE | DEBUGVAR);
+			SUBNAMESPACE_END(BotUtils);
+
 			SUBNAMESPACE_BEGIN(NavBot)
 				CVar(Enabled, VA_LIST("Enabled", "Navbot enabled"), false);
 				CVarEnum(Blacklist, "Blacklist", 0b0101111, DROPDOWN_MULTI, "None",
@@ -776,19 +799,10 @@ namespace Vars
 				CVar(BlacklistDormantDelay, "Blacklist dormant scan delay", 1.f, SLIDER_MIN, 0.5f, 5.f, 0.5f, "%gs");
 				CVar(BlacklistSlightDangerLimit, "Blacklist slight danger limit", 2, SLIDER_MIN, 1, 10);
 
-				CVarEnum(WeaponSlot, "Force weapon", 0, NONE, nullptr,
-					VA_LIST("Off", "Best", "Primary", "Secondary", "Melee", "PDA"),
-					Off, Best, Primary, Secondary, Melee, PDA);
-
 				CVarEnum(RechargeDT, "Recharge DT", 0, NONE, nullptr,
 					VA_LIST("Off", "On", "If not fakelagging"),
 					Off, Always, WaitForFL);
 				CVar(RechargeDTDelay, "Recharge DT delay", 5, SLIDER_MIN, 0, 10, 1, "%is");
-
-				CVarEnum(AutoScope, "Auto scope", 0, NONE, nullptr,
-					VA_LIST("Off", "Simple", "MoveSim"),
-					Off, Simple, MoveSim);
-				CVar(AutoScopeCancelTime, "Auto scope cancel time", 3, SLIDER_MIN, 1, 5, 1, "%is");
 
 				CVarEnum(Preferences, "Preferences", 0b0, DROPDOWN_MULTI, nullptr,
 					VA_LIST("Get health", "Get ammo", "Reload weapons", "Stalk enemies", "Defend objectives", "Capture objectives", "Help capture objectives", "Escape danger", "Safe capping", "Target sentries", "Auto engie", "##Divider", "Target sentries low range", "Help capture objective friend only", "Dont escape danger with intel", "Group with others"),
@@ -796,8 +810,34 @@ namespace Vars
 				
 				CVar(StickyDangerRange, "Sticky danger range", 600, NOSAVE | DEBUGVAR, 50, 1500, 50);
 				CVar(ProjectileDangerRange, "Projectile danger range", 600, NOSAVE | DEBUGVAR, 50, 1500, 50);
-				CVar(AutoScopeUseCachedResults, "Auto scope use cached results", true, NOSAVE | DEBUGVAR);
 			SUBNAMESPACE_END(NavBot);
+
+			SUBNAMESPACE_BEGIN(FollowBot)
+				CVar(Enabled, VA_LIST("Enabled", "Followbot enabled"), false);
+
+				CVarEnum(UseNav, "Use nav mesh", 0b0, DROPDOWN_MULTI, nullptr,
+					VA_LIST("On normal", "On dormant"),
+					OnNormal = 1 << 0, OnDormant = 1 << 1);
+
+				CVarEnum(Targets, "Targets", 0b01, DROPDOWN_MULTI, nullptr,
+					VA_LIST("Teammates", "Enemies"),
+					Teammates = 1 << 0, Enemies = 1 << 1);
+
+				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
+					VA_LIST("Off", "Plain", "Silent"),
+					Off, Plain, Silent);
+				CVarEnum(LookAtPathMode, "Look at path mode", 0, NONE, nullptr,
+					VA_LIST("Path", "Copy target", "Copy target immediate"),
+					Path, Copy, CopyImmediate);
+				CVar(LookAtPathNoSnap, "Avoid view snap", false);
+
+				CVar(DrawPath, "Draw path nodes", false);
+				CVar(MaxNodes, "Max path nodes", 300, SLIDER_CLAMP, 50, 500);
+				CVar(ActivationDistance, "Activation distance", 60, SLIDER_CLAMP, 10, 150);
+				CVar(MaxDistance, "Max target distance", 1500, SLIDER_CLAMP, 250, 1500);
+				CVar(MaxScanDistance, "Max target scan distance", 1500, SLIDER_CLAMP, 2000, 8000);
+				CVar(MinPriority, "Min follow priority", 0, SLIDER_CLAMP, 0, 10);
+			SUBNAMESPACE_END(FollowBot);
 
 			CVar(TimingOffset, "Timing offset", 0, NOSAVE | DEBUGVAR, 0, 3);
 			CVar(ChokeCount, "Choke count", 1, NOSAVE | DEBUGVAR, 0, 3);
@@ -1052,7 +1092,6 @@ namespace Vars
 		CVar(CInput_GetUserCmd, "CInput_GetUserCmd", true, NOSAVE | DEBUGVAR);
 		CVar(CInput_ValidateUserCmd, "CInput_ValidateUserCmd", true, NOSAVE | DEBUGVAR);
 		CVar(CInventoryManager_ShowItemsPickedUp, "CInventoryManager_ShowItemsPickedUp", true, NOSAVE | DEBUGVAR);
-		CVar(CItemModelPanel_OnTick, "CItemModelPanel_OnTick", true, NOSAVE | DEBUGVAR);
 		CVar(CL_CheckForPureServerWhitelist, "CL_CheckForPureServerWhitelist", true, NOSAVE | DEBUGVAR);
 		CVar(CL_Move, "CL_Move", true, NOSAVE | DEBUGVAR);
 		CVar(CL_ProcessPacketEntities, "CL_ProcessPacketEntities", true, NOSAVE | DEBUGVAR);

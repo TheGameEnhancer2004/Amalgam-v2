@@ -1,13 +1,15 @@
 #include "../SDK/SDK.h"
-#ifndef TEXTMODE
 
 MAKE_SIGNATURE(CTFBadgePanel_SetupBadge, "client.dll", "48 85 D2 0F 84 ? ? ? ? 48 89 5C 24 ? 48 89 7C 24 ? 4C 89 74 24", 0x0);
+#ifndef TEXTMODE
 MAKE_SIGNATURE(CModelImagePanel_InvalidateImage, "client.dll", "40 53 48 83 EC ? 48 8B D9 48 8B 89 ? ? ? ? 48 85 C9 74 ? 48 8B 01 FF 50 ? 48 C7 83 ? ? ? ? ? ? ? ? 48 8B 8B", 0x0);
 MAKE_SIGNATURE(vgui_Panel_GetBounds, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 83 EC ? 48 8B 1D ? ? ? ? 4D 8B F9", 0x0);
+#endif
 
 MAKE_HOOK(CTFBadgePanel_SetupBadge, S::CTFBadgePanel_SetupBadge(), void,
 	void* rcx, const IMatchGroupDescription* pMatchDesc, /*const*/ LevelInfo_t& levelInfo, const CSteamID& steamID)
 {
+#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFBadgePanel_SetupBadge[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
@@ -38,5 +40,5 @@ MAKE_HOOK(CTFBadgePanel_SetupBadge, S::CTFBadgePanel_SetupBadge(), void,
 	levelInfo.m_nLevelNum = 1;
 	CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
 	levelInfo.m_nLevelNum = nOldLevelNum;
-}
 #endif
+}

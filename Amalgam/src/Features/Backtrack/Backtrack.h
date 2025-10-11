@@ -50,16 +50,20 @@ private:
 
 	struct CrosshairRecordInfo_t
 	{
-		float flMinDist{ -1.f };
-		float flFov{ -1.f };
-		bool bInsideThisRecord{ false };
+		float m_flMinDist{ -1.f };
+		float m_flFov{ -1.f };
+
+		// If our shoot pos is inside this record its the one that is most likely to be hit
+		// Fun fact: hitting this backtrack record at a right angle might send our target flying
+		bool m_bInsideThisRecord{ false };
 	};
 	std::optional<TickRecord> GetHitRecord(CBaseEntity* pEntity, CTFWeaponBase* pWeapon, CUserCmd* pCmd, CrosshairRecordInfo_t& InfoOut, const Vec3 vAngles, const Vec3 vPos);
+	void BacktrackToCrosshair(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	bool m_bSettingUpBones = false;
 
 public:
 	void Store();
-	void CreateMove(CUserCmd* pCmd);
+	void CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void SendLerp();
 	void Draw(CTFPlayer* pLocal);
 	void Reset();
@@ -81,7 +85,7 @@ public:
 	void ReportShot(int iIndex);
 	void AdjustPing(CNetChannel* netChannel);
 	void RestorePing(CNetChannel* netChannel);
-	void BacktrackToCrosshair(CUserCmd* pCmd);
+
 
 	bool IsSettingUpBones() { return m_bSettingUpBones; }
 

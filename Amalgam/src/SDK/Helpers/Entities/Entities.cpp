@@ -166,6 +166,8 @@ void CEntities::Store()
 	{
 		m_mIPriorities.clear();
 		m_mUPriorities.clear();
+		m_mIFollowPriorities.clear();
+		m_mUFollowPriorities.clear();
 		m_mIFriends.clear();
 		m_mUFriends.clear();
 		m_mIParty.clear();
@@ -215,6 +217,7 @@ void CEntities::Store()
 				if (bLocal) m_uAccountID = uAccountID;
 
 				m_mIPriorities[n] = m_mUPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
+				m_mIFollowPriorities[n] = m_mUFollowPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
 				m_mIFriends[n] = m_mUFriends[uAccountID] = !pResource->IsFakePlayer(n) ? I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate) : false;
 				m_mIParty[n] = m_mUParty[uAccountID] = mParties.contains(uAccountID) ? mParties[uAccountID] : 0;
 				m_mIF2P[n] = m_mUF2P[uAccountID] = mF2P.contains(uAccountID) ? mF2P[uAccountID] : false;
@@ -369,7 +372,7 @@ bool CEntities::ManageDormancy(CBaseEntity* pEntity)
 			if (m_mDormancy.contains(n))
 			{
 				auto& tDormancy = m_mDormancy[n];
-				if ( tDormancy.LastUpdate - I::GlobalVars->curtime > 0.f || flDuration == 5)
+				if (tDormancy.LastUpdate - I::GlobalVars->curtime > 0.f || flDuration == 5)
 					pEntity->SetAbsOrigin(pEntity->m_vecOrigin() = tDormancy.Location);
 				else
 					m_mDormancy.erase(n);
@@ -501,6 +504,8 @@ std::deque<VelFixRecord>* CEntities::GetOrigins(int iIndex) { return m_mOrigins.
 
 int CEntities::GetPriority(int iIndex) { return m_mIPriorities[iIndex]; }
 int CEntities::GetPriority(uint32_t uAccountID) { return m_mUPriorities[uAccountID]; }
+int CEntities::GetFollowPriority(int iIndex) { return m_mIFollowPriorities[iIndex]; }
+int CEntities::GetFollowPriority(uint32_t uAccountID) { return m_mUFollowPriorities[uAccountID]; }
 bool CEntities::IsFriend(int iIndex) { return m_mIFriends[iIndex]; }
 bool CEntities::IsFriend(uint32_t uAccountID) { return m_mUFriends[uAccountID]; }
 bool CEntities::InParty(int iIndex) { return iIndex != I::EngineClient->GetLocalPlayer() && m_mIParty[iIndex] == 1; }

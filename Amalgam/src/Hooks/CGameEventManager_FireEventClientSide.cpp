@@ -1,7 +1,8 @@
+#ifndef TEXTMODE
 #include "../SDK/SDK.h"
+
 #include "../Features/Killstreak/Killstreak.h"
 
-#ifndef TEXTMODE
 MAKE_HOOK(CGameEventManager_FireEventClientSide, U::Memory.GetVirtual(I::GameEventManager, 8), bool,
 	IGameEventManager2* rcx, IGameEvent* event)
 {

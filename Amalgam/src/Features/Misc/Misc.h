@@ -41,7 +41,6 @@ private:
 	int m_iCurrentChatSpamIndex = 0;
 
 	bool m_bIsMicspam = false;
-	Timer m_tMicCvarRefresh;
 
 	enum class AchievementSpamState
 	{

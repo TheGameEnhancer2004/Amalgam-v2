@@ -134,7 +134,6 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 
 			// Get the Vec3
 			const auto Vec = Vec3(atoi(vArgs[0]), atoi(vArgs[1]), atoi(vArgs[2]));
-
 			F::NavEngine.navTo(Vec);
 		}
 	},
