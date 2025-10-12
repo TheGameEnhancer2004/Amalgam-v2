@@ -7,6 +7,11 @@
 #include "../Players/PlayerUtils.h"
 #include "../Misc/AutoItem/AutoItem.h"
 #include "../Misc/Misc.h"
+#include <filesystem>
+#include <fstream>
+#include <cstring>
+#include <string_view>
+#include <vector>
 #include <utility>
 #include <boost/algorithm/string/replace.hpp>
 
@@ -228,6 +233,102 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 				F::PlayerUtils.AddTag(uFriendsID, iTagID, true);
 				SDK::Output(std::format("Added tag {} to ID32 {}", sTag, uFriendsID).c_str());
 			}
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_dumpnames"),
+		[](const std::deque<const char*>& vArgs)
+		{
+			auto pResource = H::Entities.GetResource();
+			if (!pResource)
+			{
+				SDK::Output("DisplayNameDumper", "Player resource unavailable");
+				return;
+			}
+
+			auto SanitizeName = [](const char* sRaw) -> std::string
+			{
+				if (!sRaw)
+					return {};
+
+				std::string sClean;
+				sClean.reserve(std::strlen(sRaw));
+				for (unsigned char c : std::string_view{sRaw})
+				{
+					if (c < 32 || c > 126)
+						continue;
+
+					if (c == ',')
+						sClean.push_back('_');
+					else
+						sClean.push_back(static_cast<char>(c));
+				}
+				return sClean;
+			};
+
+			std::vector<std::string> vNames;
+			vNames.reserve(I::EngineClient->GetMaxClients());
+			const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+			for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+			{
+				if (n == iLocalPlayer)
+					continue;
+
+				if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
+					continue;
+
+
+				const char* sName = pResource->GetName(n);
+				std::string sClean = SanitizeName(sName);
+				if (!sClean.empty())
+					vNames.emplace_back(std::move(sClean));
+			}
+
+			if (vNames.empty())
+			{
+				SDK::Output("DisplayNameDumper", "No player names found");
+				return;
+			}
+
+			std::string sCombined;
+			sCombined.reserve(vNames.size() * 8);
+			for (size_t i = 0; i < vNames.size(); i++)
+			{
+				if (i)
+					sCombined += ',';
+				sCombined += vNames[i];
+			}
+
+			auto sPath = std::filesystem::current_path() / "Amalgam" / "names.txt";
+			std::error_code ec;
+			std::filesystem::create_directories(sPath.parent_path(), ec);
+
+			bool bAppendComma = false;
+			if (std::filesystem::exists(sPath))
+			{
+				std::error_code fileEc;
+				const auto uSize = std::filesystem::file_size(sPath, fileEc);
+				bAppendComma = !fileEc && uSize > 0;
+			}
+
+			std::ofstream file(sPath, std::ios::app);
+			if (!file)
+			{
+				SDK::Output("DisplayNameDumper", std::format("Failed to open {}", sPath.string()).c_str());
+				return;
+			}
+
+			if (bAppendComma)
+				file << ',';
+
+			file << sCombined;
+			if (!file.good())
+			{
+				SDK::Output("DisplayNameDumper", "Failed to write names");
+				return;
+			}
+
+			SDK::Output("DisplayNameDumper", std::format("Saved {} names to {}", vNames.size(), sPath.string()).c_str());
 		}
 	},
 	{
