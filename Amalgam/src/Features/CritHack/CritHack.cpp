@@ -433,7 +433,7 @@ void CCritHack::Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal)
 			auto pVictim = I::ClientEntityList->GetClientEntity(iVictim)->As<CTFPlayer>();
 
 			if (!iHealth)
-				iDamage = std::min(iDamage, tHistory.m_iNewHealth);
+				iDamage = std::clamp(iDamage, 0, tHistory.m_iNewHealth);
 			else if (pVictim && (pVictim->m_bFeignDeathReady() || pVictim->InCond(TF_COND_FEIGN_DEATH))) // damage number is spoofed upon sending, correct it
 			{
 				int iOldHealth = (tHistory.m_mHistory.contains(iHealth) ? tHistory.m_mHistory[iHealth].m_iOldHealth : tHistory.m_iNewHealth) % 32768;
@@ -467,6 +467,10 @@ void CCritHack::Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal)
 					return;
 				}
 			}
+
+			const int iInsanePlayerDamage = pGameRules->m_bPlayingMannVsMachine() ? 5000 : 1500;
+			if (iDamage > iInsanePlayerDamage)
+				return;
 		}
 
 		//m_flLastDamageTime = I::GlobalVars->curtime;
