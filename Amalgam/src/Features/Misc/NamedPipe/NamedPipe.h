@@ -12,7 +12,8 @@ class CNamedPipe
 {
 private:
 	HANDLE m_hPipe = INVALID_HANDLE_VALUE;
-	std::atomic<bool> m_shouldRun = true;
+	std::atomic<bool> m_shouldRun = false;
+	std::atomic<bool> m_pipeThreadRunning = false;
 	std::thread m_pipeThread;
 	std::ofstream m_logFile;
 	int m_iBotId = -1;
@@ -85,6 +86,8 @@ private:
 public:
 	void Initialize();
 	void Shutdown();
+	bool EnablePipeConnection();
+	bool IsPipeConnectionActive() const { return m_pipeThreadRunning.load(); }
 
 	bool IsLocalBot(uint32_t uAccountID);
 	void AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx, const Vector& vSpot, float flDurationSeconds = 1.0f);

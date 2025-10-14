@@ -15,6 +15,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <exception>
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
@@ -27,11 +28,13 @@ static double GetNowSeconds()
 
 void CNamedPipe::Initialize()
 {
-	Log("NamedPipe::Initialize() called");
 	m_logFile.open("C:\\pipe_log.txt", std::ios::app);
 	if (!m_logFile.is_open())
 		std::cerr << "Failed to open log file" << std::endl;
 
+	Log("NamedPipe::Initialize() called");
+	m_shouldRun.store(false);
+	m_pipeThreadRunning.store(false);
 	m_iBotId = ReadBotIdFromFile();
 
 	if (m_iBotId == -1)
@@ -42,9 +45,9 @@ void CNamedPipe::Initialize()
 	m_mLocalBots.clear();
 	Log("Cleared local bots list on startup");
 	ClearCaptureReservations();
-
-	m_pipeThread = std::thread(ConnectAndMaintainPipe);
-	Log("Pipe thread started");
+	m_dwLastConnectAttemptTime = 0;
+	m_iCurrentReconnectAttempts = 0;
+	Log("Named pipe connection is idle; run cat_ipc_connect to start it");
 }
 
 void CNamedPipe::Shutdown()
@@ -52,6 +55,43 @@ void CNamedPipe::Shutdown()
 	m_shouldRun.store(false);
 	if (m_pipeThread.joinable())
 		m_pipeThread.join();
+	m_pipeThreadRunning.store(false);
+}
+
+bool CNamedPipe::EnablePipeConnection()
+{
+	if (m_pipeThreadRunning.load())
+	{
+		Log("EnablePipeConnection called but pipe thread already running");
+		return false;
+	}
+
+	if (m_pipeThread.joinable())
+		m_pipeThread.join();
+
+	m_shouldRun.store(true);
+	m_dwLastConnectAttemptTime = 0;
+	m_iCurrentReconnectAttempts = 0;
+
+	try
+	{
+		m_pipeThread = std::thread(ConnectAndMaintainPipe);
+		m_pipeThreadRunning.store(true);
+		Log("Pipe thread started on demand");
+		return true;
+	}
+	catch (const std::exception& e)
+	{
+		m_shouldRun.store(false);
+		Log("Failed to start pipe thread: " + std::string(e.what()));
+	}
+	catch (...)
+	{
+		m_shouldRun.store(false);
+		Log("Failed to start pipe thread: unknown error");
+	}
+
+	return false;
 }
 
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
@@ -404,6 +444,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 		F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
 	}
 	F::NamedPipe.Log("ConnectAndMaintainPipe ended");
+		F::NamedPipe.m_pipeThreadRunning.store(false);
 }
 
 void CNamedPipe::SendStatusUpdate(std::string sStatus)
