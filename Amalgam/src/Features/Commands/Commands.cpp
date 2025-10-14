@@ -7,9 +7,6 @@
 #include "../Players/PlayerUtils.h"
 #include "../Misc/AutoItem/AutoItem.h"
 #include "../Misc/Misc.h"
-#ifdef TEXTMODE
-#include "../Misc/NamedPipe/NamedPipe.h"
-#endif
 #include <filesystem>
 #include <fstream>
 #include <cstring>
@@ -88,26 +85,6 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 			I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
 		}
 	},
-	#ifdef TEXTMODE
-	{
-		FNV1A::Hash32Const("cat_ipc_connect"),
-		[](const std::deque<const char*>& vArgs)
-		{
-			if (F::NamedPipe.EnablePipeConnection())
-			{
-				SDK::Output("Named pipe connection activated.");
-			}
-			else if (F::NamedPipe.IsPipeConnectionActive())
-			{
-				SDK::Output("Named pipe connection is already active.");
-			}
-			else
-			{
-				SDK::Output("Failed to start named pipe connection. Check log for details.");
-			}
-		}
-	},
-#endif
 	{
 		FNV1A::Hash32Const("cat_criteria"),
 		[](const std::deque<const char*>& vArgs)
