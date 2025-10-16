@@ -688,7 +688,21 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 
 	int barWidth = static_cast<int>(boxWidth * currentProgress);
 	if (barWidth > 0)
-		H::Draw.GradientRect(x, y + textBoxHeight, barWidth, barHeight, barColor, barColor, true);
+	{
+		Color_t accentColor = Vars::Menu::Theme::Active.Value;
+		
+		for (int i = 0; i < barWidth; i++)
+		{
+			float t = static_cast<float>(i) / static_cast<float>(barWidth);
+			Color_t lineColor = {
+				static_cast<byte>(0 + t * accentColor.r),
+				static_cast<byte>(0 + t * accentColor.g),
+				static_cast<byte>(0 + t * accentColor.b),
+				255
+			};
+			H::Draw.Line(x + i, y + textBoxHeight, x + i, y + textBoxHeight + barHeight, lineColor);
+		}
+	}
 
 	H::Draw.String(fFont, x + 5, y + (textBoxHeight / 2), leftColor, ALIGN_LEFT, leftText.c_str());
 	if (!rightText.empty())
