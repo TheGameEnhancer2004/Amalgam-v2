@@ -7,11 +7,6 @@
 #include "../Players/PlayerUtils.h"
 #include "../Misc/AutoItem/AutoItem.h"
 #include "../Misc/Misc.h"
-#include <filesystem>
-#include <fstream>
-#include <cstring>
-#include <string_view>
-#include <vector>
 #include <utility>
 #include <boost/algorithm/string/replace.hpp>
 
@@ -276,7 +271,6 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 
 				if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
 					continue;
-
 
 				const char* sName = pResource->GetName(n);
 				std::string sClean = SanitizeName(sName);
