@@ -3800,14 +3800,14 @@ void CMenu::DrawBinds()
 	float flHeight = H::Draw.Scale(18 * vInfo.size() + (Vars::Menu::BindWindowTitle.Value ? 42 : 12));
 	SetNextWindowSize({ flWidth, flHeight });
 	PushStyleVar(ImGuiStyleVar_WindowMinSize, { H::Draw.Scale(40), H::Draw.Scale(40) });
-	if (Begin("Binds", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBackground))
+	if (Begin("Binds", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing))
 	{
 		ImVec2 vWindowPos = GetWindowPos();
 
 		if (Vars::Menu::BindWindowTitle.Value)
-			RenderBackground(F::Render.Background0p5);
+			RenderTwoToneBackground(H::Draw.Scale(28), F::Render.Background0, F::Render.Background0p5, F::Render.Background2);
 		else
-			RenderBackground(F::Render.Background0p5);
+			RenderBackground(F::Render.Background0p5, F::Render.Background2);
 
 		tDragBox.x = vWindowPos.x; tDragBox.y = vWindowPos.y; tOld = tDragBox;
 		if (m_bIsOpen)
@@ -3816,24 +3816,7 @@ void CMenu::DrawBinds()
 		int iListStart = 8;
 		if (Vars::Menu::BindWindowTitle.Value)
 		{
-			ImVec2 vSize = GetWindowSize();
-			ImVec2 vDrawPos = GetDrawPos();
-			ImDrawList* pDrawList = GetWindowDrawList();
-			
-			ImColor headerBgColor = F::Render.Background0p5.Value;
-			headerBgColor.Value.x *= 0.9f; // r
-			headerBgColor.Value.y *= 0.9f; // g
-			headerBgColor.Value.z *= 0.9f; // b
-			
-			pDrawList->AddRectFilled(
-				{ vDrawPos.x, vDrawPos.y }, 
-				{ vDrawPos.x + vSize.x, vDrawPos.y + H::Draw.Scale(28) }, 
-				headerBgColor, 
-				H::Draw.Scale(3), 
-				ImDrawFlags_RoundCornersTop
-			);
-			
-			SetCursorPos({ H::Draw.Scale(4), H::Draw.Scale(6) });
+			SetCursorPos({ H::Draw.Scale(8), H::Draw.Scale(6) });
 			PushFont(F::Render.FontLarge);
 			SetCursorPos({ H::Draw.Scale(8), H::Draw.Scale(7) });
 			PushStyleColor(ImGuiCol_Text, F::Render.Active.Value);
