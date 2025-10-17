@@ -6,6 +6,9 @@
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
 #include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 
+#include <algorithm>
+#include <cmath>
+
 MAKE_SIGNATURE(CTFPlayerSharedUtils_GetEconItemViewByLoadoutSlot, "client.dll", "48 89 6C 24 ? 56 41 54 41 55 41 56 41 57 48 83 EC", 0x0);
 MAKE_SIGNATURE(CEconItemView_GetItemName, "client.dll", "40 53 48 83 EC ? 48 8B D9 C6 81 ? ? ? ? ? E8 ? ? ? ? 48 8B 8B", 0x0);
 
@@ -134,7 +137,13 @@ static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* p
 			? 1.f + std::clamp((flHealth - flMaxHealth) / (floorf(flMaxHealth / 10.f) * 5), 0.f, 1.f)
 			: std::clamp(flHealth / flMaxHealth, 0.f, 1.f);
 		Color_t tColor = Vars::Colors::IndicatorBad.Value.Lerp(Vars::Colors::IndicatorGood.Value, std::clamp(tCache.m_flHealth, 0.f, 1.f));
-		tCache.m_vBars.emplace_back(ALIGN_LEFT, tCache.m_flHealth, tColor, Vars::Colors::IndicatorMisc.Value);
+		Bar_t& tBar = tCache.m_vBars.emplace_back();
+		tBar.m_iMode = ALIGN_LEFT;
+		tBar.m_flPercent = tCache.m_flHealth;
+		tBar.m_tColor = tColor;
+		tBar.m_tOverfill = Vars::Colors::IndicatorMisc.Value;
+		tBar.m_tBackground = Color_t(0, 0, 0, 120);
+		tBar.m_bSmooth = true;
 	}
 	if (pGroup->m_tESP.Draw & ESPEnum::HealthText)
 		tCache.m_vText.emplace_back(ALIGN_LEFT, std::format("{}", flHealth), Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value);
@@ -146,7 +155,14 @@ static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* p
 		{
 			float flUber = std::clamp(pMediGun->As<CWeaponMedigun>()->m_flChargeLevel(), 0.f, 1.f);
 			if (pGroup->m_tESP.Draw & ESPEnum::UberBar)
-				tCache.m_vBars.emplace_back(ALIGN_BOTTOM, flUber, Vars::Colors::IndicatorMisc.Value, Color_t(), false);
+			{
+				Bar_t& bar = tCache.m_vBars.emplace_back();
+				bar.m_iMode = ALIGN_BOTTOM;
+				bar.m_flPercent = flUber;
+				bar.m_tColor = Vars::Colors::IndicatorMisc.Value;
+				bar.m_tBackground = Color_t(0, 0, 0, 120);
+				bar.m_bSmooth = false;
+			}
 			if (pGroup->m_tESP.Draw & ESPEnum::UberText)
 				tCache.m_vText.emplace_back(ALIGN_BOTTOMRIGHT, std::format("{:.0f}%", flUber * 100), Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value);
 		}
@@ -497,7 +513,13 @@ static inline void StoreBuilding(CBaseObject* pBuilding, CTFPlayer* pLocal, Grou
 	{
 		tCache.m_flHealth = std::clamp(flHealth / flMaxHealth, 0.f, 1.f);
 		Color_t tColor = Vars::Colors::IndicatorBad.Value.Lerp(Vars::Colors::IndicatorGood.Value, std::clamp(tCache.m_flHealth, 0.f, 1.f));
-		tCache.m_vBars.emplace_back(ALIGN_LEFT, tCache.m_flHealth, tColor, Vars::Colors::IndicatorMisc.Value);
+		Bar_t& tBar = tCache.m_vBars.emplace_back();
+		tBar.m_iMode = ALIGN_LEFT;
+		tBar.m_flPercent = tCache.m_flHealth;
+		tBar.m_tColor = tColor;
+		tBar.m_tOverfill = Vars::Colors::IndicatorMisc.Value;
+		tBar.m_tBackground = Color_t(0, 0, 0, 120);
+		tBar.m_bSmooth = true;
 	}
 	if (pGroup->m_tESP.Draw & ESPEnum::HealthText)
 		tCache.m_vText.emplace_back(ALIGN_LEFT, std::format("{}", flHealth), Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value);
@@ -508,9 +530,20 @@ static inline void StoreBuilding(CBaseObject* pBuilding, CTFPlayer* pLocal, Grou
 
 		if (pGroup->m_tESP.Draw & ESPEnum::AmmoBars)
 		{
-			tCache.m_vBars.emplace_back(ALIGN_BOTTOM, float(iShells) / iMaxShells, Vars::Menu::Theme::Inactive.Value, Color_t(), false);
+			Bar_t& shellBar = tCache.m_vBars.emplace_back();
+			shellBar.m_iMode = ALIGN_BOTTOM;
+			shellBar.m_flPercent = float(iShells) / iMaxShells;
+			shellBar.m_tColor = Vars::Menu::Theme::Inactive.Value;
+			shellBar.m_bSmooth = false;
+			
 			if (iMaxRockets)
-				tCache.m_vBars.emplace_back(ALIGN_BOTTOM, float(iRockets) / iMaxRockets, Vars::Menu::Theme::Inactive.Value, Color_t(), false);
+			{
+				Bar_t& rocketBar = tCache.m_vBars.emplace_back();
+				rocketBar.m_iMode = ALIGN_BOTTOM;
+				rocketBar.m_flPercent = float(iRockets) / iMaxRockets;
+				rocketBar.m_tColor = Vars::Menu::Theme::Inactive.Value;
+				rocketBar.m_bSmooth = false;
+			}
 		}
 		if (pGroup->m_tESP.Draw & ESPEnum::AmmoText)
 		{
@@ -835,9 +868,11 @@ void CESP::Store(CTFPlayer* pLocal)
 
 void CESP::Draw()
 {
+	m_sBarsSeenThisFrame.clear();
 	DrawWorld();
 	DrawBuildings();
 	DrawPlayers();
+	CleanupSmoothedBars();
 }
 
 void CESP::DrawPlayers()
@@ -891,22 +926,86 @@ void CESP::DrawPlayers()
 			}
 		}
 
-		for (auto& [iMode, flPercent, tColor, tOverfill, bAdjust] : tCache.m_vBars)
+		size_t iBarIndex = 0;
+		for (auto& bar : tCache.m_vBars)
 		{
+			float flPercent = bar.m_flPercent;
+			if (bar.m_bSmooth)
+			{
+				BarKey tKey{ pEntity, static_cast<uint32_t>(iBarIndex) };
+				flPercent = SmoothBarValue(tKey, flPercent);
+				bar.m_flPercent = flPercent;
+				tCache.m_flHealth = flPercent;
+			}
+
 			auto drawBar = [&](int x, int y, int w, int h, EAlign eAlign = ALIGN_LEFT)
 				{
+					if (bar.m_tBackground.a)
+						H::Draw.FillRect(x - 1, y - 1, w + 2, h + 2, bar.m_tBackground);
+
+					auto drawSegment = [&](float flAmount, const Color_t& tColor)
+					{
+						if (flAmount <= 0.f)
+							return;
+						int segX = x;
+						int segY = y;
+						int segW = w;
+						int segH = h;
+						auto scaleLength = [&](int length) -> int
+						{
+							return std::clamp(static_cast<int>(std::round(length * flAmount)), 0, length);
+						};
+						switch (eAlign)
+						{
+						case ALIGN_RIGHT:
+						{
+							segW = scaleLength(w);
+							if (!segW)
+								return;
+							segX += w - segW;
+							break;
+						}
+						case ALIGN_TOP:
+						{
+							segH = scaleLength(h);
+							if (!segH)
+								return;
+							break;
+						}
+						case ALIGN_BOTTOM:
+						{
+							segH = scaleLength(h);
+							if (!segH)
+								return;
+							segY += h - segH;
+							break;
+						}
+						case ALIGN_LEFT:
+						default:
+						{
+							segW = scaleLength(w);
+							if (!segW)
+								return;
+							break;
+						}
+						}
+						H::Draw.FillRect(segX, segY, segW, segH, tColor);
+					};
+
 					if (flPercent > 1.f)
 					{
-						H::Draw.FillRectPercent(x, y, w, h, 1.f, tColor, { 0, 0, 0, 255 }, eAlign, bAdjust);
-						H::Draw.FillRectPercent(x, y, w, h, flPercent - 1.f, tOverfill, { 0, 0, 0, 0 }, eAlign, bAdjust);
+						drawSegment(1.f, bar.m_tColor);
+						drawSegment(flPercent - 1.f, bar.m_tOverfill);
 					}
 					else
-						H::Draw.FillRectPercent(x, y, w, h, flPercent, tColor, { 0, 0, 0, 255 }, eAlign, bAdjust);
+					{
+						drawSegment(flPercent, bar.m_tColor);
+					}
 				};
 
 			int iSpace = H::Draw.Scale(4);
 			int iThickness = H::Draw.Scale(2, Scale_Round);
-			switch (iMode)
+			switch (bar.m_iMode)
 			{
 			case ALIGN_LEFT:
 				drawBar(x - iSpace - iThickness - lOffset, y, iThickness, h, ALIGN_BOTTOM);
@@ -917,6 +1016,7 @@ void CESP::DrawPlayers()
 				bOffset += iSpace + iThickness;
 				break;
 			}
+			++iBarIndex;
 		}
 
 		for (auto& [iMode, sText, tColor, tOutline, m_ucBackgroundAlpha] : tCache.m_vText)
@@ -989,22 +1089,86 @@ void CESP::DrawBuildings()
 
 		if (tCache.m_bBox)
 			H::Draw.LineRectOutline(x, y, w, h, tCache.m_tColor, { 0, 0, 0, 255 });
-		for (auto& [iMode, flPercent, tColor, tOverfill, bAdjust] : tCache.m_vBars)
+		size_t iBarIndex = 0;
+		for (auto& bar : tCache.m_vBars)
 		{
+			float flPercent = bar.m_flPercent;
+			if (bar.m_bSmooth)
+			{
+				BarKey tKey{ pEntity, static_cast<uint32_t>(iBarIndex) };
+				flPercent = SmoothBarValue(tKey, flPercent);
+				bar.m_flPercent = flPercent;
+				tCache.m_flHealth = flPercent;
+			}
+
 			auto drawBar = [&](int x, int y, int w, int h, EAlign eAlign = ALIGN_LEFT)
 				{
+					if (bar.m_tBackground.a)
+						H::Draw.FillRect(x - 1, y - 1, w + 2, h + 2, bar.m_tBackground);
+
+					auto drawSegment = [&](float flAmount, const Color_t& tColor)
+					{
+						if (flAmount <= 0.f)
+							return;
+						int segX = x;
+						int segY = y;
+						int segW = w;
+						int segH = h;
+						auto scaleLength = [&](int length) -> int
+						{
+							return std::clamp(static_cast<int>(std::round(length * flAmount)), 0, length);
+						};
+						switch (eAlign)
+						{
+						case ALIGN_RIGHT:
+						{
+							segW = scaleLength(w);
+							if (!segW)
+								return;
+							segX += w - segW;
+							break;
+						}
+						case ALIGN_TOP:
+						{
+							segH = scaleLength(h);
+							if (!segH)
+								return;
+							break;
+						}
+						case ALIGN_BOTTOM:
+						{
+							segH = scaleLength(h);
+							if (!segH)
+								return;
+							segY += h - segH;
+							break;
+						}
+						case ALIGN_LEFT:
+						default:
+						{
+							segW = scaleLength(w);
+							if (!segW)
+								return;
+							break;
+						}
+						}
+						H::Draw.FillRect(segX, segY, segW, segH, tColor);
+					};
+
 					if (flPercent > 1.f)
 					{
-						H::Draw.FillRectPercent(x, y, w, h, 1.f, tColor, { 0, 0, 0, 255 }, eAlign, bAdjust);
-						H::Draw.FillRectPercent(x, y, w, h, flPercent - 1.f, tOverfill, { 0, 0, 0, 0 }, eAlign, bAdjust);
+						drawSegment(1.f, bar.m_tColor);
+						drawSegment(flPercent - 1.f, bar.m_tOverfill);
 					}
 					else
-						H::Draw.FillRectPercent(x, y, w, h, flPercent, tColor, { 0, 0, 0, 255 }, eAlign, bAdjust);
+					{
+						drawSegment(flPercent, bar.m_tColor);
+					}
 				};
 
 			int iSpace = H::Draw.Scale(4);
 			int iThickness = H::Draw.Scale(2, Scale_Round);
-			switch (iMode)
+			switch (bar.m_iMode)
 			{
 			case ALIGN_LEFT:
 				drawBar(x - iSpace - iThickness - lOffset, y, iThickness, h, ALIGN_BOTTOM);
@@ -1015,6 +1179,7 @@ void CESP::DrawBuildings()
 				bOffset += iSpace + iThickness;
 				break;
 			}
+			++iBarIndex;
 		}
 
 		for (auto& [iMode, sText, tColor, tOutline, m_ucBackgroundAlpha] : tCache.m_vText)
@@ -1105,6 +1270,37 @@ void CESP::DrawWorld()
 	}
 
 	I::MatSystemSurface->DrawSetAlphaMultiplier(1.f);
+}
+
+float CESP::SmoothBarValue(const BarKey& tKey, float flTarget)
+{
+	if (!tKey.m_pEntity)
+		return flTarget;
+
+	m_sBarsSeenThisFrame.insert(tKey);
+
+	auto [it, bInserted] = m_mBarSmoothing.try_emplace(tKey, flTarget);
+	float& flCurrent = it->second;
+	if (bInserted)
+		return flCurrent;
+
+	const float flStep = std::clamp(I::GlobalVars->frametime * 10.f, 0.f, 1.f);
+	flCurrent = Math::Lerp(flCurrent, flTarget, flStep);
+	if (std::fabs(flCurrent - flTarget) <= 0.001f)
+		flCurrent = flTarget;
+
+	return flCurrent;
+}
+
+void CESP::CleanupSmoothedBars()
+{
+	for (auto it = m_mBarSmoothing.begin(); it != m_mBarSmoothing.end();)
+	{
+		if (m_sBarsSeenThisFrame.find(it->first) == m_sBarsSeenThisFrame.end())
+			it = m_mBarSmoothing.erase(it);
+		else
+			++it;
+	}
 }
 
 bool CESP::GetDrawBounds(CBaseEntity* pEntity, float& x, float& y, float& w, float& h)
