@@ -40,8 +40,6 @@ private:
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
 
-	bool m_bIsMicspam = false;
-
 	enum class AchievementSpamState
 	{
 		IDLE,
