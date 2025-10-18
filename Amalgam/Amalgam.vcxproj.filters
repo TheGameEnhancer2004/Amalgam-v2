@@ -140,7 +140,7 @@
     <ClCompile Include="src\Hooks\CTFClientScoreBoardDialog_UpdatePlayerAvatar.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_UpdateAssignedLobby.cpp" />
     <ClCompile Include="src\Hooks\CTFInput_ApplyMouse.cpp" />
-	<ClCompile Include="src\Hooks\CTFInventoryManager_ShowItemsPickedUp.cpp" />
+    <ClCompile Include="src\Hooks\CTFInventoryManager_ShowItemsPickedUp.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_AvoidPlayers.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_BRenderAsZombie.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_BuildTransformations.cpp" />
@@ -215,7 +215,6 @@
     <ClCompile Include="src\Hooks\CGameEventManager_FireEventClientSide.cpp" />
     <ClCompile Include="src\Hooks\CHudItemEffectMeter_Weapon_C_TFWeaponBase_IsEnabled.cpp" />
     <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
-	<ClCompile Include="src\Hooks\CItemModelPanel_OnTick.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_SOCreated.cpp" />
     <ClCompile Include="src\Hooks\Host_IsSecureServerAllowed.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\ValveRandom.cpp" />
@@ -223,6 +222,7 @@
     <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
     <ClCompile Include="src\Hooks\CDynamicProp_TestCollision.cpp" />
     <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
+    <ClCompile Include="src\Hooks\CCharacterInfoPanel_OpenEconUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
