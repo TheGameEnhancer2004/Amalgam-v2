@@ -140,6 +140,7 @@
     <ClCompile Include="src\Hooks\CTFClientScoreBoardDialog_UpdatePlayerAvatar.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_UpdateAssignedLobby.cpp" />
     <ClCompile Include="src\Hooks\CTFInput_ApplyMouse.cpp" />
+	<ClCompile Include="src\Hooks\CTFInventoryManager_ShowItemsPickedUp.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_AvoidPlayers.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_BRenderAsZombie.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_BuildTransformations.cpp" />
