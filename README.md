@@ -29,7 +29,7 @@
 
   ##
   
-  Read about Amalgam's documentation and features [here](https://github.com/rei-2/Amalgam/wiki). 
+  Read about the original Amalgam documentation and features [here](https://github.com/rei-2/Amalgam/wiki). Note: This is **TheGameEnhancer2004's fork** with additional features and changes over the original rei-2 version. 
 </div>
 
 ##
@@ -75,7 +75,7 @@
     - Voice chat spam
     - Achievement spam
     - Vote spam
-  - New commands:
+  - New commands (all commands now use `cat_` prefix):
     - cat_criteria: Loads casual criteria
     - cat_abandon: Abandons current match
     - cat_load: Loads specified config
@@ -96,7 +96,6 @@
     - Indicator: Shows info about **Navbot**'s current goal
     - Draw: Renders path, blacklisted nodes and local area
 - **Other**
-  - Added "cat_" prefix for commands
   - Added debug var automatic loading ("Load debug settings" in menu)
   - Auto accept item drops now removes the notification from ui aswell
   - Changed loading process allowing for early injection (e.g. Xenos manual launch)

@@ -13,10 +13,11 @@ struct Text_t
 struct Bar_t
 {
 	int m_iMode = ALIGN_TOP;
-	float flPercent = 1.f;
+	float m_flPercent = 1.f;
 	Color_t m_tColor = {};
 	Color_t m_tOverfill = {};
-	bool m_bAdjust = true;
+	Color_t m_tBackground = Color_t(0, 0, 0, 0);
+	bool m_bSmooth = false;
 };
 
 struct EntityCache_t
@@ -40,6 +41,27 @@ struct PlayerCache_t : BuildingCache_t
 	CHudTexture* m_pWeaponIcon = nullptr;
 };
 
+struct BarKey
+{
+	CBaseEntity* m_pEntity = nullptr;
+	uint32_t m_uIndex = 0;
+
+	bool operator==(const BarKey& other) const noexcept
+	{
+		return m_pEntity == other.m_pEntity && m_uIndex == other.m_uIndex;
+	}
+};
+
+struct BarKeyHasher
+{
+	size_t operator()(const BarKey& key) const noexcept
+	{
+		size_t h1 = std::hash<CBaseEntity*>{}(key.m_pEntity);
+		size_t h2 = std::hash<uint32_t>{}(key.m_uIndex);
+		return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+	}
+};
+
 class CESP
 {
 private:
@@ -49,10 +71,14 @@ private:
 	
 	bool GetDrawBounds(CBaseEntity* pEntity, float& x, float& y, float& w, float& h);
 	void DrawBones(CTFPlayer* pPlayer, matrix3x4* aBones, std::vector<int> vecBones, Color_t clr);
+	float SmoothBarValue(const BarKey& tKey, float flTarget);
+	void CleanupSmoothedBars();
 
 	std::unordered_map<CBaseEntity*, PlayerCache_t> m_mPlayerCache = {};
 	std::unordered_map<CBaseEntity*, BuildingCache_t> m_mBuildingCache = {};
 	std::unordered_map<CBaseEntity*, EntityCache_t> m_mEntityCache = {};
+	std::unordered_map<BarKey, float, BarKeyHasher> m_mBarSmoothing = {};
+	std::unordered_set<BarKey, BarKeyHasher> m_sBarsSeenThisFrame = {};
 
 public:
 	void Store(CTFPlayer* pLocal);

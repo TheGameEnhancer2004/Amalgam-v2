@@ -35,6 +35,7 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 	F::PlayerCore.Run();
 	F::Backtrack.SendLerp();
 	F::Misc.PingReducer();
+	F::Misc.MicSpam();
 	F::AutoQueue.Run();
 #ifdef TEXTMODE
 	F::NamedPipe.Store();

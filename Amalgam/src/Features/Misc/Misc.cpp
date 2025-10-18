@@ -9,12 +9,13 @@
 #endif
 #include <fstream>
 
+MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
+
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	NoiseSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
-	MicSpam(pLocal);
 	AchievementSpam(pLocal);
 	CallVoteSpam(pLocal);
 	CheatsBypass();
@@ -549,11 +550,6 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	case FNV1A::Hash32Const("game_newmap"):
 		m_vChatSpamLines.clear();
 		m_iCurrentChatSpamIndex = 0;
-		if (m_bIsMicspam)
-		{
-			I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
-			m_bIsMicspam = false;
-		}
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;
@@ -981,12 +977,12 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 				return true;
 		}
 
-		const std::string sDefaultPath = sGameDir + "\\tf\\cat_chatspam.txt";
+		const std::string sDefaultPath = sGameDir + "\\Amalgam\\cat_chatspam.txt";
 		std::ofstream newFile(sDefaultPath);
 		if (newFile.is_open())
 		{
 			newFile << "This is a default message from cat_chatspam.txt\n";
-			newFile << "Edit this file tf/cat_chatspam.txt\n";
+			newFile << "Edit this file Amalgam/cat_chatspam.txt\n";
 			newFile << "Each line will be sent as a separate message\n";
 			newFile << "[Amalgam] Chat Spam is working!\n";
 			newFile << "Put your chat spam lines in this file\n";
@@ -998,8 +994,8 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 
 		SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		m_vChatSpamLines = {
-			"Put your chat spam lines in cat_chatspam.txt",
-			"ChatSpam is running but couldn't find cat_chatspam.txt",
+			"Put your chat spam lines in Amalgam/cat_chatspam.txt",
+			"ChatSpam is running but couldn't find Amalgam/cat_chatspam.txt",
 			"[Amalgam] Chat Spam is working!"
 		};
 		m_iCurrentChatSpamIndex = 0;
@@ -1211,42 +1207,38 @@ void CMisc::ResetBuyBot()
 	m_flBuybotClock = 0.0f;
 }
 
-void CMisc::MicSpam(CTFPlayer* pLocal)
+void CMisc::MicSpam()
 {
-	const bool bShouldMicspam = Vars::Misc::Automation::Micspam.Value
-		&& pLocal->IsInValidTeam()
-		&& pLocal->m_iClass() != TF_CLASS_UNDEFINED;
+	static bool bShouldRestore = false;
+	static Timer tRecordTimer = {};
 
-	if (!bShouldMicspam)
+	if (Vars::Misc::Automation::Micspam.Value)
 	{
-		if (m_bIsMicspam)
+		if (I::EngineClient->IsInGame() && tRecordTimer.Run(10.0f))
+		{
+			I::EngineClient->ClientCmd_Unrestricted("+voicerecord");
+			I::EngineClient->ClientCmd_Unrestricted("voice_avggain 1");
+#ifdef TEXTMODE
+			I::EngineClient->ClientCmd_Unrestricted("volume 0");
+			I::EngineClient->ClientCmd_Unrestricted("voice_enable 1");
+			I::EngineClient->ClientCmd_Unrestricted("voice_loopback 0");
+#endif
+		}
+
+		bShouldRestore = true;
+	}
+	else if (bShouldRestore)
+	{
+		if (S::Voice_IsRecording.Call<bool>())
 		{
 			I::EngineClient->ClientCmd_Unrestricted("-voicerecord");
-			m_bIsMicspam = false;
+#ifdef TEXTMODE
+			I::EngineClient->ClientCmd_Unrestricted("volume 0");
+			I::EngineClient->ClientCmd_Unrestricted("voice_enable 0");
+			I::EngineClient->ClientCmd_Unrestricted("voice_loopback 0");
+#endif
 		}
-		return;
-	}
-	
-	// Do we still need these??
-	static auto voice_loopback = U::ConVars.FindVar("voice_loopback");
-	if (voice_loopback->GetBool())
-		voice_loopback->SetValue(0);
 
-	static auto voice_threshold = U::ConVars.FindVar("voice_threshold");
-	if (voice_threshold->GetInt() != 4000)
-		voice_threshold->SetValue(4000);
-
-	static auto voice_forcemicrecord = U::ConVars.FindVar("voice_forcemicrecord");
-	if (!voice_forcemicrecord->GetBool())
-		voice_forcemicrecord->SetValue(1);
-
-	static auto voice_avggain = U::ConVars.FindVar("voice_avggain");
-	if (voice_avggain->GetInt() != 0)
-		voice_avggain->SetValue(0);
-
-	if (!m_bIsMicspam)
-	{
-		I::EngineClient->ClientCmd_Unrestricted("+voicerecord");
-		m_bIsMicspam = true;
+		bShouldRestore = false;
 	}
 }

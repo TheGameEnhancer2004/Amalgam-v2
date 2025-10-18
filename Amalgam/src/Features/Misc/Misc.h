@@ -17,7 +17,7 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
-	void MicSpam(CTFPlayer* pLocal);
+
 	void AchievementSpam(CTFPlayer* pLocal);
 	void NoiseSpam(CTFPlayer* pLocal);
 	void CallVoteSpam(CTFPlayer* pLocal);
@@ -39,8 +39,6 @@ private:
 	std::vector<std::string> m_vChatSpamLines;
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
-
-	bool m_bIsMicspam = false;
 
 	enum class AchievementSpamState
 	{
@@ -66,6 +64,7 @@ public:
 
 	void Event(IGameEvent* pEvent, uint32_t uNameHash);
 	int AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket);
+	void MicSpam();
 
 	void PingReducer();
 	void UnlockAchievements();
