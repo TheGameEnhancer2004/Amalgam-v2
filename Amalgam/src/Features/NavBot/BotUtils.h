@@ -8,7 +8,7 @@ struct ClosestEnemy_t
 	float m_flDist = -1.f;
 };
 
-enum ShouldTargetState_t
+enum EShouldTargetState
 {
 	INVALID,
 	DONT_TARGET,
@@ -27,8 +27,8 @@ public:
 	ClosestEnemy_t m_tClosestEnemy = {};
 	Vec3 m_vLastAngles = {};
 
-	ShouldTargetState_t ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx);
-	ShouldTargetState_t ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
+	EShouldTargetState ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx);
+	EShouldTargetState ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
 
 	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	void UpdateBestSlot(CTFPlayer* pLocal);

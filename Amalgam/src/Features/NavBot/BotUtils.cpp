@@ -28,23 +28,23 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	return false;
 }
 
-ShouldTargetState_t CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx)
+EShouldTargetState CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx)
 {
 	auto pEntity = I::ClientEntityList->GetClientEntity(iPlayerIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsPlayer())
-		return ShouldTargetState_t::INVALID;
+		return EShouldTargetState::INVALID;
 
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
-		return ShouldTargetState_t::INVALID;
+		return EShouldTargetState::INVALID;
 
 #ifdef TEXTMODE
 	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
-		return ShouldTargetState_t::DONT_TARGET;
+		return EShouldTargetState::DONT_TARGET;
 #endif
 
 	if (F::PlayerUtils.IsIgnored(iPlayerIdx))
-		return ShouldTargetState_t::DONT_TARGET;
+		return EShouldTargetState::DONT_TARGET;
 
 	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iPlayerIdx)
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iPlayerIdx)
@@ -53,10 +53,10 @@ ShouldTargetState_t CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pW
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::DeadRinger && pPlayer->m_bFeignDeathReady()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Taunting && pPlayer->IsTaunting()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Disguised && pPlayer->InCond(TF_COND_DISGUISED))
-		return ShouldTargetState_t::DONT_TARGET;
+		return EShouldTargetState::DONT_TARGET;
 
 	if (pPlayer->m_iTeamNum() == pLocal->m_iTeamNum())
-		return ShouldTargetState_t::DONT_TARGET;
+		return EShouldTargetState::DONT_TARGET;
 
 	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Vaccinator)
 	{
@@ -64,48 +64,48 @@ ShouldTargetState_t CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pW
 		{
 		case EWeaponType::HITSCAN:
 			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && SDK::AttribHookValue(0, "mod_pierce_resists_absorbs", pWeapon) != 0)
-				return ShouldTargetState_t::DONT_TARGET;
+				return EShouldTargetState::DONT_TARGET;
 			break;
 		case EWeaponType::PROJECTILE:
 			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST) && (G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_FLAMETHROWER && G::SavedWepIds[SLOT_SECONDARY] == TF_WEAPON_FLAREGUN))
-				return ShouldTargetState_t::DONT_TARGET;
+				return EShouldTargetState::DONT_TARGET;
 			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_COMPOUND_BOW)
-				return ShouldTargetState_t::DONT_TARGET;
+				return EShouldTargetState::DONT_TARGET;
 			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST))
-				return ShouldTargetState_t::DONT_TARGET;
+				return EShouldTargetState::DONT_TARGET;
 		}
 	}
 
-	return ShouldTargetState_t::TARGET;
+	return EShouldTargetState::TARGET;
 }
 
-ShouldTargetState_t CBotUtils::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
+EShouldTargetState CBotUtils::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
 {
 	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsBuilding())
-		return ShouldTargetState_t::INVALID;
+		return EShouldTargetState::INVALID;
 
 	auto pBuilding = pEntity->As<CBaseObject>();
 	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry) && pBuilding->IsSentrygun()
 		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Dispenser) && pBuilding->IsDispenser()
 		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Teleporter) && pBuilding->IsTeleporter())
-		return ShouldTargetState_t::TARGET;
+		return EShouldTargetState::TARGET;
 
 	if (pLocal->m_iTeamNum() == pBuilding->m_iTeamNum())
-		return ShouldTargetState_t::TARGET;
+		return EShouldTargetState::TARGET;
 
 	auto pOwner = pBuilding->m_hBuilder().Get();
 	if (pOwner)
 	{
 		if (F::PlayerUtils.IsIgnored(pOwner->entindex()))
-			return ShouldTargetState_t::DONT_TARGET;
+			return EShouldTargetState::DONT_TARGET;
 
 		if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(pOwner->entindex())
 			|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(pOwner->entindex()))
-			return ShouldTargetState_t::DONT_TARGET;
+			return EShouldTargetState::DONT_TARGET;
 	}
 
-	return ShouldTargetState_t::TARGET;
+	return EShouldTargetState::TARGET;
 }
 
 ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -116,7 +116,7 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iEntIndex = pPlayer->entindex();
-		if (!ShouldTarget(pLocal, pWeapon, iEntIndex))
+		if (ShouldTarget(pLocal, pWeapon, iEntIndex) < EShouldTargetState::TARGET)
 			continue;
 
 		auto vOrigin = F::NavParser.GetDormantOrigin(iEntIndex);
@@ -393,7 +393,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemy->IsDormant())
 			continue;
 
-		if (!ShouldTarget(pLocal, pWeapon, pEnemy->entindex()))
+		if (ShouldTarget(pLocal, pWeapon, pEnemy->entindex()) < EShouldTargetState::TARGET)
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
@@ -404,7 +404,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemyBuilding->IsDormant())
 			continue;
 
-		if (!ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()))
+		if (ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()) < EShouldTargetState::TARGET)
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemyBuilding, pEnemyBuilding->GetAbsOrigin().DistToSqr(vLocalOrigin));

@@ -13,7 +13,7 @@ constexpr std::array<item_definition_index_t, 12> kPreferredNoisemakerDefs{
 bool CAutoItem::Craft(CTFPlayerInventory* pLocalInventory, std::vector<item_definition_index_t> vItemDefs)
 {
 	// Return early to avoid a crash
-	static BytePatch patch("client.dll", "C6 44 24 ? ? 41 B0 ? 48 8D 15 ? ? ? ? 49 8B CD", 0x0, "E9 AC 00 00");
+	static BytePatch patch("client.dll", "C6 44 24 ? ? 41 B0 ? 48 8D 15 ? ? ? ? 49 8B CD", 0x0, "EB 6E");
 	if (!patch.Initialize())
 		return false;
 
