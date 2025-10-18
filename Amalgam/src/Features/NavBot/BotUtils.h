@@ -10,7 +10,7 @@ struct ClosestEnemy_t
 
 enum EShouldTargetState
 {
-	INVALID,
+	INVALID = -1,
 	DONT_TARGET,
 	TARGET
 };

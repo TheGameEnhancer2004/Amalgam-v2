@@ -116,7 +116,7 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iEntIndex = pPlayer->entindex();
-		if (ShouldTarget(pLocal, pWeapon, iEntIndex) < EShouldTargetState::TARGET)
+		if (!ShouldTarget(pLocal, pWeapon, iEntIndex))
 			continue;
 
 		auto vOrigin = F::NavParser.GetDormantOrigin(iEntIndex);
@@ -393,7 +393,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemy->IsDormant())
 			continue;
 
-		if (ShouldTarget(pLocal, pWeapon, pEnemy->entindex()) < EShouldTargetState::TARGET)
+		if (!ShouldTarget(pLocal, pWeapon, pEnemy->entindex()))
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
@@ -404,7 +404,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemyBuilding->IsDormant())
 			continue;
 
-		if (ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()) < EShouldTargetState::TARGET)
+		if (!ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()))
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemyBuilding, pEnemyBuilding->GetAbsOrigin().DistToSqr(vLocalOrigin));
