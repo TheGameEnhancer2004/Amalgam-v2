@@ -1,10 +1,6 @@
 #pragma once
 #include "../../../SDK/SDK.h"
 
-#include <unordered_map>
-#include <unordered_set>
-#include <cstdint>
-
 struct Text_t
 {
 	int m_iMode = ALIGN_TOP;

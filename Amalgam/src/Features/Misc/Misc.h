@@ -17,7 +17,7 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
-	void MicSpam(CTFPlayer* pLocal);
+
 	void AchievementSpam(CTFPlayer* pLocal);
 	void NoiseSpam(CTFPlayer* pLocal);
 	void CallVoteSpam(CTFPlayer* pLocal);
@@ -64,6 +64,7 @@ public:
 
 	void Event(IGameEvent* pEvent, uint32_t uNameHash);
 	int AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket);
+	void MicSpam();
 
 	void PingReducer();
 	void UnlockAchievements();
