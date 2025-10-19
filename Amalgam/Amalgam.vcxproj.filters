@@ -220,7 +220,7 @@
     <ClCompile Include="src\SDK\Definitions\Main\ValveRandom.cpp" />
     <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
     <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
-    <ClCompile Include="src\Hooks\CDynamicProp_TestCollision.cpp" />
+    <ClCompile Include="src\Hooks\CBoneFollower_TestCollision.cpp" />
     <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
     <ClCompile Include="src\Hooks\Voice_Enabled.cpp" />
   </ItemGroup>
