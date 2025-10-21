@@ -6,6 +6,7 @@
 #include "../../Visuals/Visuals.h"
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
 #include "../../NavBot/NavBot.h"
+#include "../../Followbot/Followbot.h"
 
 std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
@@ -158,17 +159,21 @@ std::vector<Target_t> CAimbotHitscan::SortTargets(CTFPlayer* pLocal, CTFWeaponBa
 
 	F::AimbotGlobal.SortTargets(vTargets, Vars::Aimbot::General::TargetSelection.Value);
 
-	// Prioritize navbot target
-	if (Vars::Aimbot::General::PrioritizeNavbot.Value && F::NavBot.m_iStayNearTargetIdx)
+	// Prioritize navbot/followbot target
+	int iPriorityIdx = pWeapon->GetWeaponID() == TF_WEAPON_MEDIGUN ?
+		(Vars::Aimbot::General::PrioritizeFollowbot.Value ? F::FollowBot.m_tLockedTarget.m_iEntIndex : -1) :
+		(Vars::Aimbot::General::PrioritizeNavbot.Value ? F::NavBot.m_iStayNearTargetIdx : -1);
+
+	if (iPriorityIdx)
 	{
 		std::sort((vTargets).begin(), (vTargets).end(), [&](const Target_t& a, const Target_t& b) -> bool
 				  {
-					  return a.m_pEntity->entindex() == F::NavBot.m_iStayNearTargetIdx && b.m_pEntity->entindex() != F::NavBot.m_iStayNearTargetIdx;
+					  return a.m_pEntity->entindex() == iPriorityIdx && b.m_pEntity->entindex() != iPriorityIdx;
 				  });
 	}
 
 	vTargets.resize(std::min(size_t(Vars::Aimbot::General::MaxTargets.Value), vTargets.size()));
-	if (!Vars::Aimbot::General::PrioritizeNavbot.Value || !F::NavBot.m_iStayNearTargetIdx)
+	if (!iPriorityIdx)
 		F::AimbotGlobal.SortPriority(vTargets);
 	return vTargets;
 }

@@ -2687,7 +2687,7 @@ bool CNavBot::EscapeSpawn(CTFPlayer* pLocal)
 	return false;
 }
 
-void CNavBot::UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy_t tClosestEnemy)
+void CNavBot::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 {
 	static Timer tSlotTimer{};
 	if (!tSlotTimer.Run(0.2f))
@@ -2708,11 +2708,11 @@ void CNavBot::UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy
 			(vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= 500.f))
 		{
 			if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE || F::NavEngine.current_priority == prio_melee)
-				F::BotUtils.SetSlot(pLocal, pWeapon, SLOT_MELEE);
+				F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
 		}
 	}
 	else if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
-		F::BotUtils.SetSlot(pLocal, pWeapon, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
+		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
 bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
@@ -2784,7 +2784,7 @@ void CNavBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_tSelectedConfig = CONFIG_MID_RANGE;
 	}
 
-	UpdateSlot(pLocal, pWeapon, F::BotUtils.m_tClosestEnemy);
+	UpdateSlot(pLocal, F::BotUtils.m_tClosestEnemy);
 	UpdateEnemyBlacklist(pLocal, pWeapon, F::BotUtils.m_iCurrentSlot);
 
 	// TODO:

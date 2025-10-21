@@ -287,6 +287,7 @@ namespace Vars
 			CVar(FOVCircle, "FOV Circle", true, VISUAL);
 			CVar(NoSpread, "No spread", false);
 			CVar(PrioritizeNavbot, "Prioritize navbot target", false);
+			CVar(PrioritizeFollowbot, "Prioritize followboy target", false);
 
 			CVarEnum(AimHoldsFire, "Aim holds fire", 2, NOSAVE | DEBUGVAR, nullptr,
 				VA_LIST("False", "Minigun only", "Always"),
@@ -820,9 +821,9 @@ I dont think this is a good idea to disable simulations completely:
 			SUBNAMESPACE_BEGIN(FollowBot)
 				CVar(Enabled, VA_LIST("Enabled", "Followbot enabled"), false);
 
-				CVarEnum(UseNav, "Use nav mesh", 0b0, DROPDOWN_MULTI, nullptr,
-					VA_LIST("On normal", "On dormant"),
-					OnNormal = 1 << 0, OnDormant = 1 << 1);
+				CVarEnum(UseNav, "Use nav mesh on", 0, NONE, nullptr,
+					VA_LIST("Off", "Normal", "Normal + Dormant"),
+					Off, Normal, Dormant);
 
 				CVarEnum(Targets, "Targets", 0b01, DROPDOWN_MULTI, nullptr,
 					VA_LIST("Teammates", "Enemies"),
@@ -837,11 +838,12 @@ I dont think this is a good idea to disable simulations completely:
 				CVar(LookAtPathNoSnap, "Avoid view snap", false);
 
 				CVar(DrawPath, "Draw path nodes", false);
-				CVar(MaxNodes, "Max path nodes", 300, SLIDER_CLAMP, 50, 500);
-				CVar(ActivationDistance, "Activation distance", 60, SLIDER_CLAMP, 10, 150);
-				CVar(MaxDistance, "Max target distance", 1500, SLIDER_CLAMP, 250, 1500);
-				CVar(MaxScanDistance, "Max target scan distance", 1500, SLIDER_CLAMP, 2000, 8000);
 				CVar(MinPriority, "Min follow priority", 0, SLIDER_CLAMP, 0, 10);
+				CVar(MaxNodes, "Max path nodes", 300, SLIDER_CLAMP, 50, 500);
+				CVar(ActivationDistance, "Activation distance", 300, SLIDER_CLAMP, 10, 1200);
+				CVar(FollowDistance, "Follow distance", 60, SLIDER_CLAMP, 10, 150);
+				CVar(AbandonDistance, "Abandon distance", 1500, SLIDER_CLAMP, 250, 1500);
+				CVar(NavAbandonDistance, "Nav abandon distance", 1500, SLIDER_CLAMP, 2000, 8000);
 			SUBNAMESPACE_END(FollowBot);
 
 			CVar(TimingOffset, "Timing offset", 0, NOSAVE | DEBUGVAR, 0, 3);

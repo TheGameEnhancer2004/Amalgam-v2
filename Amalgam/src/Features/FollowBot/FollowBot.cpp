@@ -15,8 +15,8 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Enemies ? EGroupType::PLAYERS_ALL :
 		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Teammates ? EGroupType::PLAYERS_TEAMMATES : EGroupType::PLAYERS_ENEMIES;
 
-	float flMaxDist = Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() ? Vars::Misc::Movement::FollowBot::MaxScanDistance.Value : Vars::Misc::Movement::FollowBot::ActivationDistance.Value;
-	bool bTryDormant = (Vars::Misc::Movement::FollowBot::UseNav.Value & Vars::Misc::Movement::FollowBot::UseNavEnum::OnDormant) && F::NavEngine.IsNavMeshLoaded();
+	float flMaxDist = Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() ? Vars::Misc::Movement::FollowBot::NavAbandonDistance.Value : Vars::Misc::Movement::FollowBot::ActivationDistance.Value;
+	bool bTryDormant = Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && F::NavEngine.IsNavMeshLoaded();
 	for (auto pEntity : H::Entities.GetGroup(eGroup))
 	{
 		int iEntIndex = pEntity->entindex();
@@ -69,6 +69,8 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 
 	// Did our target leave and someone took their uid? 
 	// Should never happen unless we had a huge network lag
+	// Actually i dont think this will ever happen in any case as i havent seen uids being reused in the same match
+	/*
 	auto pResource = H::Entities.GetResource();
 	if (pResource && pResource->m_bValid(m_tLockedTarget.m_iEntIndex) && 
 		FNV1A::Hash32(F::PlayerUtils.GetPlayerName(m_tLockedTarget.m_iEntIndex, pResource->GetName(m_tLockedTarget.m_iEntIndex))) != m_tLockedTarget.m_uNameHash)
@@ -76,6 +78,7 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 		Reset(FB_RESET_NAV);
 		return;
 	}
+	*/
 
 	if (!(m_tLockedTarget.m_pPlayer = I::ClientEntityList->GetClientEntity(m_tLockedTarget.m_iEntIndex)->As<CTFPlayer>()))
 		return;
@@ -91,7 +94,7 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 	bool bCanNav = Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded();
 	if (!(m_tLockedTarget.m_bDormant = m_tLockedTarget.m_pPlayer->IsDormant()))
 		flDistance = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos = m_tLockedTarget.m_pPlayer->GetAbsOrigin());
-	else if ((Vars::Misc::Movement::FollowBot::UseNav.Value & Vars::Misc::Movement::FollowBot::UseNavEnum::OnDormant) && bCanNav)
+	else if (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && bCanNav)
 	{
 		auto vOrigin = F::NavParser.GetDormantOrigin(m_tLockedTarget.m_iEntIndex);
 		if (vOrigin.has_value())
@@ -102,10 +105,10 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 			Reset(FB_RESET_NAV);
 			return;
 		}
-		flDistance = Vars::Misc::Movement::FollowBot::MaxScanDistance.Value;
+		flDistance = Vars::Misc::Movement::FollowBot::NavAbandonDistance.Value;
 	}
 
-	float flMaxDist = bCanNav ? Vars::Misc::Movement::FollowBot::MaxScanDistance.Value : Vars::Misc::Movement::FollowBot::MaxDistance.Value;
+	float flMaxDist = bCanNav ? Vars::Misc::Movement::FollowBot::NavAbandonDistance.Value : Vars::Misc::Movement::FollowBot::AbandonDistance.Value;
 	if (flDistance > flMaxDist)
 	{
 		Reset(FB_RESET_NAV);
@@ -160,7 +163,9 @@ void CFollowBot::LookAtPath(CTFPlayer* pLocal, CUserCmd* pCmd, std::deque<Vec3>*
 
 void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!Vars::Misc::Movement::FollowBot::Enabled.Value || !Vars::Misc::Movement::FollowBot::Targets.Value || !pLocal->IsAlive() || pLocal->IsTaunting())
+	if (!Vars::Misc::Movement::FollowBot::Enabled.Value ||
+		!Vars::Misc::Movement::FollowBot::Targets.Value || 
+		!pLocal->IsAlive() || pLocal->IsTaunting())
 	{
 		Reset(FB_RESET_TARGETS | FB_RESET_NAV);
 		return;
@@ -173,7 +178,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	}
 
 	if (!Vars::Misc::Movement::NavBot::Enabled.Value && pWeapon && F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
-		F::BotUtils.SetSlot(pLocal, pWeapon, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
+		F::BotUtils.SetSlot(pLocal, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 
 	UpdateTargets(pLocal);
 	UpdateLockedTarget(pLocal);
@@ -199,13 +204,13 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	Vec3 vLocalOrigin = pLocal->GetAbsOrigin();
 	if (F::NavEngine.current_priority == followbot)
 	{
-		bool bClose = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos) < Vars::Misc::Movement::FollowBot::ActivationDistance.Value + 150.f;
+		bool bClose = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos) < Vars::Misc::Movement::FollowBot::FollowDistance.Value + 150.f;
 		
 		// Target is too close or we require repathing, cancel pathing
 		if ((!m_tLockedTarget.m_bNew && bClose) ||
 			(!m_tLockedTarget.m_vLastKnownPos.IsZero() &&
 			F::NavEngine.crumbs.size() &&
-			m_tLockedTarget.m_vLastKnownPos.DistTo(F::NavEngine.crumbs.back().vec) >= Vars::Misc::Movement::FollowBot::MaxDistance.Value))
+			m_tLockedTarget.m_vLastKnownPos.DistTo(F::NavEngine.crumbs.back().vec) >= Vars::Misc::Movement::FollowBot::AbandonDistance.Value))
 		{
 			if (bClose && m_tLockedTarget.m_bDormant)
 			{
@@ -222,14 +227,14 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	{
 		if (m_tLockedTarget.m_bUnreachable ||
 			m_tLockedTarget.m_bDormant ||
-			(m_tLockedTarget.m_bNew && (m_tLockedTarget.m_flDistance >= Vars::Misc::Movement::FollowBot::ActivationDistance.Value)) ||
-			(m_tLockedTarget.m_flDistance >= Vars::Misc::Movement::FollowBot::MaxDistance.Value) ||
+			(m_tLockedTarget.m_bNew && (m_tLockedTarget.m_flDistance >= Vars::Misc::Movement::FollowBot::FollowDistance.Value)) ||
+			(m_tLockedTarget.m_flDistance >= Vars::Misc::Movement::FollowBot::AbandonDistance.Value) ||
 			(m_vCurrentPath.size() >= Vars::Misc::Movement::FollowBot::MaxNodes.Value))
 		{
 			bool bNav = false;
 			if (Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() && !m_tLockedTarget.m_vLastKnownPos.IsZero() &&
-				((!m_tLockedTarget.m_bDormant && (Vars::Misc::Movement::FollowBot::UseNav.Value & Vars::Misc::Movement::FollowBot::UseNavEnum::OnNormal)) ||
-				(m_tLockedTarget.m_bDormant && (Vars::Misc::Movement::FollowBot::UseNav.Value & Vars::Misc::Movement::FollowBot::UseNavEnum::OnDormant))))
+				((!m_tLockedTarget.m_bDormant && Vars::Misc::Movement::FollowBot::UseNav.Value) ||
+				(m_tLockedTarget.m_bDormant && (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant))))
 				bNav = F::NavEngine.navTo(m_tLockedTarget.m_vLastKnownPos, followbot);
 
 			// We couldn't find a path to the target
@@ -247,8 +252,8 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	}
 	else
 	{
-		if (pWeapon && F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
-			F::BotUtils.SetSlot(pLocal, pWeapon, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
+		if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
+			F::BotUtils.SetSlot(pLocal, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 
 		// Already pathing, no point in running everything else
 		return;
@@ -257,7 +262,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (m_tLockedTarget.m_pPlayer)
 	{
 		auto vCurrentOrigin = m_tLockedTarget.m_pPlayer->GetAbsOrigin();
-		if (vLocalOrigin.DistTo(vCurrentOrigin) >= Vars::Misc::Movement::FollowBot::MaxDistance.Value)
+		if (vLocalOrigin.DistTo(vCurrentOrigin) >= Vars::Misc::Movement::FollowBot::AbandonDistance.Value)
 		{
 			Reset(FB_RESET_NONE);
 			return;
@@ -265,7 +270,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_bActive = true;
 
 		float flDistToCurrent = vLocalOrigin.DistTo2D(vCurrentOrigin);
-		if (flDistToCurrent <= Vars::Misc::Movement::FollowBot::ActivationDistance.Value ||
+		if (flDistToCurrent <= Vars::Misc::Movement::FollowBot::FollowDistance.Value ||
 			(m_vCurrentPath.size() > 8 && flDistToCurrent < vLocalOrigin.DistTo2D(m_vCurrentPath.front().m_vOrigin)))
 		{
 			m_vCurrentPath.clear();
@@ -352,8 +357,8 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		LookAtPath(pLocal, pCmd, pFinalAngles, Vars::Misc::Movement::FollowBot::LookAtPathNoSnap.Value && Math::CalcFov(pFinalAngles->front(), F::BotUtils.m_vLastAngles) > 3.f);
 	}
 
-	if (pWeapon && F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
-		F::BotUtils.SetSlot(pLocal, pWeapon, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
+	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
+		F::BotUtils.SetSlot(pLocal, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 
 	if (!bShouldWalk)
 		return;

@@ -125,7 +125,7 @@ private:
 	bool EscapeSpawn(CTFPlayer* pLocal);
 
 	int GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
-	void UpdateSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, ClosestEnemy_t tClosestEnemy);
+	void UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
 	void ClaimCaptureSpot(const Vector& vSpot, int iPointIdx);
 	void ReleaseCaptureSpotClaim();
 public:

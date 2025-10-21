@@ -267,7 +267,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	}
 }
 
-void CBotUtils::SetSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot)
+void CBotUtils::SetSlot(CTFPlayer* pLocal, int iSlot)
 {
 	if (iSlot > -1)
 	{

@@ -32,7 +32,7 @@ public:
 
 	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	void UpdateBestSlot(CTFPlayer* pLocal);
-	void SetSlot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot);
+	void SetSlot(CTFPlayer* pLocal, int iSlot);
 
 	void DoSlowAim(Vec3& vWishAngles, float flSpeed , Vec3 vPreviousAngles);
 	void LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool bSilent);

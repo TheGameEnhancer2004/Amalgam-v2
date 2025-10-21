@@ -171,6 +171,7 @@ void CMenu::MenuAimbot(int iTab)
 					FToggle(Vars::CritHack::AlwaysMeleeCrit, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::NoSpread, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::General::PrioritizeNavbot, FToggleEnum::Left);
+					FToggle(Vars::Aimbot::General::PrioritizeFollowbot, FToggleEnum::Right);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
@@ -1387,7 +1388,7 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Movement::FollowBot::Enabled);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 						FDropdown(Vars::Misc::Movement::FollowBot::UseNav, FDropdownEnum::Left);
-						FTooltip("Use nav engine when unable to reach current target.");
+						FTooltip("Use nav engine when unable to reach current target.\nNormal - runs in case the target is NOT dormant\nNormal + Dormant - runs regardless of dormancy\nNOTE:\n'+ Dormant' does not make the followbot target players across the whole map. \nIt only prevents followbot from losing current target in case it goes dormant");
 					PopTransparent();
 					FDropdown(Vars::Misc::Movement::FollowBot::Targets, FDropdownEnum::Right);
 					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
@@ -1401,12 +1402,14 @@ void CMenu::MenuMisc(int iTab)
 					FSlider(Vars::Misc::Movement::FollowBot::MinPriority, FSliderEnum::Right);
 					FTooltip("Minimal priority at which followbot starts to target a player.\nOverrides playerlist follow priority minimum allowing to change which targets followbot selects depending on this config");
 					FSlider(Vars::Misc::Movement::FollowBot::ActivationDistance, FSliderEnum::Left);
-					FTooltip("Distance to target at which followbot starts to move.");
-					FSlider(Vars::Misc::Movement::FollowBot::MaxDistance, FSliderEnum::Right);
-					FTooltip("Max distance at which followbot abandons the target.");
+					FTooltip("Distance at which followbot starts to follow.\nDoesn't affect anything with nav being active.");
+					FSlider(Vars::Misc::Movement::FollowBot::FollowDistance, FSliderEnum::Right);
+					FTooltip("Distance to target which followbot tries to maintain.");
+					FSlider(Vars::Misc::Movement::FollowBot::AbandonDistance, FSliderEnum::Left);
+					FTooltip("Distance at which followbot abandons the target (will try to use nav instead).");
 					PushTransparent(!Vars::Misc::Movement::FollowBot::UseNav.Value);
-						FSlider(Vars::Misc::Movement::FollowBot::MaxScanDistance);
-						FTooltip("Max distance at which followbot can no longer see the target.\nOnly affects mav mesh pathfinding");
+						FSlider(Vars::Misc::Movement::FollowBot::NavAbandonDistance, FSliderEnum::Right);
+						FTooltip("Distance at which followbot abandons the target completely.");
 					PopTransparent();
 					FToggle(Vars::Misc::Movement::FollowBot::DrawPath, FToggleEnum::Left);
 					FColorPicker(Vars::Colors::FollowbotPathLine, FColorPickerEnum::SameLine);

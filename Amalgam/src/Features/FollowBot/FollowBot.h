@@ -37,7 +37,7 @@ private:
 	void LookAtPath(CTFPlayer* pLocal, CUserCmd* pCmd, std::deque<Vec3>* vIn, bool bSmooth);
 
 	std::vector<FollowTarget_t> m_vTargets = {};
-	FollowTarget_t m_tLockedTarget = {};
+
 
 	std::deque<FollowTargetPath_t> m_vCurrentPath = {};
 	std::deque<Vec3> m_vTempAngles = {};
@@ -49,6 +49,7 @@ public:
 	void Render();
 
 	bool m_bActive = false;
+	FollowTarget_t m_tLockedTarget = {};
 };
 
 ADD_FEATURE(CFollowBot, FollowBot);
