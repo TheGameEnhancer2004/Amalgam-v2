@@ -13,7 +13,7 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	Vec3 vShootPos = F::Ticks.GetShootPos();
 	float flRange = pWeapon->GetRange();
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_TEAMMATES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
 		if (pEntity->entindex() == pLocal->entindex() || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
 			continue;
@@ -112,7 +112,7 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 {
 	m_vCloseEnemies.clear();
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iEntIndex = pPlayer->entindex();
@@ -388,7 +388,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 	vFrom.z += PLAYER_JUMP_HEIGHT;
 
 	std::vector<std::pair<CBaseEntity*, float>> vEnemiesSorted;
-	for (auto pEnemy : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEnemy : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		if (pEnemy->IsDormant())
 			continue;
@@ -399,7 +399,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		vEnemiesSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
 	}
 
-	for (auto pEnemyBuilding : H::Entities.GetGroup(EGroupType::BUILDINGS_ENEMIES))
+	for (auto pEnemyBuilding : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
 		if (pEnemyBuilding->IsDormant())
 			continue;

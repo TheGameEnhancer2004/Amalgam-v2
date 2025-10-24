@@ -11,9 +11,9 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 		return;
 
 	auto vLocalOrigin = pLocal->GetAbsOrigin();
-	const EGroupType eGroup = Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Teammates &&
-		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Enemies ? EGroupType::PLAYERS_ALL :
-		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Teammates ? EGroupType::PLAYERS_TEAMMATES : EGroupType::PLAYERS_ENEMIES;
+	const auto eGroup = Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Teammates &&
+		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Enemies ? EntityEnum::PlayerAll :
+		Vars::Misc::Movement::FollowBot::Targets.Value & Vars::Misc::Movement::FollowBot::TargetsEnum::Teammates ? EntityEnum::PlayerTeam : EntityEnum::PlayerEnemy;
 
 	float flMaxDist = Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() ? Vars::Misc::Movement::FollowBot::NavAbandonDistance.Value : Vars::Misc::Movement::FollowBot::ActivationDistance.Value;
 	bool bTryDormant = Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && F::NavEngine.IsNavMeshLoaded();

@@ -287,7 +287,7 @@ namespace Vars
 			CVar(FOVCircle, "FOV Circle", true, VISUAL);
 			CVar(NoSpread, "No spread", false);
 			CVar(PrioritizeNavbot, "Prioritize navbot target", false);
-			CVar(PrioritizeFollowbot, "Prioritize followboy target", false);
+			CVar(PrioritizeFollowbot, "Prioritize followbot target", false);
 
 			CVarEnum(AimHoldsFire, "Aim holds fire", 2, NOSAVE | DEBUGVAR, nullptr,
 				VA_LIST("False", "Minigun only", "Always"),

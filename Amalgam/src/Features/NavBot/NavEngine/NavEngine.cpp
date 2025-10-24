@@ -188,7 +188,7 @@ void CNavParser::Map::updateIgnores()
 	F::NavEngine.clearFreeBlacklist(BlacklistReason(BR_ENEMY_INVULN));
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Players)
 	{
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
 			if (!pEntity->IsPlayer())
 				continue;
@@ -232,7 +232,7 @@ void CNavParser::Map::updateIgnores()
 
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Sentries)
 	{
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::BUILDINGS_ENEMIES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 		{
 			if (!pEntity->IsBuilding())
 				continue;
@@ -326,7 +326,7 @@ void CNavParser::Map::updateIgnores()
 	auto stickytimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::StickyIgnoreTime.Value);
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Stickies)
 	{
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::WORLD_PROJECTILES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldProjectile))
 		{
 			auto pSticky = pEntity->As<CTFGrenadePipebombProjectile>();
 			if (pSticky->GetClassID() != ETFClassID::CTFGrenadePipebombProjectile || pSticky->m_iTeamNum() == pLocal->m_iTeamNum() ||

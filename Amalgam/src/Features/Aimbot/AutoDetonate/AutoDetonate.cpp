@@ -255,7 +255,7 @@ bool CAutoDetonate::SkipTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseE
 
 bool CAutoDetonate::FlareCheck(CTFPlayer* pLocal)
 {
-	auto& vProjectiles = H::Entities.GetGroup(EGroupType::MISC_LOCAL_FLARES);
+	auto& vProjectiles = H::Entities.GetGroup(EntityEnum::LocalFlares);
 	if (vProjectiles.empty())
 		return false;
 
@@ -294,7 +294,7 @@ bool CAutoDetonate::FlareCheck(CTFPlayer* pLocal)
 
 bool CAutoDetonate::StickyCheck(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	auto& vProjectiles = H::Entities.GetGroup(EGroupType::MISC_LOCAL_STICKIES);
+	auto& vProjectiles = H::Entities.GetGroup(EntityEnum::LocalStickies);
 	if (vProjectiles.empty())
 		return false;
 

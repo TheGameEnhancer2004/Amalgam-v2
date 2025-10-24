@@ -139,7 +139,7 @@ void CCore::Load()
 #ifndef TEXTMODE
 	F::Materials.LoadMaterials();
 #endif
-	U::ConVars.Initialize();
+	U::ConVars.Unlock();
 #ifdef TEXTMODE
 	F::NamedPipe.Initialize();
 #endif
@@ -197,7 +197,7 @@ void CCore::Unload()
 	F::NamedPipe.Shutdown();
 #endif
 	F::EnginePrediction.Unload();
-	U::ConVars.Unload();
+	U::ConVars.Restore();
 	F::Materials.UnloadMaterials();
 
 	if (m_bFailed2)

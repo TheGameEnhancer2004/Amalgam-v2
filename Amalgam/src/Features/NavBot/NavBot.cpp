@@ -104,7 +104,7 @@ bool CNavBot::ShouldAssist(CTFPlayer* pLocal, int iTargetIdx)
 std::vector<CObjectDispenser*> CNavBot::GetDispensers(CTFPlayer* pLocal)
 {
 	std::vector<CObjectDispenser*> vDispensers;
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::BUILDINGS_TEAMMATES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingTeam))
 	{
 		if (pEntity->GetClassID() != ETFClassID::CObjectDispenser)
 			continue;
@@ -140,7 +140,7 @@ std::vector<CObjectDispenser*> CNavBot::GetDispensers(CTFPlayer* pLocal)
 
 std::vector<CBaseEntity*> CNavBot::GetEntities(CTFPlayer* pLocal, bool bHealth)
 {
-	EGroupType eGroupType = bHealth ? EGroupType::PICKUPS_HEALTH : EGroupType::PICKUPS_AMMO;
+	auto eGroupType = bHealth ? EntityEnum::PickupHealth : EntityEnum::PickupAmmo;
 
 	std::vector<CBaseEntity*> vEntities;
 	for (auto pEntity : H::Entities.GetGroup(eGroupType))
@@ -451,7 +451,7 @@ void CNavBot::RefreshLocalBuildings(CTFPlayer* pLocal)
 		m_iMySentryIdx = -1;
 		m_iMyDispenserIdx = -1;
 
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::BUILDINGS_TEAMMATES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingTeam))
 		{
 			auto iClassID = pEntity->GetClassID();
 			if (iClassID != ETFClassID::CObjectSentrygun && iClassID != ETFClassID::CObjectDispenser)
@@ -583,7 +583,7 @@ void CNavBot::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, in
 	std::unordered_map<CTFPlayer*, std::vector<CNavArea*>> mEntMarkedNormalSlightDanger;
 
 	std::vector<std::pair<CTFPlayer*, Vector>> vCheckedPlayerOrigins;
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		// Entity is generally invalid, ignore
 		auto pPlayer = pEntity->As<CTFPlayer>();
@@ -837,7 +837,7 @@ bool CNavBot::RunReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Get closest enemy to vicheck
 	CBaseEntity* pClosestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 			continue;
@@ -942,7 +942,7 @@ bool CNavBot::RunSafeReload(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		// Get closest enemy to vicheck
 		CBaseEntity* pClosestEnemy = nullptr;
 		float flBestDist = FLT_MAX;
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
 			if (pEntity->IsDormant())
 				continue;
@@ -1059,7 +1059,7 @@ bool CNavBot::StayNear(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	std::vector<std::pair<int, int>> vPriorityPlayers{};
 	std::unordered_set<int> sHasPriority{};
-	for (const auto& pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (const auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		int iPriority = H::Entities.GetPriority(pEntity->entindex());
 		if (iPriority > F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(DEFAULT_TAG)].m_iPriority)
@@ -1087,7 +1087,7 @@ bool CNavBot::StayNear(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	int iCalls = 0;
 	auto iAdvanceCount = m_tSelectedConfig.m_bPreferFar ? MAX_STAYNEAR_CHECKS_RANGE : MAX_STAYNEAR_CHECKS_CLOSE;
 	std::vector<std::pair<int, float>> vSortedPlayers{};
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		if (iCalls >= iAdvanceCount)
 			break;
@@ -1294,7 +1294,7 @@ bool CNavBot::SnipeSentries(CTFPlayer* pLocal)
 
 	tInvalidTargetTimer.Update();
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::BUILDINGS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
 		// Invalid sentry
 		if (IsSnipeTargetValid(pLocal, pEntity->entindex()))
@@ -1533,7 +1533,7 @@ std::optional<Vector> CNavBot::GetPayloadGoal(const Vector vLocalOrigin, int iOu
 	int iTeammatesNearCart = 0;
 	constexpr float flCartRadius = 150.0f; // Approx cart capture radius
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_TEAMMATES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
 		if (pEntity->IsDormant() || pEntity->entindex() == I::EngineClient->GetLocalPlayer())
 			continue;
@@ -1704,7 +1704,7 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 	vTeammatePositions.reserve(8);
 	int iTeammatesOnPoint = 0;
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_TEAMMATES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
 		if (pEntity->IsDormant() || pEntity->entindex() == iLocalIndex)
 			continue;
@@ -1721,7 +1721,7 @@ std::optional<Vector> CNavBot::GetControlPointGoal(const Vector vLocalOrigin, in
 	}
 
 	bool bEnemiesNear = false;
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		if (pEntity->IsDormant())
 			continue;
@@ -1960,7 +1960,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 				bool bEnemiesNearRocket = false;
 				constexpr float flThreatRadius = 500.0f; // Distance to check for enemies
 				
-				for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+				for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 				{
 					if (pEntity->IsDormant())
 						continue;
@@ -2051,7 +2051,7 @@ std::optional<Vector> CNavBot::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, 
 		bool bEnemiesNearAustralium = false;
 		constexpr float flThreatRadius = 600.0f;
 		
-		for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
 			if (pEntity->IsDormant())
 				continue;
@@ -2213,7 +2213,7 @@ bool CNavBot::Roam(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				// Get closest enemy to vicheck
 				CBaseEntity* pClosestEnemy = nullptr;
 				float flBestDist = FLT_MAX;
-				for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+				for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 				{
 					if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 						continue;
@@ -2353,7 +2353,7 @@ static bool IsPositionSafe(Vector vPos, int iLocalTeam)
 		!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Projectiles))
 		return true;
 
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::WORLD_PROJECTILES))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldProjectile))
 	{
 		if (pEntity->m_iTeamNum() == iLocalTeam)
 			continue;
@@ -2587,7 +2587,7 @@ bool CNavBot::EscapeDanger(CTFPlayer* pLocal)
 
 			// Check if this area is safe (not near enemy)
 			bool bIsSafe = true;
-			for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ENEMIES))
+			for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 			{
 				if (!F::BotUtils.ShouldTarget(pLocal, pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>(), pEntity->entindex()))
 					continue;

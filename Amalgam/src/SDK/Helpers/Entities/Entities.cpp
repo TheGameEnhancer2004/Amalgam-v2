@@ -42,24 +42,8 @@ void CEntities::Store()
 		case ETFClassID::CObjectDispenser:
 		case ETFClassID::CObjectTeleporter:
 			m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pEntity->GetModel()));
-			m_mGroups[EGroupType::BUILDINGS_ALL].push_back(pEntity);
-			m_mGroups[pEntity->m_iTeamNum() != m_pLocal->m_iTeamNum() ? EGroupType::BUILDINGS_ENEMIES : EGroupType::BUILDINGS_TEAMMATES].push_back(pEntity);
-			break;
-		case ETFClassID::CBaseAnimating:
-		{
-			m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pEntity->GetModel()));
-			if (IsHealth(GetModel(n)))
-				m_mGroups[EGroupType::PICKUPS_HEALTH].push_back(pEntity);
-			else if (IsAmmo(GetModel(n)))
-				m_mGroups[EGroupType::PICKUPS_AMMO].push_back(pEntity);
-			else if (IsPowerup(GetModel(n)))
-				m_mGroups[EGroupType::PICKUPS_POWERUP].push_back(pEntity);
-			else if (IsSpellbook(GetModel(n)))
-				m_mGroups[EGroupType::PICKUPS_SPELLBOOK].push_back(pEntity);
-			break;
-		}
-		case ETFClassID::CTFAmmoPack:
-			m_mGroups[EGroupType::PICKUPS_AMMO].push_back(pEntity);
+			m_mGroups[EntityEnum::BuildingAll].push_back(pEntity);
+			m_mGroups[pEntity->m_iTeamNum() != m_pLocal->m_iTeamNum() ? EntityEnum::BuildingEnemy : EntityEnum::BuildingTeam].push_back(pEntity);
 			break;
 		case ETFClassID::CBaseProjectile:
 		case ETFClassID::CBaseGrenade:
@@ -107,27 +91,27 @@ void CEntities::Store()
 				|| (nClassID == ETFClassID::CTFProjectile_Arrow || nClassID == ETFClassID::CTFProjectile_GrapplingHook) && !pEntity->m_MoveType())
 				break;
 
-			m_mGroups[EGroupType::WORLD_PROJECTILES].push_back(pEntity);
+			m_mGroups[EntityEnum::WorldProjectile].push_back(pEntity);
 
 			if (nClassID == ETFClassID::CTFGrenadePipebombProjectile)
 			{
 				auto pPipebomb = pEntity->As<CTFGrenadePipebombProjectile>();
 				if (pPipebomb->m_hThrower().Get() == pLocal && pPipebomb->m_iType() == TF_GL_MODE_REMOTE_DETONATE /*pPipebomb->HasStickyEffects()*/)
-					m_mGroups[EGroupType::MISC_LOCAL_STICKIES].push_back(pEntity);
+					m_mGroups[EntityEnum::LocalStickies].push_back(pEntity);
 			}
 
 			if (nClassID == ETFClassID::CTFProjectile_Flare)
 			{
 				auto pLauncher = pEntity->As<CTFProjectile_Flare>()->m_hLauncher()->As<CTFWeaponBase>();
 				if (pEntity->m_hOwnerEntity().Get() == m_pLocal && pLauncher && pLauncher->As<CTFFlareGun>()->GetFlareGunType() == FLAREGUN_DETONATE)
-					m_mGroups[EGroupType::MISC_LOCAL_FLARES].push_back(pEntity);
+					m_mGroups[EntityEnum::LocalFlares].push_back(pEntity);
 			}
 
 			break;
 		}
 		case ETFClassID::CCaptureFlag:
 		case ETFClassID::CObjectCartDispenser:
-			m_mGroups[EGroupType::WORLD_OBJECTIVE].push_back(pEntity);
+			m_mGroups[EntityEnum::WorldObjective].push_back(pEntity);
 			break;
 		case ETFClassID::CTFBaseBoss:
 		case ETFClassID::CTFTankBoss:
@@ -135,24 +119,41 @@ void CEntities::Store()
 		case ETFClassID::CEyeballBoss:
 		case ETFClassID::CHeadlessHatman:
 		case ETFClassID::CZombie:
-			m_mGroups[EGroupType::WORLD_NPC].push_back(pEntity);
+			m_mGroups[EntityEnum::WorldNPC].push_back(pEntity);
 			break;
 		case ETFClassID::CTFPumpkinBomb:
 		case ETFClassID::CTFGenericBomb:
-			m_mGroups[EGroupType::WORLD_BOMBS].push_back(pEntity);
+			m_mGroups[EntityEnum::WorldBomb].push_back(pEntity);
 			break;
-		case ETFClassID::CCurrencyPack:
-			m_mGroups[EGroupType::PICKUPS_MONEY].push_back(pEntity);
+		case ETFClassID::CBaseAnimating:
+		{
+			m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pEntity->GetModel()));
+			if (IsHealth(GetModel(n)))
+				m_mGroups[EntityEnum::PickupHealth].push_back(pEntity);
+			else if (IsAmmo(GetModel(n)))
+				m_mGroups[EntityEnum::PickupAmmo].push_back(pEntity);
+			//else if (IsPowerup(GetModel(n)))
+			//	m_mGroups[EntityEnum::PickupPowerup].push_back(pEntity);
+			//else if (IsSpellbook(GetModel(n)))
+			//	m_mGroups[EntityEnum::PickupSpellbook].push_back(pEntity);
 			break;
-		case ETFClassID::CHalloweenGiftPickup:
-			if (pEntity->As<CHalloweenGiftPickup>()->m_hTargetPlayer().Get() == m_pLocal)
-				m_mGroups[EGroupType::WORLD_GARGOYLE].push_back(pEntity);
+
+		}
+		//case ETFClassID::CFuncRespawnRoom:
+		//	m_mGroups[EntityEnum::WorldRespawnRoom].push_back(pEntity);
+		//	break;
+		case ETFClassID::CTFAmmoPack:
+			m_mGroups[EntityEnum::PickupAmmo].push_back(pEntity);
 			break;
-		case ETFClassID::CFuncRespawnRoom:
-			m_mGroups[EGroupType::WORLD_RESPAWN_ROOMS].push_back(pEntity);
-			break;
+		//case ETFClassID::CCurrencyPack:
+		//	m_mGroups[EntityEnum::PickupMoney].push_back(pEntity);
+		//	break;
+		//case ETFClassID::CHalloweenGiftPickup:
+		//	if (pEntity->As<CHalloweenGiftPickup>()->m_hTargetPlayer().Get() == m_pLocal)
+		//		m_mGroups[EntityEnum::PickupGargoyle].push_back(pEntity);
+		//	break;
 		case ETFClassID::CSniperDot:
-			m_mGroups[EGroupType::MISC_DOTS].push_back(pEntity);
+			m_mGroups[EntityEnum::SniperDots].push_back(pEntity);
 			break;
 		}
 	}
@@ -179,19 +180,25 @@ void CEntities::Store()
 
 		if (auto pLobby = I::TFGCClientSystem->GetLobby())
 		{
+			auto pGameRules = I::TFGameRules();
+			auto pMatchDesc = pGameRules ? pGameRules->GetMatchGroupDescription() : nullptr;
+
 			int iMembers = pLobby->GetNumMembers();
 			for (int i = 0; i < iMembers; i++)
 			{
-				auto cSteamID = CSteamID(); pLobby->GetMember(&cSteamID, i);
-				auto uAccountID = cSteamID.GetAccountID();
+				auto tSteamID = CSteamID(); pLobby->GetMember(&tSteamID, i);
+				auto uAccountID = tSteamID.GetAccountID();
 
 				ConstTFLobbyPlayer pDetails;
 				pLobby->GetMemberDetails(&pDetails, i);
 
 				auto pProto = pDetails.Proto();
 				mF2P[uAccountID] = pProto->chat_suspension;
-				mLevels[uAccountID] = pProto->rank;
 				mParties[uAccountID] = pProto->original_party_id;
+				if (pMatchDesc && pMatchDesc->m_pProgressionDesc)
+					mLevels[uAccountID] = std::max(int(pProto->rank), pMatchDesc->GetLevelForSteamID(&tSteamID));
+				else
+					mLevels[uAccountID] = pProto->rank;
 			}
 		}
 		if (auto pParty = I::TFGCClientSystem->GetParty())
@@ -230,8 +237,8 @@ void CEntities::Store()
 			continue;
 
 		m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pPlayer->GetModel()));
-		m_mGroups[EGroupType::PLAYERS_ALL].push_back(pPlayer);
-		m_mGroups[pPlayer->m_iTeamNum() != m_pLocal->m_iTeamNum() ? EGroupType::PLAYERS_ENEMIES : EGroupType::PLAYERS_TEAMMATES].push_back(pPlayer);
+		m_mGroups[EntityEnum::PlayerAll].push_back(pPlayer);
+		m_mGroups[pPlayer->m_iTeamNum() != m_pLocal->m_iTeamNum() ? EntityEnum::PlayerEnemy : EntityEnum::PlayerTeam].push_back(pPlayer);
 		
 		if (n != I::EngineClient->GetLocalPlayer())
 		{
@@ -260,7 +267,7 @@ void CEntities::Store()
 		}
 	}
 	F::Resolver.FrameStageNotify();
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::PLAYERS_ALL))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		if (!pPlayer->IsAlive() || pPlayer->entindex() == I::EngineClient->GetLocalPlayer() && !I::EngineClient->IsPlayingDemo()) // local player managed in CreateMove
@@ -487,7 +494,7 @@ CTFPlayerResource* CEntities::GetResource()
 }
 CBaseTeamObjectiveResource* CEntities::GetObjectiveResource( ) { return m_pObjectiveResource; }
 
-const std::vector<CBaseEntity*>& CEntities::GetGroup(const EGroupType& Group) { return m_mGroups[Group]; }
+const std::vector<CBaseEntity*>& CEntities::GetGroup(const EntityEnum::EntityEnum iGroup) { return m_mGroups[iGroup]; }
 
 float CEntities::GetDeltaTime(int iIndex) { return m_mDeltaTimes.contains(iIndex) ? m_mDeltaTimes[iIndex] : TICK_INTERVAL; }
 float CEntities::GetLagTime(int iIndex) { return m_mLagTimes.contains(iIndex) ? m_mLagTimes[iIndex] : TICK_INTERVAL; }

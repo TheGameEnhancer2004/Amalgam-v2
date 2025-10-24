@@ -15,7 +15,7 @@ void CPLController::Update()
 		for (auto& vEntities : m_aPayloads)
 			vEntities.clear();
 
-		for (auto pPayload : H::Entities.GetGroup(EGroupType::WORLD_OBJECTIVE))
+		for (auto pPayload : H::Entities.GetGroup(EntityEnum::WorldObjective))
 		{
 			if (pPayload->GetClassID() != ETFClassID::CObjectCartDispenser)
 				continue;

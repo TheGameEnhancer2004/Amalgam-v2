@@ -89,7 +89,7 @@ void CFlagController::Update()
 	m_vFlags.clear();
 
 	// Find flags and get info
-	for (auto pEntity : H::Entities.GetGroup(EGroupType::WORLD_OBJECTIVE))
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
 	{
 		if (pEntity->GetClassID() != ETFClassID::CCaptureFlag)
 			continue;
