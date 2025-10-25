@@ -1,4 +1,5 @@
 #include "BotUtils.h"
+#include "NavEngine/NavEngine.h"
 #include "../Simulation/MovementSimulation/MovementSimulation.h"
 #include "../Players/PlayerUtils.h"
 #include "../Misc/Misc.h"
@@ -28,35 +29,52 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	return false;
 }
 
-EShouldTargetState CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx)
+bool CBotUtils::ShouldAssist(CTFPlayer* pLocal, int iEntIdx)
 {
-	auto pEntity = I::ClientEntityList->GetClientEntity(iPlayerIdx)->As<CBaseEntity>();
+	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx);
+	if (!pEntity || pEntity->As<CBaseEntity>()->m_iTeamNum() != pLocal->m_iTeamNum())
+		return false;
+
+	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpFriendlyCaptureObjectives))
+		return true;
+
+	if (F::PlayerUtils.IsIgnored(iEntIdx)
+		|| H::Entities.InParty(iEntIdx)
+		|| H::Entities.IsFriend(iEntIdx))
+		return true;
+
+	return false;
+}
+
+ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIdx)
+{
+	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsPlayer())
-		return EShouldTargetState::INVALID;
+		return ShouldTargetEnum::Invalid;
 
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
-		return EShouldTargetState::INVALID;
+		return ShouldTargetEnum::Invalid;
 
 #ifdef TEXTMODE
-	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iPlayerIdx)))
-		return EShouldTargetState::DONT_TARGET;
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iEntIdx)))
+		return ShouldTargetEnum::DontTarget;
 #endif
 
-	if (F::PlayerUtils.IsIgnored(iPlayerIdx))
-		return EShouldTargetState::DONT_TARGET;
+	if (F::PlayerUtils.IsIgnored(iEntIdx))
+		return ShouldTargetEnum::DontTarget;
 
-	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iPlayerIdx)
-		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iPlayerIdx)
+	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(iEntIdx)
+		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(iEntIdx)
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invulnerable && pPlayer->IsInvulnerable() && G::SavedDefIndexes[SLOT_MELEE] != Heavy_t_TheHolidayPunch
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invisible && pPlayer->m_flInvisibility() && pPlayer->m_flInvisibility() >= Vars::Aimbot::General::IgnoreInvisible.Value / 100.f
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::DeadRinger && pPlayer->m_bFeignDeathReady()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Taunting && pPlayer->IsTaunting()
 		|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Disguised && pPlayer->InCond(TF_COND_DISGUISED))
-		return EShouldTargetState::DONT_TARGET;
+		return ShouldTargetEnum::DontTarget;
 
 	if (pPlayer->m_iTeamNum() == pLocal->m_iTeamNum())
-		return EShouldTargetState::DONT_TARGET;
+		return ShouldTargetEnum::DontTarget;
 
 	if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Vaccinator)
 	{
@@ -64,48 +82,69 @@ EShouldTargetState CBotUtils::ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWe
 		{
 		case EWeaponType::HITSCAN:
 			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && SDK::AttribHookValue(0, "mod_pierce_resists_absorbs", pWeapon) != 0)
-				return EShouldTargetState::DONT_TARGET;
+				return ShouldTargetEnum::DontTarget;
 			break;
 		case EWeaponType::PROJECTILE:
 			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST) && (G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_FLAMETHROWER && G::SavedWepIds[SLOT_SECONDARY] == TF_WEAPON_FLAREGUN))
-				return EShouldTargetState::DONT_TARGET;
+				return ShouldTargetEnum::DontTarget;
 			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_COMPOUND_BOW)
-				return EShouldTargetState::DONT_TARGET;
+				return ShouldTargetEnum::DontTarget;
 			else if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST))
-				return EShouldTargetState::DONT_TARGET;
+				return ShouldTargetEnum::DontTarget;
 		}
 	}
 
-	return EShouldTargetState::TARGET;
+	return ShouldTargetEnum::Target;
 }
 
-EShouldTargetState CBotUtils::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
+ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
 {
 	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsBuilding())
-		return EShouldTargetState::INVALID;
+		return ShouldTargetEnum::Invalid;
 
 	auto pBuilding = pEntity->As<CBaseObject>();
 	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry) && pBuilding->IsSentrygun()
 		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Dispenser) && pBuilding->IsDispenser()
 		|| !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Teleporter) && pBuilding->IsTeleporter())
-		return EShouldTargetState::TARGET;
+		return ShouldTargetEnum::Target;
 
 	if (pLocal->m_iTeamNum() == pBuilding->m_iTeamNum())
-		return EShouldTargetState::TARGET;
+		return ShouldTargetEnum::Target;
 
 	auto pOwner = pBuilding->m_hBuilder().Get();
 	if (pOwner)
 	{
 		if (F::PlayerUtils.IsIgnored(pOwner->entindex()))
-			return EShouldTargetState::DONT_TARGET;
+			return ShouldTargetEnum::DontTarget;
 
 		if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Friends && H::Entities.IsFriend(pOwner->entindex())
 			|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Party && H::Entities.InParty(pOwner->entindex()))
-			return EShouldTargetState::DONT_TARGET;
+			return ShouldTargetEnum::DontTarget;
 	}
 
-	return EShouldTargetState::TARGET;
+	return ShouldTargetEnum::Target;
+}
+
+bool CBotUtils::GetDormantOrigin(int iIndex, Vector& vOut)
+{
+	if (!iIndex)
+		return false;
+
+	auto pEntity = I::ClientEntityList->GetClientEntity(iIndex)->As<CBaseEntity>();
+	if (!pEntity || !pEntity->As<CBasePlayer>()->IsAlive())
+		return false;
+
+	if (!pEntity->IsPlayer() && !pEntity->IsBuilding())
+		return false;
+
+	if (!pEntity->IsDormant() || H::Entities.GetDormancy(iIndex))
+	{
+		vOut = pEntity->GetAbsOrigin();
+		return true;
+	}
+
+	return false;
 }
 
 ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -119,11 +158,11 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 		if (!ShouldTarget(pLocal, pWeapon, iEntIndex))
 			continue;
 
-		auto vOrigin = F::NavParser.GetDormantOrigin(iEntIndex);
-		if (!vOrigin)
+		Vector vOrigin;
+		if (!GetDormantOrigin(iEntIndex, vOrigin))
 			continue;
 
-		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(*vOrigin));
+		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(vOrigin));
 	}
 	
 	std::sort(m_vCloseEnemies.begin(), m_vCloseEnemies.end(), [](const ClosestEnemy_t& a, const ClosestEnemy_t& b) -> bool
@@ -372,16 +411,16 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 	}
 
 	CNavArea* pCurrentDestinationArea = nullptr;
-	auto pCrumbs = F::NavEngine.getCrumbs();
+	auto pCrumbs = F::NavEngine.GetCrumbs();
 	if (pCrumbs->size() > 4)
-		pCurrentDestinationArea = pCrumbs->at(4).navarea;
+		pCurrentDestinationArea = pCrumbs->at(4).m_pNavArea;
 
 	auto vLocalOrigin = pLocal->GetAbsOrigin();
-	auto pLocalNav = pCurrentDestinationArea ? pCurrentDestinationArea : F::NavEngine.findClosestNavSquare(vLocalOrigin);
+	auto pLocalNav = pCurrentDestinationArea ? pCurrentDestinationArea : F::NavEngine.FindClosestNavArea(vLocalOrigin);
 	if (!pLocalNav)
 		return;
 
-	Vector vFrom = pLocalNav->m_center;
+	Vector vFrom = pLocalNav->m_vCenter;
 	vFrom.z += PLAYER_JUMP_HEIGHT;
 
 	std::vector<std::pair<CBaseEntity*, float>> vEnemiesSorted;
@@ -487,10 +526,10 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		bool bResult = false;
 		Vector vPredictedPos = bSimple ? pEnemy->GetAbsOrigin() + pEnemy->GetAbsVelocity() * TICKS_TO_TIME(iMaxTicks) : tStorage.m_vPredictedOrigin;
 
-		auto pTargetNav = F::NavEngine.findClosestNavSquare(vPredictedPos);
+		auto pTargetNav = F::NavEngine.FindClosestNavArea(vPredictedPos, false);
 		if (pTargetNav)
 		{
-			Vector vTo = pTargetNav->m_center;
+			Vector vTo = pTargetNav->m_vCenter;
 
 			// If player is in the air dont try to vischeck nav areas below him, check the predicted position instead
 			if (!pEnemy->As<CBasePlayer>()->OnSolid() && vTo.DistToSqr(vPredictedPos) >= pow(400.f, 2))

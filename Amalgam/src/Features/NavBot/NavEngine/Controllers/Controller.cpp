@@ -19,15 +19,10 @@ ETFGameType GetGameType()
 void CGameObjectiveController::Update()
 {
 	static float flNextGameTypeRefresh = 0.0f;
-
-	const bool bCanUseGlobalVars = I::GlobalVars && I::GlobalVars->curtime >= 0.0f;
-	const float flCurrentTime = bCanUseGlobalVars ? I::GlobalVars->curtime : 0.0f;
-	const bool bShouldRefresh = m_eGameMode == TF_GAMETYPE_UNDEFINED || !bCanUseGlobalVars || flCurrentTime >= flNextGameTypeRefresh;
-
-	if (bShouldRefresh)
+	if (m_eGameMode == TF_GAMETYPE_UNDEFINED || I::GlobalVars->curtime >= flNextGameTypeRefresh)
 	{
 		m_eGameMode = GetGameType();
-		flNextGameTypeRefresh = bCanUseGlobalVars ? flCurrentTime + 1.0f : 0.0f;
+		flNextGameTypeRefresh = I::GlobalVars->curtime + 1.0f;
 	}
 
 	switch (m_eGameMode)

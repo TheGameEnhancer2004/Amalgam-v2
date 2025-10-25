@@ -132,9 +132,27 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 				return;
 			}
 
-			// Get the Vec3
-			const auto Vec = Vec3(atoi(vArgs[0]), atoi(vArgs[1]), atoi(vArgs[2]));
-			F::NavEngine.navTo(Vec);
+			Vector vDest;
+			try
+			{	
+				// Get the Vec3
+				vDest = Vec3(atoi(vArgs[0]), atoi(vArgs[1]), atoi(vArgs[2]));
+			}
+			catch (...)
+			{
+				SDK::Output("Usage:\n\tcat_path_to <x> <y> <z>");
+				return;
+			}
+
+			auto pLocal = H::Entities.GetLocal();
+			if (!pLocal || !pLocal->IsAlive())
+			{
+				SDK::Output("cat_path_to", "Local player unavailable");
+				return;
+			}
+
+			F::NavEngine.GetLocalNavArea(pLocal->GetAbsOrigin());
+			F::NavEngine.NavTo(vDest);
 		}
 	},
 	{
@@ -142,14 +160,14 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		[](const std::deque<const char*>& vArgs)
 		{
 			if (F::NavEngine.IsNavMeshLoaded())
-				F::NavEngine.map->UpdateRespawnRooms();
+				F::NavEngine.UpdateRespawnRooms();
 		}
 	},
 	{
 		FNV1A::Hash32Const("cat_save_nav_mesh"), 
 		[](const std::deque<const char*>& vArgs)
 		{
-			if (auto pNavFile = F::NavEngine.getNavFile())
+			if (auto pNavFile = F::NavEngine.GetNavFile())
 				pNavFile->Write();
 		}
 	},

@@ -31,6 +31,7 @@ void CCPController::UpdateControlPoints()
 
 		// Update position
 		tData.m_vPos = m_pObjectiveResource->m_vCPPositions(i);
+		tData.m_bGotPos = true;
 	}
 
 	static float flNextCapStatusRefresh = 0.0f;
@@ -155,20 +156,20 @@ bool CCPController::IsPointUseable(int iIndex, int iTeam)
 	return true;
 }
 
-std::optional<std::pair<int, Vector>> CCPController::GetClosestControlPointInfo(Vector vPos, int iTeam)
+bool CCPController::GetClosestControlPointInfo(Vector vPos, int iTeam, std::pair<int, Vector>& tOut)
 {
 	// No resource for it
 	if (!m_pObjectiveResource)
-		return std::nullopt;
+		return false;
 
 	// Map team to 0-1 and check If Valid
 	int iTeamIdx = iTeam - TF_TEAM_RED;
 	if (iTeamIdx < 0 || iTeamIdx > 1)
-		return std::nullopt;
+		return false;
 
 	// No controlpoints
 	if (!m_pObjectiveResource->m_iNumControlPoints())
-		return std::nullopt;
+		return false;
 
 	int IgnoreIdx = -1;
 	// Do the points need checking because of the map?
@@ -181,7 +182,7 @@ std::optional<std::pair<int, Vector>> CCPController::GetClosestControlPointInfo(
 	}
 
 	// Find the best and closest control point
-	std::optional<Vector> BestControlPoint;
+	Vector BestControlPoint;
 	int iBestIndex = -1;
 	float flBestDist = FLT_MAX;
 	for (auto tControlPoint : m_aControlPointData)
@@ -191,11 +192,11 @@ std::optional<std::pair<int, Vector>> CCPController::GetClosestControlPointInfo(
 			continue;
 
 		// They can cap
-		if (tControlPoint.m_bCanCap.at(iTeamIdx) && tControlPoint.m_vPos)
+		if (tControlPoint.m_bCanCap.at(iTeamIdx) && tControlPoint.m_bGotPos)
 		{
-			const auto flDist = tControlPoint.m_vPos->DistToSqr(vPos);
+			const auto flDist = tControlPoint.m_vPos.DistToSqr(vPos);
 			// Is it closer?
-			if (tControlPoint.m_vPos && flDist < flBestDist)
+			if (flDist < flBestDist)
 			{
 				flBestDist = flDist;
 				BestControlPoint = tControlPoint.m_vPos;
@@ -204,17 +205,22 @@ std::optional<std::pair<int, Vector>> CCPController::GetClosestControlPointInfo(
 		}
 	}
 
-	if (BestControlPoint && iBestIndex != -1)
-		return std::make_optional(std::make_pair(iBestIndex, *BestControlPoint));
+	if (flBestDist == FLT_MAX || iBestIndex == -1)
+		return false;
 
-	return std::nullopt;
+	tOut = { iBestIndex, BestControlPoint };
+	return true;
 }
 
-std::optional<Vector> CCPController::GetClosestControlPoint(Vector vPos, int iTeam)
+bool CCPController::GetClosestControlPoint(Vector vPos, int iTeam, Vector& vOut)
 {
-	if (auto tInfo = GetClosestControlPointInfo(vPos, iTeam))
-		return tInfo->second;
-	return std::nullopt;
+	std::pair<int, Vector> tInfo;
+	if (GetClosestControlPointInfo(vPos, iTeam, tInfo))
+	{
+		vOut = tInfo.second;
+		return true;
+	}
+	return false;
 }
 
 void CCPController::Init()

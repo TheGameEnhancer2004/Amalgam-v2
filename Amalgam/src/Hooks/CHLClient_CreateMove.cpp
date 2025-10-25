@@ -14,7 +14,8 @@
 #include "../Features/Visuals/FakeAngle/FakeAngle.h"
 #include "../Features/Spectate/Spectate.h"
 #include "../Features/NavBot/NavEngine/Controllers/Controller.h"
-#include "../Features/NavBot/NavBot.h"
+#include "../Features/NavBot/NavBotCore.h"
+#include "../Features/NavBot/NavEngine/NavEngine.h"
 #include "../Features/FollowBot/FollowBot.h"
 #include "../Features/AutoJoin/AutoJoin.h"
 #include "../Features/Misc/AutoItem/AutoItem.h"
@@ -294,7 +295,7 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 		F::Aimbot.Run(pLocal, pWeapon, pCmd);
 	F::Ticks.End(pLocal, pCmd);
 		F::FollowBot.Run(pLocal, pWeapon, pCmd);
-		F::NavBot.Run(pLocal, pWeapon, pCmd);
+		F::NavBotCore.Run(pLocal, pWeapon, pCmd);
 		F::NavEngine.Run(pLocal, pWeapon, pCmd);
 		F::CritHack.Run(pLocal, pWeapon, pCmd);
 		F::NoSpread.Run(pLocal, pWeapon, pCmd);

@@ -4,7 +4,6 @@
 #include "../../Players/PlayerUtils.h"
 #include "../../Misc/Misc.h"
 #include "../../Aimbot/AutoRocketJump/AutoRocketJump.h"
-#include "../../NavBot/NavEngine/NavEngine.h"
 
 bool CAntiAim::AntiAimOn()
 {

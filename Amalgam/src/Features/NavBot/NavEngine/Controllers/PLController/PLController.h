@@ -10,7 +10,7 @@ private:
 
 public:
 	// Get the closest Control Payload
-	std::optional<Vector> GetClosestPayload(Vector vPos, int iTeam);
+	bool GetClosestPayload(Vector vPos, int iTeam, Vector& vOut);
 
 	void Init();
 	void Update();

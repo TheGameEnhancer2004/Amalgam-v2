@@ -5,7 +5,7 @@
 #include "../../Ticks/Ticks.h"
 #include "../../Visuals/Visuals.h"
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
-#include "../../NavBot/NavBot.h"
+#include "../../NavBot/NavBotJobs/StayNear.h"
 #include "../../Followbot/Followbot.h"
 
 std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -162,7 +162,7 @@ std::vector<Target_t> CAimbotHitscan::SortTargets(CTFPlayer* pLocal, CTFWeaponBa
 	// Prioritize navbot/followbot target
 	int iPriorityIdx = pWeapon->GetWeaponID() == TF_WEAPON_MEDIGUN ?
 		(Vars::Aimbot::General::PrioritizeFollowbot.Value ? F::FollowBot.m_tLockedTarget.m_iEntIndex : -1) :
-		(Vars::Aimbot::General::PrioritizeNavbot.Value ? F::NavBot.m_iStayNearTargetIdx : -1);
+		(Vars::Aimbot::General::PrioritizeNavbot.Value ? F::NavBotStayNear.m_iStayNearTargetIdx : -1);
 
 	if (iPriorityIdx)
 	{

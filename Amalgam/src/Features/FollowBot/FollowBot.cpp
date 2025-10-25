@@ -2,6 +2,7 @@
 #include "../Misc/Misc.h"
 #include "../Players/PlayerUtils.h"
 #include "../NavBot/BotUtils.h"
+#include "../NavBot/NavEngine/NavEngine.h"
 
 void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 {
@@ -29,14 +30,7 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 			{
 				Vec3 vOrigin;
 				float flDistance = FLT_MAX;
-				if (bDormant)
-				{
-					auto vDormantOrigin = F::NavParser.GetDormantOrigin(iEntIndex);
-					if (vDormantOrigin.has_value())
-						vOrigin = *vDormantOrigin;
-				}
-				else
-					vOrigin = pPlayer->GetAbsOrigin();
+				F::BotUtils.GetDormantOrigin(iEntIndex, vOrigin);
 
 				if (!vOrigin.IsZero())
 					flDistance = vLocalOrigin.DistTo(vOrigin);
@@ -96,9 +90,9 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 		flDistance = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos = m_tLockedTarget.m_pPlayer->GetAbsOrigin());
 	else if (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && bCanNav)
 	{
-		auto vOrigin = F::NavParser.GetDormantOrigin(m_tLockedTarget.m_iEntIndex);
-		if (vOrigin.has_value())
-			m_tLockedTarget.m_vLastKnownPos = *vOrigin;
+		Vector vOrigin;
+		if (F::BotUtils.GetDormantOrigin(m_tLockedTarget.m_iEntIndex, vOrigin))
+			m_tLockedTarget.m_vLastKnownPos = vOrigin;
 
 		if (m_tLockedTarget.m_vLastKnownPos.IsZero())
 		{
@@ -202,15 +196,15 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	}
 
 	Vec3 vLocalOrigin = pLocal->GetAbsOrigin();
-	if (F::NavEngine.current_priority == followbot)
+	if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Followbot)
 	{
 		bool bClose = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos) < Vars::Misc::Movement::FollowBot::FollowDistance.Value + 150.f;
 		
 		// Target is too close or we require repathing, cancel pathing
 		if ((!m_tLockedTarget.m_bNew && bClose) ||
 			(!m_tLockedTarget.m_vLastKnownPos.IsZero() &&
-			F::NavEngine.crumbs.size() &&
-			m_tLockedTarget.m_vLastKnownPos.DistTo(F::NavEngine.crumbs.back().vec) >= Vars::Misc::Movement::FollowBot::AbandonDistance.Value))
+			F::NavEngine.IsPathing() &&
+			m_tLockedTarget.m_vLastKnownPos.DistTo(F::NavEngine.GetCrumbs()->back().m_vPos) >= Vars::Misc::Movement::FollowBot::AbandonDistance.Value))
 		{
 			if (bClose && m_tLockedTarget.m_bDormant)
 			{
@@ -219,11 +213,11 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 				return;
 			}
 			m_tLockedTarget.m_bUnreachable = false;
-			F::NavEngine.cancelPath();
+			F::NavEngine.CancelPath();
 		}
 	}
 
-	if (F::NavEngine.current_priority != followbot)
+	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Followbot)
 	{
 		if (m_tLockedTarget.m_bUnreachable ||
 			m_tLockedTarget.m_bDormant ||
@@ -234,8 +228,9 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 			bool bNav = false;
 			if (Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() && !m_tLockedTarget.m_vLastKnownPos.IsZero() &&
 				((!m_tLockedTarget.m_bDormant && Vars::Misc::Movement::FollowBot::UseNav.Value) ||
-				(m_tLockedTarget.m_bDormant && (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant))))
-				bNav = F::NavEngine.navTo(m_tLockedTarget.m_vLastKnownPos, followbot);
+				(m_tLockedTarget.m_bDormant && (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant))) &&
+				F::NavEngine.GetLocalNavArea(pLocal->GetAbsOrigin()))
+				bNav = F::NavEngine.NavTo(m_tLockedTarget.m_vLastKnownPos, PriorityListEnum::Followbot);
 
 			// We couldn't find a path to the target
 			if (!bNav)
@@ -401,8 +396,8 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 void CFollowBot::Reset(int iFlags)
 {
-	if (iFlags & FB_RESET_NAV && F::NavEngine.current_priority == followbot)
-		F::NavEngine.cancelPath();
+	if (iFlags & FB_RESET_NAV && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Followbot)
+		F::NavEngine.CancelPath();
 	if (iFlags & FB_RESET_TARGETS)
 		m_vTargets.clear();
 

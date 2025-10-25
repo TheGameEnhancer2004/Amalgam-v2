@@ -1,7 +1,5 @@
 #pragma once
 #include "../../../../../SDK/SDK.h"
-#include <optional>
-#include <utility>
 
 #define MAX_CONTROL_POINTS 8
 #define MAX_PREVIOUS_POINTS 3
@@ -10,8 +8,9 @@ struct CPInfo
 {
 	// Index in the ObjectiveResource
 	int m_iIdx = -1;
-	std::optional<Vector> m_vPos;
-	std::array<bool, 2> m_bCanCap;	// For BLU and RED to show who can and cannot cap
+	Vector m_vPos = {};
+	bool m_bGotPos = false;
+	std::array<bool, 2> m_bCanCap = {false, false};	// For BLU and RED to show who can and cannot cap
 	CPInfo() = default;
 };
 
@@ -46,8 +45,8 @@ private:
 
 public:
 	// Get the closest Control Point we can cap
-	std::optional<Vector> GetClosestControlPoint(Vector vPos, int iTeam);
-	std::optional<std::pair<int, Vector>> GetClosestControlPointInfo(Vector vPos, int iTeam);
+	bool GetClosestControlPoint(Vector vPos, int iTeam, Vector& vOut);
+	bool GetClosestControlPointInfo(Vector vPos, int iTeam, std::pair<int, Vector>& tOut);
 
 	void Init();
 	void Update();

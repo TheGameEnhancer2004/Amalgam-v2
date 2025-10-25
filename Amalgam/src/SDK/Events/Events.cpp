@@ -73,7 +73,7 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 #ifndef TEXTMODE
 		F::Killstreak.PlayerSpawn(pEvent);
 #endif
-		F::NavEngine.cancelPath();
+		F::NavEngine.CancelPath();
 		break;
 	case FNV1A::Hash32Const("revive_player_notify"):
 	{

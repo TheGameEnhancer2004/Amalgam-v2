@@ -9,7 +9,6 @@
 #include "AutoRocketJump/AutoRocketJump.h"
 #include "../Misc/Misc.h"
 #include "../Visuals/Visuals.h"
-#include "../NavBot/NavEngine/NavEngine.h"
 
 bool CAimbot::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {

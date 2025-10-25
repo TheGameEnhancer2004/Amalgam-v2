@@ -6,7 +6,7 @@
 #include "../../EnginePrediction/EnginePrediction.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Visuals/Visuals.h"
-#include "../../NavBot/NavBot.h"
+#include "../../NavBot/NavBotJobs/StayNear.h"
 #include "../AutoAirblast/AutoAirblast.h"
 
 //#define SPLASH_DEBUG1 // normal splash visualization
@@ -188,16 +188,16 @@ std::vector<Target_t> CAimbotProjectile::SortTargets(CTFPlayer* pLocal, CTFWeapo
 	F::AimbotGlobal.SortTargets(vTargets, Vars::Aimbot::General::TargetSelection.Value);
 
 	// Prioritize navbot target
-	if (Vars::Aimbot::General::PrioritizeNavbot.Value && F::NavBot.m_iStayNearTargetIdx)
+	if (Vars::Aimbot::General::PrioritizeNavbot.Value && F::NavBotStayNear.m_iStayNearTargetIdx)
 	{
 		std::sort((vTargets).begin(), (vTargets).end(), [&](const Target_t& a, const Target_t& b) -> bool
 				  {
-					  return a.m_pEntity->entindex() == F::NavBot.m_iStayNearTargetIdx && b.m_pEntity->entindex() != F::NavBot.m_iStayNearTargetIdx;
+					  return a.m_pEntity->entindex() == F::NavBotStayNear.m_iStayNearTargetIdx && b.m_pEntity->entindex() != F::NavBotStayNear.m_iStayNearTargetIdx;
 				  });
 	}
 
 	vTargets.resize(std::min(size_t(Vars::Aimbot::General::MaxTargets.Value), vTargets.size()));
-	if (!Vars::Aimbot::General::PrioritizeNavbot.Value || !F::NavBot.m_iStayNearTargetIdx)
+	if (!Vars::Aimbot::General::PrioritizeNavbot.Value || !F::NavBotStayNear.m_iStayNearTargetIdx)
 		F::AimbotGlobal.SortPriority(vTargets);
 	return vTargets;
 }

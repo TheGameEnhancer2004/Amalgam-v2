@@ -32,14 +32,14 @@ void CPLController::Update()
 	}
 }
 
-std::optional<Vector> CPLController::GetClosestPayload(Vector vPos, int iTeam)
+bool CPLController::GetClosestPayload(Vector vPos, int iTeam, Vector& vOut)
 {
 	// Invalid team
 	if (iTeam < TF_TEAM_RED || iTeam > TF_TEAM_BLUE)
-		return std::nullopt;
+		return false;
 
 	float flBestDist = FLT_MAX;
-	std::optional<Vector> vBestPos;
+	Vector vBestPos;
 	// Find best payload
 	for (auto pEntity : m_aPayloads[iTeam - TF_TEAM_RED])
 	{
@@ -54,5 +54,6 @@ std::optional<Vector> CPLController::GetClosestPayload(Vector vPos, int iTeam)
 			flBestDist = flDist;
 		}
 	}
-	return vBestPos;
+	vOut = vBestPos;
+	return flBestDist != FLT_MAX;
 }

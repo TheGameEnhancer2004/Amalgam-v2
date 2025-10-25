@@ -19,22 +19,28 @@ Vector CFlagController::GetPosition(CCaptureFlag* pFlag)
 	return pFlag->GetAbsOrigin();
 }
 
-std::optional<Vector> CFlagController::GetPosition(int iTeam)
+bool CFlagController::GetPosition(int iTeam, Vector& vOut)
 {
 	auto tFlag = GetFlag(iTeam);
 	if (tFlag.m_pFlag)
-		return GetPosition(tFlag.m_pFlag);
+	{
+		vOut = GetPosition(tFlag.m_pFlag);
+		return true;
+	}
 
-	return std::nullopt;
+	return false;
 }
 
-std::optional<Vector> CFlagController::GetSpawnPosition(int iTeam)
+bool CFlagController::GetSpawnPosition(int iTeam, Vector& vOut)
 {
 	auto tFlag = GetFlag(iTeam);
 	if (tFlag.m_pFlag && m_mSpawnPositions.contains(tFlag.m_pFlag->entindex()))
-		return m_mSpawnPositions[tFlag.m_pFlag->entindex()];
+	{
+		vOut = m_mSpawnPositions[tFlag.m_pFlag->entindex()];
+		return true;
+	}
 
-	return std::nullopt;
+	return false;
 }
 
 int CFlagController::GetCarrier(CCaptureFlag* pFlag)

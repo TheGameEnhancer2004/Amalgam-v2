@@ -1,5 +1,5 @@
 #pragma once
-#include "NavEngine/NavEngine.h"
+#include "../../SDK/SDK.h"
 
 struct ClosestEnemy_t
 {	
@@ -8,30 +8,30 @@ struct ClosestEnemy_t
 	float m_flDist = FLT_MAX;
 };
 
-enum EShouldTargetState
-{
-	INVALID = -1,
-	DONT_TARGET,
-	TARGET
-};
+Enum(ShouldTarget, Invalid = -1, DontTarget, Target);
 
 class CBotUtils
 {
 private:
 	std::unordered_map<int, bool> m_mAutoScopeCache;
 	std::vector<ClosestEnemy_t> m_vCloseEnemies;
+	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
+
 	bool HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
+	void UpdateBestSlot(CTFPlayer* pLocal);
 public:
+
 	int m_iCurrentSlot = -1;
 	int m_iBestSlot = -1;
 	ClosestEnemy_t m_tClosestEnemy = {};
 	Vec3 m_vLastAngles = {};
 
-	EShouldTargetState ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iPlayerIdx);
-	EShouldTargetState ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
+	bool ShouldAssist(CTFPlayer* pLocal, int iEntIdx);
+	ShouldTargetEnum::ShouldTargetEnum ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIdx);
+	ShouldTargetEnum::ShouldTargetEnum ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
 
-	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-	void UpdateBestSlot(CTFPlayer* pLocal);
+	bool GetDormantOrigin(int iIndex, Vector& vOut);
+
 	void SetSlot(CTFPlayer* pLocal, int iSlot);
 
 	void DoSlowAim(Vec3& vWishAngles, float flSpeed , Vec3 vPreviousAngles);

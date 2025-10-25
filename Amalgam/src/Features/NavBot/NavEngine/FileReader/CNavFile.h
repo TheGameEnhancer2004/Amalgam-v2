@@ -6,226 +6,207 @@
 class CNavFile
 {
 public:
-	// Intended to use with engine->GetLevelName() or mapname from server_spawn
-	// GameEvent Change it if you get the nav file from elsewhere
+	CNavFile() {}
+
+	// Intended to use with engine->GetLevelName() or mapname from server_spawn GameEvent
+	// Change it if you get the nav file from elsewhere
 	explicit CNavFile(const char* szLevelname)
 	{
 		if (!szLevelname)
 			return;
 
-		//        m_mapName = std::string("tf/");
-		//        std::string map(szLevelname);
-
-		//        if (map.find("maps/") == std::string::npos)
-		//            m_mapName.append("maps/");
-
-		//        m_mapName.append(szLevelname);
-		//        int dotpos = m_mapName.find('.');
-		//        m_mapName  = m_mapName.substr(0, dotpos);
-		//        m_mapName.append(".nav");
-		m_mapName.append(szLevelname);
-
-		std::ifstream fs(m_mapName, std::ios::binary);
-
-		if (!fs.is_open())
+		m_sMapName.append(szLevelname);
+		std::ifstream file(m_sMapName, std::ios::binary);
+		if (!file.is_open())
 		{
 			//.nav file does not exist
 			return;
 		}
 
-		uint32_t magic;
-		fs.read((char*)&magic, sizeof(uint32_t));
-
-		if (magic != 0xFEEDFACE)
+		uint32_t uMagic;
+		file.read((char*)&uMagic, sizeof(uint32_t));
+		if (uMagic != 0xFEEDFACE)
 		{
 			// Wrong magic number
 			return;
 		}
 
-		uint32_t version;
-		fs.read((char*)&version, sizeof(uint32_t));
-
-		if (version < 16) // 16 is latest for TF2
+		uint32_t uVersion;
+		file.read((char*)&uVersion, sizeof(uint32_t));
+		if (uVersion < 16) // 16 is latest for TF2
 		{
 			// Version is too old
 			return;
 		}
 
-		uint32_t subVersion;
-		fs.read((char*)&subVersion, sizeof(uint32_t));
-
-		if (subVersion != 2) // 2 for TF2
+		uint32_t uSubVersion;
+		file.read((char*)&uSubVersion, sizeof(uint32_t));
+		if (uSubVersion != 2) // 2 for TF2
 		{
 			// Not TF2 nav file
 			return;
 		}
 
 		// We do not really need to check the size
-		fs.read((char*)&m_bspSize, sizeof(uint32_t));
-		fs.read((char*)&m_isAnalized, sizeof(unsigned char));
-
-		unsigned short placesCount;
-		fs.read((char*)&placesCount, sizeof(uint16_t));
+		file.read((char*)&m_uBspSize, sizeof(uint32_t));
+		file.read((char*)&m_bAnalyzed, sizeof(unsigned char));
 
 		// TF2 does not use places, but in case they exist
-		for (int i = 0; i < placesCount; ++i)
+		unsigned short uPlacesCount;
+		file.read((char*)&uPlacesCount, sizeof(uint16_t));
+		for (int i = 0; i < uPlacesCount; ++i)
 		{
-			CNavPlace place{};
-			fs.read((char*)&place.m_len, sizeof(uint16_t));
-			fs.read((char*)&place.m_name, place.m_len);
+			NavPlace_t tPlace;
+			file.read((char*)&tPlace.m_uLen, sizeof(uint16_t));
+			file.read((char*)&tPlace.m_sName, tPlace.m_uLen);
 
-			m_places.push_back(place);
+			m_vPlaces.push_back(tPlace);
 		}
 
-		fs.read((char*)&m_hasUnnamedAreas, sizeof(unsigned char));
-		unsigned int areaCount;
-		fs.read((char*)&areaCount, sizeof(uint32_t));
+		file.read((char*)&m_bHasUnnamedAreas, sizeof(unsigned char));
 
-		for (size_t i = 0; i < areaCount; ++i)
+		unsigned int uAreaCount;
+		file.read((char*)&uAreaCount, sizeof(uint32_t));
+		for (size_t i = 0; i < uAreaCount; ++i)
 		{
-			CNavArea area;
-			fs.read((char*)&area.m_id, sizeof(uint32_t));
-			fs.read((char*)&area.m_attributeFlags, sizeof(uint32_t));
-			fs.read((char*)&area.m_nwCorner, sizeof(Vector));
-			fs.read((char*)&area.m_seCorner, sizeof(Vector));
-			fs.read((char*)&area.m_neZ, sizeof(float));
-			fs.read((char*)&area.m_swZ, sizeof(float));
+			CNavArea tArea;
+			file.read((char*)&tArea.m_uId, sizeof(uint32_t));
+			file.read((char*)&tArea.m_iAttributeFlags, sizeof(uint32_t));
+			file.read((char*)&tArea.m_vNwCorner, sizeof(Vector));
+			file.read((char*)&tArea.m_vSeCorner, sizeof(Vector));
+			file.read((char*)&tArea.m_flNeZ, sizeof(float));
+			file.read((char*)&tArea.m_flSwZ, sizeof(float));
 
-			area.m_center[0] = (area.m_nwCorner[0] + area.m_seCorner[0]) / 2.0f;
-			area.m_center[1] = (area.m_nwCorner[1] + area.m_seCorner[1]) / 2.0f;
-			area.m_center[2] = (area.m_nwCorner[2] + area.m_seCorner[2]) / 2.0f;
+			tArea.m_vCenter[0] = (tArea.m_vNwCorner[0] + tArea.m_vSeCorner[0]) / 2.0f;
+			tArea.m_vCenter[1] = (tArea.m_vNwCorner[1] + tArea.m_vSeCorner[1]) / 2.0f;
+			tArea.m_vCenter[2] = (tArea.m_vNwCorner[2] + tArea.m_vSeCorner[2]) / 2.0f;
 
-			if ((area.m_seCorner.x - area.m_nwCorner.x) > 0.0f && (area.m_seCorner.y - area.m_nwCorner.y) > 0.0f)
+			if ((tArea.m_vSeCorner.x - tArea.m_vNwCorner.x) > 0.0f &&
+				(tArea.m_vSeCorner.y - tArea.m_vNwCorner.y) > 0.0f)
 			{
-				area.m_invDxCorners = 1.0f / (area.m_seCorner.x - area.m_nwCorner.x);
-				area.m_invDyCorners = 1.0f / (area.m_seCorner.y - area.m_nwCorner.y);
+				tArea.m_flInvDxCorners = 1.0f / (tArea.m_vSeCorner.x - tArea.m_vNwCorner.x);
+				tArea.m_flInvDyCorners = 1.0f / (tArea.m_vSeCorner.y - tArea.m_vNwCorner.y);
 			}
 			else
-				area.m_invDxCorners = area.m_invDyCorners = 0.0f;
+				tArea.m_flInvDxCorners = tArea.m_flInvDyCorners = 0.0f;
 
 			// Change the tolerance if you wish
-			area.m_minZ = std::min(area.m_seCorner.z, area.m_nwCorner.z) - 18.f;
-			area.m_maxZ = std::max(area.m_seCorner.z, area.m_nwCorner.z) + 18.f;
+			tArea.m_flMinZ = std::min(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) - 18.f;
+			tArea.m_flMaxZ = std::max(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) + 18.f;
 
-			for (int dir = 0; dir < 4; dir++)
+			for (int iDir = 0; iDir < 4; iDir++)
 			{
-				fs.read((char*)&area.m_connectionCount, sizeof(uint32_t));
-
-				for (size_t j = 0; j < area.m_connectionCount; j++)
+				file.read((char*)&tArea.m_uConnectionCount, sizeof(uint32_t));
+				for (size_t j = 0; j < tArea.m_uConnectionCount; j++)
 				{
-					NavConnect connect;
-
-					fs.read((char*)&connect.id, sizeof(uint32_t));
-
+					NavConnect_t tConnect;
+					file.read((char*)&tConnect.m_uId, sizeof(uint32_t));
 
 					// Connection to the same area?
-					if (connect.id == area.m_id)
+					if (tConnect.m_uId == tArea.m_uId)
 					{
-						area.m_connectionCount--;
+						tArea.m_uConnectionCount--;
 						continue;
 					}
 
 					// Note: If connection directions matter to you, uncomment
 					// this
-					area.m_connections /*[dir]*/.push_back(connect);
-					area.m_connectionsDir[dir].push_back(connect);
+					tArea.m_vConnections /*[iDir]*/.push_back(tConnect);
+					tArea.m_vConnectionsDir[iDir].push_back(tConnect);
 				}
 			}
 
-			fs.read((char*)&area.m_hidingSpotCount, sizeof(uint8_t));
-
-			for (size_t j = 0; j < area.m_hidingSpotCount; j++)
+			file.read((char*)&tArea.m_uHidingSpotCount, sizeof(uint8_t));
+			for (size_t j = 0; j < tArea.m_uHidingSpotCount; j++)
 			{
-				HidingSpot spot;
-				fs.read((char*)&spot.m_id, sizeof(uint32_t));
-				fs.read((char*)&spot.m_pos, sizeof(Vector));
-				fs.read((char*)&spot.m_flags, sizeof(unsigned char));
+				CHidingSpot tSpot;
+				file.read((char*)&tSpot.m_uId, sizeof(uint32_t));
+				file.read((char*)&tSpot.m_vPos, sizeof(Vector));
+				file.read((char*)&tSpot.m_fFlags, sizeof(unsigned char));
 
-				area.m_hidingSpots.push_back(spot);
+				tArea.m_vHidingSpots.push_back(tSpot);
 			}
 
-			fs.read((char*)&area.m_encounterSpotCount, sizeof(uint32_t));
+			file.read((char*)&tArea.m_uEncounterSpotCount, sizeof(uint32_t));
 
-			for (size_t j = 0; j < area.m_encounterSpotCount; j++)
+			for (size_t j = 0; j < tArea.m_uEncounterSpotCount; j++)
 			{
-				SpotEncounter spot;
-				fs.read((char*)&spot.from.id, sizeof(uint32_t));
-				fs.read((char*)&spot.fromDir, sizeof(unsigned char));
-				fs.read((char*)&spot.to.id, sizeof(uint32_t));
-				fs.read((char*)&spot.toDir, sizeof(unsigned char));
-				fs.read((char*)&spot.spotCount, sizeof(unsigned char));
+				SpotEncounter_t tSpot;
+				file.read((char*)&tSpot.m_tFrom.m_uId, sizeof(uint32_t));
+				file.read((char*)&tSpot.m_iFromDir, sizeof(unsigned char));
+				file.read((char*)&tSpot.m_tTo.m_uId, sizeof(uint32_t));
+				file.read((char*)&tSpot.m_iToDir, sizeof(unsigned char));
+				file.read((char*)&tSpot.m_uSpotCount, sizeof(unsigned char));
 
-				for (int s = 0; s < spot.spotCount; ++s)
+				for (int s = 0; s < tSpot.m_uSpotCount; ++s)
 				{
-					SpotOrder order{};
-					fs.read((char*)&order.id, sizeof(uint32_t));
-					fs.read((char*)&order.t, sizeof(unsigned char));
-					spot.spots.push_back(order);
+					SpotOrder_t tOrder;
+					file.read((char*)&tOrder.m_uId, sizeof(uint32_t));
+					file.read((char*)&tOrder.flT, sizeof(unsigned char));
+					tSpot.m_vSpots.push_back(tOrder);
 				}
 
-				area.m_spotEncounters.push_back(spot);
+				tArea.m_vSpotEncounters.push_back(tSpot);
 			}
 
-			fs.read((char*)&area.m_indexType, sizeof(uint16_t));
+			file.read((char*)&tArea.m_uIndexType, sizeof(uint16_t));
 
 			// TF2 does not use ladders either
-			for (int dir = 0; dir < 2; dir++)
+			for (int iDir = 0; iDir < 2; iDir++)
 			{
-				fs.read((char*)&area.m_ladderCount, sizeof(uint32_t));
-
-				for (size_t j = 0; j < area.m_ladderCount; j++)
+				file.read((char*)&tArea.m_uLadderCount, sizeof(uint32_t));
+				for (size_t j = 0; j < tArea.m_uLadderCount; j++)
 				{
-					int temp;
-					fs.read((char*)&temp, sizeof(uint32_t));
-					area.m_ladders[dir].push_back(temp);
+					int iTemp;
+					file.read((char*)&iTemp, sizeof(uint32_t));
+					tArea.m_vLadders[iDir].push_back(iTemp);
 				}
 			}
 
-			for (float& j : area.m_earliestOccupyTime)
-				fs.read((char*)&j, sizeof(float));
+			for (float& j : tArea.m_flEarliestOccupyTime)
+				file.read((char*)&j, sizeof(float));
 
-			for (float& j : area.m_lightIntensity)
-				fs.read((char*)&j, sizeof(float));
+			for (float& j : tArea.m_flLightIntensity)
+				file.read((char*)&j, sizeof(float));
 
-			fs.read((char*)&area.m_visibleAreaCount, sizeof(uint32_t));
-
-			for (size_t j = 0; j < area.m_visibleAreaCount; ++j)
+			file.read((char*)&tArea.m_uVisibleAreaCount, sizeof(uint32_t));
+			for (size_t j = 0; j < tArea.m_uVisibleAreaCount; ++j)
 			{
-				AreaBindInfo info;
-				fs.read((char*)&info.id, sizeof(uint32_t));
-				fs.read((char*)&info.attributes, sizeof(unsigned char));
+				AreaBindInfo_t tInfo;
+				file.read((char*)&tInfo.m_uId, sizeof(uint32_t));
+				file.read((char*)&tInfo.m_uAttributes, sizeof(unsigned char));
 
-				area.m_potentiallyVisibleAreas.push_back(info);
+				tArea.m_vPotentiallyVisibleAreas.push_back(tInfo);
 			}
 
-			fs.read((char*)&area.m_inheritVisibilityFrom, sizeof(uint32_t));
+			file.read((char*)&tArea.m_uInheritVisibilityFrom, sizeof(uint32_t));
 
 			// TF2 Specific area flags
-			fs.read((char*)&area.m_TFattributeFlags, sizeof(uint32_t));
+			file.read((char*)&tArea.m_iTFAttributeFlags, sizeof(uint32_t));
 
-			m_areas.push_back(area);
+			m_vAreas.push_back(tArea);
 		}
 
-		fs.close();
+		file.close();
 
 		// Fill connection for every area with their area ptrs instead of IDs
 		// This will come in handy in path finding
 
-		for (auto& area : m_areas)
+		for (auto& tArea : m_vAreas)
 		{
-			for (auto& connection : area.m_connections)
-				for (auto& connected_area : m_areas)
-					if (connection.id == connected_area.m_id)
-						connection.area = &connected_area;
+			for (auto& connection : tArea.m_vConnections)
+				for (auto& connected_area : m_vAreas)
+					if (connection.m_uId == connected_area.m_uId)
+						connection.m_pArea = &connected_area;
 
 			// Fill potentially visible areas as well
-			for (auto& bindinfo : area.m_potentiallyVisibleAreas)
-				for (auto& boundarea : m_areas)
-					if (bindinfo.id == boundarea.m_id)
-						bindinfo.area = &boundarea;
+			for (auto& bindinfo : tArea.m_vPotentiallyVisibleAreas)
+				for (auto& boundarea : m_vAreas)
+					if (bindinfo.m_uId == boundarea.m_uId)
+						bindinfo.m_pArea = &boundarea;
 
 		}
-		m_isOK = true;
+		m_bOK = true;
 	}
 
 
@@ -241,116 +222,108 @@ public:
 			return;
 		}
 
-		uint32_t magic = 0xFEEDFACE;
-		uint32_t version = 16;
-		uint32_t subVersion = 2;
-		file.write((char*)&magic, sizeof(uint32_t));
-		file.write((char*)&version, sizeof(uint32_t));
-		file.write((char*)&subVersion, sizeof(uint32_t));
-		file.write((char*)&m_bspSize, sizeof(uint32_t));
-		file.write((char*)&m_isAnalized, sizeof(unsigned char));
-		size_t placesCount = m_places.size();
-		file.write((char*)&placesCount, sizeof(uint16_t));
+		uint32_t uMagic = 0xFEEDFACE;
+		uint32_t uVersion = 16;
+		uint32_t uSubVersion = 2;
+		file.write((char*)&uMagic, sizeof(uint32_t));
+		file.write((char*)&uVersion, sizeof(uint32_t));
+		file.write((char*)&uSubVersion, sizeof(uint32_t));
+		file.write((char*)&m_uBspSize, sizeof(uint32_t));
+		file.write((char*)&m_bAnalyzed, sizeof(unsigned char));
 
-		for (auto& place : m_places)
+		size_t uPlacesCount = m_vPlaces.size();
+		file.write((char*)&uPlacesCount, sizeof(uint16_t));
+		for (auto& tPlace : m_vPlaces)
 		{
-			file.write((char*)&place.m_len, sizeof(uint16_t));
-			file.write((char*)&place.m_name, place.m_len);
+			file.write((char*)&tPlace.m_uLen, sizeof(uint16_t));
+			file.write((char*)&tPlace.m_sName, tPlace.m_uLen);
 		}
 
-		file.write((char*)&m_hasUnnamedAreas, sizeof(unsigned char));
-		size_t areaCount = m_areas.size();
-		file.write((char*)&areaCount, sizeof(uint32_t));
+		file.write((char*)&m_bHasUnnamedAreas, sizeof(unsigned char));
 
-		for (auto& area : m_areas)
+		size_t uAreaCount = m_vAreas.size();
+		file.write((char*)&uAreaCount, sizeof(uint32_t));
+		for (auto& tArea : m_vAreas)
 		{
-			file.write((char*)&area.m_id, sizeof(uint32_t));
-			file.write((char*)&area.m_attributeFlags, sizeof(uint32_t));
-			file.write((char*)&area.m_nwCorner, sizeof(Vector));
-			file.write((char*)&area.m_seCorner, sizeof(Vector));
-			file.write((char*)&area.m_neZ, sizeof(float));
-			file.write((char*)&area.m_swZ, sizeof(float));
+			file.write((char*)&tArea.m_uId, sizeof(uint32_t));
+			file.write((char*)&tArea.m_iAttributeFlags, sizeof(uint32_t));
+			file.write((char*)&tArea.m_vNwCorner, sizeof(Vector));
+			file.write((char*)&tArea.m_vSeCorner, sizeof(Vector));
+			file.write((char*)&tArea.m_flNeZ, sizeof(float));
+			file.write((char*)&tArea.m_flSwZ, sizeof(float));
 
-			for (int dir = 0; dir < 4; dir++)
+			for (int iDir = 0; iDir < 4; iDir++)
 			{
-				size_t connectionCount = area.m_connectionsDir[dir].size();
-				file.write((char*)&connectionCount, sizeof(uint32_t));
+				size_t uConnectionCount = tArea.m_vConnectionsDir[iDir].size();
+				file.write((char*)&uConnectionCount, sizeof(uint32_t));
+				for (auto& tConnect : tArea.m_vConnectionsDir[iDir])
+					file.write((char*)&tConnect.m_uId, sizeof(uint32_t));
+			}
 
-				for (auto& connect : area.m_connectionsDir[dir])
+			size_t uHidingSpotCount = tArea.m_vHidingSpots.size();
+			file.write((char*)&uHidingSpotCount, sizeof(uint8_t));
+			for (auto& tHidingSpot : tArea.m_vHidingSpots)
+			{
+				file.write((char*)&tHidingSpot.m_uId, sizeof(uint32_t));
+				file.write((char*)&tHidingSpot.m_vPos, sizeof(Vector));
+				file.write((char*)&tHidingSpot.m_fFlags, sizeof(unsigned char));
+			}
+
+			size_t uEncounterSpotCount = tArea.m_vSpotEncounters.size();
+			file.write((char*)&uEncounterSpotCount, sizeof(uint32_t));
+			for (auto& tEncounterSpot : tArea.m_vSpotEncounters)
+			{
+				file.write((char*)&tEncounterSpot.m_tFrom.m_uId, sizeof(uint32_t));
+				file.write((char*)&tEncounterSpot.m_iFromDir, sizeof(unsigned char));
+				file.write((char*)&tEncounterSpot.m_tTo.m_uId, sizeof(uint32_t));
+				file.write((char*)&tEncounterSpot.m_iToDir, sizeof(unsigned char));
+
+				size_t uSpotCount = tEncounterSpot.m_vSpots.size();
+				file.write((char*)&uSpotCount, sizeof(unsigned char));
+				for (auto& tOrder : tEncounterSpot.m_vSpots)
 				{
-					file.write((char*)&connect.id, sizeof(uint32_t));
+					file.write((char*)&tOrder.m_uId, sizeof(uint32_t));
+					file.write((char*)&tOrder.flT, sizeof(unsigned char));
 				}
 			}
 
-			size_t hidingSpotCount = area.m_hidingSpots.size();
-			file.write((char*)&hidingSpotCount, sizeof(uint8_t));
+			file.write((char*)&tArea.m_uIndexType, sizeof(uint16_t));
 
-			for (auto& hidingSpot : area.m_hidingSpots)
+			for (int iDir = 0; iDir < 2; iDir++)
 			{
-				file.write((char*)&hidingSpot.m_id, sizeof(uint32_t));
-				file.write((char*)&hidingSpot.m_pos, sizeof(Vector));
-				file.write((char*)&hidingSpot.m_flags, sizeof(unsigned char));
+				size_t uLadderCount = tArea.m_vLadders[iDir].size();
+				file.write((char*)&uLadderCount, sizeof(uint32_t));
+				for (auto& uLadder : tArea.m_vLadders[iDir])
+					file.write((char*)&uLadder, sizeof(uint32_t));
 			}
 
-			size_t encounterSpotCount = area.m_spotEncounters.size();
-			file.write((char*)&encounterSpotCount, sizeof(uint32_t));
-
-			for (auto& encounterSpot : area.m_spotEncounters)
-			{
-				file.write((char*)&encounterSpot.from.id, sizeof(uint32_t));
-				file.write((char*)&encounterSpot.fromDir, sizeof(unsigned char));
-				file.write((char*)&encounterSpot.to.id, sizeof(uint32_t));
-				file.write((char*)&encounterSpot.toDir, sizeof(unsigned char));
-				size_t spotCount = encounterSpot.spots.size();
-				file.write((char*)&spotCount, sizeof(unsigned char));
-
-				for (auto& order : encounterSpot.spots)
-				{
-					file.write((char*)&order.id, sizeof(uint32_t));
-					file.write((char*)&order.t, sizeof(unsigned char));
-				}
-			}
-
-			file.write((char*)&area.m_indexType, sizeof(uint16_t));
-
-			for (int dir = 0; dir < 2; dir++)
-			{
-				size_t ladderCount = area.m_ladders[dir].size();
-				file.write((char*)&ladderCount, sizeof(uint32_t));
-
-				for (auto& ladder : area.m_ladders[dir])
-				{
-					file.write((char*)&ladder, sizeof(uint32_t));
-				}
-			}
-
-			for (float& j : area.m_earliestOccupyTime)
+			for (float& j : tArea.m_flEarliestOccupyTime)
 				file.write((char*)&j, sizeof(float));
 
-			for (float& j : area.m_lightIntensity)
+			for (float& j : tArea.m_flLightIntensity)
 				file.write((char*)&j, sizeof(float));
 
-			size_t potentiallyVisibleCount = area.m_potentiallyVisibleAreas.size();
-			file.write((char*)&potentiallyVisibleCount, sizeof(uint32_t));
-
-			for (auto& visibleArea : area.m_potentiallyVisibleAreas)
+			size_t uPotentiallyVisibleCount = tArea.m_vPotentiallyVisibleAreas.size();
+			file.write((char*)&uPotentiallyVisibleCount, sizeof(uint32_t));
+			for (auto& tVisibleArea : tArea.m_vPotentiallyVisibleAreas)
 			{
-				file.write((char*)&visibleArea.id, sizeof(uint32_t));
-				file.write((char*)&visibleArea.attributes, sizeof(unsigned char));
+				file.write((char*)&tVisibleArea.m_uId, sizeof(uint32_t));
+				file.write((char*)&tVisibleArea.m_uAttributes, sizeof(unsigned char));
 			}
 
-			file.write((char*)&area.m_inheritVisibilityFrom, sizeof(uint32_t));
-			file.write((char*)&area.m_TFattributeFlags, sizeof(uint32_t));
+			file.write((char*)&tArea.m_uInheritVisibilityFrom, sizeof(uint32_t));
+			file.write((char*)&tArea.m_iTFAttributeFlags, sizeof(uint32_t));
 		}
 
 		file.close();
 	}
 
-	unsigned int m_bspSize;
-	std::string m_mapName;
-	bool m_isAnalized{};
-	std::vector<CNavPlace> m_places;
-	bool m_hasUnnamedAreas{};
-	std::vector<CNavArea> m_areas;
-	bool m_isOK = false;
+	std::vector<NavPlace_t> m_vPlaces;
+	std::vector<CNavArea> m_vAreas;
+	std::string m_sMapName;
+
+	unsigned int m_uBspSize;
+	bool m_bHasUnnamedAreas{};
+	bool m_bAnalyzed{};
+	bool m_bOK = false;
 };

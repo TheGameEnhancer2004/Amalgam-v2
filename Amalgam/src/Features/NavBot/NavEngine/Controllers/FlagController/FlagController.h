@@ -24,8 +24,8 @@ public:
 	FlagInfo GetFlag(int team);
 
 	Vector GetPosition(CCaptureFlag* pFlag);
-	std::optional<Vector> GetPosition(int iTeam);
-	std::optional<Vector> GetSpawnPosition(int iTeam);
+	bool GetPosition(int iTeam, Vector& vOut);
+	bool GetSpawnPosition(int iTeam, Vector& vOut);
 	int GetCarrier(CCaptureFlag* pFlag);
 	int GetCarrier(int iTeam);
 	int GetStatus(CCaptureFlag* pFlag);

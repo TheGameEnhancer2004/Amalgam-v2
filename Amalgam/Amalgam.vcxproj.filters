@@ -210,7 +210,6 @@
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\Controller.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\MicroPather\micropather.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\NavEngine.cpp" />
-    <ClCompile Include="src\Features\NavBot\NavBot.cpp" />
     <ClCompile Include="src\Features\Misc\NamedPipe\NamedPipe.cpp" />
     <ClCompile Include="src\Hooks\CGameEventManager_FireEventClientSide.cpp" />
     <ClCompile Include="src\Hooks\CHudItemEffectMeter_Weapon_C_TFWeaponBase_IsEnabled.cpp" />
@@ -223,6 +222,18 @@
     <ClCompile Include="src\Hooks\CBoneFollower_TestCollision.cpp" />
     <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
     <ClCompile Include="src\Hooks\Voice_Enabled.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotCore.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavEngine\Map.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\GroupWithOthers.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\Roam.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\StayNear.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\Capture.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\Melee.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\GetSupplies.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\Reload.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\Engineer.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\SnipeSentry.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavBotJobs\EscapeDanger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -620,7 +631,6 @@
     <ClInclude Include="src\Features\NavBot\NavEngine\FileReader\nav.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\MicroPather\micropather.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\NavEngine.h" />
-    <ClInclude Include="src\Features\NavBot\NavBot.h" />
     <ClInclude Include="src\Features\Misc\NamedPipe\NamedPipe.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CBaseTeamObjectiveResource.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CServerBaseEntity.h" />
@@ -635,6 +645,18 @@
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoomShim.h" />
     <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
     <ClInclude Include="src\Features\NavBot\BotUtils.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotCore.h" />
+    <ClInclude Include="src\Features\NavBot\NavEngine\Map.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\EscapeDanger.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\Roam.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\Capture.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\Reload.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\GetSupplies.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\StayNear.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\SnipeSentry.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\Engineer.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\Melee.h" />
+    <ClInclude Include="src\Features\NavBot\NavBotJobs\GroupWithOthers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
