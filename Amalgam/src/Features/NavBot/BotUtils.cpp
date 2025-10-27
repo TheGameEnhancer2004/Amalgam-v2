@@ -152,44 +152,41 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 		return;
 	}
 
-	auto pPrimaryWeapon = pLocal->GetWeaponFromSlot(SLOT_PRIMARY);
-	auto pSecondaryWeapon = pLocal->GetWeaponFromSlot(SLOT_SECONDARY);
-	if (!pPrimaryWeapon || !pSecondaryWeapon)
-		return;
-
-	int iPrimaryResAmmo = SDK::WeaponDoesNotUseAmmo(pPrimaryWeapon) ? -1 : pLocal->GetAmmoCount(pPrimaryWeapon->m_iPrimaryAmmoType());
-	int iSecondaryResAmmo = SDK::WeaponDoesNotUseAmmo(pSecondaryWeapon) ? -1 : pLocal->GetAmmoCount(pSecondaryWeapon->m_iPrimaryAmmoType());
 	switch (pLocal->m_iClass())
 	{
 	case TF_CLASS_SCOUT:
 	{
-		if ((!G::AmmoInSlot[SLOT_PRIMARY] && (!G::AmmoInSlot[SLOT_SECONDARY] || (iSecondaryResAmmo != -1 &&
-			iSecondaryResAmmo <= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 4))) && m_tClosestEnemy.m_flDist <= 200.f)
+		if ((!G::AmmoInSlot[SLOT_PRIMARY].m_iClip &&
+			(!G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo || !G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4)) &&
+			m_tClosestEnemy.m_flDist <= 200.f)
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY] && m_tClosestEnemy.m_flDist <= 800.f)
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && m_tClosestEnemy.m_flDist <= 800.f)
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY])
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
 			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
 	case TF_CLASS_HEAVY:
 	{
-		if (!G::AmmoInSlot[SLOT_PRIMARY] &&
-			(!G::AmmoInSlot[SLOT_SECONDARY] && iSecondaryResAmmo == 0) ||
-			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch &&
+		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (!G::AmmoInSlot[SLOT_SECONDARY].m_iClip && G::AmmoInSlot[SLOT_SECONDARY].m_iReserve == 0) ||
+			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch && 
 			(m_tClosestEnemy.m_pPlayer && !m_tClosestEnemy.m_pPlayer->IsTaunting() && m_tClosestEnemy.m_pPlayer->IsInvulnerable()) && m_tClosestEnemy.m_flDist < 400.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((!m_tClosestEnemy.m_pPlayer || m_tClosestEnemy.m_flDist <= 900.f) && G::AmmoInSlot[SLOT_PRIMARY])
+		else if ((!m_tClosestEnemy.m_pPlayer || m_tClosestEnemy.m_flDist <= 900.f) && G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY] && G::SavedWepIds[SLOT_SECONDARY] == TF_WEAPON_SHOTGUN_HWG)
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
 			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
 	case TF_CLASS_MEDIC:
 	{
+		auto pSecondaryWeapon = pLocal->GetWeaponFromSlot(SLOT_SECONDARY);
+		if (!pSecondaryWeapon)
+			return;
+
 		if (pSecondaryWeapon->As<CWeaponMedigun>()->m_hHealingTarget() || HasMedigunTargets(pLocal, pSecondaryWeapon))
 			m_iBestSlot = SLOT_SECONDARY;
-		else if (!G::AmmoInSlot[SLOT_PRIMARY] || (m_tClosestEnemy.m_flDist <= 400.f && m_tClosestEnemy.m_pPlayer))
+		else if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip || (m_tClosestEnemy.m_flDist <= 400.f && m_tClosestEnemy.m_pPlayer))
 			m_iBestSlot = SLOT_MELEE;
 		else
 			m_iBestSlot = SLOT_PRIMARY;
@@ -199,33 +196,33 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	{
 		if (m_tClosestEnemy.m_flDist <= 250.f && m_tClosestEnemy.m_pPlayer)
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY] || iPrimaryResAmmo)
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve)
 			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_SNIPER:
 	{
 		int iPlayerLowHp = m_tClosestEnemy.m_pPlayer ? (m_tClosestEnemy.m_pPlayer->m_iHealth() < m_tClosestEnemy.m_pPlayer->GetMaxHealth() * 0.35f ? 2 : m_tClosestEnemy.m_pPlayer->m_iHealth() < m_tClosestEnemy.m_pPlayer->GetMaxHealth() * 0.75f) : -1;
-		if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] || (m_tClosestEnemy.m_flDist <= 200.f && m_tClosestEnemy.m_pPlayer))
+		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && !G::AmmoInSlot[SLOT_SECONDARY].m_iClip || (m_tClosestEnemy.m_flDist <= 200.f && m_tClosestEnemy.m_pPlayer))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo) && (m_tClosestEnemy.m_flDist <= 300.f && iPlayerLowHp > 1))
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && (G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve) && (m_tClosestEnemy.m_flDist <= 300.f && iPlayerLowHp > 1))
 			m_iBestSlot = SLOT_SECONDARY;
-		// Keep the smg if the target we previosly tried shooting is running away
-		else if (m_iCurrentSlot != -1 && m_iCurrentSlot < 2 && G::AmmoInSlot[m_iCurrentSlot] && (m_tClosestEnemy.m_flDist <= 800.f && iPlayerLowHp > 1))
+		// Keep currently selected weapon if the target we previosly tried shooting at is running away
+		else if (m_iCurrentSlot < 2 && m_iCurrentSlot != -1 && G::AmmoInSlot[m_iCurrentSlot].m_bUsesAmmo && G::AmmoInSlot[m_iCurrentSlot].m_iClip && (m_tClosestEnemy.m_flDist <= 800.f && iPlayerLowHp > 1))
 			break;
-		else if (G::AmmoInSlot[SLOT_PRIMARY])
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
 			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_PYRO:
 	{
-		if (!G::AmmoInSlot[SLOT_PRIMARY] && (!G::AmmoInSlot[SLOT_SECONDARY] && iSecondaryResAmmo != -1 &&
-			iSecondaryResAmmo <= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 4) &&
+		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (!G::AmmoInSlot[SLOT_SECONDARY].m_iClip && G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo &&
+			G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4) &&
 			(m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 300.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY] && (m_tClosestEnemy.m_flDist <= 550.f || !m_tClosestEnemy.m_pPlayer))
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_flDist <= 550.f || !m_tClosestEnemy.m_pPlayer))
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY])
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
 			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
@@ -234,31 +231,31 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 		auto pEnemyWeapon = m_tClosestEnemy.m_pPlayer ? m_tClosestEnemy.m_pPlayer->m_hActiveWeapon().Get()->As<CTFWeaponBase>() : nullptr;
 		bool bEnemyCanAirblast = pEnemyWeapon && pEnemyWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER && pEnemyWeapon->m_iItemDefinitionIndex() != Pyro_m_ThePhlogistinator;
 		bool bEnemyClose = m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 250.f;
-		if ((m_iCurrentSlot != SLOT_PRIMARY || !G::AmmoInSlot[SLOT_PRIMARY] && iPrimaryResAmmo == 0) && bEnemyClose && (m_tClosestEnemy.m_pPlayer->m_iHealth() < 80 ? !G::AmmoInSlot[SLOT_SECONDARY] : m_tClosestEnemy.m_pPlayer->m_iHealth() >= 150 || G::AmmoInSlot[SLOT_SECONDARY] < 2))
+		if ((m_iCurrentSlot != SLOT_PRIMARY || G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo && !G::AmmoInSlot[SLOT_PRIMARY].m_iClip && !G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && bEnemyClose && (m_tClosestEnemy.m_pPlayer->m_iHealth() < 80 ? !G::AmmoInSlot[SLOT_SECONDARY].m_iClip : m_tClosestEnemy.m_pPlayer->m_iHealth() >= 150 || G::AmmoInSlot[SLOT_SECONDARY].m_iClip < 2))
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_SECONDARY] && (bEnemyCanAirblast || (m_tClosestEnemy.m_flDist <= 350.f && m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_pPlayer->m_iHealth() <= 125)))
+		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_SECONDARY].m_iClip) && (bEnemyCanAirblast || (m_tClosestEnemy.m_flDist <= 350.f && m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_pPlayer->m_iHealth() <= 125)))
 			m_iBestSlot = SLOT_SECONDARY;
-		else if (G::AmmoInSlot[SLOT_PRIMARY])
+		else if (!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
 			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_DEMOMAN:
 	{
-		if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
+		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (!G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo || !G::AmmoInSlot[SLOT_SECONDARY].m_iClip) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY] && (m_tClosestEnemy.m_flDist <= 800.f))
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_flDist <= 800.f))
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo >= SDK::GetWeaponMaxReserveAmmo(G::SavedWepIds[SLOT_SECONDARY], G::SavedDefIndexes[SLOT_SECONDARY]) / 2)
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && (G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve >= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 2))
 			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
 	case TF_CLASS_ENGINEER:
 	{
-		if (!G::AmmoInSlot[SLOT_PRIMARY] && !G::AmmoInSlot[SLOT_SECONDARY] && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
+		if (G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo && !G::AmmoInSlot[SLOT_PRIMARY].m_iClip && !G::AmmoInSlot[SLOT_SECONDARY].m_iClip && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((G::AmmoInSlot[SLOT_PRIMARY] || iPrimaryResAmmo) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 500.f))
+		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 500.f))
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY] || iSecondaryResAmmo)
+		else if (!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve)
 			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}

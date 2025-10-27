@@ -875,110 +875,59 @@ float SDK::CalculateSplashRadiusDamage(CTFWeaponBase* pWeapon, CTFPlayer* pAttac
 	return flDamage;
 }
 
+bool SDK::WeaponDoesNotUseAmmo(int iWeaponID, int iDefIdx, bool bIncludeInfiniteAmmo)
+{
+	switch (iDefIdx)
+	{
+	case Soldier_s_TheBuffBanner:
+	case Soldier_s_FestiveBuffBanner:
+	case Soldier_s_TheBattalionsBackup:
+	case Soldier_s_TheConcheror:
+	case Demoman_s_TheTideTurner:
+	case Demoman_s_TheCharginTarge:
+	case Demoman_s_TheSplendidScreen:
+	case Demoman_s_FestiveTarge:
+	case Demoman_m_TheBootlegger:
+	case Demoman_m_AliBabasWeeBooties:
+	case Engi_s_TheWrangler:
+	case Engi_s_FestiveWrangler:
+	case Sniper_s_CozyCamper:
+	case Sniper_s_DarwinsDangerShield:
+	case Sniper_s_TheRazorback:
+	case Pyro_s_ThermalThruster: return true;
+	default:
+	{
+		switch (iWeaponID)
+		{
+		case TF_WEAPON_PARTICLE_CANNON:
+		case TF_WEAPON_RAYGUN:
+		case TF_WEAPON_DRG_POMSON: return bIncludeInfiniteAmmo;
+		case TF_WEAPON_FLAREGUN_REVENGE:
+		case TF_WEAPON_MEDIGUN:
+		case TF_WEAPON_PDA:
+		case TF_WEAPON_PDA_ENGINEER_BUILD:
+		case TF_WEAPON_PDA_ENGINEER_DESTROY:
+		case TF_WEAPON_PDA_SPY:
+		case TF_WEAPON_PDA_SPY_BUILD:
+		case TF_WEAPON_BUILDER:
+		case TF_WEAPON_INVIS:
+		case TF_WEAPON_LUNCHBOX:
+		case TF_WEAPON_THROWABLE:
+		case TF_WEAPON_JAR:
+		case TF_WEAPON_JAR_GAS:
+		case TF_WEAPON_JAR_MILK:
+		case TF_WEAPON_GRAPPLINGHOOK: return true;
+		default: return false;
+		}
+		break;
+	}
+	}
+}
+
 bool SDK::WeaponDoesNotUseAmmo(CTFWeaponBase* pWeapon, bool bIncludeInfiniteAmmo)
 {
-	if (!pWeapon)
-		return false;
-
-	if (pWeapon->GetSlot() == SLOT_MELEE)
-		return true;
-
-	switch (pWeapon->m_iItemDefinitionIndex())
-	{
-	case Soldier_s_TheBuffBanner:
-	case Soldier_s_FestiveBuffBanner:
-	case Soldier_s_TheBattalionsBackup:
-	case Soldier_s_TheConcheror:
-	case Demoman_s_TheTideTurner:
-	case Demoman_s_TheCharginTarge:
-	case Demoman_s_TheSplendidScreen:
-	case Demoman_s_FestiveTarge:
-	case Demoman_m_TheBootlegger:
-	case Demoman_m_AliBabasWeeBooties:
-	case Engi_s_TheWrangler:
-	case Engi_s_FestiveWrangler:
-	case Sniper_s_CozyCamper:
-	case Sniper_s_DarwinsDangerShield:
-	case Sniper_s_TheRazorback:
-	case Pyro_s_ThermalThruster: return true;
-	default:
-	{
-		switch (pWeapon->GetWeaponID())
-		{
-		case TF_WEAPON_PARTICLE_CANNON:
-		case TF_WEAPON_RAYGUN:
-		case TF_WEAPON_DRG_POMSON: return bIncludeInfiniteAmmo;
-		case TF_WEAPON_FLAREGUN_REVENGE:
-		case TF_WEAPON_MEDIGUN:
-		case TF_WEAPON_PDA:
-		case TF_WEAPON_PDA_ENGINEER_BUILD:
-		case TF_WEAPON_PDA_ENGINEER_DESTROY:
-		case TF_WEAPON_PDA_SPY:
-		case TF_WEAPON_PDA_SPY_BUILD:
-		case TF_WEAPON_BUILDER:
-		case TF_WEAPON_INVIS:
-		case TF_WEAPON_LUNCHBOX:
-		case TF_WEAPON_THROWABLE:
-		case TF_WEAPON_JAR:
-		case TF_WEAPON_JAR_GAS:
-		case TF_WEAPON_JAR_MILK:
-		case TF_WEAPON_GRAPPLINGHOOK: return true;
-		default: return false;
-		}
-		break;
-	}
-	}
+	return WeaponDoesNotUseAmmo(pWeapon->GetWeaponID(), pWeapon->m_iItemDefinitionIndex());
 }
-
-bool SDK::WeaponDoesNotUseAmmo(int WeaponID, int DefIdx, bool bIncludeInfiniteAmmo)
-{
-	switch (DefIdx)
-	{
-	case Soldier_s_TheBuffBanner:
-	case Soldier_s_FestiveBuffBanner:
-	case Soldier_s_TheBattalionsBackup:
-	case Soldier_s_TheConcheror:
-	case Demoman_s_TheTideTurner:
-	case Demoman_s_TheCharginTarge:
-	case Demoman_s_TheSplendidScreen:
-	case Demoman_s_FestiveTarge:
-	case Demoman_m_TheBootlegger:
-	case Demoman_m_AliBabasWeeBooties:
-	case Engi_s_TheWrangler:
-	case Engi_s_FestiveWrangler:
-	case Sniper_s_CozyCamper:
-	case Sniper_s_DarwinsDangerShield:
-	case Sniper_s_TheRazorback:
-	case Pyro_s_ThermalThruster: return true;
-	default:
-	{
-		switch (WeaponID)
-		{
-		case TF_WEAPON_PARTICLE_CANNON:
-		case TF_WEAPON_RAYGUN:
-		case TF_WEAPON_DRG_POMSON: return bIncludeInfiniteAmmo;
-		case TF_WEAPON_FLAREGUN_REVENGE:
-		case TF_WEAPON_MEDIGUN:
-		case TF_WEAPON_PDA:
-		case TF_WEAPON_PDA_ENGINEER_BUILD:
-		case TF_WEAPON_PDA_ENGINEER_DESTROY:
-		case TF_WEAPON_PDA_SPY:
-		case TF_WEAPON_PDA_SPY_BUILD:
-		case TF_WEAPON_BUILDER:
-		case TF_WEAPON_INVIS:
-		case TF_WEAPON_LUNCHBOX:
-		case TF_WEAPON_THROWABLE:
-		case TF_WEAPON_JAR:
-		case TF_WEAPON_JAR_GAS:
-		case TF_WEAPON_JAR_MILK:
-		case TF_WEAPON_GRAPPLINGHOOK: return true;
-		default: return false;
-		}
-		break;
-	}
-	}
-}
-
 
 // Is there a way of doing this without hardcoded numbers???
 int SDK::GetWeaponMaxReserveAmmo(int WeaponID, int DefIdx)

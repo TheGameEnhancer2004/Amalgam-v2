@@ -689,7 +689,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 	int barWidth = static_cast<int>(boxWidth * currentProgress);
 	if (barWidth > 0)
 	{
-		Color_t accentColor = Vars::Menu::Theme::Active.Value;
+		Color_t accentColor = Vars::Menu::Theme::Accent.Value;
 		
 		for (int i = 0; i < barWidth; i++)
 		{

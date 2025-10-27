@@ -5,7 +5,7 @@ struct ClosestEnemy_t
 {	
 	int m_iEntIdx = -1;
 	CTFPlayer* m_pPlayer = nullptr;
-	float m_flDist = -1.f;
+	float m_flDist = FLT_MAX;
 };
 
 enum EShouldTargetState

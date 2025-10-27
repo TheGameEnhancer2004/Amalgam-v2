@@ -10,12 +10,6 @@ enum slots
 	pda2
 };
 
-enum building
-{
-    dispenser = 0,
-    sentry    = 2
-};
-
 class CNavBot
 {
 public:
@@ -50,8 +44,8 @@ private:
 	std::vector<Vector> m_vSniperSpots;
 	std::vector<Vector>  m_vBuildingSpots;
 	std::optional<Vector> vCurrentBuildingSpot;
-	int m_iMySentryIdx = -1;
-	int m_iMyDispenserIdx = -1;
+	CObjectSentrygun* m_pMySentryGun;
+	CObjectDispenser* m_pMyDispenser;
 	int m_iBuildAttempts = 0;
 	int m_iLastReloadSlot = -1;
 
@@ -102,7 +96,7 @@ private:
 	bool BuildingNeedsToBeSmacked(CBaseObject* pBulding);
 	bool BlacklistedFromBuilding(CNavArea* pArea);
 	bool NavToSentrySpot();
-	bool BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, int building);
+	bool BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, bool bDispenser);
 	bool SmackBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, CBaseObject* pBuilding);
 	bool EngineerLogic(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
 

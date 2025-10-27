@@ -73,8 +73,8 @@ template <typename T> int sign(T val)
 namespace SDK
 {
 	void Output(const char* sFunction, const char* sLog = nullptr, Color_t tColor = { 255, 255, 255, 255 },
-		int iTo = OUTPUT_CONSOLE, int iMessageBox = -1,
-		const char* sLeft = "[", const char* sRight = "]");
+				int iTo = OUTPUT_CONSOLE, int iMessageBox = -1,
+				const char* sLeft = "[", const char* sRight = "]");
 
 	void SetClipboard(const std::string& sString);
 	std::string GetClipboard();
@@ -130,9 +130,9 @@ namespace SDK
 
 	void GetProjectileFireSetup(CTFPlayer* pPlayer, const Vec3& vAngIn, Vec3 vOffset, Vec3& vPosOut, Vec3& vAngOut, bool bPipes = false, bool bInterp = false, bool bAllowFlip = true);
 	float CalculateSplashRadiusDamageFalloff(CTFWeaponBase* pWeapon, CTFPlayer* pAttacker, CTFWeaponBaseGrenadeProj* pProjectile, float flRadius);
-	float CalculateSplashRadiusDamage(CTFWeaponBase* pWeapon, CTFPlayer* pAttacker, CTFWeaponBaseGrenadeProj* pProjectile, float flRadius, float flDist, float& flDamageNoBuffs, bool bSelf = false );
-	bool WeaponDoesNotUseAmmo( CTFWeaponBase* pWeapon, bool bIncludeInfiniteAmmo = true );
-	bool WeaponDoesNotUseAmmo( int WeaponID, int DefIdx, bool bIncludeInfiniteAmmo = true );
-	int GetWeaponMaxReserveAmmo( int WeaponID, int DefIdx );
-	std::string GetLevelName( );
+	float CalculateSplashRadiusDamage(CTFWeaponBase* pWeapon, CTFPlayer* pAttacker, CTFWeaponBaseGrenadeProj* pProjectile, float flRadius, float flDist, float& flDamageNoBuffs, bool bSelf = false);
+	bool WeaponDoesNotUseAmmo(int iWeaponID, int iDefIdx, bool bIncludeInfiniteAmmo = true);
+	bool WeaponDoesNotUseAmmo(CTFWeaponBase* pWeapon, bool bIncludeInfiniteAmmo = true);
+	int GetWeaponMaxReserveAmmo(int iWeaponID, int iDefIdx);
+	std::string GetLevelName();
 }

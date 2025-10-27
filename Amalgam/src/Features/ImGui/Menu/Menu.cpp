@@ -1212,7 +1212,7 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
 					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
-					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FDropdown(Vars::Misc::Automation::AutoVotekick, FDropdownEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoVoteMap, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Automation::AutoVoteMap.Value);
 					{

@@ -72,6 +72,15 @@ struct AimPoint_t
 	int m_iDuration = 32;
 };
 
+struct WeaponAmmoInfo_t
+{
+	int m_iClip = 0;
+	int m_iMaxClip = 0;
+	int m_iReserve = 0;
+	int m_iMaxReserve = 0;
+	bool m_bUsesAmmo = false;
+};
+
 namespace G
 {
 	inline bool Unload = false;
@@ -108,9 +117,9 @@ namespace G
 	inline std::vector<DrawSphere_t> SphereStorage = {};
 	inline std::vector<DrawSwept_t> SweptStorage = {};
 
-	inline int SavedDefIndexes[ 3 ] = { -1,-1,-1 };
-	inline int SavedWepIds[ 3 ] = { -1,-1,-1 };
-	inline int AmmoInSlot[ 2 ] = { 0, 0 };
+	inline int SavedDefIndexes[3] = {-1,-1,-1};
+	inline int SavedWepIds[3] = {-1,-1,-1};
+	inline WeaponAmmoInfo_t AmmoInSlot[2] = {WeaponAmmoInfo_t(), WeaponAmmoInfo_t()};
 	
 	inline int* RandomSeed()
 	{

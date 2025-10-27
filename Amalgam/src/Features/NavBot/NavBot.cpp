@@ -44,40 +44,31 @@ bool CNavBot::ShouldSearchAmmo(CTFPlayer* pLocal)
 
 	for (int i = 0; i < 2; i++)
 	{
-		auto pWeapon = pLocal->GetWeaponFromSlot(i);
-		if (!pWeapon || SDK::WeaponDoesNotUseAmmo(pWeapon))
+		if (!G::AmmoInSlot[i].m_bUsesAmmo)
 			continue;
 
-		int iWepID = pWeapon->GetWeaponID();
-		int iMaxClip = pWeapon->GetWeaponInfo() ? pWeapon->GetWeaponInfo()->iMaxClip1 : 0;
-		int iCurClip = pWeapon->m_iClip1();
-		
-		if ((iWepID == TF_WEAPON_SNIPERRIFLE ||
-			iWepID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
-			iWepID == TF_WEAPON_SNIPERRIFLE_DECAP) &&
-			pLocal->GetAmmoCount(pWeapon->m_iPrimaryAmmoType()) <= 5)
+		int iWeaponID = G::SavedWepIds[i];
+		int iReserveAmmo = G::AmmoInSlot[i].m_iReserve;
+		if (iReserveAmmo <= 5 &&
+			(iWeaponID == TF_WEAPON_SNIPERRIFLE ||
+			iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
+			iWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP))
 			return true;
 
-		if (!pWeapon->HasAmmo())
-			return true;
+		int iClip = G::AmmoInSlot[i].m_iClip;
+		int iMaxClip = G::AmmoInSlot[i].m_iMaxClip;
+		int iMaxReserveAmmo = G::AmmoInSlot[i].m_iMaxReserve;
 
-		int iMaxAmmo = SDK::GetWeaponMaxReserveAmmo(iWepID, pWeapon->m_iItemDefinitionIndex());
-		if (!iMaxAmmo)
-			continue;
-
-		// Reserve ammo
-		int iResAmmo = pLocal->GetAmmoCount(pWeapon->m_iPrimaryAmmoType());
-		
 		// If clip and reserve are both very low, definitely get ammo
-		if (iMaxClip > 0 && iCurClip <= iMaxClip * 0.25f && iResAmmo <= iMaxAmmo * 0.25f)
+		if (iMaxClip > 0 && iClip <= iMaxClip * 0.25f && iReserveAmmo <= iMaxReserveAmmo * 0.25f)
 			return true;
 			
 		// Don't search for ammo if we have more than 60% of max reserve
-		if (iResAmmo >= iMaxAmmo * 0.6f)
+		if (iReserveAmmo >= iMaxReserveAmmo * 0.6f)
 			continue;
 			
 		// Search for ammo if we're below 33% of capacity
-		if (iResAmmo <= iMaxAmmo / 3)
+		if (iReserveAmmo <= iMaxReserveAmmo / 3)
 			return true;
 	}
 
@@ -448,31 +439,8 @@ void CNavBot::RefreshLocalBuildings(CTFPlayer* pLocal)
 {
 	if (IsEngieMode(pLocal))
 	{
-		m_iMySentryIdx = -1;
-		m_iMyDispenserIdx = -1;
-
-		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingTeam))
-		{
-			auto iClassID = pEntity->GetClassID();
-			if (iClassID != ETFClassID::CObjectSentrygun && iClassID != ETFClassID::CObjectDispenser)
-				continue;
-
-			auto pBuilding = pEntity->As<CBaseObject>();
-			auto pBuilder = pBuilding->m_hBuilder().Get();
-			if (!pBuilder)
-				continue;
-
-			if (pBuilding->m_bPlacing())
-				continue;
-
-			if (pBuilder->entindex() != pLocal->entindex())
-				continue;
-
-			if (iClassID == ETFClassID::CObjectSentrygun)
-				m_iMySentryIdx = pBuilding->entindex();
-			else if (iClassID == ETFClassID::CObjectDispenser)
-				m_iMyDispenserIdx = pBuilding->entindex();
-		}
+		m_pMySentryGun = pLocal->GetObjectOfType(OBJ_SENTRYGUN)->As<CObjectSentrygun>();
+		m_pMyDispenser = pLocal->GetObjectOfType(OBJ_DISPENSER)->As<CObjectDispenser>();
 	}
 }
 
@@ -485,28 +453,20 @@ bool CNavBot::NavToSentrySpot()
 		return false;
 
 	// Try to nav to our existing sentry spot
-	if (auto pSentry = I::ClientEntityList->GetClientEntity(m_iMySentryIdx))
+	if (m_pMySentryGun && !m_pMySentryGun->m_bPlacing())
 	{
 		// Don't overwrite current nav
-		if (F::NavEngine.current_priority == engineer)
-			return true;
-
-		auto vSentryOrigin = F::NavParser.GetDormantOrigin(pSentry->entindex());
-		if (!vSentryOrigin)
-			return false;
-
-		if (F::NavEngine.navTo(*vSentryOrigin, engineer))
+		if (F::NavEngine.current_priority == engineer ||
+			F::NavEngine.navTo(m_pMySentryGun->GetAbsOrigin(), engineer))
 			return true;
 	}
-	else
-		m_iMySentryIdx = -1;
 
 	if (m_vBuildingSpots.empty())
 		return false;
 
 	// Don't overwrite current nav
 	if (F::NavEngine.current_priority == engineer)
-		return false;
+		return true;
 
 	// Max 10 attempts
 	for (int iAttempts = 0; iAttempts < 10 && iAttempts < m_vBuildingSpots.size(); ++iAttempts)
@@ -894,7 +854,7 @@ int CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy
 	{
 		pWeaponInfo = pPrimaryWeapon->GetWeaponInfo();
 		bWeaponCantReload = (!pWeaponInfo || pWeaponInfo->iMaxClip1 < 0 || !pLocal->GetAmmoCount(pPrimaryWeapon->m_iPrimaryAmmoType())) && G::SavedWepIds[SLOT_PRIMARY] != TF_WEAPON_PARTICLE_CANNON && G::SavedWepIds[SLOT_PRIMARY] != TF_WEAPON_DRG_POMSON;
-		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_PRIMARY] < (pWeaponInfo->iMaxClip1 / flDivider))
+		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_PRIMARY].m_iClip < (pWeaponInfo->iMaxClip1 / flDivider))
 			return SLOT_PRIMARY;
 	}
 
@@ -903,7 +863,7 @@ int CNavBot::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy
 	{
 		pWeaponInfo = pSecondaryWeapon->GetWeaponInfo();
 		bWeaponCantReload = (!pWeaponInfo || pWeaponInfo->iMaxClip1 < 0 || !pLocal->GetAmmoCount(pSecondaryWeapon->m_iPrimaryAmmoType())) && G::SavedWepIds[SLOT_SECONDARY] != TF_WEAPON_RAYGUN;
-		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_SECONDARY] < (pWeaponInfo->iMaxClip1 / flDivider))
+		if (pWeaponInfo && !bWeaponCantReload && G::AmmoInSlot[SLOT_SECONDARY].m_iClip < (pWeaponInfo->iMaxClip1 / flDivider))
 			return SLOT_SECONDARY;
 	}
 
@@ -1312,14 +1272,7 @@ bool CNavBot::SnipeSentries(CTFPlayer* pLocal)
 	return false;
 }
 
-static CBaseObject* GetCarriedBuilding(CTFPlayer* pLocal)
-{
-	if (auto pEntity = pLocal->m_hCarriedObject().Get())
-		return pEntity->As<CBaseObject>();
-	return nullptr;
-}
-
-bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, int building)
+bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, bool bDispenser)
 {
 	auto pMeleeWeapon = pLocal->GetWeaponFromSlot(SLOT_MELEE);
 	if (!pMeleeWeapon)
@@ -1336,14 +1289,14 @@ bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 	}
 
 	// Make sure we have right amount of metal
-	int iRequiredMetal = (pMeleeWeapon->m_iItemDefinitionIndex() == Engi_t_TheGunslinger || building == dispenser) ? 100 : 130;
+	int iRequiredMetal = (pMeleeWeapon->m_iItemDefinitionIndex() == Engi_t_TheGunslinger || bDispenser) ? 100 : 130;
 	if (pLocal->m_iMetalCount() < iRequiredMetal)
 		return GetAmmo(pCmd, pLocal, true);
 
-	m_sEngineerTask = std::format(L"Build {}", building == dispenser ? L"dispenser" : L"sentry");
+	m_sEngineerTask = std::format(L"Build {}", bDispenser ? L"dispenser" : L"sentry");
 	static float flPrevYaw = 0.0f;
 	// Try to build! we are close enough
-	if (vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= (building == dispenser ? 500.f : 200.f))
+	if (vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
 	{
 		// TODO: Rotate our angle to a valid building spot ? also rotate building itself to face enemies ?
 		pCmd->viewangles.x = 20.0f;
@@ -1354,14 +1307,14 @@ bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 		if (tAttemptTimer.Run(0.3f))
 			m_iBuildAttempts++;
 
-		//auto pCarriedBuilding = GetCarriedBuilding( pLocal );
+		auto pBuilding = bDispenser ? m_pMyDispenser->As<CBaseObject>() : m_pMySentryGun;
 		if (!pLocal->m_bCarryingObject())
 		{
 			static Timer command_timer;
 			if (command_timer.Run(0.1f))
-				I::EngineClient->ClientCmd_Unrestricted(std::format("build {}", building).c_str());
+				I::EngineClient->ClientCmd_Unrestricted(std::format("build {}", bDispenser ? 0 : 2).c_str());
 		}
-		//else if (pCarriedBuilding->m_bServerOverridePlacement()) // Can place
+		//else if (pBuilding->m_bServerOverridePlacement()) // Can place
 		pCmd->buttons |= IN_ATTACK;
 		return true;
 	}
@@ -1376,53 +1329,37 @@ bool CNavBot::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 
 bool CNavBot::BuildingNeedsToBeSmacked(CBaseObject* pBuilding)
 {
-	if (!pBuilding || pBuilding->IsDormant())
+	if (!pBuilding || pBuilding->m_bPlacing())
 		return false;
 
-	if (pBuilding->m_iUpgradeLevel() != 3 || pBuilding->m_iHealth() / pBuilding->m_iMaxHealth() <= 0.80f)
+	if (pBuilding->m_iUpgradeLevel() != 3 || pBuilding->m_iHealth() <= pBuilding->m_iMaxHealth() / 1.25f)
 		return true;
 
 	if (pBuilding->GetClassID() == ETFClassID::CObjectSentrygun)
-	{
-		int iMaxAmmo = 0;
-		switch (pBuilding->m_iUpgradeLevel())
-		{
-		case 1:
-			iMaxAmmo = 150;
-			break;
-		case 2:
-		case 3:
-			iMaxAmmo = 200;
-			break;
-		}
+		return pBuilding->As<CObjectSentrygun>()->m_iAmmoShells() <= pBuilding->As<CObjectSentrygun>()->MaxAmmoShells() / 2;
 
-		return pBuilding->As<CObjectSentrygun>()->m_iAmmoShells() / iMaxAmmo <= 0.50f;
-	}
 	return false;
 }
 
 bool CNavBot::SmackBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, CBaseObject* pBuilding)
 {
-	if (!pBuilding || pBuilding->IsDormant())
+	if (!pBuilding)
 		return false;
 
 	if (!pLocal->m_iMetalCount())
 		return GetAmmo(pCmd, pLocal, true);
 
-	CTFWeaponBase* pWeapon = H::Entities.GetWeapon();
-	if (!pWeapon)
-		return false;
-
 	m_sEngineerTask = std::format(L"Smack {}", pBuilding->GetClassID() == ETFClassID::CObjectDispenser ? L"dispenser" : L"sentry");
 
-	if (pBuilding->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 100.f && pWeapon->GetSlot() == SLOT_MELEE)
+	if (pBuilding->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 100.f && F::BotUtils.m_iCurrentSlot == SLOT_MELEE)
 	{
-		pCmd->buttons |= IN_ATTACK;
-
-		auto vAngTo = Math::CalcAngle(pLocal->GetEyePosition(), pBuilding->GetCenter());
-		G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true);
 		if (G::Attacking == 1)
+		{
+			auto vAngTo = Math::CalcAngle(pLocal->GetEyePosition(), pBuilding->GetCenter());
 			pCmd->viewangles = vAngTo;
+		}
+		else
+			pCmd->buttons |= IN_ATTACK;
 	}
 	else if (F::NavEngine.current_priority != engineer)
 		return F::NavEngine.navTo(pBuilding->GetAbsOrigin(), engineer);
@@ -1438,20 +1375,14 @@ bool CNavBot::EngineerLogic(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 		return false;
 	}
 
-	auto pMeleeWeapon = pLocal->GetWeaponFromSlot(SLOT_MELEE);
-	if (!pMeleeWeapon)
-		return false;
-
-	auto pSentry = I::ClientEntityList->GetClientEntity(m_iMySentryIdx);
 	// Already have a sentry
-	if (pSentry && pSentry->GetClassID() == ETFClassID::CObjectSentrygun)
+	if (m_pMySentryGun && !m_pMySentryGun->m_bPlacing())
 	{
-		if (pMeleeWeapon->m_iItemDefinitionIndex() == Engi_t_TheGunslinger)
+		if (G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger)
 		{
-			auto vSentryOrigin = F::NavParser.GetDormantOrigin(m_iMySentryIdx);
 			// Too far away, destroy it
 			// BUG Ahead, building isnt destroyed lol
-			if (!vSentryOrigin || vSentryOrigin->DistTo(pLocal->GetAbsOrigin()) >= 1800.f)
+			if (m_pMySentryGun->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) >= 1800.f)
 			{
 				// If we have a valid building
 				I::EngineClient->ClientCmd_Unrestricted("destroy 2");
@@ -1462,19 +1393,18 @@ bool CNavBot::EngineerLogic(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 		else
 		{
 			// Try to smack sentry first
-			if (BuildingNeedsToBeSmacked(pSentry->As<CBaseObject>()))
-				return SmackBuilding(pCmd, pLocal, pSentry->As<CBaseObject>());
+			if (BuildingNeedsToBeSmacked(m_pMySentryGun))
+				return SmackBuilding(pCmd, pLocal, m_pMySentryGun);
 			else
 			{
-				auto pDispenser = I::ClientEntityList->GetClientEntity(m_iMyDispenserIdx);
 				// We put dispenser by sentry
-				if (!pDispenser)
-					return BuildBuilding(pCmd, pLocal, tClosestEnemy, dispenser);
+				if (!m_pMyDispenser)
+					return BuildBuilding(pCmd, pLocal, tClosestEnemy, true);
 				else
 				{
 					// We already have a dispenser, see if it needs to be smacked
-					if (BuildingNeedsToBeSmacked(pDispenser->As<CBaseObject>()))
-						return SmackBuilding(pCmd, pLocal, pDispenser->As<CBaseObject>());
+					if (BuildingNeedsToBeSmacked(m_pMyDispenser))
+						return SmackBuilding(pCmd, pLocal, m_pMyDispenser);
 
 					// Return false so we run another task
 					return false;
@@ -1484,7 +1414,7 @@ bool CNavBot::EngineerLogic(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tC
 		}
 	}
 	// Try to build a sentry
-	return BuildBuilding(pCmd, pLocal, tClosestEnemy, sentry);
+	return BuildBuilding(pCmd, pLocal, tClosestEnemy, false);
 }
 
 std::optional<Vector> CNavBot::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam)
@@ -2696,28 +2626,34 @@ void CNavBot::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 	// Prioritize reloading
 	int iReloadSlot = m_iLastReloadSlot = GetReloadWeaponSlot(pLocal, tClosestEnemy);
 
-	// Special case for engineer bots
-	if (pLocal->m_iClass() == TF_CLASS_ENGINEER)
+	// Special case for engineer logic
+	if (IsEngieMode(pLocal))
 	{
-		auto pSentry = I::ClientEntityList->GetClientEntity(m_iMySentryIdx);
-		auto pDispenser = I::ClientEntityList->GetClientEntity(m_iMyDispenserIdx);
-		if (((pSentry &&
-			pSentry->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 300.f) ||
-			(pDispenser &&
-			pDispenser->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 500.f)) ||
+		if (((m_pMySentryGun && !m_pMySentryGun->m_bPlacing() &&
+			m_pMySentryGun->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 300.f) ||
+			(m_pMyDispenser && !m_pMyDispenser->m_bPlacing() &&
+			m_pMyDispenser->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 500.f)) ||
 			(vCurrentBuildingSpot && vCurrentBuildingSpot->DistTo(pLocal->GetAbsOrigin()) <= 500.f))
 		{
-			if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE || F::NavEngine.current_priority == prio_melee)
+			if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
+			{
 				F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
+				return;
+			}
 		}
+
+		// Dont interrupt building process
+		if ((m_pMySentryGun && m_pMySentryGun->m_bPlacing()) ||
+			(m_pMyDispenser && m_pMyDispenser->m_bPlacing()))
+			return;
 	}
-	else if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
+	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
 		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
 bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
 {
-	if (!pWeapon)
+	if (!pWeapon || F::BotUtils.m_iCurrentSlot == SLOT_MELEE)
 		return false;
 
 	auto iWepID = pWeapon->GetWeaponID();
@@ -2840,8 +2776,8 @@ void CNavBot::Reset()
 	// Make it run asap
 	tRefreshSniperspotsTimer -= 60;
 	m_iStayNearTargetIdx = -1;
-	m_iMySentryIdx = -1;
-	m_iMyDispenserIdx = -1;
+	m_pMySentryGun = nullptr;
+	m_pMyDispenser = nullptr;
 	m_vSniperSpots.clear();
 	m_vCurrentCaptureSpot.reset();
 	m_vCurrentCaptureCenter.reset();

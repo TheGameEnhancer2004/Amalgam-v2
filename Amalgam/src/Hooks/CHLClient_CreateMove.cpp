@@ -60,10 +60,24 @@ static inline void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		auto pWeaponInSlot = pLocal->GetWeaponFromSlot(i);
 		if (pWeaponInSlot)
 		{
-			G::SavedDefIndexes[i] = pWeaponInSlot->m_iItemDefinitionIndex();
-			G::SavedWepIds[i] = pWeaponInSlot->GetWeaponID();
+			int iDefIndex = pWeaponInSlot->m_iItemDefinitionIndex(), iWeaponID = pWeaponInSlot->GetWeaponID();
+			bool bWeaponChanged = G::SavedDefIndexes[i] != iDefIndex || G::SavedWepIds[i] != iWeaponID;
 			if (i != SLOT_MELEE)
-				G::AmmoInSlot[i] = pWeaponInSlot->m_iClip1();
+			{
+				G::AmmoInSlot[i].m_iClip = pWeaponInSlot->m_iClip1();
+				G::AmmoInSlot[i].m_iReserve = pLocal->GetAmmoCount(pWeaponInSlot->m_iPrimaryAmmoType());
+				if (bWeaponChanged)
+				{
+					G::AmmoInSlot[i].m_iMaxClip = pWeaponInSlot->GetWeaponInfo() ? pWeaponInSlot->GetWeaponInfo()->iMaxClip1 : 0;
+					G::AmmoInSlot[i].m_iMaxReserve = SDK::GetWeaponMaxReserveAmmo(iWeaponID, iDefIndex);
+					G::AmmoInSlot[i].m_bUsesAmmo = !SDK::WeaponDoesNotUseAmmo(iWeaponID, iDefIndex);
+				}
+			}
+			if (bWeaponChanged)
+			{
+				G::SavedDefIndexes[i] = iDefIndex;
+				G::SavedWepIds[i] = iWeaponID;
+			}
 		}
 	}
 
