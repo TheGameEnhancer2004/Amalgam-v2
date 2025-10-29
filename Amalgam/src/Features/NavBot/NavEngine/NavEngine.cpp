@@ -97,7 +97,7 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 	if (!m_pLocalArea || !pDestArea)
 		return false;
 
-	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea);
+	auto vPath = m_pMap->FindPath(m_pLocalArea.get(), pDestArea);
 	if (vPath.empty())
 		return false;
 
@@ -167,7 +167,7 @@ float CNavEngine::GetPathCost(const Vector& vLocalOrigin, const Vector& vDestina
 
 	float flCost;
 	std::vector<void*> vPath;
-	if (m_pMap->m_pather.Solve(reinterpret_cast<void*>(m_pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
+	if (m_pMap->m_pather.Solve(reinterpret_cast<void*>(m_pLocalArea.get()), reinterpret_cast<void*>(pDestArea), &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
 		return 0.f;
 
 	return flCost;
@@ -177,8 +177,11 @@ CNavArea* CNavEngine::GetLocalNavArea(const Vector& pLocalOrigin)
 {
 	// Update local area only if our origin is no longer in its minmaxs
 	if (!m_pLocalArea || (!m_pLocalArea->IsOverlapping(pLocalOrigin) || pLocalOrigin.z < m_pLocalArea->m_flMinZ))
-		m_pLocalArea = FindClosestNavArea(pLocalOrigin);
-	return m_pLocalArea;
+	{
+		auto pArea = FindClosestNavArea(pLocalOrigin);
+		m_pLocalArea = pArea ? std::make_unique<CNavArea>(*pArea) : nullptr;
+	}
+	return m_pLocalArea.get();
 }
 
 void CNavEngine::VischeckPath()
@@ -237,7 +240,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	for (auto&[pArea, _] : m_pMap->m_mFreeBlacklist)
 	{
 		// Local player is in a blocked area, so temporarily remove the blacklist as else we would be stuck
-		if (pArea == m_pLocalArea)
+		if (pArea == m_pLocalArea.get())
 		{
 			m_pMap->m_bFreeBlacklistBlocked = true;
 			m_pMap->m_pather.Reset();
@@ -305,6 +308,7 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
+	m_pLocalArea.reset();
 
 	static std::string sPath = std::filesystem::current_path().string();
 	if (std::string sLevelName = I::EngineClient->GetLevelName(); !sLevelName.empty())
@@ -602,7 +606,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				bDropCompleted = true;
 
 			if (!bDropCompleted && m_pLocalArea &&
-				m_pLocalArea != tActiveCrumb.m_pNavArea &&
+				m_pLocalArea.get() != tActiveCrumb.m_pNavArea &&
 				tActiveCrumb.m_flDropHeight > kDropSkipFloor)
 				bDropCompleted = true;
 

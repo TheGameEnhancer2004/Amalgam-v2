@@ -1,6 +1,9 @@
 #include "GetSupplies.h"
 #include "../NavEngine/NavEngine.h"
 
+// TODO:
+// If cached ammopack is taken try to go for other closest one
+
 std::vector<std::pair<bool, Vector>> CNavBotSupplies::GetEntities(CTFPlayer* pLocal, bool bHealth)
 {
 	auto eGroupType = bHealth ? EntityEnum::PickupHealth : EntityEnum::PickupAmmo;

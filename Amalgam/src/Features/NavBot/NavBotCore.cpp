@@ -335,6 +335,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	// Fix reload stuff because its really janky
 	// Finish auto wewapon stuff
 	// Make a better closest enemy logic
+	// Fix dormant player blacklist not actually running
 
 	if (F::NavBotDanger.EscapeSpawn(pLocal)
 		|| F::NavBotDanger.EscapeProjectiles(pLocal)
@@ -417,11 +418,10 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	int iAreaFlags = -1;
 	if (F::NavEngine.IsNavMeshLoaded())
 	{
-		auto pLocalArea = F::NavEngine.GetLocalNavArea();
-		if (pLocalArea)
+		if (auto pLocalArea = F::NavEngine.GetLocalNavArea())
 		{
-			iInSpawn = pLocalArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_EXIT);
 			iAreaFlags = pLocalArea->m_iTFAttributeFlags;
+			iInSpawn = iAreaFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_EXIT);
 		}
 	}
 	std::wstring sJob = L"None";
