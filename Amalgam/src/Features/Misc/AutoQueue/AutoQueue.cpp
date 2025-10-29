@@ -39,7 +39,7 @@ void CAutoQueue::Run()
 	}
 	else if (bInGameNow && !bIsLoadingMapNow && !m_bNavmeshAbandonTriggered)
 	{
-		const bool bNavMeshUnavailable = F::NavEngine.map && F::NavEngine.map->state == CNavParser::NavState::Unavailable;
+		const bool bNavMeshUnavailable = !F::NavEngine.IsNavMeshLoaded();
 		if (bNavMeshUnavailable)
 		{
 			m_bNavmeshAbandonTriggered = true;
