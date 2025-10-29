@@ -1,6 +1,7 @@
 #include "AutoQueue.h"
 #include "../../Players/PlayerUtils.h"
 #include "../../NavBot/NavEngine/NavEngine.h"
+#include "../Misc.h"
 #ifdef TEXTMODE
 #include "../NamedPipe/NamedPipe.h"
 #endif
@@ -9,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <format>
 
 void CAutoQueue::Run()
 {
@@ -17,6 +19,90 @@ void CAutoQueue::Run()
 	static bool bWasInGame = false;
 	static bool bWasDisconnected = false;
 	static bool bQueuedFromRQif = false;
+
+	const bool bInGameNow = I::EngineClient->IsInGame();
+	const bool bIsLoadingMapNow = I::EngineClient->IsDrawingLoadingImage();
+	const char* pszLevelName = I::EngineClient->GetLevelName();
+	const std::string sLevelName = pszLevelName ? pszLevelName : "";
+
+	if (sLevelName != m_sLastLevelName)
+	{
+		m_sLastLevelName = sLevelName;
+		m_bNavmeshAbandonTriggered = false;
+		m_bAutoDumpedThisMatch = false;
+		m_flAutoDumpStartTime = 0.0f;
+	}
+
+	if (!Vars::Misc::Queueing::AutoAbandonIfNoNavmesh.Value)
+	{
+		m_bNavmeshAbandonTriggered = false;
+	}
+	else if (bInGameNow && !bIsLoadingMapNow && !m_bNavmeshAbandonTriggered)
+	{
+		const bool bNavMeshUnavailable = F::NavEngine.map && F::NavEngine.map->state == CNavParser::NavState::Unavailable;
+		if (bNavMeshUnavailable)
+		{
+			m_bNavmeshAbandonTriggered = true;
+			SDK::Output("AutoQueue", "No navmesh available for current map, abandoning match", { 255, 100, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+			I::TFGCClientSystem->AbandonCurrentMatch();
+			bWasInGame = false;
+			bWasDisconnected = true;
+			flLastQueueTime = 0.0f;
+			bQueuedFromRQif = false;
+			return;
+		}
+	}
+
+	if (Vars::Misc::Queueing::AutoDumpNames.Value && Vars::Misc::Queueing::AutoCasualQueue.Value && !Vars::Misc::Queueing::AutoCommunityQueue.Value)
+	{
+		if (bInGameNow && !bIsLoadingMapNow && !m_bAutoDumpedThisMatch)
+		{
+			const float flDelay = std::max(0, Vars::Misc::Queueing::AutoDumpDelay.Value);
+			const float flCurrentTime = I::EngineClient->Time();
+			if (m_flAutoDumpStartTime <= 0.0f)
+				m_flAutoDumpStartTime = flCurrentTime;
+
+			if ((flCurrentTime - m_flAutoDumpStartTime) >= flDelay)
+			{
+				const auto result = F::Misc.DumpNames(false);
+				if (!result.resourceAvailable || result.candidateCount == 0)
+				{
+					m_flAutoDumpStartTime = flCurrentTime;
+				}
+				else
+				{
+					m_bAutoDumpedThisMatch = true;
+					m_flAutoDumpStartTime = 0.0f;
+
+					if (I::TFGCClientSystem)
+					{
+						const size_t uDuplicateCount = result.skippedSessionDuplicate + result.skippedFileDuplicate;
+						SDK::Output("AutoQueue", std::format("Auto dump complete: {} new names, {} duplicates skipped, {} comma filtered. Abandoning match for requeue.",
+							result.appendedCount,
+							uDuplicateCount,
+							result.skippedComma).c_str(), { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+						I::TFGCClientSystem->AbandonCurrentMatch();
+						bWasInGame = false;
+						bWasDisconnected = true;
+						flLastQueueTime = 0.0f;
+						bQueuedFromRQif = false;
+						bQueuedOnce = false;
+					}
+				}
+			}
+		}
+		else if (!bInGameNow)
+		{
+			m_bAutoDumpedThisMatch = false;
+			m_flAutoDumpStartTime = 0.0f;
+		}
+	}
+	else
+	{
+		m_flAutoDumpStartTime = 0.0f;
+		if (!bInGameNow)
+			m_bAutoDumpedThisMatch = false;
+	}
 
 	// Auto Mann Up queue
 	if (Vars::Misc::Queueing::AutoMannUpQueue.Value)
