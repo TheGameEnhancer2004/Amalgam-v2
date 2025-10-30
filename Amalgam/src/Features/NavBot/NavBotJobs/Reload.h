@@ -7,6 +7,7 @@ public:
 	bool Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	bool RunSafe(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	int GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
+
 	int m_iLastReloadSlot = -1;
 };
 

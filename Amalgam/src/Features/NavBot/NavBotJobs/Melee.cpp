@@ -4,11 +4,6 @@
 
 bool CNavBotMelee::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestEnemy_t tClosestEnemy)
 {
-    static bool bIsVisible = false;
-	auto pEntity = I::ClientEntityList->GetClientEntity(tClosestEnemy.m_iEntIdx);
-	if (!pEntity || pEntity->IsDormant())
-		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::MeleeAttack;
-
 	if (iSlot != SLOT_MELEE || F::NavBotReload.m_iLastReloadSlot != -1)
 	{
 		if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::MeleeAttack)
@@ -16,19 +11,27 @@ bool CNavBotMelee::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestEnem
 		return false;
 	}
 
+	auto pEntity = I::ClientEntityList->GetClientEntity(tClosestEnemy.m_iEntIdx);
+	if (!pEntity || pEntity->IsDormant())
+		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::MeleeAttack;
+
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (pPlayer->IsInvulnerable() && G::SavedDefIndexes[SLOT_MELEE] != Heavy_t_TheHolidayPunch)
+		return false;
+
+	// Too far away
+	if (tClosestEnemy.m_flDist > Vars::Misc::Movement::NavBot::MeleeTargetRange.Value)
 		return false;
 
 	// Too high priority, so don't try
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::MeleeAttack)
 		return false;
 
-	
+	static bool bIsVisible = false;
 	static Timer tVischeckCooldown{};
 	if (tVischeckCooldown.Run(0.2f))
 	{
-		trace_t trace;
+		CGameTrace trace;
 		CTraceFilterHitscan filter{}; filter.pSkip = pLocal;
 		SDK::TraceHull(pLocal->GetShootPos(), pPlayer->GetAbsOrigin(), pLocal->m_vecMins() * 0.3f, pLocal->m_vecMaxs() * 0.3f, MASK_PLAYERSOLID, &filter, &trace);
 		bIsVisible = trace.DidHit() ? trace.m_pEnt && trace.m_pEnt == pPlayer : true;
@@ -48,7 +51,7 @@ bool CNavBotMelee::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestEnem
 		F::NavEngine.m_eCurrentPriority = PriorityListEnum::MeleeAttack;
 		return true;
 	}
-	
+
 	// Don't constantly path, it's slow.
 	// The closer we are, the more we should try to path
 	static Timer tMeleeCooldown{};

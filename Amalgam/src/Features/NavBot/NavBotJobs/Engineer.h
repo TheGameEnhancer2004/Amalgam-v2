@@ -1,6 +1,11 @@
 #pragma once
 #include "../NavBotCore.h"
 
+Enum(EngineerTaskStage, None,
+	 BuildSentry, BuildDispenser,
+	 SmackSentry, SmackDispenser
+)
+
 class CNavBotEngineer
 {
 private:
@@ -20,10 +25,13 @@ public:
 	void RefreshLocalBuildings(CTFPlayer* pLocal);
 	void Reset();
 
-	std::wstring m_sEngineerTask{};
 	Vector m_vCurrentBuildingSpot = {};
 	CObjectSentrygun* m_pMySentryGun;
 	CObjectDispenser* m_pMyDispenser;
+	float m_flDistToSentry = FLT_MAX;
+	float m_flDistToDispenser = FLT_MAX;
+
+	EngineerTaskStageEnum::EngineerTaskStageEnum m_eTaskStage = EngineerTaskStageEnum::None;
 };
 
 ADD_FEATURE(CNavBotEngineer, NavBotEngineer);

@@ -56,8 +56,8 @@ void CAutoQueue::Run()
 
 			if ((flCurrentTime - m_flAutoDumpStartTime) >= flDelay)
 			{
-				const auto result = F::Misc.DumpNames(false);
-				if (!result.resourceAvailable || result.candidateCount == 0)
+				const auto tResult = F::Misc.DumpNames(false);
+				if (!tResult.m_bResourceAvailable || tResult.m_uCandidateCount == 0)
 					m_flAutoDumpStartTime = flCurrentTime;
 				else
 				{
@@ -66,11 +66,11 @@ void CAutoQueue::Run()
 
 					if (I::TFGCClientSystem)
 					{
-						const size_t uDuplicateCount = result.skippedSessionDuplicate + result.skippedFileDuplicate;
+						const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
 						SDK::Output("AutoQueue", std::format("Auto dump complete: {} new names, {} duplicates skipped, {} comma filtered. Abandoning match for requeue.",
-							result.appendedCount,
+							tResult.m_uAppendedCount,
 							uDuplicateCount,
-							result.skippedComma).c_str(), { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+							tResult.m_uSkippedComma).c_str(), { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
 						I::TFGCClientSystem->AbandonCurrentMatch();
 						bWasInGame = false;
 						bWasDisconnected = true;

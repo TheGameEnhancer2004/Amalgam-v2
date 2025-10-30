@@ -1322,7 +1322,7 @@ void CMenu::MenuMisc(int iTab)
 						{
 							FDropdown(Vars::Misc::Movement::NavBot::RechargeDT);
 							PushTransparent(Transparent || !Vars::Misc::Movement::NavBot::RechargeDT.Value);
-							FSlider(Vars::Misc::Movement::NavBot::RechargeDTDelay, FSliderEnum::None);
+								FSlider(Vars::Misc::Movement::NavBot::RechargeDTDelay, FSliderEnum::None);
 							PopTransparent();
 							FDropdown(Vars::Misc::Movement::NavBot::Preferences);
 							FDropdown(Vars::Misc::Movement::NavBot::Blacklist);
@@ -1342,6 +1342,7 @@ void CMenu::MenuMisc(int iTab)
 								FSlider(Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit);
 							}
 							PopTransparent();
+							FSlider(Vars::Misc::Movement::NavBot::MeleeTargetRange);
 						}
 						PopTransparent();
 					}
