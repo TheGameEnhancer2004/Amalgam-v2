@@ -11,6 +11,197 @@
 
 MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
 
+CMisc::NameDumpResult_t CMisc::DumpNames(bool bAnnounce)
+{
+	NameDumpResult_t tResult{};
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
+	{
+		if (bAnnounce)
+			SDK::Output("DisplayNameDumper", "Player resource unavailable");
+		return tResult;
+	}
+	tResult.m_bResourceAvailable = true;
+
+	auto SanitizeName = [](const char* sRaw) -> std::string
+	{
+		if (!sRaw)
+			return {};
+
+		std::string sClean;
+		sClean.reserve(std::strlen(sRaw));
+		for (unsigned char c : std::string_view{sRaw})
+		{
+			if (c < 32 || c > 126)
+				continue;
+			if (c == ',')
+				return {};
+			sClean.push_back(static_cast<char>(c));
+		}
+		return sClean;
+	};
+
+	std::vector<std::string> vNames;
+	std::unordered_set<std::string> setSessionNames;
+	vNames.reserve(I::EngineClient->GetMaxClients());
+	setSessionNames.reserve(I::EngineClient->GetMaxClients());
+
+	const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+	{
+		if (n == iLocalPlayer)
+			continue;
+
+		if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
+			continue;
+
+		tResult.m_uCandidateCount++;
+
+		const char* pszName = pResource->GetName(n);
+		if (!pszName)
+		{
+			tResult.m_uSkippedInvalid++;
+			continue;
+		}
+
+		if (std::strchr(pszName, ','))
+		{
+			tResult.m_uSkippedComma++;
+			continue;
+		}
+
+		std::string sClean = SanitizeName(pszName);
+		if (sClean.empty())
+		{
+			tResult.m_uSkippedInvalid++;
+			continue;
+		}
+
+		if (!setSessionNames.emplace(sClean).second)
+		{
+			tResult.m_uSkippedSessionDuplicate++;
+			continue;
+		}
+
+		vNames.emplace_back(std::move(sClean));
+	}
+
+	if (!tResult.m_uCandidateCount)
+	{
+		if (bAnnounce)
+			SDK::Output("DisplayNameDumper", "No player names found");
+		return tResult;
+	}
+
+	if (vNames.empty())
+	{
+		if (bAnnounce)
+		{
+			const char* pszReason = tResult.m_uSkippedComma ? "All player names contained commas" : "No valid player names to save";
+			SDK::Output("DisplayNameDumper", pszReason);
+		}
+		return tResult;
+	}
+
+	auto sPath = std::filesystem::current_path() / "Amalgam" / "names.txt";
+	std::error_code ec;
+	std::filesystem::create_directories(sPath.parent_path(), ec);
+
+	std::unordered_set<std::string> setExistingNames;
+	setExistingNames.reserve(vNames.size() * 2);
+
+	bool bAppendComma = false;
+	if (std::filesystem::exists(sPath))
+	{
+		std::ifstream input(sPath);
+		if (input)
+		{
+			tResult.m_bFileOpened = true;
+			std::string sToken;
+			while (std::getline(input, sToken, ','))
+			{
+				while (!sToken.empty() && (sToken.back() == '\n' || sToken.back() == '\r'))
+					sToken.pop_back();
+				if (!sToken.empty())
+					setExistingNames.emplace(sToken);
+			}
+
+			input.clear();
+			input.seekg(0, std::ios::end);
+			bAppendComma = input.tellg() > 0;
+		}
+		else if (bAnnounce)
+			SDK::Output("DisplayNameDumper", std::format("Failed to read existing names from {}", sPath.string()).c_str());
+	}
+
+	std::vector<std::string> vNewNames;
+	vNewNames.reserve(vNames.size());
+	for (const auto& sName : vNames)
+	{
+		if (setExistingNames.contains(sName))
+		{
+			tResult.m_uSkippedFileDuplicate++;
+			continue;
+		}
+
+		setExistingNames.emplace(sName);
+		vNewNames.emplace_back(sName);
+	}
+
+	tResult.m_uAppendedCount = vNewNames.size();
+	tResult.m_outputPath = sPath;
+
+	if (vNewNames.empty())
+	{
+		if (bAnnounce)
+		{
+			SDK::Output("DisplayNameDumper", std::format("No new names to save ({} duplicates skipped, {} comma filtered)",
+				tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate,
+				tResult.m_uSkippedComma).c_str());
+		}
+		return tResult;
+	}
+
+	std::ofstream file(sPath, std::ios::app);
+	if (!file)
+	{
+		if (bAnnounce)
+			SDK::Output("DisplayNameDumper", std::format("Failed to open {}", sPath.string()).c_str());
+		return tResult;
+	}
+
+	tResult.m_bFileOpened = true;
+
+	if (bAppendComma)
+		file << ',';
+
+	for (size_t i = 0; i < vNewNames.size(); i++)
+	{
+		if (i)
+			file << ',';
+		file << vNewNames[i];
+	}
+
+	if (!file.good())
+	{
+		if (bAnnounce)
+			SDK::Output("DisplayNameDumper", "Failed to write names");
+		return tResult;
+	}
+	tResult.m_bSuccess = true;
+
+	if (bAnnounce)
+	{
+		SDK::Output("DisplayNameDumper", std::format("Saved {} new names to {} ({} duplicates skipped, {} comma filtered)",
+			tResult.m_uAppendedCount,
+			sPath.string(),
+			tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate,
+			tResult.m_uSkippedComma).c_str());
+	}
+
+	return tResult;
+}
+
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	NoiseSpam(pLocal);
@@ -554,6 +745,34 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;
 		break;
+	case FNV1A::Hash32Const("player_death"):
+	{
+		if (!Vars::Misc::Automation::AutoTaunt.Value)
+			break;
+
+		const auto pLocal = H::Entities.GetLocal();
+		if (!pLocal || !pLocal->IsAlive())
+			break;
+
+		if (pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+			break;
+
+		const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+		const int iAttacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
+		const int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+		if (iAttacker != iLocalPlayer || iAttacker == iVictim)
+			break;
+
+		const int iChance = std::clamp(Vars::Misc::Automation::AutoTauntChance.Value, 0, 100);
+		if (!iChance)
+			break;
+
+		if (SDK::RandomInt(1, 100) > iChance)
+			break;
+
+		I::EngineClient->ClientCmd_Unrestricted("taunt");
+		break;
+	}
 	case FNV1A::Hash32Const("vote_maps_changed"):
 		if (Vars::Misc::Automation::AutoVoteMap.Value)
 		{

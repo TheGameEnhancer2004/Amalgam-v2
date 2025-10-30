@@ -860,6 +860,8 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(AntiAutobalance, "Anti-autobalance", false);
 			CVar(TauntControl, "Taunt control", false);
 			CVar(KartControl, "Kart control", false);
+			CVar(AutoTaunt, "Auto taunt on kill", false);
+			CVar(AutoTauntChance, "Auto taunt chance", 100, SLIDER_CLAMP, 0, 100, 1, "%i%%");
 			CVar(AchievementSpam, "Achievement spam", false);
 			CVar(AutoF2Ignored, "Auto F2 ignored", false);
 			CVar(AutoF1Priority, "Auto F1 priority", false);
@@ -961,6 +963,9 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(FreezeQueue, "Freeze queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
+			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", false);
+			CVar(AutoDumpNames, "Auto dump names", false);
+			CVar(AutoDumpDelay, "Auto dump delay", 15, SLIDER_CLAMP, 0, 120, 1, "%is");
 			CVar(QueueDelay, "Queue delay", 5, SLIDER_MIN, 0, 10, 1, "%im");
 			CVar(RQif, "Requeue if...", false); // Dropdown?
 			CVar(RQplt, "Players LT", 12, SLIDER_MIN, 0, 100, 1, "%i");

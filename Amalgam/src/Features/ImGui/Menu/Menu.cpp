@@ -1215,6 +1215,12 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
 					FToggle(Vars::Misc::Automation::TauntControl, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::AutoTaunt, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Automation::AutoTaunt.Value);
+					{
+						FSlider(Vars::Misc::Automation::AutoTauntChance, FSliderEnum::Right);
+					}
+					PopTransparent();
 					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
 					FDropdown(Vars::Misc::Automation::AutoVotekick, FDropdownEnum::Left);
@@ -1438,6 +1444,17 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
 					FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
+					{
+						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);
+						FToggle(Vars::Misc::Queueing::AutoDumpNames, FToggleEnum::Left);
+						PushTransparent(!Vars::Misc::Queueing::AutoDumpNames.Value);
+						{
+							FSlider(Vars::Misc::Queueing::AutoDumpDelay);
+						}
+						PopTransparent();
+					}
+					PopTransparent();
 					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
 					FToggle(Vars::Misc::Queueing::RQif, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Queueing::RQif.Value);

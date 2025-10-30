@@ -1,5 +1,6 @@
 #pragma once
 #include "../../SDK/SDK.h"
+#include <filesystem>
 
 class CMisc
 {
@@ -59,6 +60,20 @@ private:
 	float m_flBuybotClock = 0.0f;
 
 public:
+	struct NameDumpResult_t
+	{
+		bool m_bResourceAvailable = false;
+		bool m_bFileOpened = false;
+		bool m_bSuccess = false;
+		size_t m_uCandidateCount = 0;
+		size_t m_uSkippedInvalid = 0;
+		size_t m_uSkippedComma = 0;
+		size_t m_uSkippedSessionDuplicate = 0;
+		size_t m_uSkippedFileDuplicate = 0;
+		size_t m_uAppendedCount = 0;
+		std::filesystem::path m_outputPath;
+	};
+
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void RunPost(CTFPlayer* pLocal, CUserCmd* pCmd, bool pSendPacket);
 
@@ -70,6 +85,7 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	void AutoMvmReadyUp();
+	NameDumpResult_t DumpNames(bool bAnnounce = true);
 
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;
