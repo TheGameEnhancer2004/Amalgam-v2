@@ -56,6 +56,7 @@ public:
 
 	// Helper for external checks
 	bool IsNavMeshLoaded() const { return m_pMap && m_pMap->m_eState == NavStateEnum::Active; }
+	std::string GetNavFilePath() const { return m_pMap ? m_pMap->m_sMapName : ""; }
 	void UpdateRespawnRooms() const { if (m_pMap) m_pMap->UpdateRespawnRooms(); }
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
