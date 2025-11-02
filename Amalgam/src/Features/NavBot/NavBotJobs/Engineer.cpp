@@ -37,11 +37,14 @@ bool CNavBotEngineer::NavToSentrySpot()
 
 	// Wait a bit before pathing again
 	if (!tWaitUntilPathSentryTimer.Run(0.3f))
-		return false;
+		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Engineer;
 
 	// Try to nav to our existing sentry spot
 	if (m_pMySentryGun && !m_pMySentryGun->m_bPlacing())
 	{
+		if (m_flDistToSentry <= 100.f)
+			return true;
+
 		// Don't overwrite current nav
 		if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Engineer ||
 			F::NavEngine.NavTo(m_pMySentryGun->GetAbsOrigin(), PriorityListEnum::Engineer))
@@ -55,16 +58,21 @@ bool CNavBotEngineer::NavToSentrySpot()
 	if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Engineer)
 		return false;
 
+	auto uSize = m_vBuildingSpots.size();
+
+	// TODO:
+	// Find a better way to do this random spot logic
+	
 	// Max 10 attempts
-	for (int iAttempts = 0; iAttempts < 10 && iAttempts < m_vBuildingSpots.size(); ++iAttempts)
+	for (int iAttempts = 0; iAttempts < 10 && iAttempts < uSize; ++iAttempts)
 	{
 		// Get a semi-random building spot to still keep distance preferrance
-		auto iRandomOffset = SDK::RandomInt(0, std::min(3, (int)m_vBuildingSpots.size()));
+		auto iRandomOffset = SDK::RandomInt(0, std::min(2, (int)uSize));
 
 		Vector vRandom;
 		// Wrap around
 		if (iAttempts - iRandomOffset < 0)
-			vRandom = m_vBuildingSpots[m_vBuildingSpots.size() + (iAttempts - iRandomOffset)];
+			vRandom = m_vBuildingSpots[uSize + (iAttempts - iRandomOffset)];
 		else
 			vRandom = m_vBuildingSpots[iAttempts - iRandomOffset];
 
@@ -80,6 +88,8 @@ bool CNavBotEngineer::NavToSentrySpot()
 
 bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, bool bDispenser)
 {
+	m_eTaskStage = bDispenser ? EngineerTaskStageEnum::BuildDispenser : EngineerTaskStageEnum::BuildSentry;
+
 	// Blacklist this spot and refresh the building spots
 	if (m_iBuildAttempts >= 15)
 	{
@@ -94,8 +104,7 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	int iRequiredMetal = (bDispenser || G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger) ? 100 : 130;
 	if (pLocal->m_iMetalCount() < iRequiredMetal)
 		return F::NavBotSupplies.GetAmmo(pCmd, pLocal, true);
-
-	m_sEngineerTask = std::format(L"Build {}", bDispenser ? L"dispenser" : L"sentry");
+	
 	static float flPrevYaw = 0.0f;
 	// Try to build! we are close enough
 	if (!m_vCurrentBuildingSpot.IsZero() && m_vCurrentBuildingSpot.DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
@@ -109,14 +118,13 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 		if (tAttemptTimer.Run(0.3f))
 			m_iBuildAttempts++;
 
-		auto pBuilding = bDispenser ? m_pMyDispenser->As<CBaseObject>() : m_pMySentryGun;
 		if (!pLocal->m_bCarryingObject())
 		{
 			static Timer command_timer;
 			if (command_timer.Run(0.1f))
 				I::EngineClient->ClientCmd_Unrestricted(std::format("build {}", bDispenser ? 0 : 2).c_str());
 		}
-		//else if (pBuilding->m_bServerOverridePlacement()) // Can place
+
 		pCmd->buttons |= IN_ATTACK;
 		return true;
 	}
@@ -131,13 +139,11 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 
 bool CNavBotEngineer::SmackBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, CBaseObject* pBuilding)
 {
-	if (!pBuilding)
-		return false;
-
+	m_iBuildAttempts = 0;
 	if (!pLocal->m_iMetalCount())
 		return F::NavBotSupplies.GetAmmo(pCmd, pLocal, true);
 
-	m_sEngineerTask = std::format(L"Smack {}", pBuilding->GetClassID() == ETFClassID::CObjectDispenser ? L"dispenser" : L"sentry");
+	m_eTaskStage = pBuilding->GetClassID() == ETFClassID::CObjectDispenser ? EngineerTaskStageEnum::SmackDispenser : EngineerTaskStageEnum::SmackSentry;
 
 	if (pBuilding->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 100.f && F::BotUtils.m_iCurrentSlot == SLOT_MELEE)
 	{
@@ -222,6 +228,8 @@ void CNavBotEngineer::RefreshLocalBuildings(CTFPlayer* pLocal)
 	{
 		m_pMySentryGun = pLocal->GetObjectOfType(OBJ_SENTRYGUN)->As<CObjectSentrygun>();
 		m_pMyDispenser = pLocal->GetObjectOfType(OBJ_DISPENSER)->As<CObjectDispenser>();
+		m_flDistToSentry = m_pMySentryGun ? m_pMySentryGun->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) : FLT_MAX;
+		m_flDistToDispenser = m_pMyDispenser ? m_pMyDispenser->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) : FLT_MAX;
 	}
 }
 
@@ -229,9 +237,12 @@ void CNavBotEngineer::Reset()
 {
 	m_pMySentryGun = nullptr;
 	m_pMyDispenser = nullptr;
+	m_flDistToSentry = FLT_MAX;
+	m_flDistToDispenser = FLT_MAX;
 	m_iBuildAttempts = 0;
 	m_vBuildingSpots.clear();
 	m_vCurrentBuildingSpot.Zero();
+	m_eTaskStage = EngineerTaskStageEnum::None;
 }
 
 bool CNavBotEngineer::IsEngieMode(CTFPlayer* pLocal)
@@ -245,7 +256,7 @@ bool CNavBotEngineer::Run(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClo
 {
 	if (!IsEngieMode(pLocal))
 	{
-		m_sEngineerTask.clear();
+		m_eTaskStage = EngineerTaskStageEnum::None;
 		return false;
 	}
 
@@ -254,15 +265,12 @@ bool CNavBotEngineer::Run(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClo
 	{
 		if (G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger)
 		{
-
 			// Too far away, destroy it
-			// BUG Ahead, building isnt destroyed lol
 			if (m_pMySentryGun->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) >= 1800.f)
-			{
-				// If we have a valid building
 				I::EngineClient->ClientCmd_Unrestricted("destroy 2");
-			}
+
 			// Return false so we run another task
+			m_eTaskStage = EngineerTaskStageEnum::None;
 			return false;
 		}
 		else
@@ -272,20 +280,22 @@ bool CNavBotEngineer::Run(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEnemy_t tClo
 				return SmackBuilding(pCmd, pLocal, m_pMySentryGun);
 			else
 			{
-				// We put dispenser by sentry
-				if (!m_pMyDispenser)
-					return BuildBuilding(pCmd, pLocal, tClosestEnemy, true);
-				else
+				if (m_pMyDispenser && !m_pMyDispenser->m_bPlacing())
 				{
 					// We already have a dispenser, see if it needs to be smacked
 					if (BuildingNeedsToBeSmacked(m_pMyDispenser))
 						return SmackBuilding(pCmd, pLocal, m_pMyDispenser);
 
 					// Return false so we run another task
+					m_eTaskStage = EngineerTaskStageEnum::None;
 					return false;
 				}
+				else
+				{
+					// We put dispenser by sentry
+					return BuildBuilding(pCmd, pLocal, tClosestEnemy, true);
+				}
 			}
-
 		}
 	}
 	// Try to build a sentry

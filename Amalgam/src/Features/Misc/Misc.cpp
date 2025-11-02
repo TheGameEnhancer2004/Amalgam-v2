@@ -8,27 +8,20 @@
 #include "NamedPipe/NamedPipe.h"
 #endif
 #include <fstream>
-#include <algorithm>
-#include <cstring>
-#include <format>
-#include <filesystem>
-#include <string_view>
-#include <unordered_set>
 
 MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
 
-CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
+CMisc::NameDumpResult_t CMisc::DumpNames(bool bAnnounce)
 {
-	NameDumpResult result{};
+	NameDumpResult_t tResult{};
 	auto pResource = H::Entities.GetResource();
 	if (!pResource)
 	{
 		if (bAnnounce)
 			SDK::Output("DisplayNameDumper", "Player resource unavailable");
-		return result;
+		return tResult;
 	}
-
-	result.resourceAvailable = true;
+	tResult.m_bResourceAvailable = true;
 
 	auto SanitizeName = [](const char* sRaw) -> std::string
 	{
@@ -49,9 +42,9 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 	};
 
 	std::vector<std::string> vNames;
-	std::unordered_set<std::string> sessionNames;
+	std::unordered_set<std::string> setSessionNames;
 	vNames.reserve(I::EngineClient->GetMaxClients());
-	sessionNames.reserve(I::EngineClient->GetMaxClients());
+	setSessionNames.reserve(I::EngineClient->GetMaxClients());
 
 	const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
 	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
@@ -62,60 +55,60 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 		if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
 			continue;
 
-		result.candidateCount++;
+		tResult.m_uCandidateCount++;
 
-		const char* sName = pResource->GetName(n);
-		if (!sName)
+		const char* pszName = pResource->GetName(n);
+		if (!pszName)
 		{
-			result.skippedInvalid++;
+			tResult.m_uSkippedInvalid++;
 			continue;
 		}
 
-		if (std::strchr(sName, ','))
+		if (std::strchr(pszName, ','))
 		{
-			result.skippedComma++;
+			tResult.m_uSkippedComma++;
 			continue;
 		}
 
-		std::string sClean = SanitizeName(sName);
+		std::string sClean = SanitizeName(pszName);
 		if (sClean.empty())
 		{
-			result.skippedInvalid++;
+			tResult.m_uSkippedInvalid++;
 			continue;
 		}
 
-		if (!sessionNames.emplace(sClean).second)
+		if (!setSessionNames.emplace(sClean).second)
 		{
-			result.skippedSessionDuplicate++;
+			tResult.m_uSkippedSessionDuplicate++;
 			continue;
 		}
 
 		vNames.emplace_back(std::move(sClean));
 	}
 
-	if (!result.candidateCount)
+	if (!tResult.m_uCandidateCount)
 	{
 		if (bAnnounce)
 			SDK::Output("DisplayNameDumper", "No player names found");
-		return result;
+		return tResult;
 	}
 
 	if (vNames.empty())
 	{
 		if (bAnnounce)
 		{
-			const char* pszReason = result.skippedComma ? "All player names contained commas" : "No valid player names to save";
+			const char* pszReason = tResult.m_uSkippedComma ? "All player names contained commas" : "No valid player names to save";
 			SDK::Output("DisplayNameDumper", pszReason);
 		}
-		return result;
+		return tResult;
 	}
 
 	auto sPath = std::filesystem::current_path() / "Amalgam" / "names.txt";
 	std::error_code ec;
 	std::filesystem::create_directories(sPath.parent_path(), ec);
 
-	std::unordered_set<std::string> existingNames;
-	existingNames.reserve(vNames.size() * 2);
+	std::unordered_set<std::string> setExistingNames;
+	setExistingNames.reserve(vNames.size() * 2);
 
 	bool bAppendComma = false;
 	if (std::filesystem::exists(sPath))
@@ -123,14 +116,14 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 		std::ifstream input(sPath);
 		if (input)
 		{
-			result.fileOpened = true;
-			std::string token;
-			while (std::getline(input, token, ','))
+			tResult.m_bFileOpened = true;
+			std::string sToken;
+			while (std::getline(input, sToken, ','))
 			{
-				while (!token.empty() && (token.back() == '\n' || token.back() == '\r'))
-					token.pop_back();
-				if (!token.empty())
-					existingNames.emplace(token);
+				while (!sToken.empty() && (sToken.back() == '\n' || sToken.back() == '\r'))
+					sToken.pop_back();
+				if (!sToken.empty())
+					setExistingNames.emplace(sToken);
 			}
 
 			input.clear();
@@ -138,37 +131,35 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 			bAppendComma = input.tellg() > 0;
 		}
 		else if (bAnnounce)
-		{
 			SDK::Output("DisplayNameDumper", std::format("Failed to read existing names from {}", sPath.string()).c_str());
-		}
 	}
 
 	std::vector<std::string> vNewNames;
 	vNewNames.reserve(vNames.size());
-	for (const auto& name : vNames)
+	for (const auto& sName : vNames)
 	{
-		if (existingNames.contains(name))
+		if (setExistingNames.contains(sName))
 		{
-			result.skippedFileDuplicate++;
+			tResult.m_uSkippedFileDuplicate++;
 			continue;
 		}
 
-		existingNames.emplace(name);
-		vNewNames.emplace_back(name);
+		setExistingNames.emplace(sName);
+		vNewNames.emplace_back(sName);
 	}
 
-	result.appendedCount = vNewNames.size();
-	result.outputPath = sPath;
+	tResult.m_uAppendedCount = vNewNames.size();
+	tResult.m_outputPath = sPath;
 
 	if (vNewNames.empty())
 	{
 		if (bAnnounce)
 		{
 			SDK::Output("DisplayNameDumper", std::format("No new names to save ({} duplicates skipped, {} comma filtered)",
-				result.skippedSessionDuplicate + result.skippedFileDuplicate,
-				result.skippedComma).c_str());
+				tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate,
+				tResult.m_uSkippedComma).c_str());
 		}
-		return result;
+		return tResult;
 	}
 
 	std::ofstream file(sPath, std::ios::app);
@@ -176,10 +167,10 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 	{
 		if (bAnnounce)
 			SDK::Output("DisplayNameDumper", std::format("Failed to open {}", sPath.string()).c_str());
-		return result;
+		return tResult;
 	}
 
-	result.fileOpened = true;
+	tResult.m_bFileOpened = true;
 
 	if (bAppendComma)
 		file << ',';
@@ -195,20 +186,20 @@ CMisc::NameDumpResult CMisc::DumpNames(bool bAnnounce)
 	{
 		if (bAnnounce)
 			SDK::Output("DisplayNameDumper", "Failed to write names");
-		return result;
+		return tResult;
 	}
+	tResult.m_bSuccess = true;
 
-	result.success = true;
 	if (bAnnounce)
 	{
 		SDK::Output("DisplayNameDumper", std::format("Saved {} new names to {} ({} duplicates skipped, {} comma filtered)",
-			result.appendedCount,
+			tResult.m_uAppendedCount,
 			sPath.string(),
-			result.skippedSessionDuplicate + result.skippedFileDuplicate,
-			result.skippedComma).c_str());
+			tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate,
+			tResult.m_uSkippedComma).c_str());
 	}
 
-	return result;
+	return tResult;
 }
 
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)

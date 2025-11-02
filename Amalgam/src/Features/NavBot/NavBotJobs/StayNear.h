@@ -10,8 +10,8 @@ private:
 public:
 	bool Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	
-	std::wstring m_sFollowTargetName = {};
 	int m_iStayNearTargetIdx = -1;
+	std::wstring m_sFollowTargetName = {};
 };
 
 ADD_FEATURE(CNavBotStayNear, NavBotStayNear);

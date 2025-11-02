@@ -31,7 +31,7 @@ class CNavEngine
 private:
 	std::unique_ptr<CMap> m_pMap;
 	std::vector<Crumb_t> m_vCrumbs;
-	std::unique_ptr<CNavArea> m_pLocalArea;
+	CNavArea* m_pLocalArea;
 
 	Timer m_tTimeSpentOnCrumbTimer = {};
 	Timer m_tInactivityTimer = {};
@@ -56,6 +56,7 @@ public:
 
 	// Helper for external checks
 	bool IsNavMeshLoaded() const { return m_pMap && m_pMap->m_eState == NavStateEnum::Active; }
+	std::string GetNavFilePath() const { return m_pMap ? m_pMap->m_sMapName : ""; }
 	void UpdateRespawnRooms() const { if (m_pMap) m_pMap->UpdateRespawnRooms(); }
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
@@ -110,7 +111,8 @@ public:
 	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIsRepath = true);
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
-	CNavArea* GetLocalNavArea() const { return m_pLocalArea.get(); }
+
+	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavArea* GetLocalNavArea(const Vector& vLocalOrigin);
 
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);

@@ -5,8 +5,8 @@ class CNavBotSupplies
 {
 private:
 	std::vector<std::pair<bool, Vector>> m_vCachedHealthOrigins;
-	std::unordered_set<int> m_sCachedHealthIndexes;
 	std::vector<std::pair<bool, Vector>> m_vCachedAmmoOrigins;
+	std::unordered_set<int> m_sCachedHealthIndexes;
 	std::unordered_set<int> m_sCachedAmmoIndexes;
 
 	// Get entities of given itemtypes (Used for health/ammo)

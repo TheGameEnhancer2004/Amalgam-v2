@@ -128,7 +128,7 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTargetBuilding(CTFPlayer* pL
 
 bool CBotUtils::GetDormantOrigin(int iIndex, Vector& vOut)
 {
-	if (!iIndex)
+	if (iIndex <= 0)
 		return false;
 
 	auto pEntity = I::ClientEntityList->GetClientEntity(iIndex)->As<CBaseEntity>();

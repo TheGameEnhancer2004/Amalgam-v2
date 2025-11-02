@@ -2,8 +2,6 @@
 #include "../../../SDK/SDK.h"
 #include "../../../SDK/Definitions/Steam/ISteamMatchmaking.h"
 #include "../../../SDK/Definitions/Steam/MatchmakingTypes.h"
-#include <vector>
-#include <string>
 
 class gameserveritem_t;
 

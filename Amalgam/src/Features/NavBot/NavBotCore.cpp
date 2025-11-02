@@ -184,20 +184,34 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 	// Special case for engineer bots
 	if (F::NavBotEngineer.IsEngieMode(pLocal))
 	{
-		if (((F::NavBotEngineer.m_pMySentryGun && !F::NavBotEngineer.m_pMySentryGun->m_bPlacing() &&
-			F::NavBotEngineer.m_pMySentryGun->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 300.f) ||
-			(F::NavBotEngineer.m_pMyDispenser && !F::NavBotEngineer.m_pMyDispenser->m_bPlacing() &&
-			F::NavBotEngineer.m_pMyDispenser->GetAbsOrigin().DistTo(pLocal->GetAbsOrigin()) <= 500.f)) ||
-			(!F::NavBotEngineer.m_vCurrentBuildingSpot.IsZero() && F::NavBotEngineer.m_vCurrentBuildingSpot.DistTo(pLocal->GetAbsOrigin()) <= 500.f))
+		bool bSwitch = false;
+		switch (F::NavBotEngineer.m_eTaskStage)
+		{
+		// We are currently building something (we dont really need to hold the melee weapon)
+		case EngineerTaskStageEnum::BuildSentry:
+		case EngineerTaskStageEnum::BuildDispenser:
+			bSwitch = F::NavBotEngineer.m_vCurrentBuildingSpot.DistTo(pLocal->GetAbsOrigin()) <= 500.f;
+			break;
+		// We are currently upgrading/repairing something
+		case EngineerTaskStageEnum::SmackSentry:
+			bSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
+			break;
+		case EngineerTaskStageEnum::SmackDispenser:
+			bSwitch = F::NavBotEngineer.m_flDistToDispenser <= 500.f;
+			break;
+		default:
+			break;
+		}
+
+		if (bSwitch)
 		{
 			if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
 				F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
-		}
 
-		// Dont interrupt building process
-		if ((F::NavBotEngineer.m_pMySentryGun && F::NavBotEngineer.m_pMySentryGun->m_bPlacing()) ||
-			(F::NavBotEngineer.m_pMyDispenser && F::NavBotEngineer.m_pMyDispenser->m_bPlacing()))
-			return;
+			// Dont interrupt building process
+			if (bSwitch)
+				return;
+		}
 	}
 
 	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
@@ -455,7 +469,26 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		sJob = L"Melee";
 		break;
 	case PriorityListEnum::Engineer:
-		sJob = std::format(L"Engineer ({})", F::NavBotEngineer.m_sEngineerTask.data());
+		sJob = L"Engineer (";
+		switch (F::NavBotEngineer.m_eTaskStage)
+		{
+		case EngineerTaskStageEnum::BuildSentry:
+			sJob += L"Build sentry";
+			break;
+		case EngineerTaskStageEnum::BuildDispenser:
+			sJob += L"Build dispenser";
+			break;
+		case EngineerTaskStageEnum::SmackSentry:
+			sJob += L"Smack sentry";
+			break;
+		case EngineerTaskStageEnum::SmackDispenser:
+			sJob += L"Smack dispenser";
+			break;
+		default:
+			sJob += L"None";
+			break;
+		}
+		sJob += L')';
 		break;
 	case PriorityListEnum::GetHealth:
 		sJob = L"Get health";

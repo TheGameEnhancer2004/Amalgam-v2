@@ -60,18 +60,18 @@ private:
 	float m_flBuybotClock = 0.0f;
 
 public:
-	struct NameDumpResult
+	struct NameDumpResult_t
 	{
-		bool resourceAvailable = false;
-		bool fileOpened = false;
-		bool success = false;
-		size_t candidateCount = 0;
-		size_t skippedInvalid = 0;
-		size_t skippedComma = 0;
-		size_t skippedSessionDuplicate = 0;
-		size_t skippedFileDuplicate = 0;
-		size_t appendedCount = 0;
-		std::filesystem::path outputPath;
+		bool m_bResourceAvailable = false;
+		bool m_bFileOpened = false;
+		bool m_bSuccess = false;
+		size_t m_uCandidateCount = 0;
+		size_t m_uSkippedInvalid = 0;
+		size_t m_uSkippedComma = 0;
+		size_t m_uSkippedSessionDuplicate = 0;
+		size_t m_uSkippedFileDuplicate = 0;
+		size_t m_uAppendedCount = 0;
+		std::filesystem::path m_outputPath;
 	};
 
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);
@@ -85,7 +85,7 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	void AutoMvmReadyUp();
-	NameDumpResult DumpNames(bool bAnnounce = true);
+	NameDumpResult_t DumpNames(bool bAnnounce = true);
 
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;

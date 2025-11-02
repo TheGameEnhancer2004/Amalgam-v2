@@ -5,11 +5,11 @@
 class CNavBotCapture
 {
 private:
+	Timer m_tCaptureClaimRefresh{};
+	std::optional<int> m_iCurrentCapturePointIdx;
 	std::optional<Vector> m_vCurrentCaptureSpot;
 	std::optional<Vector> m_vCurrentCaptureCenter;
-	std::optional<int> m_iCurrentCapturePointIdx;
 	std::optional<Vector> m_vLastClaimedCaptureSpot;
-	Timer m_tCaptureClaimRefresh{};
 
 	// Overwrite to return true for payload carts as an example
 	bool m_bOverwriteCapture = false;
