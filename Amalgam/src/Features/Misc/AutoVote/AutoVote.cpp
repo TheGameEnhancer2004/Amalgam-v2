@@ -30,14 +30,20 @@ void CAutoVote::UserMessage(bf_read& msgData)
 	}
 #endif
 
-	if (Vars::Misc::Automation::AutoF2Ignored.Value
-		&& (F::PlayerUtils.IsIgnored(iTarget)
-		|| H::Entities.IsFriend(iTarget)
-		|| H::Entities.InParty(iTarget)))
-	{
-		I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
-		return;
-	}
+if (F::PlayerUtils.IsIgnored(iCaller))
+{
+    I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
+    return;
+}
+
+if (Vars::Misc::Automation::AutoF2Ignored.Value
+    && (F::PlayerUtils.IsIgnored(iTarget)
+    || H::Entities.IsFriend(iTarget)
+    || H::Entities.InParty(iTarget)))
+{
+    I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
+    return;
+}
 
 
 	if (Vars::Misc::Automation::AutoF1Priority.Value && F::PlayerUtils.IsPrioritized(iTarget)
