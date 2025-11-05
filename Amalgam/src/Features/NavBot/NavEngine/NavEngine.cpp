@@ -3,6 +3,7 @@
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
 #include "../../FollowBot/FollowBot.h"
+#include <limits>
 
 bool CNavEngine::IsSetupTime()
 {
@@ -119,9 +120,20 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		{
 			auto pNextArea = reinterpret_cast<CNavArea*>(vPath.at(i + 1));
 
-			auto tPoints = m_pMap->DeterminePoints(pArea, pNextArea);
-			auto tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
-			tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+			NavPoints_t tPoints{};
+			DropdownHint_t tDropdown{};
+			const std::pair<CNavArea*, CNavArea*> tKey(pArea, pNextArea);
+			if (auto itCache = m_pMap->m_mVischeckCache.find(tKey); itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_bPassable)
+			{
+				tPoints = itCache->second.m_tPoints;
+				tDropdown = itCache->second.m_tDropdown;
+			}
+			else
+			{
+				tPoints = m_pMap->DeterminePoints(pArea, pNextArea);
+				tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+				tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+			}
 
 			Crumb_t tStartCrumb = {};
 			tStartCrumb.m_pNavArea = pArea;
@@ -209,13 +221,23 @@ void CNavEngine::VischeckPath()
 		if (!IsPlayerPassableNavigation(vCurrentCenter, vNextCenter))
 		{
 			// Mark as invalid for a while
-			m_pMap->m_mVischeckCache[tKey] = CachedConnection_t{ iVischeckCacheExpireTimestamp, VischeckStateEnum::NotVisible };
+			CachedConnection_t tEntry{};
+			tEntry.m_iExpireTick = iVischeckCacheExpireTimestamp;
+			tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
+			tEntry.m_bPassable = false;
+			tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+			m_pMap->m_mVischeckCache[tKey] = tEntry;
 			AbandonPath();
 			break;
 		}
 		// Else we can update the cache (if not marked bad before this)
 		else if (!m_pMap->m_mVischeckCache.count(tKey) || m_pMap->m_mVischeckCache[tKey].m_eVischeckState != VischeckStateEnum::NotVisible)
-			m_pMap->m_mVischeckCache[tKey] = CachedConnection_t{ iVischeckCacheExpireTimestamp, VischeckStateEnum::Visible };
+		{
+			CachedConnection_t& tEntry = m_pMap->m_mVischeckCache[tKey];
+			tEntry.m_iExpireTick = iVischeckCacheExpireTimestamp;
+			tEntry.m_eVischeckState = VischeckStateEnum::Visible;
+			tEntry.m_bPassable = true;
+		}
 	}
 }
 
@@ -299,7 +321,9 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 				SDK::Output("CNavEngine", std::format("Stuck for too long, blacklisting the node (expires on tick: {})", iBlacklistExpireTick).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			m_pMap->m_mVischeckCache[tKey].m_iExpireTick = iBlacklistExpireTick;
 			m_pMap->m_mVischeckCache[tKey].m_eVischeckState = VischeckStateEnum::NotChecked;
+			m_pMap->m_mVischeckCache[tKey].m_bPassable = false;
 			AbandonPath();
+			return;
 		}
 	}
 }
@@ -334,7 +358,6 @@ bool CNavEngine::IsReady(bool bRoundCheck)
 		tRestartTimer.Update();
 		return false;
 	}
-
 	// Too early, the engine might not fully restart yet.
 	if (!tRestartTimer.Check(0.5f))
 		return false;

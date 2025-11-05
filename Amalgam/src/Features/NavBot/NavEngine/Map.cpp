@@ -1,59 +1,146 @@
 #include "NavEngine.h"
 #include "../BotUtils.h"
+#include <cmath>
 
 void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent)
 {
-	CNavArea& tArea = *reinterpret_cast<CNavArea*>(pArea);
-	for (NavConnect_t& tConnection : tArea.m_vConnections)
+	if (!pArea)
+		return;
+
+	CNavArea* pCurrentArea = reinterpret_cast<CNavArea*>(pArea);
+	const int iNow = I::GlobalVars->tickcount;
+	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+
+	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
 	{
-		// An area being entered twice means it is blacklisted from entry entirely
-		auto tConnectionKey = std::pair<CNavArea*, CNavArea*>(tConnection.m_pArea, tConnection.m_pArea);
-
-		// Entered and marked bad?
-		if (m_mVischeckCache.count(tConnectionKey) && m_mVischeckCache[tConnectionKey].m_eVischeckState == VischeckStateEnum::NotVisible)
+		CNavArea* pNextArea = tConnection.m_pArea;
+		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
-		// If the extern blacklist is running, ensure we don't try to use a bad area
-		if (!m_bFreeBlacklistBlocked && std::any_of(m_mFreeBlacklist.begin(), m_mFreeBlacklist.end(), [&](const auto& entry) { return entry.first == tConnection.m_pArea; }))
-			continue;
+		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
+		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+		{
+			if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
+				(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+				continue;
+		}
 
-		auto tPoints = DeterminePoints(&tArea, tConnection.m_pArea);
-		const auto tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+		float flBlacklistPenalty = 0.f;
+		if (!m_bFreeBlacklistBlocked)
+		{
+			if (auto itBlacklist = m_mFreeBlacklist.find(pNextArea); itBlacklist != m_mFreeBlacklist.end())
+			{
+				flBlacklistPenalty = GetBlacklistPenalty(itBlacklist->second);
+				if (!std::isfinite(flBlacklistPenalty))
+					continue;
+			}
+		}
+
+	const auto tKey = std::pair<CNavArea*, CNavArea*>(pCurrentArea, pNextArea);
+	CachedConnection_t* pCachedEntry = nullptr;
+	if (auto itCache = m_mVischeckCache.find(tKey); itCache != m_mVischeckCache.end() &&
+		(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
+		pCachedEntry = &itCache->second;
+
+	NavPoints_t tPoints{};
+	DropdownHint_t tDropdown{};
+	float flBaseCost = std::numeric_limits<float>::max();
+	bool bPassable = false;
+
+	if (pCachedEntry && pCachedEntry->m_eVischeckState == VischeckStateEnum::Visible && pCachedEntry->m_bPassable)
+	{
+		tPoints = pCachedEntry->m_tPoints;
+		tDropdown = pCachedEntry->m_tDropdown;
+		flBaseCost = pCachedEntry->m_flCachedCost;
+		bPassable = true;
+	}
+	else
+	{
+		tPoints = DeterminePoints(pCurrentArea, pNextArea);
+		tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
 		tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
-		float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
-
-		// Too high for us to jump!
+		const float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
 		if (flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
-			continue;
-
-		tPoints.m_vCurrent.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		tPoints.m_vCenter.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		tPoints.m_vNext.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-		const auto tKey = std::pair<CNavArea*, CNavArea*>(&tArea, tConnection.m_pArea);
-		if (m_mVischeckCache.count(tKey))
 		{
-			if (m_mVischeckCache[tKey].m_eVischeckState)
-			{
-				const float cost = tConnection.m_pArea->m_vCenter.DistTo(tArea.m_vCenter);
-				pAdjacent->push_back(micropather::StateCost{ reinterpret_cast<void*>(tConnection.m_pArea), cost });
-			}
+			CachedConnection_t& tEntry = m_mVischeckCache[tKey];
+			tEntry.m_iExpireTick = iCacheExpiry;
+			tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
+			tEntry.m_bPassable = false;
+			tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+			continue;
+		}
+
+		Vector vStart = tPoints.m_vCurrent;
+		Vector vMid = tPoints.m_vCenter;
+		Vector vEnd = tPoints.m_vNext;
+		vStart.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+		vMid.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+		vEnd.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+
+		if (F::NavEngine.IsPlayerPassableNavigation(vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(vMid, vEnd))
+		{
+			bPassable = true;
+			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+
+			CachedConnection_t& tEntry = m_mVischeckCache[tKey];
+			tEntry.m_iExpireTick = iCacheExpiry;
+			tEntry.m_eVischeckState = VischeckStateEnum::Visible;
+			tEntry.m_bPassable = true;
+			tEntry.m_tPoints = tPoints;
+			tEntry.m_tDropdown = tDropdown;
+			tEntry.m_flCachedCost = flBaseCost;
 		}
 		else
 		{
-			// Check if there is direct line of sight
-			if (F::NavEngine.IsPlayerPassableNavigation(tPoints.m_vCurrent, tPoints.m_vCenter) &&
-				F::NavEngine.IsPlayerPassableNavigation(tPoints.m_vCenter, tPoints.m_vNext))
-			{
-				m_mVischeckCache[tKey] = CachedConnection_t{ TICKCOUNT_TIMESTAMP(60), VischeckStateEnum::Visible };
-
-				const float flCost = tPoints.m_vNext.DistTo(tPoints.m_vCurrent);
-				pAdjacent->push_back(micropather::StateCost{ reinterpret_cast<void*>(tConnection.m_pArea), flCost });
-			}
-			else
-				m_mVischeckCache[tKey] = CachedConnection_t{ TICKCOUNT_TIMESTAMP(60), VischeckStateEnum::NotVisible };
+			CachedConnection_t& tEntry = m_mVischeckCache[tKey];
+			tEntry.m_iExpireTick = iCacheExpiry;
+			tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
+			tEntry.m_bPassable = false;
+			tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+			continue;
 		}
+	}
+
+	if (!bPassable)
+		continue;
+
+	if (!std::isfinite(flBaseCost) || flBaseCost <= 0.f)
+	{
+		flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+		if (pCachedEntry)
+		{
+			pCachedEntry->m_flCachedCost = flBaseCost;
+			pCachedEntry->m_tPoints = tPoints;
+			pCachedEntry->m_tDropdown = tDropdown;
+		}
+	}
+
+	float flFinalCost = flBaseCost;
+	if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
+		flFinalCost += flBlacklistPenalty;
+
+	if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
+	{
+		if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
+		{
+			float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
+			flFinalCost += flStuckPenalty;
+		}
+	}
+
+	if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)
+		continue;
+
+	pAdjacent->push_back({ reinterpret_cast<void*>(pNextArea), flFinalCost });
+	if (auto itCache = m_mVischeckCache.find(tKey); itCache != m_mVischeckCache.end())
+	{
+		if (itCache->second.m_bPassable)
+		{
+			itCache->second.m_flCachedCost = flBaseCost;
+			itCache->second.m_iExpireTick = iCacheExpiry;
+		}
+	}
 	}
 }
 
@@ -176,6 +263,194 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
 	return NavPoints_t(vCurrentCenter, vClosest, vCenterNext, vNextCenter);
 }
 
+float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const
+{
+	auto HorizontalDistance = [](const Vector& a, const Vector& b) -> float
+	{
+		Vector vDelta = b - a;
+		Vector vFlat = vDelta;
+		vFlat.z = 0.f;
+		float flLen = vFlat.Length();
+		return flLen > 0.f ? flLen : 0.f;
+	};
+
+	float flForwardDistance = std::max(HorizontalDistance(tPoints.m_vCurrent, tPoints.m_vNext), 1.f);
+	float flDeviationStart = HorizontalDistance(tPoints.m_vCurrent, tPoints.m_vCenter);
+	float flDeviationEnd = HorizontalDistance(tPoints.m_vCenter, tPoints.m_vNext);
+	float flHeightDiff = tPoints.m_vNext.z - tPoints.m_vCurrent.z;
+
+	float flCost = flForwardDistance;
+	flCost += flDeviationStart * 0.3f;
+	flCost += flDeviationEnd * 0.2f;
+
+	if (flHeightDiff > 0.f)
+		flCost += flHeightDiff * 1.8f;
+	else if (flHeightDiff < -8.f)
+		flCost += std::abs(flHeightDiff) * 0.9f;
+
+	if (tDropdown.m_bRequiresDrop)
+	{
+		flCost += tDropdown.m_flDropHeight * 2.2f;
+		flCost += tDropdown.m_flApproachDistance * 0.45f;
+	}
+	else if (tDropdown.m_flApproachDistance > 0.f)
+		flCost += tDropdown.m_flApproachDistance * 0.25f;
+
+	Vector vForward = tPoints.m_vCenter - tPoints.m_vCurrent;
+	Vector vForwardNext = tPoints.m_vNext - tPoints.m_vCenter;
+	vForward.z = 0.f;
+	vForwardNext.z = 0.f;
+	float flLen1 = vForward.Length();
+	float flLen2 = vForwardNext.Length();
+	if (flLen1 > 1.f && flLen2 > 1.f)
+	{
+		vForward /= flLen1;
+		vForwardNext /= flLen2;
+		float flDot = std::clamp(vForward.Dot(vForwardNext), -1.f, 1.f);
+		float flTurnPenalty = (1.f - flDot) * 30.f;
+		flCost += flTurnPenalty;
+	}
+
+	Vector vAreaExtent = pNextArea->m_vSeCorner - pNextArea->m_vNwCorner;
+	vAreaExtent.z = 0.f;
+	float flAreaSize = vAreaExtent.Length();
+	if (flAreaSize > 0.f)
+		flCost -= std::clamp(flAreaSize * 0.01f, 0.f, 12.f);
+
+	if (pNextArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
+		flCost += 900.f;
+
+	return std::max(flCost, 1.f);
+}
+
+float CMap::GetBlacklistPenalty(const BlacklistReason_t& tReason) const
+{
+	switch (tReason.m_eValue)
+	{
+	case BlacklistReasonEnum::Sentry:
+		return std::numeric_limits<float>::infinity();
+	case BlacklistReasonEnum::EnemyInvuln:
+		return 600.f;
+	case BlacklistReasonEnum::Sticky:
+		return 350.f;
+	case BlacklistReasonEnum::SentryMedium:
+		return 220.f;
+	case BlacklistReasonEnum::SentryLow:
+		return 120.f;
+	case BlacklistReasonEnum::EnemyDormant:
+		return 90.f;
+	case BlacklistReasonEnum::EnemyNormal:
+		return 70.f;
+	case BlacklistReasonEnum::BadBuildSpot:
+		return 60.f;
+	default:
+		return 0.f;
+	}
+}
+
+bool CMap::ShouldOverrideBlacklist(const BlacklistReason_t& tCurrent, const BlacklistReason_t& tIncoming) const
+{
+	if (tIncoming.m_eValue == tCurrent.m_eValue)
+		return true;
+
+	const float flCurrent = GetBlacklistPenalty(tCurrent);
+	const float flIncoming = GetBlacklistPenalty(tIncoming);
+
+	if (!std::isfinite(flIncoming))
+		return true;
+	if (!std::isfinite(flCurrent))
+		return false;
+
+	return flIncoming >= flCurrent;
+}
+
+void CMap::CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas)
+{
+	vOutAreas.clear();
+
+	CNavArea* pSeedArea = FindClosestNavArea(vOrigin, false);
+	if (!pSeedArea)
+		return;
+
+	const float flRadiusSqr = flRadius * flRadius;
+	const float flExpansionLimit = flRadiusSqr * 4.f;
+
+	std::queue<std::pair<CNavArea*, float>> qAreas;
+	std::unordered_set<CNavArea*> setVisited;
+
+	float flSeedDist = (pSeedArea->m_vCenter - vOrigin).LengthSqr();
+	qAreas.emplace(pSeedArea, flSeedDist);
+	setVisited.insert(pSeedArea);
+
+	while (!qAreas.empty())
+	{
+		auto[tArea, flDist] = qAreas.front();
+		qAreas.pop();
+
+		if (flDist <= flRadiusSqr)
+			vOutAreas.push_back(tArea);
+
+		if (flDist > flExpansionLimit)
+			continue;
+
+		for (auto& tConnection : tArea->m_vConnections)
+		{
+			CNavArea* pNextArea = tConnection.m_pArea;
+			if (!pNextArea)
+				continue;
+
+			float flNextDist = (pNextArea->m_vCenter - vOrigin).LengthSqr();
+			if (flNextDist > flExpansionLimit)
+				continue;
+
+			if (setVisited.insert(pNextArea).second)
+				qAreas.emplace(pNextArea, flNextDist);
+		}
+	}
+
+	if (vOutAreas.empty())
+		vOutAreas.push_back(pSeedArea);
+}
+
+void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const BlacklistReason_t& tReason, unsigned int nMask, bool bRequireLOS)
+{
+	std::vector<CNavArea*> vCandidates;
+	CollectAreasAround(vOrigin, flRadius + HALF_PLAYER_WIDTH, vCandidates);
+	if (vCandidates.empty())
+		return;
+
+	const float flRadiusSqr = flRadius * flRadius;
+
+	for (auto* pArea : vCandidates)
+	{
+		if (!pArea)
+			continue;
+
+		Vector vAreaPoint = pArea->m_vCenter;
+		vAreaPoint.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+		if (vOrigin.DistToSqr(vAreaPoint) > flRadiusSqr)
+			continue;
+
+		if (bRequireLOS && !F::NavEngine.IsVectorVisibleNavigation(vOrigin, vAreaPoint, nMask))
+			continue;
+
+		auto itEntry = m_mFreeBlacklist.find(pArea);
+		if (itEntry != m_mFreeBlacklist.end())
+		{
+			if (itEntry->second.m_eValue == tReason.m_eValue)
+			{
+				itEntry->second.m_iTime = std::max(itEntry->second.m_iTime, tReason.m_iTime);
+				continue;
+			}
+
+			if (!ShouldOverrideBlacklist(itEntry->second, tReason))
+				continue;
+		}
+
+		m_mFreeBlacklist[pArea] = tReason;
+	}
+}
+
 CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 {
 	float flOverallBestDist = FLT_MAX, flBestDist = FLT_MAX;
@@ -234,6 +509,7 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 	F::NavEngine.ClearFreeBlacklist(BlacklistReason_t(BlacklistReasonEnum::EnemyInvuln));
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Players)
 	{
+		constexpr float flInvulnerableRadius = 1000.0f;
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
 			if (!pEntity->IsPlayer())
@@ -243,34 +519,24 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 			if (!pPlayer->IsAlive())
 				continue;
 
-			// Skip vulnerable players or invulnerable too if we have holiday punch equipped
 			if (!pPlayer->IsInvulnerable() || (pLocal->m_iClass() == TF_CLASS_HEAVY && G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch))
 				continue;
 
-			// Get origin of the player
 			Vector vPlayerOrigin;
 			if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), vPlayerOrigin))
 				continue;
 
 			vPlayerOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-			for (auto& tArea : m_navfile.m_vAreas)
-			{
-				Vector vArea = tArea.m_vCenter;
-				vArea.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-				// Check if player is close to the area and can potentially hurt us
-				float flDistSqr = vPlayerOrigin.DistToSqr(vArea);
-				if (flDistSqr > pow(1000.0f, 2) || !F::NavEngine.IsVectorVisibleNavigation(vPlayerOrigin, vArea, MASK_SHOT))
-					continue;
-
-				m_mFreeBlacklist[&tArea] = BlacklistReasonEnum::EnemyInvuln;
-			}
+			ApplyBlacklistAround(vPlayerOrigin, flInvulnerableRadius, BlacklistReason_t(BlacklistReasonEnum::EnemyInvuln), MASK_SHOT, true);
 		}
 	}
 
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Sentries)
 	{
+		constexpr float flHighDangerRange = 900.0f;
+		constexpr float flMediumDangerRange = 1050.0f;
+		constexpr float flLowDangerRange = 1200.0f;
+
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 		{
 			if (!pEntity->IsBuilding())
@@ -281,12 +547,9 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 				continue;
 
 			auto pSentry = pBuilding->As<CObjectSentrygun>();
-
-			// Should we even ignore the sentry?
 			if (pSentry->m_iState() == SENTRY_STATE_INACTIVE)
 				continue;
 
-			// Soldier/Heavy do not care about Level 1 or mini sentries
 			bool bStrongClass = pLocal->m_iClass() == TF_CLASS_HEAVY || pLocal->m_iClass() == TF_CLASS_SOLDIER;
 			if (bStrongClass && (pSentry->m_bMiniBuilding() || pSentry->m_iUpgradeLevel() == 1))
 				continue;
@@ -296,89 +559,41 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 			if (iBullets == 0 && (pSentry->m_iUpgradeLevel() != 3 || iRockets == 0))
 				continue;
 
-			// It's still building/being sapped, ignore.
-			// Unless it just was deployed from a carry, then it's dangerous
-			if ((!pSentry->m_bCarryDeploy() && pSentry->m_bBuilding()) ||
-				pSentry->m_bPlacing() || pSentry->m_bHasSapper())
+			if ((!pSentry->m_bCarryDeploy() && pSentry->m_bBuilding()) || pSentry->m_bPlacing() || pSentry->m_bHasSapper())
 				continue;
 
-			// Get origin of the sentry
 			Vector vSentryOrigin;
 			if (!F::BotUtils.GetDormantOrigin(pSentry->entindex(), vSentryOrigin))
 				continue;
 
-			// Add some height to imitate sentry view offset
 			vSentryOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			// Define range tiers for sentry danger
-			constexpr float flHighDangerRange = 900.0f; // Full blacklist
-			constexpr float flMediumDangerRange = 1050.0f; // Caution range (try to avoid)
-			constexpr float flLowDangerRange = 1200.0f; // Safe for some classes
-
-			// Actual building check
-			for (auto& tArea : m_navfile.m_vAreas)
-			{
-				Vector vArea = tArea.m_vCenter;
-				vArea.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-				float flDistSqr = vSentryOrigin.DistToSqr(vArea);
-				bool bHighDanger = flDistSqr <= pow(flHighDangerRange + HALF_PLAYER_WIDTH, 2);
-				bool bMediumDanger = !bHighDanger && flDistSqr <= pow(flMediumDangerRange + HALF_PLAYER_WIDTH, 2);
-				bool bLowDanger = !bMediumDanger && !bStrongClass && flDistSqr <= pow(flLowDangerRange + HALF_PLAYER_WIDTH, 2);
-
-				BlacklistReasonEnum::BlacklistReasonEnum eReason;
-				if (bLowDanger || bMediumDanger)
-				{
-					// Only blacklist if not already blacklisted and sentry can see this area
-					if (m_mFreeBlacklist.find(&tArea) != m_mFreeBlacklist.end() || !F::NavEngine.IsVectorVisibleNavigation(vSentryOrigin, vArea, MASK_SHOT))
-						continue;
-
-					eReason = bLowDanger ? BlacklistReasonEnum::SentryLow : BlacklistReasonEnum::SentryMedium;
-				}
-				else if (bHighDanger)
-				{
-					// Check if sentry can see this area
-					if (!F::NavEngine.IsVectorVisibleNavigation(vSentryOrigin, vArea, MASK_SHOT))
-						continue;
-
-					// High danger - full blacklist
-					eReason = BlacklistReasonEnum::Sentry;
-				}
-				else
-					continue;
-
-				m_mFreeBlacklist[&tArea] = eReason;
-			}
+			ApplyBlacklistAround(vSentryOrigin, flHighDangerRange, BlacklistReason_t(BlacklistReasonEnum::Sentry), MASK_SHOT, true);
+			ApplyBlacklistAround(vSentryOrigin, flMediumDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryMedium), MASK_SHOT, true);
+			if (!bStrongClass)
+				ApplyBlacklistAround(vSentryOrigin, flLowDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryLow), MASK_SHOT, true);
 		}
 	}
 	
 	if (Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Stickies)
 	{
 		const auto iBlacklistEndTimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::StickyIgnoreTime.Value);
+		const float flStickyRadius = 130.0f + HALF_PLAYER_WIDTH;
+
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldProjectile))
 		{
 			auto pSticky = pEntity->As<CTFGrenadePipebombProjectile>();
-			if (pSticky->GetClassID() != ETFClassID::CTFGrenadePipebombProjectile || pSticky->m_iTeamNum() == pLocal->m_iTeamNum() ||
-				pSticky->m_iType() != TF_GL_MODE_REMOTE_DETONATE || pSticky->IsDormant() || !pSticky->m_vecVelocity().IsZero(1.f))
+			if (pSticky->GetClassID() != ETFClassID::CTFGrenadePipebombProjectile ||
+				pSticky->m_iTeamNum() == pLocal->m_iTeamNum() ||
+				pSticky->m_iType() != TF_GL_MODE_REMOTE_DETONATE ||
+				pSticky->IsDormant() ||
+				!pSticky->m_vecVelocity().IsZero(1.f))
 				continue;
 
-			auto vStickyOrigin = pSticky->GetAbsOrigin();
-			// Make sure the sticky doesn't vischeck from inside the floor
+			Vector vStickyOrigin = pSticky->GetAbsOrigin();
 			vStickyOrigin.z += PLAYER_JUMP_HEIGHT / 2.0f;
 
-			for (auto& tArea : m_navfile.m_vAreas)
-			{
-				Vector vArea = tArea.m_vCenter;
-				vArea.z += PLAYER_JUMP_HEIGHT;
-
-				// Out of range or cant see the area
-				if (vStickyOrigin.DistToSqr(vArea) > pow(130.0f + HALF_PLAYER_WIDTH, 2) || !F::NavEngine.IsVectorVisibleNavigation(vStickyOrigin, vArea, MASK_SHOT))
-					continue;
-
-				// Blacklist because it's in range of the sticky, but stickies make no noise (cant get the dormant origin), so blacklist it for a specific timeframe
-				m_mFreeBlacklist[&tArea] = { BlacklistReasonEnum::Sticky, iBlacklistEndTimestamp };
-				
-			}
+			ApplyBlacklistAround(vStickyOrigin, flStickyRadius, BlacklistReason_t(BlacklistReasonEnum::Sticky, iBlacklistEndTimestamp), MASK_SHOT, true);
 		}
 	}
 

@@ -2,6 +2,9 @@
 #include "FileReader/CNavFile.h"
 #include "MicroPather/micropather.h"
 #include <boost/container_hash/hash.hpp>
+#include <limits>
+#include <queue>
+#include <unordered_set>
 
 #define PLAYER_WIDTH		49.0f
 #define HALF_PLAYER_WIDTH	PLAYER_WIDTH / 2.0f
@@ -49,18 +52,6 @@ struct BlacklistReason_t
 	}
 };
 
-struct CachedConnection_t
-{
-	int m_iExpireTick;
-	VischeckStateEnum::VischeckStateEnum m_eVischeckState;
-};
-
-struct CachedStucktime_t
-{
-	int m_iExpireTick;
-	int m_iTimeStuck;
-};
-
 struct NavPoints_t
 {
 	Vector m_vCurrent;
@@ -78,6 +69,22 @@ struct DropdownHint_t
 	float m_flDropHeight = 0.f;
 	float m_flApproachDistance = 0.f;
 	Vector m_vApproachDir = {};
+};
+
+struct CachedConnection_t
+{
+	int m_iExpireTick = 0;
+	VischeckStateEnum::VischeckStateEnum m_eVischeckState = VischeckStateEnum::NotChecked;
+	float m_flCachedCost = std::numeric_limits<float>::max();
+	DropdownHint_t m_tDropdown = {};
+	NavPoints_t m_tPoints = {};
+	bool m_bPassable = false;
+};
+
+struct CachedStucktime_t
+{
+	int m_iExpireTick;
+	int m_iTimeStuck;
 };
 
 class CMap : public micropather::Graph
@@ -110,6 +117,15 @@ public:
 	
 	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos);
 	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea);
+
+private:
+	float EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const;
+	float GetBlacklistPenalty(const BlacklistReason_t& tReason) const;
+	bool ShouldOverrideBlacklist(const BlacklistReason_t& tCurrent, const BlacklistReason_t& tIncoming) const;
+	void ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const BlacklistReason_t& tReason, unsigned int nMask, bool bRequireLOS);
+	void CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas);
+
+public:
 
 	// Get closest nav area to target vector
 	CNavArea* FindClosestNavArea(const Vector& vPos, bool bLocalOrigin);
