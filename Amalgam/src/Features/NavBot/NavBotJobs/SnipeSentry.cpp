@@ -17,20 +17,10 @@ bool CNavBotSnipe::IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bo
 	return true;
 }
 
-int CNavBotSnipe::IsSnipeTargetValid(CTFPlayer* pLocal, int iBuildingIdx)
-{
-	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry))
-		return 0;
-
-	int iShouldTarget = F::BotUtils.ShouldTargetBuilding(pLocal, iBuildingIdx);
-	int iResult = iBuildingIdx ? iShouldTarget : 0;
-	return iResult;
-}
-
-bool CNavBotSnipe::TryToSnipe(CBaseObject* pBulding)
+bool CNavBotSnipe::TryToSnipe(int iEntIdx)
 {
 	Vector vOrigin;
-	if (!F::BotUtils.GetDormantOrigin(pBulding->entindex(), vOrigin))
+	if (!F::BotUtils.GetDormantOrigin(iEntIdx, vOrigin))
 		return false;
 
 	// Add some z to dormant sentries as it only returns origin
@@ -61,65 +51,66 @@ bool CNavBotSnipe::Run(CTFPlayer* pLocal)
 {
 	static Timer tSentrySnipeCooldown;
 	static Timer tInvalidTargetTimer{};
-	static int iPreviousTargetIdx = -1;
 
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::TargetSentries))
+	{
+		m_iTargetIdx = -1;
 		return false;
+	}
 
 	// Make sure we don't try to do it on shortrange classes unless specified
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::TargetSentriesLowRange)
 		&& (pLocal->m_iClass() == TF_CLASS_SCOUT || pLocal->m_iClass() == TF_CLASS_PYRO))
+	{
+		m_iTargetIdx = -1;
 		return false;
+	}
 
 	// Sentries don't move often, so we can use a slightly longer timer
 	if (!tSentrySnipeCooldown.Run(2.f))
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::SnipeSentry;
 
-	int iPreviousTargetValid = IsSnipeTargetValid(pLocal, iPreviousTargetIdx);
-	if (iPreviousTargetValid)
+	int iPreviousTargetValid = F::BotUtils.ShouldTargetBuilding(pLocal, m_iTargetIdx);
+	if (iPreviousTargetValid == ShouldTargetEnum::Target)
 	{
 		tInvalidTargetTimer.Update();
 
-		if (auto pPrevTarget = I::ClientEntityList->GetClientEntity(iPreviousTargetIdx)->As<CBaseObject>())
+		Vector vOrigin;
+		if (F::BotUtils.GetDormantOrigin(m_iTargetIdx, vOrigin))
 		{
-			Vector vOrigin;
-			if (F::BotUtils.GetDormantOrigin(iPreviousTargetIdx, vOrigin))
-			{	
-				auto pCrumbs = F::NavEngine.GetCrumbs();
-				// We cannot just use the last crumb, as it is always nullptr
-				if (pCrumbs->size() > 2)
-				{
-					auto tLastCrumb = (*pCrumbs)[pCrumbs->size() - 2];
-
-					// Area is still valid, stay on it
-					if (IsAreaValidForSnipe(vOrigin, tLastCrumb.m_pNavArea->m_vCenter))
-						return true;
-				}
-				if (TryToSnipe(pPrevTarget))
+			// We cannot just use the last crumb, as it is always nullptr
+			if (F::NavEngine.m_tLastCrumb.m_pNavArea)
+			{
+				// Area is still valid, stay on it
+				if (IsAreaValidForSnipe(vOrigin, F::NavEngine.m_tLastCrumb.m_pNavArea->m_vCenter))
 					return true;
 			}
+			if (TryToSnipe(m_iTargetIdx))
+				return true;
 		}
 	}
 	// Our previous target wasn't properly checked
-	else if (iPreviousTargetValid == -1 && !tInvalidTargetTimer.Check(0.1f))
+	else if (iPreviousTargetValid == ShouldTargetEnum::Invalid && !tInvalidTargetTimer.Check(0.1f))
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::SnipeSentry;
 
 	tInvalidTargetTimer.Update();
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
+		int iEntIdx = pEntity->entindex();
+
 		// Invalid sentry
-		if (IsSnipeTargetValid(pLocal, pEntity->entindex()))
+		if (F::BotUtils.ShouldTargetBuilding(pLocal, iEntIdx) != ShouldTargetEnum::Target)
 			continue;
 
 		// Succeeded in trying to snipe it
-		if (TryToSnipe(pEntity->As<CBaseObject>()))
+		if (TryToSnipe(iEntIdx))
 		{
-			iPreviousTargetIdx = pEntity->entindex();
+			m_iTargetIdx = iEntIdx;
 			return true;
 		}
 	}
 
-	iPreviousTargetIdx = -1;
+	m_iTargetIdx = -1;
 	return false;
 }

@@ -26,11 +26,19 @@ struct Crumb_t
 	Vector m_vApproachDir = {};
 };
 
+struct RespawnRoom_t
+{	
+	int m_iTeam = 0;
+	TriggerData_t tData = {};
+};
+
 class CNavEngine
 {
 private:
 	std::unique_ptr<CMap> m_pMap;
 	std::vector<Crumb_t> m_vCrumbs;
+	std::vector<RespawnRoom_t> m_vRespawnRooms;
+	std::vector<CNavArea*> m_vRespawnRoomExitAreas;
 	CNavArea* m_pLocalArea;
 
 	Timer m_tTimeSpentOnCrumbTimer = {};
@@ -39,13 +47,15 @@ private:
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;
+	bool m_bUpdatedRespawnRooms = false;
 
 	bool IsSetupTime();
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath();
+	void UpdateRespawnRooms();
 public:
-	
+
 	// Vischeck
 	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);
 	// Checks if player can walk from one position to another without bumping into anything
@@ -57,7 +67,12 @@ public:
 	// Helper for external checks
 	bool IsNavMeshLoaded() const { return m_pMap && m_pMap->m_eState == NavStateEnum::Active; }
 	std::string GetNavFilePath() const { return m_pMap ? m_pMap->m_sMapName : ""; }
-	void UpdateRespawnRooms() const { if (m_pMap) m_pMap->UpdateRespawnRooms(); }
+	bool HasRespawnRooms() const { return !m_vRespawnRooms.empty(); }
+
+	void ClearRespawnRooms() { m_vRespawnRooms.clear(); }
+	void AddRespawnRoom(int iTeam, TriggerData_t tTrigger) { m_vRespawnRooms.emplace_back(iTeam, tTrigger); }
+
+	std::vector<CNavArea*>* GetRespawnRoomExitAreas() { return &m_vRespawnRoomExitAreas; }
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }

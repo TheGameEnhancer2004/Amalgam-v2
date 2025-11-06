@@ -330,6 +330,200 @@ void CVisuals::DrawPickupTimers()
 	}
 }
 
+static bool StoreTriggerBrushSurfaces(TriggerData_t& tTrigger)
+{
+	int iNumSurfaces = tTrigger.m_pModel->brush.nummodelsurfaces;
+	bool bShouldRotate = !tTrigger.m_vRotate.IsZero();
+	Vector vTopSurfCenter = { 0, -FLT_MAX, 0 }, vBottomSurfCenter = { 0, FLT_MAX, 0 };
+	for (int i = 0; i < iNumSurfaces; i++)
+	{
+		int iSurfaceIdx = tTrigger.m_pModel->brush.firstmodelsurface + i;
+		auto pBrushData = tTrigger.m_pModel->brush.pShared;
+
+		// Dont touch
+		auto uSurfacePtr = reinterpret_cast<uintptr_t>(pBrushData->surfaces2) + (iSurfaceIdx << 6);
+		auto uVertCount = *reinterpret_cast<char*>(uSurfacePtr + 3);
+		auto iFirstVertIndex = *reinterpret_cast<int*>(uSurfacePtr + 12);
+
+		Vector vFirstPoint = pBrushData->vertexes[pBrushData->vertindices[iFirstVertIndex]].position, vLastPoint;
+		std::vector<Vector> vPoints{ bShouldRotate ? vFirstPoint : tTrigger.m_vOrigin + vFirstPoint };
+
+		Vector vSurfaceCenter;
+		float flTotalArea = 0.0f;
+		for (int j = 1; j < uVertCount; j++)
+		{
+			auto iVertIdx = pBrushData->vertindices[iFirstVertIndex + j];
+			Vector vCurrentPoint = pBrushData->vertexes[iVertIdx].position;
+			if (j > 1)
+			{
+				Vector vNormal = (vCurrentPoint - vLastPoint).Cross(vCurrentPoint - vFirstPoint);
+				float flArea = vNormal.Length();
+				flTotalArea += flArea;
+				vSurfaceCenter += (vFirstPoint + vLastPoint + vCurrentPoint) * flArea / 3.0f;
+			}
+			Vector vFinal = vCurrentPoint;
+			if (bShouldRotate)
+				vFinal = Math::RotatePoint(vCurrentPoint, {}, tTrigger.m_vRotate);
+			vPoints.push_back(tTrigger.m_vOrigin + vFinal);
+			vLastPoint = vCurrentPoint;
+		}
+
+		if (flTotalArea)
+			vSurfaceCenter /= flTotalArea;
+
+		if (bShouldRotate)
+		{
+			auto& vFirstRotated = vPoints.front();
+			vSurfaceCenter = Math::RotatePoint(vSurfaceCenter, {}, tTrigger.m_vRotate);
+			vFirstRotated = tTrigger.m_vOrigin + Math::RotatePoint(vFirstRotated, {}, tTrigger.m_vRotate);
+		}
+
+		if (vBottomSurfCenter.y > vSurfaceCenter.y)
+			vBottomSurfCenter = vSurfaceCenter;
+		if (vTopSurfCenter.y < vSurfaceCenter.y)
+			vTopSurfCenter = vSurfaceCenter;
+
+		vSurfaceCenter += tTrigger.m_vOrigin;
+		tTrigger.m_vBrushSurfaces.push_back(BrushSurface_t(vSurfaceCenter, vPoints));
+	}
+	tTrigger.m_vCenter = tTrigger.m_vOrigin + Vector(vBottomSurfCenter.x, vBottomSurfCenter.y + (vTopSurfCenter.y - vBottomSurfCenter.y) / 2, vBottomSurfCenter.z);
+
+	return !tTrigger.m_vBrushSurfaces.empty();
+}
+static bool ShouldShowTrigger(TriggerTypeEnum::TriggerTypeEnum eType)
+{
+	switch (eType)
+	{
+	case TriggerTypeEnum::Hurt:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Hurt;
+	case TriggerTypeEnum::Ignite:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Ignite;
+	case TriggerTypeEnum::Push:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Push;
+	case TriggerTypeEnum::Regenerate:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Regenerate;
+	case TriggerTypeEnum::RespawnRoom:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::RespawnRoom;
+	case TriggerTypeEnum::CaptureArea:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::CaptureArea;
+	case TriggerTypeEnum::Catapult:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Catapult;
+	case TriggerTypeEnum::ApplyImpulse:
+		return Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ApplyImpulse;
+	default:
+		break;
+	}
+	return false;
+}
+static Color_t GetTriggerColor(TriggerTypeEnum::TriggerTypeEnum eType)
+{
+	switch (eType)
+	{
+	case TriggerTypeEnum::Hurt:
+		return Vars::Colors::HurtTrigger.Value;
+	case TriggerTypeEnum::Ignite:
+		return Vars::Colors::IgniteTrigger.Value;
+	case TriggerTypeEnum::Push:
+		return Vars::Colors::PushTrigger.Value;
+	case TriggerTypeEnum::Regenerate:
+		return Vars::Colors::RegenerateTrigger.Value;
+	case TriggerTypeEnum::RespawnRoom:
+		return Vars::Colors::RespawnRoomTrigger.Value;
+	case TriggerTypeEnum::CaptureArea:
+		return Vars::Colors::CaptureAreaTrigger.Value;
+	case TriggerTypeEnum::Catapult:
+		return Vars::Colors::CatapultTrigger.Value;
+	case TriggerTypeEnum::ApplyImpulse:
+		return Vars::Colors::ApplyImpulseTrigger.Value;
+	default:
+		break;
+	}
+	return Color_t();
+}
+
+void CVisuals::Triggers(CTFPlayer* pLocal)
+{
+	if (!Vars::Visuals::World::ShowTriggers.Value || G::TriggerStorage.empty())
+		return;
+
+	std::erase_if(G::TriggerStorage, [](auto& tTriggerData)
+				  {
+					  if (!tTriggerData.m_pModel)
+						  return true;
+
+					  if (tTriggerData.m_vBrushSurfaces.empty() && !StoreTriggerBrushSurfaces(tTriggerData))
+						  return true;
+
+					  return false;
+				  });
+
+
+	// Should fix rendering issues with huge amounts of triggers
+	bool bRenderFar = G::TriggerStorage.size() < 20;
+	static Vector vLocalOrigin;
+	if (pLocal && pLocal->IsAlive())
+		vLocalOrigin = pLocal->GetAbsOrigin();
+
+	bool bIgnoreZ = Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::IgnoreZ;
+	for (auto& tTrigger : G::TriggerStorage)
+	{
+		if (!ShouldShowTrigger(tTrigger.m_eType))
+			continue;
+
+		if (!bRenderFar && tTrigger.m_vCenter.DistTo(vLocalOrigin) >= 6000.f)
+			continue;
+
+		Color_t tColor = GetTriggerColor(tTrigger.m_eType);
+		for (auto& tSurf : tTrigger.m_vBrushSurfaces)
+		{
+			if (!bRenderFar && tSurf.m_vCenter.DistTo(vLocalOrigin) >= 2000.f)
+				continue;
+
+			Vector& vStart = tSurf.m_vPoints.front();
+			auto begin = tSurf.m_vPoints.begin() + 1;
+
+			// Dont draw too much or else the game will crash
+			bool bTooManyPoints = tSurf.m_vPoints.size() > 10;
+			for (auto it = begin, next = it + 1; next != tSurf.m_vPoints.end(); it++, next++)
+			{
+				Vector& vPoint1 = *it, & vPoint2 = *next;
+				H::Draw.RenderTriangle(vPoint1, vPoint2, vStart, tColor, !bIgnoreZ);
+
+				if (!bTooManyPoints && Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ShowSurfaceCenters)
+				{
+					if (it == begin)
+					{
+						auto vAngleToFirst = Math::CalcAngle(tSurf.m_vCenter, vPoint1);
+						auto vRotatedFirst = tSurf.m_vCenter + Math::RotatePoint({ 50, 0, 0 }, {}, vAngleToFirst);
+						H::Draw.RenderLine(tSurf.m_vCenter, vRotatedFirst, Vars::Colors::TriggerSurfaceCenter.Value, !bIgnoreZ);
+					}
+					auto vAngleTo = Math::CalcAngle(tSurf.m_vCenter, vPoint2);
+					auto vRotated = tSurf.m_vCenter + Math::RotatePoint({ 50, 0, 0 }, {}, vAngleTo);
+					H::Draw.RenderLine(tSurf.m_vCenter, vRotated, Vars::Colors::TriggerSurfaceCenter.Value, !bIgnoreZ);
+				}
+			}
+
+			if (Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ShowSurfaceCenters)
+			{
+				if (!bTooManyPoints)
+				{
+					auto vAngleTo = Math::CalcAngle(tSurf.m_vCenter, vStart);
+					auto vRotated = tSurf.m_vCenter + Math::RotatePoint({ 50, 0, 0 }, {}, vAngleTo);
+					H::Draw.RenderLine(tSurf.m_vCenter, vRotated, Vars::Colors::TriggerSurfaceCenter.Value, !bIgnoreZ);
+				}
+				H::Draw.RenderBox(tSurf.m_vCenter, Vector(-1.0f, -1.0f, -1.0f), Vector(1.0f, 1.0f, 1.0f), Vector(), Vars::Colors::TriggerSurfaceCenter.Value, !bIgnoreZ);
+				H::Draw.RenderWireframeBox(tSurf.m_vCenter, Vector(-1.0f, -1.0f, -1.0f), Vector(1.0f, 1.0f, 1.0f), Vector(), Vars::Colors::TriggerSurfaceCenter.Value, !bIgnoreZ);
+			}
+		}
+		if (Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ShowAngles &&
+			(tTrigger.m_eType == TriggerTypeEnum::Push || tTrigger.m_eType == TriggerTypeEnum::Catapult || tTrigger.m_eType == TriggerTypeEnum::ApplyImpulse))
+		{
+			auto vRotated = tTrigger.m_vCenter + Math::RotatePoint({ 50, 0, 0 }, {}, tTrigger.m_vAngles);
+			H::Draw.RenderLine(tTrigger.m_vCenter, vRotated, Vars::Colors::TriggerAngle.Value, !bIgnoreZ);
+		}
+	}
+}
+
 #define PAIR(x) { x, #x }
 void CVisuals::DrawDebugInfo(CTFPlayer* pLocal)
 {
@@ -406,7 +600,8 @@ void CVisuals::DrawDebugInfo(CTFPlayer* pLocal)
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Velocity: {:.3f} ({:.3f}, {:.3f}, {:.3f})", vVelocity.Length(), vVelocity.x, vVelocity.y, vVelocity.z).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Ground entity: {}", pLocal->m_hGroundEntity() ? pLocal->m_hGroundEntity()->GetClientClass()->m_pNetworkName : "none").c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Tickbase: {}", pLocal->m_nTickBase()).c_str());
-		//H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Choke: {}, {}", G::Choking, I::ClientState->chokedcommands).c_str());
+		// Why is I::ClientState->chokedcommands always 0???
+		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Choke: {}, {}", G::Choking, I::ClientState->chokedcommands).c_str());
 		//H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Ticks: {}, {}", F::Ticks.m_iShiftedTicks, F::Ticks.m_iShiftedGoal).c_str());
 		//H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Round state: {}, {}, {}", SDK::GetRoundState(), SDK::GetWinningTeam(), I::EngineClient->IsPlayingDemo()).c_str());
 		//H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Entities: {} ({}, {})", I::ClientEntityList->GetMaxEntities(), I::ClientEntityList->GetHighestEntityIndex(), I::ClientEntityList->NumberOfEntities(false)).c_str());

@@ -942,6 +942,57 @@ void CMenu::MenuVisuals(int iTab)
 					PopTransparent();
 					FToggle(Vars::Visuals::World::NearPropFade, FToggleEnum::Left);
 					FToggle(Vars::Visuals::World::NoPropFade, FToggleEnum::Right);
+					FDropdown(Vars::Visuals::World::ShowTriggers);
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Hurt));
+					{
+						FColorPicker(Vars::Colors::HurtTrigger, FColorPickerEnum::Left);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Ignite));
+					{
+						FColorPicker(Vars::Colors::IgniteTrigger, FColorPickerEnum::Right);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Push));
+					{
+						FColorPicker(Vars::Colors::PushTrigger, FColorPickerEnum::Left);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Regenerate));
+					{
+						FColorPicker(Vars::Colors::RegenerateTrigger, FColorPickerEnum::Right);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::RespawnRoom));
+					{
+						FColorPicker(Vars::Colors::RespawnRoomTrigger, FColorPickerEnum::Left);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::CaptureArea));
+					{
+						FColorPicker(Vars::Colors::CaptureAreaTrigger, FColorPickerEnum::Right);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::Catapult));
+					{
+						FColorPicker(Vars::Colors::CatapultTrigger, FColorPickerEnum::Left);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ApplyImpulse));
+					{
+						FColorPicker(Vars::Colors::ApplyImpulseTrigger, FColorPickerEnum::Right);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ShowAngles));
+					{
+						FColorPicker(Vars::Colors::TriggerAngle, FColorPickerEnum::Left);
+					}
+					PopTransparent();
+					PushTransparent(!(Vars::Visuals::World::ShowTriggers.Value & Vars::Visuals::World::ShowTriggersEnum::ShowSurfaceCenters));
+					{
+						FColorPicker(Vars::Colors::TriggerSurfaceCenter, FColorPickerEnum::Right);
+					}
+					PopTransparent();
 				} EndSection();
 				
 				if (Section("Other"))

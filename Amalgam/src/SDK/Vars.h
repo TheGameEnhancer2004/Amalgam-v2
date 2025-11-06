@@ -261,6 +261,17 @@ namespace Vars
 		CVar(NavbotBlacklist, "Navbot blacklisted color", Color_t(255, 0, 0, 255), VISUAL);
 		CVar(FollowbotPathLine, "Followbot path line color", Color_t(255, 255, 0, 255), VISUAL);
 		CVar(FollowbotPathBox, "Followbot path box color", Color_t(255, 255, 0, 255), VISUAL);
+
+		CVar(HurtTrigger, "Hurt trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(IgniteTrigger, "Ignite trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(PushTrigger, "Push trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(RegenerateTrigger, "Regenerate trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(RespawnRoomTrigger, "Respawn room trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(CaptureAreaTrigger, "Capture area trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(CatapultTrigger, "Catapult trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(ApplyImpulseTrigger, "Apply impulse trigger color", Color_t(248, 155, 0, 80), VISUAL);
+		CVar(TriggerAngle, "Trigger angle color", Color_t(50, 100, 200, 255), VISUAL);
+		CVar(TriggerSurfaceCenter, "Trigger surface center color", Color_t(60, 200, 10, 80), VISUAL);
 	NAMESPACE_END(Colors);
 
 	NAMESPACE_BEGIN(Aimbot)
@@ -634,6 +645,9 @@ namespace Vars
 				"Default", "Dev", "Camo", "Black", "White", "Gray", "Flat");
 			CVar(NearPropFade, "Near prop fade", false, VISUAL);
 			CVar(NoPropFade, "No prop fade", false, VISUAL);
+			CVarEnum(ShowTriggers, "Show triggers", 0b00000, VISUAL | DROPDOWN_MULTI, nullptr,
+				VA_LIST("Hurt", "Ignite", "Push", "Regenerate", "Respawn room", "Capture area", "Catapult", "Apply impulse", "##Divider", "Show angles", "Show surface centers", "Ignore Z"),
+				Hurt = 1 << 0, Ignite = 1 << 1, Push = 1 << 2, Regenerate = 1 << 3, RespawnRoom = 1 << 4, CaptureArea = 1 << 5, Catapult = 1 << 6, ApplyImpulse = 1 << 7, ShowAngles = 1 << 8, ShowSurfaceCenters = 1 << 9, IgnoreZ = 1 << 10);
 		SUBNAMESPACE_END(World);
 
 		SUBNAMESPACE_BEGIN(Beams) // as of now, these will stay out of the menu

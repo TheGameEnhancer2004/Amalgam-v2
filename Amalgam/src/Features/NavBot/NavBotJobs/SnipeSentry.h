@@ -5,10 +5,11 @@ class CNavBotSnipe
 {
 private:
 	bool IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bool bFixSentryZ = true);
-	int IsSnipeTargetValid(CTFPlayer* pLocal, int iBuildingIdx);
-	bool TryToSnipe(CBaseObject* pBulding);
+	bool TryToSnipe(int iEntIdx);
 public:
 	bool Run(CTFPlayer* pLocal);
+
+	int m_iTargetIdx = -1;
 };
 
 ADD_FEATURE(CNavBotSnipe, NavBotSnipe);

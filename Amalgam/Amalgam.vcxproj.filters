@@ -234,6 +234,8 @@
     <ClCompile Include="src\Features\NavBot\NavBotJobs\Engineer.cpp" />
     <ClCompile Include="src\Features\NavBot\NavBotJobs\SnipeSentry.cpp" />
     <ClCompile Include="src\Features\NavBot\NavBotJobs\EscapeDanger.cpp" />
+    <ClCompile Include="src\Hooks\CEntityMapData_ExtractValue.cpp" />
+    <ClCompile Include="src\SDK\Definitions\Main\CEntityMapData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -657,6 +659,8 @@
     <ClInclude Include="src\Features\NavBot\NavBotJobs\Engineer.h" />
     <ClInclude Include="src\Features\NavBot\NavBotJobs\Melee.h" />
     <ClInclude Include="src\Features\NavBot\NavBotJobs\GroupWithOthers.h" />
+    <ClInclude Include="src\SDK\Definitions\Main\CEntityMapData.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CModelLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

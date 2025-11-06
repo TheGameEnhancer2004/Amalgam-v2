@@ -31,7 +31,7 @@ bool CNavBotEngineer::BlacklistedFromBuilding(CNavArea* pArea)
 	return false;
 }
 
-bool CNavBotEngineer::NavToSentrySpot()
+bool CNavBotEngineer::NavToSentrySpot(Vector vLocalOrigin)
 {
 	static Timer tWaitUntilPathSentryTimer;
 
@@ -60,26 +60,23 @@ bool CNavBotEngineer::NavToSentrySpot()
 
 	auto uSize = m_vBuildingSpots.size();
 
-	// TODO:
-	// Find a better way to do this random spot logic
-	
 	// Max 10 attempts
 	for (int iAttempts = 0; iAttempts < 10 && iAttempts < uSize; ++iAttempts)
 	{
 		// Get a semi-random building spot to still keep distance preferrance
-		auto iRandomOffset = SDK::RandomInt(0, std::min(2, (int)uSize));
+		auto iRandomOffset = SDK::RandomInt(0, std::min(3, (int)uSize));
 
-		Vector vRandom;
+		BuildingSpot_t tRandomSpot;
 		// Wrap around
 		if (iAttempts - iRandomOffset < 0)
-			vRandom = m_vBuildingSpots[uSize + (iAttempts - iRandomOffset)];
+			tRandomSpot = m_vBuildingSpots[uSize + (iAttempts - iRandomOffset)];
 		else
-			vRandom = m_vBuildingSpots[iAttempts - iRandomOffset];
+			tRandomSpot = m_vBuildingSpots[iAttempts - iRandomOffset];
 
 		// Try to nav there
-		if (F::NavEngine.NavTo(vRandom, PriorityListEnum::Engineer))
+		if (F::NavEngine.NavTo(tRandomSpot.m_vPos, PriorityListEnum::Engineer))
 		{
-			m_vCurrentBuildingSpot = vRandom;
+			m_tCurrentBuildingSpot = tRandomSpot;
 			return true;
 		}
 	}
@@ -95,7 +92,7 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	{
 		(*F::NavEngine.GetFreeBlacklist())[F::NavEngine.GetLocalNavArea()] = BlacklistReasonEnum::BadBuildSpot;
 		RefreshBuildingSpots(pLocal, tClosestEnemy, true);
-		m_vCurrentBuildingSpot.Zero();
+		m_tCurrentBuildingSpot = {};
 		m_iBuildAttempts = 0;
 		return false;
 	}
@@ -103,11 +100,11 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	// Make sure we have right amount of metal
 	int iRequiredMetal = (bDispenser || G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger) ? 100 : 130;
 	if (pLocal->m_iMetalCount() < iRequiredMetal)
-		return F::NavBotSupplies.GetAmmo(pCmd, pLocal, true);
+		return F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo | GetSupplyEnum::Forced);
 	
 	static float flPrevYaw = 0.0f;
 	// Try to build! we are close enough
-	if (!m_vCurrentBuildingSpot.IsZero() && m_vCurrentBuildingSpot.DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
+	if (m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
 	{
 		// TODO: Rotate our angle to a valid building spot ? also rotate building itself to face enemies ?
 		pCmd->viewangles.x = 20.0f;
@@ -131,7 +128,7 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	else
 	{
 		flPrevYaw = 0.0f;
-		return NavToSentrySpot();
+		return NavToSentrySpot(pLocal->GetAbsOrigin());
 	}
 
 	return false;
@@ -141,7 +138,7 @@ bool CNavBotEngineer::SmackBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, CBaseObje
 {
 	m_iBuildAttempts = 0;
 	if (!pLocal->m_iMetalCount())
-		return F::NavBotSupplies.GetAmmo(pCmd, pLocal, true);
+		return F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo | GetSupplyEnum::Forced);
 
 	m_eTaskStage = pBuilding->GetClassID() == ETFClassID::CObjectDispenser ? EngineerTaskStageEnum::SmackDispenser : EngineerTaskStageEnum::SmackSentry;
 
@@ -181,26 +178,32 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 				if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_EXIT))
 					continue;
 
+				float flDistToTarget = tArea.m_vCenter.DistTo(vTarget);
+
+				// Skip far away spots
+				if (flDistToTarget >= 4000.f)
+					continue;
+
 				if (tArea.m_iTFAttributeFlags & TF_NAV_SENTRY_SPOT)
-					m_vBuildingSpots.emplace_back(tArea.m_vCenter);
+					m_vBuildingSpots.emplace_back(flDistToTarget, tArea.m_vCenter);
 				else
 				{
 					for (auto tHidingSpot : tArea.m_vHidingSpots)
 					{
 						if (tHidingSpot.HasGoodCover())
-							m_vBuildingSpots.emplace_back(tHidingSpot.m_vPos);
+							m_vBuildingSpots.emplace_back(flDistToTarget, tHidingSpot.m_vPos);
 					}
 				}
 			}
 			// Sort by distance to nearest, lower is better
 			// TODO: This isn't really optimal, need a dif way to where it is a good distance from enemies but also bots dont build in the same spot
 			std::sort(m_vBuildingSpots.begin(), m_vBuildingSpots.end(),
-					  [&](Vector a, Vector b) -> bool
+					  [&](BuildingSpot_t& a, BuildingSpot_t& b) -> bool
 					  {
 						  if (bHasGunslinger)
 						  {
-							  auto flADist = a.DistTo(vTarget);
-							  auto flBDist = b.DistTo(vTarget);
+							  auto flADist = a.m_flDistanceToTarget;
+							  auto flBDist = b.m_flDistanceToTarget;
 
 							  // Penalty for being in danger ranges
 							  if (flADist + 100.0f < 300.0f)
@@ -216,7 +219,7 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 							  return flADist < flBDist;
 						  }
 						  else
-							  return a.DistTo(vTarget) < b.DistTo(vTarget);
+							  return a.m_flDistanceToTarget < b.m_flDistanceToTarget;
 					  });
 		}
 	}
@@ -241,7 +244,7 @@ void CNavBotEngineer::Reset()
 	m_flDistToDispenser = FLT_MAX;
 	m_iBuildAttempts = 0;
 	m_vBuildingSpots.clear();
-	m_vCurrentBuildingSpot.Zero();
+	m_tCurrentBuildingSpot = {};
 	m_eTaskStage = EngineerTaskStageEnum::None;
 }
 

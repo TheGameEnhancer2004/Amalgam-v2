@@ -34,6 +34,7 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	{
 		F::NavEngine.Render();
 		F::FollowBot.Render();
+		F::Visuals.Triggers(pLocal);
 		F::Visuals.DrawEffects();
 		F::Chams.m_mEntities.clear();
 		if (!I::EngineVGui->IsGameUIVisible() && F::Materials.m_bLoaded)

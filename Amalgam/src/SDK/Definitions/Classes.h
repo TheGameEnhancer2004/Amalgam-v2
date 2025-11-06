@@ -38,3 +38,4 @@
 #include "Main/MD5.h"
 #include "Main/PlayerStats.h"
 #include "Main/ValveRandom.h"
+#include "Main/CEntityMapData.h"

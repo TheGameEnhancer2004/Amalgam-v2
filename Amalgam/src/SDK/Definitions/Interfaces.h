@@ -37,6 +37,7 @@
 #include "Interfaces/VPhysics.h"
 #include "Interfaces/CServerTools.h"
 #include "Interfaces/CTFInventoryManager.h"
+#include "Interfaces/CModelLoader.h"
 
 #ifndef TEXTMODE
 #include <d3d9.h>

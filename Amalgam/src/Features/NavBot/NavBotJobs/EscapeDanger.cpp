@@ -321,31 +321,38 @@ bool CNavBotDanger::EscapeProjectiles(CTFPlayer* pLocal)
 
 bool CNavBotDanger::EscapeSpawn(CTFPlayer* pLocal)
 {
-	static Timer tSpawnEscapeCooldown{};
-
-	// Don't try too often
-	if (!tSpawnEscapeCooldown.Run(2.f))
-		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::EscapeSpawn;
-
 	// Cancel if we're not in spawn and this is running
-	if (!(F::NavEngine.GetLocalNavArea()->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_EXIT)))
+	if (!(F::NavEngine.GetLocalNavArea()->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_BLUE)))
 	{
 		if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::EscapeSpawn)
 			F::NavEngine.CancelPath();
 		return false;
 	}
 
-	// Try to find an exit
-	for (auto tArea : F::NavEngine.GetNavFile()->m_vAreas)
-	{
-		// Skip spawn areas
-		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_EXIT))
-			continue;
+	// Don't try too often
+	static Timer tSpawnEscapeCooldown{};
+	if (!tSpawnEscapeCooldown.Run(2.f))
+		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::EscapeSpawn;
 
-		// Try to get there
-		if (F::NavEngine.NavTo(tArea.m_vCenter, PriorityListEnum::EscapeSpawn))
-			return true;
+	const auto vLocalOrigin = pLocal->GetAbsOrigin();
+	float flBestDist = FLT_MAX;	CNavArea* pClosest = nullptr;
+
+	// Try to find a closest exit
+	for (auto pArea : *F::NavEngine.GetRespawnRoomExitAreas())
+	{
+		float flDist = pArea->m_vCenter.DistTo(vLocalOrigin);
+		if (flBestDist > flDist)
+		{
+			pClosest = pArea;
+			flBestDist = flDist;
+		}
 	}
 
+	if (pClosest)
+	{
+		// Try to get there
+		if (F::NavEngine.NavTo(pClosest->m_vCenter, PriorityListEnum::EscapeSpawn))
+			return true;
+	}
 	return false;
 }

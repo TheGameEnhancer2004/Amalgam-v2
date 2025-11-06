@@ -128,7 +128,6 @@ public:
 	}
 
 	void UpdateIgnores(CTFPlayer* pLocal);
-	void UpdateRespawnRooms();
 
 	void Reset()
 	{

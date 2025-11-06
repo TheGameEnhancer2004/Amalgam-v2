@@ -322,6 +322,8 @@ void CNavEngine::Reset(bool bForced)
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("NavEngine", std::format("Nav File location: {}", sNavPath).c_str(), { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 			m_pMap = std::make_unique<CMap>(sNavPath.c_str());
+			m_vRespawnRoomExitAreas.clear();
+			m_bUpdatedRespawnRooms = false;
 		}
 	}
 }
@@ -381,6 +383,9 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		Reset(true);
 	}
 
+	if (!m_bUpdatedRespawnRooms)
+		UpdateRespawnRooms();
+
 	if (!pLocal->IsAlive() || F::FollowBot.m_bActive)
 	{
 		CancelPath();
@@ -437,6 +442,51 @@ void CNavEngine::AbandonPath()
 		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal, false);
 	else
 		m_eCurrentPriority = PriorityListEnum::None;
+}
+
+void CNavEngine::UpdateRespawnRooms()
+{
+	if (!m_vRespawnRooms.empty() && m_pMap)
+	{
+		std::unordered_set<CNavArea*> setSpawnRoomAreas;
+		for (auto tRespawnRoom : m_vRespawnRooms)
+		{
+			static Vector vStepHeight(0.0f, 0.0f, 18.0f);
+			for (auto& tArea : m_pMap->m_navfile.m_vAreas)
+			{
+				// Already set
+				if (setSpawnRoomAreas.contains(&tArea))
+					continue;
+
+				if (tRespawnRoom.tData.PointIsWithin(tArea.m_vCenter + vStepHeight)
+					|| tRespawnRoom.tData.PointIsWithin(tArea.m_vNwCorner + vStepHeight)
+					|| tRespawnRoom.tData.PointIsWithin(tArea.GetNeCorner() + vStepHeight)
+					|| tRespawnRoom.tData.PointIsWithin(tArea.GetSwCorner() + vStepHeight)
+					|| tRespawnRoom.tData.PointIsWithin(tArea.m_vSeCorner + vStepHeight))
+				{
+					setSpawnRoomAreas.insert(&tArea);
+
+					uint32_t uFlags = tRespawnRoom.m_iTeam == 0/*Any team*/ ? (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED) : (tRespawnRoom.m_iTeam == TF_TEAM_BLUE ? TF_NAV_SPAWN_ROOM_BLUE : TF_NAV_SPAWN_ROOM_RED);
+					if (!(tArea.m_iTFAttributeFlags & uFlags))
+						tArea.m_iTFAttributeFlags |= uFlags;
+				}
+			}
+		}
+
+		// Set spawn room exit attributes
+		for (auto pArea : setSpawnRoomAreas)
+		{
+			for (auto& tConnection : pArea->m_vConnections)
+			{
+				if (!(tConnection.m_pArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_RED | TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_EXIT)))
+				{
+					tConnection.m_pArea->m_iTFAttributeFlags |= TF_NAV_SPAWN_ROOM_EXIT;
+					m_vRespawnRoomExitAreas.push_back(tConnection.m_pArea);
+				}
+			}
+		}
+		m_bUpdatedRespawnRooms = true;
+	}
 }
 
 void CNavEngine::CancelPath()

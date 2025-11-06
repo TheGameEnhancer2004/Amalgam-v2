@@ -128,10 +128,10 @@ void CEntities::Store()
 		case ETFClassID::CBaseAnimating:
 		{
 			m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pEntity->GetModel()));
-			if (IsHealth(GetModel(n)))
-				m_mGroups[EntityEnum::PickupHealth].push_back(pEntity);
-			else if (IsAmmo(GetModel(n)))
-				m_mGroups[EntityEnum::PickupAmmo].push_back(pEntity);
+			//if (IsHealth(GetModel(n)))
+			//	m_mGroups[EntityEnum::PickupHealth].push_back(pEntity);
+			//else if (IsAmmo(GetModel(n)))
+			//	m_mGroups[EntityEnum::PickupAmmo].push_back(pEntity);
 			//else if (IsPowerup(GetModel(n)))
 			//	m_mGroups[EntityEnum::PickupPowerup].push_back(pEntity);
 			//else if (IsSpellbook(GetModel(n)))

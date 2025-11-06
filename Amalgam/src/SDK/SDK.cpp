@@ -10,6 +10,7 @@
 #pragma warning (disable : 6385)
 
 MAKE_SIGNATURE(CAttributeManager_AttribHookFloat, "client.dll", "4C 8B DC 49 89 5B ? 49 89 6B ? 56 57 41 54 41 56 41 57 48 83 EC ? 48 8B 3D ? ? ? ? 4C 8D 35", 0x0);
+MAKE_SIGNATURE(CM_TransformedBoxTrace, "engine.dll", "48 8B C4 48 89 58 ? 55 56 57 48 8D 68 ? 48 81 EC ? ? ? ? F3 0F 10 41", 0x0);
 
 static BOOL CALLBACK TeamFortressWindow(HWND hWindow, LPARAM lParam)
 {
@@ -1025,4 +1026,13 @@ std::string SDK::GetLevelName()
 	}
 
 	return { data + slash, bsp - slash };
+}
+
+bool TriggerData_t::PointIsWithin(Vec3 vPoint) const
+{
+	CGameTrace trace;
+	Ray_t ray;
+	ray.Init(vPoint, vPoint);
+	S::CM_TransformedBoxTrace.Call<void>(ray, m_pModel->brush.firstnode, 0x0/*i dont think mask matters here*/, m_vOrigin, Vec3(), &trace);
+	return trace.startsolid;
 }
