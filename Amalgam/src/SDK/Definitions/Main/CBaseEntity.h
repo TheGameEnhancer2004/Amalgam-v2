@@ -92,7 +92,7 @@ public:
 	NETVAR(movetype, int, "CBaseEntity", "movetype");
 	
 	NETVAR_OFF(m_flOldSimulationTime, float, "CBaseEntity", "m_flSimulationTime", 4);
-	NETVAR_OFF(m_flGravity, float, "CTFPlayer", "m_nWaterLevel", -24);
+	NETVAR_OFF(m_flGravity, float, "CTFPlayer", "m_nWaterLevel", -28);
 	NETVAR_OFF(m_MoveType, byte, "CTFPlayer", "m_nWaterLevel", -4);
 	NETVAR_OFF(m_MoveCollide, byte, "CTFPlayer", "m_nWaterLevel", -3);
 	NETVAR_OFF(m_nWaterType, byte, "CTFPlayer", "m_nWaterLevel", 1);
@@ -240,8 +240,8 @@ public:
 	{
 		switch (GetClassID())
 		{
-		case ETFClassID::CTFPumpkinBomb:
 		case ETFClassID::CTFGenericBomb:
+		case ETFClassID::CTFPumpkinBomb:
 			return true;
 		}
 		return false;

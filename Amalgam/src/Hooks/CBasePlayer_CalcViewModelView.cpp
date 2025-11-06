@@ -3,7 +3,7 @@
 MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41 56 41 57 48 8D AC 24", 0x0);
 
 MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
-	void* rcx, CBaseEntity* pOwner, Vec3& vEyePosition, Vec3& vEyeAngles)
+	void* rcx, CBaseEntity* pOwner, /*const*/ Vec3& vEyePosition, Vec3& vEyeAngles)
 {
 #ifndef TEXTMODE
 #ifdef DEBUG_HOOKS

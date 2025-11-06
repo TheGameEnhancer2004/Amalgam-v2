@@ -1,5 +1,7 @@
 #include "../SDK/SDK.h"
 
+#include "../Features/Players/PlayerUtils.h"
+
 MAKE_SIGNATURE(CTFBadgePanel_SetupBadge, "client.dll", "48 85 D2 0F 84 ? ? ? ? 48 89 5C 24 ? 48 89 7C 24 ? 4C 89 74 24", 0x0);
 #ifndef TEXTMODE
 MAKE_SIGNATURE(CModelImagePanel_InvalidateImage, "client.dll", "40 53 48 83 EC ? 48 8B D9 48 8B 89 ? ? ? ? 48 85 C9 74 ? 48 8B 01 FF 50 ? 48 C7 83 ? ? ? ? ? ? ? ? 48 8B 8B", 0x0);
@@ -20,21 +22,15 @@ MAKE_HOOK(CTFBadgePanel_SetupBadge, S::CTFBadgePanel_SetupBadge(), void,
 	if (!Vars::Visuals::UI::StreamerMode.Value)
 		return CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
 
-	auto pResource = H::Entities.GetResource();
-	if (!pResource)
+	switch (F::PlayerUtils.GetNameType(steamID.GetAccountID()))
+	{	// probably only need to worry about local, friends, a/o party
+	case NameTypeEnum::Local:
+	case NameTypeEnum::Friend:
+	case NameTypeEnum::Party:
+		break;
+	default:
 		return CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
-
-	uint32_t uAccountID = steamID.GetAccountID();
-	// probably only need to worry about local, friends, a/o party
-	bool bShouldHide = false;
-	if (pResource->m_iAccountID(I::EngineClient->GetLocalPlayer()) == uAccountID)
-		bShouldHide = Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Local;
-	else if (H::Entities.IsFriend(uAccountID))
-		bShouldHide = Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Friends;
-	else if (H::Entities.InParty(uAccountID))
-		bShouldHide = Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Party;
-	if (!bShouldHide)
-		return CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
+	}
 
 	int nOldLevelNum = levelInfo.m_nLevelNum;
 	levelInfo.m_nLevelNum = 1;

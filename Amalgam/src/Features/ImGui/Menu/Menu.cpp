@@ -1575,7 +1575,7 @@ void CMenu::MenuLogs(int iTab)
 				std::unique_lock lock(F::PlayerUtils.m_mutex);
 				const auto vPlayers = F::PlayerUtils.m_vPlayerCache;
 				lock.unlock();
-				std::unordered_map<uint64_t, std::vector<const ListPlayer*>> mParties = {};
+				std::unordered_map<uint64_t, std::vector<const ListPlayer_t*>> mParties = {};
 				std::unordered_map<uint64_t, float> mHues = {}; // don't just shift based on party id in the case that it will be similar
 				for (auto& tPlayer : vPlayers)
 				{
@@ -1604,7 +1604,7 @@ void CMenu::MenuLogs(int iTab)
 						}
 						return Color_t(127, 127, 127, 255).Lerp(Vars::Menu::Theme::Background.Value, 0.5f, LerpEnum::NoAlpha);
 					};
-				auto drawPlayer = [&](const ListPlayer& tPlayer, int x, int y)
+				auto drawPlayer = [&](const ListPlayer_t& tPlayer, int x, int y)
 					{
 						ImVec2 vOriginalPos = { !x ? GetStyle().WindowPadding.x : GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(35 + 36 * y) };
 
@@ -1892,7 +1892,7 @@ void CMenu::MenuLogs(int iTab)
 					};
 
 				// display players
-				std::vector<ListPlayer> vBlu, vRed, vOther;
+				std::vector<ListPlayer_t> vBlu, vRed, vOther;
 				for (auto& tPlayer : vPlayers)
 				{
 					switch (tPlayer.m_iTeam)

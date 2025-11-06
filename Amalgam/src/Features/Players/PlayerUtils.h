@@ -12,7 +12,7 @@
 #define BOT_IGNORE_TAG (FRIEND_IGNORE_TAG-1)
 #define TAG_COUNT (-BOT_IGNORE_TAG)
 
-struct ListPlayer
+struct ListPlayer_t
 {
 	std::string m_sName;
 	uint32_t m_uAccountID;
@@ -28,7 +28,7 @@ struct ListPlayer
 	uint64_t m_iParty;
 };
 
-struct BotIgnoreData
+struct BotIgnoreData_t
 {
 	int m_iKillCount = 0;
 	bool m_bIsIgnored = false;
@@ -46,12 +46,14 @@ struct PriorityLabel_t
 	bool m_bLocked = false; // don't allow it to be removed
 };
 
+Enum(NameType, None = 0, Local = 1 << 0, Friend = 1 << 1, Party = 1 << 2, Player = 1 << 3, Custom = 1 << 4, Privacy = Local | Friend | Party | Player);
+
 class CPlayerlistUtils
 {
 public:
 	std::unordered_map<uint32_t, std::vector<int>> m_mPlayerTags = {};
 	std::unordered_map<uint32_t, std::string> m_mPlayerAliases = {};
-	std::unordered_map<uint32_t, BotIgnoreData> m_mBotIgnoreData = {};
+	std::unordered_map<uint32_t, BotIgnoreData_t> m_mBotIgnoreData = {};
 
 	std::vector<PriorityLabel_t> m_vTags = {
 		{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
@@ -64,8 +66,8 @@ public:
 		{ "Bot Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true }
 	};
 
-	std::vector<ListPlayer> m_vPlayerCache = {};
-	std::unordered_map<uint32_t, ListPlayer> m_mPriorityCache = {};
+	std::vector<ListPlayer_t> m_vPlayerCache = {};
+	std::unordered_map<uint32_t, ListPlayer_t> m_mPriorityCache = {};
 
 	bool m_bLoad = true;
 	bool m_bSave = false;
@@ -88,6 +90,8 @@ public:
 	void Store();
 
 	uint32_t GetAccountID(int iIndex);
+	int GetIndex(uint32_t uAccountID);
+
 	PriorityLabel_t* GetTag(int iID);
 	int GetTag(const std::string& sTag);
 	inline int TagToIndex(int iTag)
@@ -134,14 +138,16 @@ public:
 	bool IsIgnored(int iIndex);
 	bool IsPrioritized(uint32_t uAccountID);
 	bool IsPrioritized(int iIndex);
-	
-	void IncrementBotIgnoreKillCount(uint32_t uFriendsID);
-	
+
+	int GetNameType(int iIndex);
+	int GetNameType(uint32_t uAccountID);
 	const char* GetPlayerName(int iIndex, const char* sDefault, int* pType = nullptr);
+	const char* GetPlayerName(uint32_t uAccountID, const char* sDefault, int* pType = nullptr);
 	
-	// bool ContainsSpecialChars(const std::string& name);
-	// void ProcessSpecialCharsInName(uint32_t uFriendsID, const std::string& name);
-	
+	// bool ContainsSpecialChars(const std::string& sName);
+	// void ProcessSpecialCharsInName(uint32_t uAccountID, const std::string& sName);
+	void IncrementBotIgnoreKillCount(uint32_t uAccountID);
+
 	std::vector<int>& GetPlayerTags(uint32_t uAccountID) { return m_mPlayerTags.contains(uAccountID) ? m_mPlayerTags[uAccountID] : m_vDummy; }
 	std::string* GetPlayerAlias(uint32_t uAccountID) { return m_mPlayerAliases.contains(uAccountID) ? &m_mPlayerAliases[uAccountID] : nullptr; }
 };

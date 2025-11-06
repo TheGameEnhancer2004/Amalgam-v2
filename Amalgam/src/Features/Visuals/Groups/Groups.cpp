@@ -345,8 +345,8 @@ static inline bool ShouldTarget(Group_t& tGroup, CBaseEntity* pEntity, CTFPlayer
 	case ETFClassID::CHalloweenGiftPickup:
 		return tGroup.m_iTargets & TargetsEnum::Gargoyle;
 	// bombs
-	case ETFClassID::CTFPumpkinBomb:
 	case ETFClassID::CTFGenericBomb:
+	case ETFClassID::CTFPumpkinBomb:
 		return tGroup.m_iTargets & TargetsEnum::Bombs;
 	case ETFClassID::CTFMedigunShield:
 		return false;

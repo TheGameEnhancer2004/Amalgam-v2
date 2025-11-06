@@ -828,8 +828,8 @@ static inline void StoreMisc(CBaseEntity* pEntity, CTFPlayer* pLocal, Group_t* p
 		}
 		case ETFClassID::CTFAmmoPack: sName = "Ammo"; break;
 		case ETFClassID::CCurrencyPack: sName = "Money"; break;
-		case ETFClassID::CTFPumpkinBomb:
-		case ETFClassID::CTFGenericBomb: sName = "Bomb"; break;
+		case ETFClassID::CTFGenericBomb:
+		case ETFClassID::CTFPumpkinBomb: sName = "Bomb"; break;
 		case ETFClassID::CHalloweenGiftPickup: sName = "Gargoyle"; break;
 		}
 

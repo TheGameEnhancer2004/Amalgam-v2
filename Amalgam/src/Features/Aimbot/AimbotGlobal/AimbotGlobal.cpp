@@ -265,10 +265,13 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 
 		return false;
 	}
-	case ETFClassID::CTFPumpkinBomb:
 	case ETFClassID::CTFGenericBomb:
+	case ETFClassID::CTFPumpkinBomb:
 	{
 		if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Bombs))
+			return true;
+
+		if (!ValidBomb(pLocal, pWeapon, pEntity))
 			return true;
 
 		return false;
@@ -334,9 +337,6 @@ bool CAimbotGlobal::ShouldHoldAttack(CTFWeaponBase* pWeapon)
 // will not predict for projectile weapons
 bool CAimbotGlobal::ValidBomb(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pBomb)
 {
-	if (G::PrimaryWeaponType == EWeaponType::PROJECTILE)
-		return false;
-
 	Vec3 vOrigin = pBomb->m_vecOrigin();
 
 	CBaseEntity* pEntity;
@@ -354,7 +354,7 @@ bool CAimbotGlobal::ValidBomb(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEn
 
 		if (pEntity->IsPlayer() || pEntity->IsBuilding() || pEntity->IsNPC())
 		{
-			if (ShouldIgnore(pEntity->As<CTFPlayer>(), pLocal, pWeapon))
+			if (ShouldIgnore(pEntity, pLocal, pWeapon))
 				continue;
 
 			if (!SDK::VisPosCollideable(pBomb, pEntity, vOrigin, pEntity->IsPlayer() ? pEntity->m_vecOrigin() + pEntity->As<CTFPlayer>()->GetViewOffset() : pEntity->GetCenter(), MASK_SHOT))

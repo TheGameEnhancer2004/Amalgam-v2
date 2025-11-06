@@ -173,15 +173,15 @@ void CPlayerlistCore::LoadPlayerlist()
 				for (auto& player : *tBotIgnoreTree)
 				{
 					uint32_t uFriendsID = std::stoi(player.first);
-					BotIgnoreData botData;
+					BotIgnoreData_t tBotData;
 					
 					if (auto getValue = player.second.get_optional<int>("KillCount")) 
-						botData.m_iKillCount = *getValue;
+						tBotData.m_iKillCount = *getValue;
 					
 					if (auto getValue = player.second.get_optional<bool>("IsIgnored")) 
-						botData.m_bIsIgnored = *getValue;
+						tBotData.m_bIsIgnored = *getValue;
 					
-					F::PlayerUtils.m_mBotIgnoreData[uFriendsID] = botData;
+					F::PlayerUtils.m_mBotIgnoreData[uFriendsID] = tBotData;
 				}
 			}
 		}

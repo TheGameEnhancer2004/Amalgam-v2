@@ -11,6 +11,19 @@ uint32_t CPlayerlistUtils::GetAccountID(int iIndex)
 	return 0;
 }
 
+int CPlayerlistUtils::GetIndex(uint32_t uAccountID)
+{
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
+		return 0;
+	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+	{
+		if (pResource->m_bValid(n) && !pResource->IsFakePlayer(n) && pResource->m_iAccountID(n) == uAccountID)
+			return n;
+	}
+	return 0;
+}
+
 PriorityLabel_t* CPlayerlistUtils::GetTag(int iID)
 {
 	if (iID > -1 && iID < m_vTags.size())
@@ -36,36 +49,36 @@ int CPlayerlistUtils::GetTag(const std::string& sTag)
 
 // // warnin.... coded by ai :broken_heart:
 // // also, i know thats dumb bcuz everyone can add these chars to their name, but legits are too dumb lol
-// bool CPlayerlistUtils::ContainsSpecialChars(const std::string& name)
+// bool CPlayerlistUtils::ContainsSpecialChars(const std::string& sName)
 // {
-// 	if (name.empty())
+// 	if (sName.empty())
 // 		return false;
 
 // 	// UTF-8 sequences for Thai characters are 3 bytes each
 // 	// Check for these sequences in the input string
-// 	for (size_t i = 0; i < name.size(); )
+// 	for (size_t i = 0; i < sName.size(); )
 // 	{
 // 		// Check if this position could start a Thai character (first byte of sequence)
-// 		if ((unsigned char)name[i] == 0xE0 && i + 2 < name.size())
+// 		if ((unsigned char)sName[i] == 0xE0 && i + 2 < sName.size())
 // 		{
 // 			// Verify if we have a Thai character
 // 			for (size_t j = 0; j < m_vSpecialChars.size(); j += 3) 
 // 			{
-// 				if ((unsigned char)name[i] == m_vSpecialChars[j] &&
-// 					(unsigned char)name[i + 1] == m_vSpecialChars[j + 1] &&
-// 					(unsigned char)name[i + 2] == m_vSpecialChars[j + 2])
+// 				if ((unsigned char)sName[i] == m_vSpecialChars[j] &&
+// 					(unsigned char)sName[i + 1] == m_vSpecialChars[j + 1] &&
+// 					(unsigned char)sName[i + 2] == m_vSpecialChars[j + 2])
 // 					return true;
 // 			}
 // 		}
 		
 // 		// Move to next character (UTF-8 aware)
-// 		if ((name[i] & 0x80) == 0)
+// 		if ((sName[i] & 0x80) == 0)
 // 			i += 1;  // ASCII character
-// 		else if ((name[i] & 0xE0) == 0xC0)
+// 		else if ((sName[i] & 0xE0) == 0xC0)
 // 			i += 2;  // 2-byte UTF-8 sequence
-// 		else if ((name[i] & 0xF0) == 0xE0)
+// 		else if ((sName[i] & 0xF0) == 0xE0)
 // 			i += 3;  // 3-byte UTF-8 sequence (Thai characters are here)
-// 		else if ((name[i] & 0xF8) == 0xF0)
+// 		else if ((sName[i] & 0xF8) == 0xF0)
 // 			i += 4;  // 4-byte UTF-8 sequence
 // 		else
 // 			i += 1;  // Invalid UTF-8, skip
@@ -74,15 +87,15 @@ int CPlayerlistUtils::GetTag(const std::string& sTag)
 // 	return false;
 // }
 
-// void CPlayerlistUtils::ProcessSpecialCharsInName(uint32_t friendsID, const std::string& name)
+// void CPlayerlistUtils::ProcessSpecialCharsInName(uint32_t uAccountID, const std::string& sName)
 // {
-// 	if (!friendsID || name.empty())
+// 	if (!uAccountID || sName.empty())
 // 		return;
 
-// 	if (ContainsSpecialChars(name) && !HasTags(friendsID))
+// 	if (ContainsSpecialChars(sName) && !HasTags(uAccountID))
 // 	{
-// 		AddTag(friendsID, TagToIndex(IGNORED_TAG), true, name.c_str());
-// 		SDK::Output("Amalgam", std::format("Auto-ignored player with special characters: {}", name).c_str(), { 255, 100, 100, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
+// 		AddTag(uAccountID, TagToIndex(IGNORED_TAG), true, sName.c_str());
+// 		SDK::Output("Amalgam", std::format("Auto-ignored player with special characters: {}", sName).c_str(), { 255, 100, 100, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 // 		m_bSave = true;
 // 	}
 // }
@@ -404,16 +417,16 @@ bool CPlayerlistUtils::IsIgnored(uint32_t uAccountID)
 
 	if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
 	{
-		auto& botData = m_mBotIgnoreData[uAccountID];
-		if (!botData.m_bIsIgnored)
+		auto& tBotData = m_mBotIgnoreData[uAccountID];
+		if (!tBotData.m_bIsIgnored)
 			return false;
 			
-		if (botData.m_iKillCount >= 2)
+		if (tBotData.m_iKillCount >= 2)
 		{
 			// bigga u killed me twice, now youll feel my rough.
 			RemoveTag(uAccountID, TagToIndex(BOT_IGNORE_TAG), true);
-			botData.m_iKillCount = 0;
-			botData.m_bIsIgnored = false;
+			tBotData.m_iKillCount = 0;
+			tBotData.m_bIsIgnored = false;
 			m_bSave = true;
 			return false;
 		}
@@ -443,51 +456,110 @@ bool CPlayerlistUtils::IsPrioritized(int iIndex)
 	return IsPrioritized(GetAccountID(iIndex));
 }
 
-const char* CPlayerlistUtils::GetPlayerName(int iIndex, const char* sDefault, int* pType)
+
+
+int CPlayerlistUtils::GetNameType(int iIndex)
 {
 	if (Vars::Visuals::UI::StreamerMode.Value)
 	{
 		if (iIndex == I::EngineClient->GetLocalPlayer())
 		{
 			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Local)
-			{
-				if (pType) *pType = 1;
-				return "Local";
-			}
+				return NameTypeEnum::Local;
 		}
 		else if (H::Entities.IsFriend(iIndex))
 		{
 			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Friends)
-			{
-				if (pType) *pType = 1;
-				return "Friend";
-			}
+				return NameTypeEnum::Friend;
 		}
 		else if (H::Entities.InParty(iIndex))
 		{
 			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Party)
-			{
-				if (pType) *pType = 1;
-				return "Party";
-			}
+				return NameTypeEnum::Party;
 		}
 		else if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::All)
-		{
-			if (pType) *pType = 1;
-			if (auto pTag = GetSignificantTag(iIndex, 0))
-				return pTag->m_sName.c_str();
-			else if (auto pResource = H::Entities.GetResource(); pResource && pResource->m_bValid(iIndex))
-				return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iIndex) ? "Enemy" : "Teammate";
-			return "Player";
-		}
+			return NameTypeEnum::Player;
 	}
-	if (const uint32_t uAccountID = GetAccountID(iIndex))
+	if (const uint32_t uAccountID = GetAccountID(iIndex); uAccountID && GetPlayerAlias(uAccountID))
+		return NameTypeEnum::Custom;
+	return NameTypeEnum::None;
+}
+
+int CPlayerlistUtils::GetNameType(uint32_t uAccountID)
+{
+	if (Vars::Visuals::UI::StreamerMode.Value)
 	{
-		if (auto sAlias = GetPlayerAlias(uAccountID))
+		if (uAccountID == I::SteamUser->GetSteamID().GetAccountID())
 		{
-			if (pType) *pType = 2;
-			return sAlias->c_str();
+			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Local)
+				return NameTypeEnum::Local;
 		}
+		else if (H::Entities.IsFriend(uAccountID))
+		{
+			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Friends)
+				return NameTypeEnum::Friend;
+		}
+		else if (H::Entities.InParty(uAccountID))
+		{
+			if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::Party)
+				return NameTypeEnum::Party;
+		}
+		else if (Vars::Visuals::UI::StreamerMode.Value >= Vars::Visuals::UI::StreamerModeEnum::All)
+			return NameTypeEnum::Player;
+	}
+	if (GetPlayerAlias(uAccountID))
+		return NameTypeEnum::Custom;
+	return NameTypeEnum::None;
+}
+
+const char* CPlayerlistUtils::GetPlayerName(int iIndex, const char* sDefault, int* pType)
+{
+	int iType = GetNameType(iIndex);
+	if (pType) *pType = iType;
+
+	switch (iType)
+	{
+	case NameTypeEnum::Local:
+		return "Local";
+	case NameTypeEnum::Friend:
+		return "Friend";
+	case NameTypeEnum::Party:
+		return "Party";
+	case NameTypeEnum::Player:
+		if (auto pTag = GetSignificantTag(iIndex, 0))
+			return pTag->m_sName.c_str();
+		else if (auto pResource = H::Entities.GetResource(); pResource && pResource->m_bValid(iIndex))
+			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iIndex) ? "Enemy" : "Teammate";
+		return "Player";
+	case NameTypeEnum::Custom:
+		if (auto sAlias = GetPlayerAlias(GetAccountID(iIndex)))
+			return sAlias->c_str();
+	}
+	return sDefault;
+}
+
+const char* CPlayerlistUtils::GetPlayerName(uint32_t uAccountID, const char* sDefault, int* pType)
+{
+	int iType = GetNameType(uAccountID);
+	if (pType) *pType = iType;
+
+	switch (iType)
+	{
+	case NameTypeEnum::Local:
+		return "Local";
+	case NameTypeEnum::Friend:
+		return "Friend";
+	case NameTypeEnum::Party:
+		return "Party";
+	case NameTypeEnum::Player:
+		if (auto pTag = GetSignificantTag(uAccountID, 0))
+			return pTag->m_sName.c_str();
+		else if (auto pResource = H::Entities.GetResource(); (iType = GetIndex(uAccountID)) && pResource && pResource->m_bValid(iType))
+			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iType) ? "Enemy" : "Teammate";
+		return "Player";
+	case NameTypeEnum::Custom:
+		if (auto sAlias = GetPlayerAlias(uAccountID))
+			return sAlias->c_str();
 	}
 	return sDefault;
 }
@@ -535,15 +607,15 @@ void CPlayerlistUtils::Store()
 	}
 }
 
-void CPlayerlistUtils::IncrementBotIgnoreKillCount(uint32_t uFriendsID)
+void CPlayerlistUtils::IncrementBotIgnoreKillCount(uint32_t uAccountID)
 {
-	if (!uFriendsID)
+	if (!uAccountID)
 		return;
 
-	if (HasTag(uFriendsID, TagToIndex(BOT_IGNORE_TAG)))
+	if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
 	{
-		auto& botData = m_mBotIgnoreData[uFriendsID];
-		botData.m_iKillCount++;
+		auto& tBotData = m_mBotIgnoreData[uAccountID];
+		tBotData.m_iKillCount++;
 		m_bSave = true;
 	}
 }

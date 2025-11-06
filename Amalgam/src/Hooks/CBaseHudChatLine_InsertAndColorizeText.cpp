@@ -24,7 +24,7 @@ MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndC
 		const char* sName = pResource->GetName(clientIndex);
 		auto iFind = sMessage.find(sName);
 
-		int iType = 0;
+		int iType;
 		if (const char* sReplace = F::PlayerUtils.GetPlayerName(clientIndex, nullptr, &iType))
 		{
 			if (iFind != std::string::npos)
@@ -32,7 +32,7 @@ MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndC
 			sName = sReplace;
 		}
 
-		if (Vars::Visuals::UI::ChatTags.Value && iType != 1)
+		if (Vars::Visuals::UI::ChatTags.Value && !(iType & NameTypeEnum::Privacy))
 		{
 			std::string sTag, cColor;
 			if (Vars::Visuals::UI::ChatTags.Value & Vars::Visuals::UI::ChatTagsEnum::Local && clientIndex == I::EngineClient->GetLocalPlayer())
@@ -61,12 +61,16 @@ MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndC
 		if (auto pResource = H::Entities.GetResource())
 		{
 			std::vector<std::pair<std::string, std::string>> vReplace;
-			for (auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
+			for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
 			{
-				int iIndex = pEntity->entindex();
-				int iType = 0; const char* sReplace = F::PlayerUtils.GetPlayerName(iIndex, nullptr, &iType);
-				if (sReplace && iType == 1)
-					vReplace.emplace_back(pResource->GetName(iIndex), sReplace);
+				if (!pResource->m_bValid(n))
+					continue;
+
+				int iType; const char* sReplace = F::PlayerUtils.GetPlayerName(n, nullptr, &iType);
+				if (!sReplace || !(iType & NameTypeEnum::Privacy))
+					continue;
+
+				vReplace.emplace_back(pResource->GetName(n), sReplace);
 			}
 			for (auto& [sFind, sReplace] : vReplace)
 			{
