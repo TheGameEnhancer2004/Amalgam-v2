@@ -23,6 +23,7 @@ private:
 	void NoiseSpam(CTFPlayer* pLocal);
 	void CallVoteSpam(CTFPlayer* pLocal);
 
+	void AutoReport();
 	void CheatsBypass();
 	void WeaponSway();
 

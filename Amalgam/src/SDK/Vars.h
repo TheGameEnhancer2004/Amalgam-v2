@@ -892,6 +892,7 @@ I dont think this is a good idea to disable simulations completely:
 				Off, Random, Medic, Thanks, NiceShot, Cheers, Jeers, GoGoGo, MoveUp, GoLeft, GoRight, Yes, No, Incoming, Spy, Sentry, NeedTeleporter, Pootis, NeedSentry, ActivateCharge, Help, BattleCry);
 			CVar(AutoVoteMap, "Auto vote map", true);
 			CVar(AutoVoteMapOption, "", 2, SLIDER_CLAMP, 0, 2, 1, "%i");
+			CVar(AutoReport, "Auto report players", false);
 
 			SUBNAMESPACE_BEGIN(ChatSpam)
 				CVar(Enable, "Chat spam", false);

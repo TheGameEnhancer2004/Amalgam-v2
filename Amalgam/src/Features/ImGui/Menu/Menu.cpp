@@ -1281,6 +1281,7 @@ void CMenu::MenuMisc(int iTab)
 						FSlider(Vars::Misc::Automation::AutoVoteMapOption, FSliderEnum::Right);
 					}
 					PopTransparent();
+					FToggle(Vars::Misc::Automation::AutoReport);
 				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{
