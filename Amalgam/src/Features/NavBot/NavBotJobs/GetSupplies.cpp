@@ -1,80 +1,51 @@
 #include "GetSupplies.h"
 #include "../NavEngine/NavEngine.h"
 
-// TODO:
-// If cached ammopack is taken try to go for other closest one
-
-std::vector<std::pair<bool, Vector>> CNavBotSupplies::GetEntities(CTFPlayer* pLocal, bool bHealth)
+bool CNavBotSupplies::GetSuppliesData(CTFPlayer* pLocal, bool& bClosestTaken, bool bIsAmmo)
 {
-	auto eGroupType = bHealth ? EntityEnum::PickupHealth : EntityEnum::PickupAmmo;
-
-	auto GetEnts = [&](std::vector<std::pair<bool, Vector>>* pOut) -> void
-		{
-			for (auto pEntity : H::Entities.GetGroup(eGroupType))
-			{
-				if (!pEntity->IsDormant())
-				{
-					int iEntIndex = pEntity->entindex();
-					if (bHealth)
-					{
-						// Already cached
-						if (m_sCachedHealthIndexes.count(iEntIndex))
-							continue;
-
-						m_vCachedHealthOrigins.emplace_back(false, pEntity->GetAbsOrigin());
-						m_sCachedHealthIndexes.insert(iEntIndex);
-					}
-					// We dont cache ammopacks with physics
-					else if (pEntity->GetClassID() == ETFClassID::CTFAmmoPack)
-						pOut->emplace_back(false, pEntity->GetAbsOrigin());
-					else
-					{
-						// Already cached
-						if (m_sCachedAmmoIndexes.count(iEntIndex))
-							continue;
-
-						m_vCachedAmmoOrigins.emplace_back(false, pEntity->GetAbsOrigin());
-						m_sCachedAmmoIndexes.insert(iEntIndex);
-					}
-				}
-			}
-		};
-
-	std::vector<std::pair<bool, Vector>> vOrigins;
-	if (bHealth)
+	if (bIsAmmo)
 	{
-		GetEnts(nullptr);
-		vOrigins = m_vCachedHealthOrigins;
+		// We dont cache ammopacks with physics
+		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PickupAmmo))
+		{
+			if (pEntity->IsDormant())
+				continue;
+
+			SupplyData_t tData;
+			tData.m_vOrigin = pEntity->GetAbsOrigin();
+			m_vTempMain.emplace_back(tData);
+		}
+		m_vTempMain.reserve(m_vTempMain.size() + m_vCachedAmmoOrigins.size());
+		m_vTempMain.insert(m_vTempMain.end(), m_vCachedAmmoOrigins.begin(), m_vCachedAmmoOrigins.end());
 	}
 	else
+		m_vTempMain = m_vCachedHealthOrigins;
+
+	if (m_vTempMain.size())
 	{
-		GetEnts(&vOrigins);
-		vOrigins.reserve(vOrigins.size() + m_vCachedAmmoOrigins.size());
-		vOrigins.insert(vOrigins.end(), m_vCachedAmmoOrigins.begin(), m_vCachedAmmoOrigins.end());
+		// Sort by distance, closer is better
+		auto vLocalOrigin = pLocal->GetAbsOrigin();
+		std::sort(m_vTempMain.begin(), m_vTempMain.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
+				  {
+					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+				  });
+
+
+		bClosestTaken = m_vTempMain.front().m_flRespawnTime;
+		return true;
 	}
-
-	// Sort by distance, closer is better
-	auto vLocalOrigin = pLocal->GetAbsOrigin();
-	std::sort(vOrigins.begin(), vOrigins.end(), [&](std::pair<bool, Vector> a, std::pair<bool, Vector> b) -> bool
-			  {
-				  return a.second.DistTo(vLocalOrigin) < b.second.DistTo(vLocalOrigin);
-			  });
-
-	return vOrigins;
+	return false;
 }
 
-std::vector<std::pair<bool, Vector>> CNavBotSupplies::GetDispensers(CTFPlayer* pLocal)
+bool CNavBotSupplies::GetDispensersData(CTFPlayer* pLocal)
 {
-	auto pLocalArea = F::NavEngine.GetLocalNavArea();
-
-	std::vector<std::pair<bool, Vector>> vOrigins;
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingTeam))
 	{
 		if (pEntity->GetClassID() != ETFClassID::CObjectDispenser)
 			continue;
 
 		auto pDispenser = pEntity->As<CObjectDispenser>();
-		if (pDispenser->m_bCarryDeploy() || pDispenser->m_bHasSapper() || pDispenser->m_bBuilding())
+		if (pDispenser->m_bCarried() || pDispenser->m_bHasSapper() || pDispenser->m_bBuilding())
 			continue;
 
 		Vector vOrigin;
@@ -82,24 +53,32 @@ std::vector<std::pair<bool, Vector>> CNavBotSupplies::GetDispensers(CTFPlayer* p
 			continue;
 
 		Vec2 vOrigin2D = Vec2(vOrigin.x, vOrigin.y);
-		Vector vNearestPoint = pLocalArea->GetNearestPoint(vOrigin2D);
-
-		// This fixes the fact that players can just place dispensers in unreachable locations
-		if (vNearestPoint.DistTo(vOrigin) > 300.f ||
-			vNearestPoint.z - vOrigin.z > PLAYER_CROUCHED_JUMP_HEIGHT)
+		auto pClosestArea = F::NavEngine.FindClosestNavArea(vOrigin);
+		if (!pClosestArea)
 			continue;
 
-		vOrigins.emplace_back( true, vOrigin );
+		// This fixes the fact that players can just place dispensers in unreachable locations
+		Vector vNearestPoint = pClosestArea->GetNearestPoint(vOrigin2D);
+		if (vNearestPoint.DistTo(vOrigin) > 300.f ||
+			vOrigin.z - vNearestPoint.z > PLAYER_CROUCHED_JUMP_HEIGHT)
+			continue;
+
+		SupplyData_t tData;
+		tData.m_bDispenser = true;
+		tData.m_vOrigin = vOrigin;
+		m_vTempDispensers.emplace_back(tData);
 	}
-
-	// Sort by distance, closer is better
-	auto vLocalOrigin = pLocal->GetAbsOrigin();
-	std::sort(vOrigins.begin(), vOrigins.end(), [&](std::pair<bool, Vector> a, std::pair<bool, Vector> b) -> bool
-			  {
-				  return a.second.DistTo(vLocalOrigin) < b.second.DistTo(vLocalOrigin);
-			  });
-
-	return vOrigins;
+	if (m_vTempDispensers.size())
+	{
+		// Sort by distance, closer is better
+		auto vLocalOrigin = pLocal->GetAbsOrigin();
+		std::sort(m_vTempDispensers.begin(), m_vTempDispensers.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
+				  {
+					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+				  });
+		return true;
+	}
+	return false;
 }
 
 bool CNavBotSupplies::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
@@ -115,8 +94,8 @@ bool CNavBotSupplies::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
 	if (pLocal->m_nPlayerCond() & (1 << 21)/*TFCond_Healing*/)
 		return false;
 
-	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
 	// Get health when below 65%, or below 80% and just patrolling
+	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
 	return flHealthPercent < 0.64f || bLowPrio && (F::NavEngine.m_eCurrentPriority <= PriorityListEnum::Patrol || F::NavEngine.m_eCurrentPriority == PriorityListEnum::LowPrioGetHealth) && flHealthPercent <= 0.80f;
 }
 
@@ -162,157 +141,187 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 	return false;
 }
 
-bool CNavBotSupplies::GetHealth(CUserCmd* pCmd, CTFPlayer* pLocal, bool bLowPrio)
+bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocalOrigin, SupplyData_t* pSupplyData, const int iPriority)
+{	
+	float flDist = pSupplyData->m_vOrigin.DistTo(vLocalOrigin);
+	if (!pSupplyData->m_bDispenser)
+	{
+		// Check if we are close enough to the pack to pick it up
+		if (flDist < 75.0f)
+		{
+			Vector2D vTo = { pSupplyData->m_vOrigin.x, pSupplyData->m_vOrigin.y };
+			Vector vPathPoint = F::NavEngine.GetLocalNavArea()->GetNearestPoint(vTo);
+			vPathPoint.z = pSupplyData->m_vOrigin.z;
+
+			// We are close enough to take the pack. Mark as taken
+			if (pSupplyData->m_pOriginalSelfPtr && !pSupplyData->m_flRespawnTime && flDist <= 20.f)
+				pSupplyData->m_pOriginalSelfPtr->m_flRespawnTime = I::GlobalVars->curtime + 10.f;
+
+			// Try to touch the pack
+			SDK::WalkTo(pCmd, pLocal, vPathPoint);
+			return true;
+		}
+	}
+	// Stand still if we are close to a dispenser 
+	else if (flDist <= 150.f)
+		return true;
+
+	return F::NavEngine.NavTo(pSupplyData->m_vOrigin, PriorityListEnum::PriorityListEnum(iPriority), true, flDist > 200.f);
+}
+
+void CNavBotSupplies::UpdateTakenState()
 {
-	static Timer tHealthCooldown{};
-	static Timer tRepathTimer{};
-	const PriorityListEnum::PriorityListEnum ePriority = bLowPrio ? PriorityListEnum::LowPrioGetHealth : PriorityListEnum::GetHealth;
-	if (!tHealthCooldown.Check(1.f))
+	float flCurTime = I::GlobalVars->curtime;
+	for (auto& pHealthData : m_vCachedHealthOrigins)
+	{
+		if (pHealthData.m_flRespawnTime < flCurTime)
+			pHealthData.m_flRespawnTime = 0.f;
+	}
+	for (auto& pAmmoData : m_vCachedAmmoOrigins)
+	{
+		if (pAmmoData.m_flRespawnTime < flCurTime)
+			pAmmoData.m_flRespawnTime = 0.f;
+	}
+}
+
+bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
+{
+	m_vTempMain.clear();
+	m_vTempDispensers.clear();
+	bool bLowPrio = iFlags & GetSupplyEnum::LowPrio;
+	const PriorityListEnum::PriorityListEnum ePriority = iFlags & GetSupplyEnum::Health ?
+		bLowPrio ? PriorityListEnum::LowPrioGetHealth : PriorityListEnum::GetHealth :
+		PriorityListEnum::GetAmmo;
+
+	static bool bWasForce = false;
+	bool bShouldForce = iFlags & GetSupplyEnum::Forced;
+	bool bIsAmmo = ePriority == PriorityListEnum::GetAmmo;
+	if (!bShouldForce && !(bIsAmmo ? ShouldSearchAmmo(pLocal) : ShouldSearchHealth(pLocal, bLowPrio)))
+	{
+		// Cancel pathing if we no longer need to get anything
+		if (F::NavEngine.m_eCurrentPriority == ePriority && (!bIsAmmo || !bWasForce))
+			F::NavEngine.CancelPath();
+		return false;
+	}
+
+	static Timer tCooldownTimer{};
+	if (!bShouldForce && !tCooldownTimer.Check(1.f))
 		return F::NavEngine.m_eCurrentPriority == ePriority;
 
-	// This should also check if pLocal is valid
-	if (ShouldSearchHealth(pLocal, bLowPrio))
+	// Already pathing, only try to repath every 2s
+	static Timer tRepathCooldownTimer{};
+	if (F::NavEngine.m_eCurrentPriority == ePriority && !tRepathCooldownTimer.Run(2.f))
+		return true;
+
+	UpdateTakenState();
+	bWasForce = false;
+	bool bClosestSupplyWasTaken = false;
+	bool bGotSupplies = GetSuppliesData(pLocal, bClosestSupplyWasTaken, bIsAmmo);
+	bool bGotDispensers = GetDispensersData(pLocal);
+	if (!bGotSupplies && !bGotDispensers)
 	{
-		// Already pathing, only try to repath every 2s
-		if (F::NavEngine.m_eCurrentPriority == ePriority && !tRepathTimer.Run(2.f))
-			return true;
+		tCooldownTimer.Update();
+		return false;
+	}
 
-		auto vHealthpacks = GetEntities(pLocal, true);
-		auto vDispensers = GetDispensers(pLocal);
-		auto vTotalEnts = vHealthpacks;
+	const auto vLocalOrigin = pLocal->GetAbsOrigin();
+	bool bHasCloseDispenser = false;
+	if (bGotDispensers)
+	{
+		bHasCloseDispenser = m_vTempDispensers.front().m_vOrigin.DistTo(vLocalOrigin) <= 1600.f;
+		m_vTempMain.reserve(m_vTempMain.size() + m_vTempDispensers.size());
+		m_vTempMain.insert(m_vTempMain.end(), m_vTempDispensers.begin(), m_vTempDispensers.end());
+		std::sort(m_vTempMain.begin(), m_vTempMain.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
+				  {
+					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+				  });
+	}
 
-		// Add dispensers and sort list again
-		const auto vLocalOrigin = pLocal->GetAbsOrigin();
-		if (!vDispensers.empty())
+	bool bWaitForRespawn = false;
+	SupplyData_t* pBest = nullptr, * pSecondBest = nullptr;
+	if (bClosestSupplyWasTaken)
+	{
+		for (auto& pSupplyData : m_vTempMain)
 		{
-			vTotalEnts.reserve(vHealthpacks.size() + vDispensers.size());
-			vTotalEnts.insert(vTotalEnts.end(), vDispensers.begin(), vDispensers.end());
-			std::sort(vTotalEnts.begin(), vTotalEnts.end(), [&](std::pair<bool, Vector> a, std::pair<bool, Vector> b) -> bool
-					  {
-						  return a.second.DistTo(vLocalOrigin) < b.second.DistTo(vLocalOrigin);
-					  });
-		}
+			if (pSupplyData.m_flRespawnTime)
+				continue;
 
-		std::pair<bool, Vector>* pBestEntOrigin = nullptr;
-		if (!vTotalEnts.empty())
-			pBestEntOrigin = &vTotalEnts.front();
-
-		if (vTotalEnts.size() > 1)
-		{
-			float flFirstTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, pBestEntOrigin->second);
-			float flSecondTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, vTotalEnts.at(1).second);
-			if (flSecondTargetCost < flFirstTargetCost)
-				pBestEntOrigin = &vTotalEnts.at(1);
-		}
-
-		if (pBestEntOrigin)
-		{
-			// Check if we are close enough to the health pack to pick it up (unless its not a health pack)
-			if (!pBestEntOrigin->first && pBestEntOrigin->second.DistTo(pLocal->GetAbsOrigin()) < 75.0f)
+			// Too far
+			if (pSupplyData.m_vOrigin.DistTo(vLocalOrigin) > 800.f)
 			{
-				F::NavEngine.m_eCurrentPriority = ePriority;
-				// Try to touch the health pack
-				Vector2D vTo = { pBestEntOrigin->second.x, pBestEntOrigin->second.y };
-				Vector vPathPoint = F::NavEngine.GetLocalNavArea()->GetNearestPoint(vTo);
-				vPathPoint.z = pBestEntOrigin->second.z;
-
-				// Walk towards the health pack
-				SDK::WalkTo(pCmd, pLocal, vPathPoint);
-				return true;
+				// If no other target was found wait for this entity to respawn
+				bWaitForRespawn = !pBest;
+				break;
 			}
 
-			if (F::NavEngine.NavTo(pBestEntOrigin->second, ePriority, true, pBestEntOrigin->second.DistTo(vLocalOrigin) > 200.f))
-				return true;
+			if (pBest)
+			{
+				pSecondBest = &pSupplyData;
+				break;
+			}
+			else
+				pBest = &pSupplyData;
 		}
-
-		tHealthCooldown.Update();
+		// Check again if its worth going for this entity
+		if (!bWaitForRespawn && pBest && F::NavEngine.GetPathCost(vLocalOrigin, pBest->m_vOrigin) >= 2000.f)
+			pBest = pSecondBest = nullptr;
 	}
-	else if (F::NavEngine.m_eCurrentPriority == ePriority)
-		F::NavEngine.CancelPath();
 
+	if (!pBest)
+	{
+		pBest = &m_vTempMain.front();
+		if (bHasCloseDispenser)
+		{
+			if (bClosestSupplyWasTaken)
+				pBest = &m_vTempDispensers.front();
+		}
+		else if (m_vTempMain.size() > 1)
+			pSecondBest = &m_vTempMain.at(1);
+	}
+
+	// Check if going for the other one will take less time
+	if (pSecondBest)
+	{
+		float flFirstTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, pBest->m_vOrigin);
+		float flSecondTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, pSecondBest->m_vOrigin);
+		if (flSecondTargetCost < flFirstTargetCost)
+			pBest = pSecondBest;
+	}
+
+	if (pBest && GetSupply(pCmd, pLocal, vLocalOrigin, pBest, ePriority))
+	{
+		bWasForce = bShouldForce;
+		return true;
+	}
+
+	tCooldownTimer.Update();
 	return false;
 }
 
-bool CNavBotSupplies::GetAmmo(CUserCmd* pCmd, CTFPlayer* pLocal, bool bForce)
+void CNavBotSupplies::AddCachedSupplyOrigin(Vector vOrigin, bool bHealth)
 {
-	static Timer tRepathTimer;
-	static Timer tAmmoCooldown{};
-	static bool bWasForce = false;
-
-	if (!bForce && !tAmmoCooldown.Check(1.f))
-		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetAmmo;
-
-	if (bForce || ShouldSearchAmmo(pLocal))
+	SupplyData_t tData;
+	tData.m_vOrigin = vOrigin;
+	if (bHealth)
 	{
-		// Already pathing, only try to repath every 2s
-		if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetAmmo && !tRepathTimer.Run(2.f))
-			return true;
-		else
-			bWasForce = false;
-
-		auto vAmmopacks = GetEntities(pLocal);
-		auto vDispensers = GetDispensers(pLocal);
-		auto vTotalEnts = vAmmopacks;
-
-		// Add dispensers and sort list again
-		const auto vLocalOrigin = pLocal->GetAbsOrigin();
-		if (!vDispensers.empty())
-		{
-			vTotalEnts.reserve(vAmmopacks.size() + vDispensers.size());
-			vTotalEnts.insert(vTotalEnts.end(), vDispensers.begin(), vDispensers.end());
-			std::sort(vTotalEnts.begin(), vTotalEnts.end(), [&](std::pair<bool, Vector> a, std::pair<bool, Vector> b) -> bool
-					  {
-						  return a.second.DistTo(vLocalOrigin) < b.second.DistTo(vLocalOrigin);
-					  });
-		}
-
-		std::pair<bool, Vector>* pBestEntOrigin = nullptr;
-		if (!vTotalEnts.empty())
-			pBestEntOrigin = &vTotalEnts.front();
-
-		if (vTotalEnts.size() > 1)
-		{
-			float flFirstTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, pBestEntOrigin->second);
-			float flSecondTargetCost = F::NavEngine.GetPathCost(vLocalOrigin, vTotalEnts.at(1).second);
-			pBestEntOrigin = flSecondTargetCost < flFirstTargetCost ? &vTotalEnts.at(1) : pBestEntOrigin;
-		}
-
-		if (pBestEntOrigin)
-		{
-			// Check if we are close enough to the ammo pack to pick it up (unless its not an ammo pack)
-			if (!pBestEntOrigin->first && pBestEntOrigin->second.DistTo(pLocal->GetAbsOrigin()) < 75.0f)
-			{
-				// Try to touch the ammo pack
-				F::NavEngine.m_eCurrentPriority = PriorityListEnum::GetAmmo;
-				Vector2D vTo = { pBestEntOrigin->second.x, pBestEntOrigin->second.y };
-				Vector vPathPoint = F::NavEngine.GetLocalNavArea()->GetNearestPoint(vTo);
-				vPathPoint.z = pBestEntOrigin->second.z;
-
-				// Walk towards the ammo pack
-				SDK::WalkTo(pCmd, pLocal, vPathPoint);
-				bWasForce = bForce;
-				return true;
-			}
-
-			if (F::NavEngine.NavTo(pBestEntOrigin->second, PriorityListEnum::GetAmmo, true, pBestEntOrigin->second.DistTo(vLocalOrigin) > 200.f))
-			{
-				bWasForce = bForce;
-				return true;
-			}
-		}
-
-		tAmmoCooldown.Update();
+		m_vCachedHealthOrigins.push_back(tData);
+		m_vCachedHealthOrigins.back().m_pOriginalSelfPtr = &m_vCachedHealthOrigins.back();
 	}
-	else if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetAmmo && !bWasForce)
-		F::NavEngine.CancelPath();
-
-	return false;
+	else
+	{
+		m_vCachedAmmoOrigins.push_back(tData);
+		m_vCachedAmmoOrigins.back().m_pOriginalSelfPtr = &m_vCachedAmmoOrigins.back();
+	}
 }
 
-void CNavBotSupplies::Reset()
+void CNavBotSupplies::ResetCachedOrigins()
 {
 	m_vCachedHealthOrigins.clear();
-	m_sCachedHealthIndexes.clear();
 	m_vCachedAmmoOrigins.clear();
-	m_sCachedHealthIndexes.clear();
+}
+
+void CNavBotSupplies::ResetTemp()
+{
+	m_vTempMain.clear();
+	m_vTempDispensers.clear();
 }

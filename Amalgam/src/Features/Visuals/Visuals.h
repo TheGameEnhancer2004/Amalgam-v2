@@ -33,6 +33,7 @@ public:
 	void SplashRadius(CTFPlayer* pLocal);
 	void DrawAntiAim(CTFPlayer* pLocal);
 	void DrawPickupTimers();
+	void Triggers(CTFPlayer* pLocal);
 	void DrawDebugInfo(CTFPlayer* pLocal);
 
 	std::vector<DrawBox_t> GetHitboxes(matrix3x4* aBones, CBaseAnimating* pEntity, std::vector<int> vHitboxes = {}, int iTarget = -1);

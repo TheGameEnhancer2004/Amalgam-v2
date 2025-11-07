@@ -3204,3 +3204,65 @@ public:
 
     int m_iCraftingAttempts;
 };
+
+struct cplane_t
+{
+	Vector normal{};
+	float dist{};
+	byte type{};
+	byte signbits{};
+	byte pad[2]{};
+};
+
+struct mvertex_t
+{
+	Vector		position;
+};
+
+struct msurface2_t
+{
+	// Something here is not right
+	unsigned int flags;
+
+	cplane_t				*plane;	
+	int						firstvertindex;	
+	//...
+};
+
+struct worldbrushdata_t
+{
+	int			numsubmodels;
+
+	int			numplanes;
+	cplane_t	*planes;
+
+	int			numleafs;
+	void		*leafs;
+
+	int			numleafwaterdata;
+	void		*leafwaterdata;
+
+	int			numvertexes;
+	mvertex_t	*vertexes;
+	byte pad[168];
+	msurface2_t	*surfaces2;
+	byte pad1[24];
+	unsigned short *vertindices;
+};
+
+struct brushdata_t
+{
+	worldbrushdata_t	*pShared;
+	int			firstmodelsurface, nummodelsurfaces;
+
+	unsigned short	renderHandle;
+	unsigned short	firstnode;
+};
+
+struct model_t
+{
+	byte pad[40];
+	Vector mins, maxs;
+	float radius;
+	brushdata_t	brush;
+};

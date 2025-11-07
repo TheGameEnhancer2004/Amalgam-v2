@@ -136,13 +136,13 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 	{
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldBomb))
 		{
+			if (F::AimbotGlobal.ShouldIgnore(pEntity, pLocal, pWeapon))
+				continue;
+
 			Vec3 vPos = pEntity->GetCenter();
 			Vec3 vAngleTo = Math::CalcAngle(vLocalPos, vPos);
 			float flFOVTo = Math::CalcFov(vLocalAngles, vAngleTo);
 			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
-				continue;
-
-			if (!F::AimbotGlobal.ValidBomb(pLocal, pWeapon, pEntity))
 				continue;
 
 			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;

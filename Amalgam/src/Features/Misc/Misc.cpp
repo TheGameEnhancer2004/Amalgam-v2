@@ -10,6 +10,7 @@
 #include <fstream>
 
 MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
+MAKE_SIGNATURE(ReportPlayerAccount, "client.dll", "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 8B FA 48 C1 E9", 0x0);
 
 CMisc::NameDumpResult_t CMisc::DumpNames(bool bAnnounce)
 {
@@ -211,6 +212,8 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	CallVoteSpam(pLocal);
 	CheatsBypass();
 	WeaponSway();
+	AutoReport();
+
 #ifdef TEXTMODE
 	F::NamedPipe.Store(pLocal, true);
 #endif
@@ -1082,6 +1085,36 @@ void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::BattleCry:
 			I::EngineClient->ClientCmd_Unrestricted("voicemenu 2 1");
 			break;
+		}
+	}
+}
+
+void CMisc::AutoReport()
+{
+	if (!Vars::Misc::Automation::AutoReport.Value)
+		return;
+
+	static Timer tReportTimer{};
+	if (!tReportTimer.Run(5.0f))
+		return;
+
+	int iLocalIdx = I::EngineClient->GetLocalPlayer();
+	for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+	{
+		if (i == iLocalIdx)
+			continue;
+
+		if (auto uSteamId = F::PlayerUtils.GetAccountID(i))
+		{
+			if (H::Entities.IsFriend(i) ||
+				H::Entities.InParty(i) ||
+				F::PlayerUtils.IsIgnored(i) ||
+				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
+				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)))
+				continue;
+
+			uint64_t uSteamID64 = ((uint64_t)1 << 56) | ((uint64_t)1 << 52) | ((uint64_t)1 << 32) | uSteamId;
+			S::ReportPlayerAccount.Call<bool>(uSteamID64, 1);
 		}
 	}
 }

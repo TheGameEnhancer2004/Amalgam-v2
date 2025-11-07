@@ -1187,6 +1187,7 @@
     <ClCompile Include="src\Hooks\CBaseEntity_BaseInterpolatePart1.cpp" />
     <ClCompile Include="src\Hooks\CBaseEntity_EstimateAbsVelocity.cpp" />
     <ClCompile Include="src\Hooks\CBoneFollower_TestCollision.cpp" />
+    <ClCompile Include="src\Hooks\CEntityMapData_ExtractValue.cpp" />
     <ClCompile Include="src\Hooks\CGameEventManager_FireEventClientSide.cpp" />
     <ClCompile Include="src\Hooks\CHudItemEffectMeter_Weapon_C_TFWeaponBase_IsEnabled.cpp" />
     <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
@@ -1294,6 +1295,7 @@
     <ClCompile Include="src\SDK\Definitions\Main\CBaseObject.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CBasePlayer.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CBaseProjectile.cpp" />
+    <ClCompile Include="src\SDK\Definitions\Main\CEntityMapData.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CTFPlayer.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CTFWeaponBase.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\INetMessage.cpp" />
@@ -1511,6 +1513,7 @@
     <ClInclude Include="src\Features\Visuals\SpectatorList\SpectatorList.h" />
     <ClInclude Include="src\Features\Visuals\Visuals.h" />
     <ClInclude Include="src\Hooks\Direct3DDevice9.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CModelLoader.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CServerTools.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGameRules.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGCClientSystem.h" />
@@ -1537,6 +1540,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CCollisionProperty.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CEconEntity.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CEconWearable.h" />
+    <ClInclude Include="src\SDK\Definitions\Main\CEntityMapData.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CEntitySphereQuery.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoom.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoomShim.h" />

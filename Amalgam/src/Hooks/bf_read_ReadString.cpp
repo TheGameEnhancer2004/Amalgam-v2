@@ -29,8 +29,8 @@ MAKE_HOOK(bf_read_ReadString, S::bf_read_ReadString(), bool,
 		if (!iTarget)
 			return bReturn;
 
-		int iType = 0; const char* sName = F::PlayerUtils.GetPlayerName(iTarget, nullptr, &iType);
-		if (iType == 0)
+		int iType; const char* sName = F::PlayerUtils.GetPlayerName(iTarget, nullptr, &iType);
+		if (iType == NameTypeEnum::None)
 			return bReturn;
 
 		int iChar = 0;

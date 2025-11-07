@@ -81,6 +81,37 @@ struct WeaponAmmoInfo_t
 	bool m_bUsesAmmo = false;
 };
 
+Enum(TriggerType, None,
+	 Hurt,
+	 Ignite,
+	 Push,
+	 Regenerate,
+	 RespawnRoom,
+	 CaptureArea,
+	 Catapult,
+	 ApplyImpulse
+);
+
+struct BrushSurface_t
+{
+	Vec3 m_vCenter = {};
+	std::vector<Vec3> m_vPoints = {};
+};
+
+struct TriggerData_t
+{
+	model_t* m_pModel = nullptr;
+	TriggerTypeEnum::TriggerTypeEnum m_eType = TriggerTypeEnum::None;
+	Vec3 m_vOrigin = {};
+	Vec3 m_vCenter = {};
+	Vec3 m_vAngles = {};
+	Vec3 m_vRotate = {};
+
+	std::vector<BrushSurface_t> m_vBrushSurfaces = {};
+
+	bool PointIsWithin(Vec3 vPoint) const;
+};
+
 namespace G
 {
 	inline bool Unload = false;
@@ -116,6 +147,7 @@ namespace G
 	inline std::vector<DrawBox_t> BoxStorage = {};
 	inline std::vector<DrawSphere_t> SphereStorage = {};
 	inline std::vector<DrawSwept_t> SweptStorage = {};
+	inline std::vector<TriggerData_t> TriggerStorage = {};
 
 	inline int SavedDefIndexes[3] = {-1,-1,-1};
 	inline int SavedWepIds[3] = {-1,-1,-1};

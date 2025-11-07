@@ -99,9 +99,15 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTarget(CTFPlayer* pLocal, CT
 
 ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx)
 {
+	if (iEntIdx <= 0)
+		return ShouldTargetEnum::DontTarget;
+
 	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
-	if (!pEntity || !pEntity->IsBuilding())
+	if (!pEntity)
 		return ShouldTargetEnum::Invalid;
+
+	if (!pEntity->IsBuilding())
+		return ShouldTargetEnum::DontTarget;
 
 	auto pBuilding = pEntity->As<CBaseObject>();
 	if (!(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Sentry) && pBuilding->IsSentrygun()
@@ -132,10 +138,9 @@ bool CBotUtils::GetDormantOrigin(int iIndex, Vector& vOut)
 		return false;
 
 	auto pEntity = I::ClientEntityList->GetClientEntity(iIndex)->As<CBaseEntity>();
-	if (!pEntity || !pEntity->As<CBasePlayer>()->IsAlive())
-		return false;
-
-	if (!pEntity->IsPlayer() && !pEntity->IsBuilding())
+	if (!pEntity ||
+		(pEntity->IsPlayer() ? !pEntity->As<CBasePlayer>()->IsAlive() :
+		pEntity->IsBuilding() ? !pEntity->As<CBaseObject>()->m_iHealth() : true))
 		return false;
 
 	if (!pEntity->IsDormant() || H::Entities.GetDormancy(iIndex))

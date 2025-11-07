@@ -156,14 +156,6 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		}
 	},
 	{
-		FNV1A::Hash32Const("cat_nav_search_spawnrooms"), 
-		[](const std::deque<const char*>& vArgs)
-		{
-			if (F::NavEngine.IsNavMeshLoaded())
-				F::NavEngine.UpdateRespawnRooms();
-		}
-	},
-	{
 		FNV1A::Hash32Const("cat_save_nav_mesh"), 
 		[](const std::deque<const char*>& vArgs)
 		{
