@@ -41,6 +41,7 @@ private:
 	bool m_bPathing = false;
 
 	bool IsSetupTime();
+	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath();

@@ -4,6 +4,8 @@
 #include "../BotUtils.h"
 #include "../../FollowBot/FollowBot.h"
 #include <limits>
+#include <algorithm>
+#include <cmath>
 
 bool CNavEngine::IsSetupTime()
 {
@@ -82,6 +84,43 @@ bool CNavEngine::IsPlayerPassableNavigation(const Vector vFrom, Vector vTo, unsi
 	return !trace.DidHit();
 }
 
+void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea)
+{
+	if (!pArea)
+		return;
+
+	Vector vDelta = vDestination - vStart;
+	Vector vPlanar = vDelta;
+	vPlanar.z = 0.f;
+	const float flPlanarDistance = vPlanar.Length();
+	const float flVerticalDistance = std::fabs(vDelta.z);
+	const float flEffectiveDistance = std::max(flPlanarDistance, flVerticalDistance);
+
+	if (flEffectiveDistance <= 1.f)
+		return;
+
+	constexpr float kMaxSegmentLength = 120.f;
+	const int nIntermediate = std::clamp(static_cast<int>(std::ceil(flEffectiveDistance / kMaxSegmentLength)), 1, 8);
+	const float flDivider = static_cast<float>(nIntermediate + 1);
+	const Vector vStep = vDelta / flDivider;
+
+	Vector vApproachDir = vPlanar;
+	const float flApproachLen = vApproachDir.Length();
+	if (flApproachLen > 0.01f)
+		vApproachDir /= flApproachLen;
+	else
+		vApproachDir = {};
+
+	for (int i = 1; i <= nIntermediate; ++i)
+	{
+		Crumb_t tCrumb{};
+		tCrumb.m_pNavArea = pArea;
+		tCrumb.m_vPos = vStart + vStep * static_cast<float>(i);
+		tCrumb.m_vApproachDir = vApproachDir;
+		m_vCrumbs.push_back(tCrumb);
+	}
+}
+
 bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal, bool bIsRepath)
 {
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
@@ -102,55 +141,83 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		return false;
 
 	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea);
+	bool bSingleAreaPath = false;
 	if (vPath.empty())
-		return false;
+	{
+		if (m_pLocalArea == pDestArea)
+			bSingleAreaPath = true;
+		else
+			return false;
+	}
 
-	if (!bNavToLocal)
+	if (!bSingleAreaPath && !bNavToLocal && !vPath.empty())
+	{
 		vPath.erase(vPath.begin());
+		if (vPath.empty())
+		{
+			if (m_pLocalArea == pDestArea)
+				bSingleAreaPath = true;
+			else
+				return false;
+		}
+	}
 
 	m_vCrumbs.clear();
-	for (size_t i = 0; i < vPath.size(); i++)
+	if (bSingleAreaPath)
 	{
-		auto pArea = reinterpret_cast<CNavArea*>(vPath.at(i));
-		if (!pArea)
-			continue;
+		Vector vStart = m_pLocalArea ? m_pLocalArea->m_vCenter : vDestination;
+		if (auto pLocalPlayer = H::Entities.GetLocal(); pLocalPlayer && pLocalPlayer->IsAlive())
+			vStart = pLocalPlayer->GetAbsOrigin();
 
-		// All entries besides the last need an extra crumb
-		if (i != vPath.size() - 1)
+		BuildIntraAreaCrumbs(vStart, vDestination, m_pLocalArea);
+	}
+	else
+	{
+		for (size_t i = 0; i < vPath.size(); i++)
 		{
-			auto pNextArea = reinterpret_cast<CNavArea*>(vPath.at(i + 1));
+			auto pArea = reinterpret_cast<CNavArea*>(vPath.at(i));
+			if (!pArea)
+				continue;
 
-			NavPoints_t tPoints{};
-			DropdownHint_t tDropdown{};
-			const std::pair<CNavArea*, CNavArea*> tKey(pArea, pNextArea);
-			if (auto itCache = m_pMap->m_mVischeckCache.find(tKey); itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_bPassable)
+			// All entries besides the last need an extra crumb
+			if (i != vPath.size() - 1)
 			{
-				tPoints = itCache->second.m_tPoints;
-				tDropdown = itCache->second.m_tDropdown;
+				auto pNextArea = reinterpret_cast<CNavArea*>(vPath.at(i + 1));
+
+				NavPoints_t tPoints{};
+				DropdownHint_t tDropdown{};
+				const std::pair<CNavArea*, CNavArea*> tKey(pArea, pNextArea);
+				if (auto itCache = m_pMap->m_mVischeckCache.find(tKey); itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_bPassable)
+				{
+					tPoints = itCache->second.m_tPoints;
+					tDropdown = itCache->second.m_tDropdown;
+				}
+				else
+				{
+					tPoints = m_pMap->DeterminePoints(pArea, pNextArea);
+					tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+				}
+
+				Crumb_t tStartCrumb = {};
+				tStartCrumb.m_pNavArea = pArea;
+				tStartCrumb.m_vPos = tPoints.m_vCurrent;
+				m_vCrumbs.push_back(tStartCrumb);
+
+				Crumb_t tCenterCrumb = {};
+				tCenterCrumb.m_pNavArea = pArea;
+				tCenterCrumb.m_vPos = tPoints.m_vCenter;
+				tCenterCrumb.m_bRequiresDrop = tDropdown.m_bRequiresDrop;
+				tCenterCrumb.m_flDropHeight = tDropdown.m_flDropHeight;
+				tCenterCrumb.m_flApproachDistance = tDropdown.m_flApproachDistance;
+				tCenterCrumb.m_vApproachDir = tDropdown.m_vApproachDir;
+				m_vCrumbs.push_back(tCenterCrumb);
 			}
 			else
 			{
-				tPoints = m_pMap->DeterminePoints(pArea, pNextArea);
-				tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
-				tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+				m_vCrumbs.push_back({ pArea, pArea->m_vCenter });
 			}
-
-			Crumb_t tStartCrumb = {};
-			tStartCrumb.m_pNavArea = pArea;
-			tStartCrumb.m_vPos = tPoints.m_vCurrent;
-			m_vCrumbs.push_back(tStartCrumb);
-
-			Crumb_t tCenterCrumb = {};
-			tCenterCrumb.m_pNavArea = pArea;
-			tCenterCrumb.m_vPos = tPoints.m_vCenter;
-			tCenterCrumb.m_bRequiresDrop = tDropdown.m_bRequiresDrop;
-			tCenterCrumb.m_flDropHeight = tDropdown.m_flDropHeight;
-			tCenterCrumb.m_flApproachDistance = tDropdown.m_flApproachDistance;
-			tCenterCrumb.m_vApproachDir = tDropdown.m_vApproachDir;
-			m_vCrumbs.push_back(tCenterCrumb);
 		}
-		else
-			m_vCrumbs.push_back({ pArea, pArea->m_vCenter });
 	}
 
 	m_vCrumbs.push_back({ nullptr, vDestination });
