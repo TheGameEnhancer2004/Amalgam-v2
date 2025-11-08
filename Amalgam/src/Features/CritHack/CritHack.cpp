@@ -106,7 +106,7 @@ void CCritHack::UpdateWeaponInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	if (pWeapon == pOldWeapon && flBucket == flLastBucket && iCritChecks == iLastCritChecks && iCritSeedRequests == iLastCritSeedRequests)
 		return;
 
-	static auto tf_weapon_criticals_bucket_cap = U::ConVars.FindVar("tf_weapon_criticals_bucket_cap");
+	static auto tf_weapon_criticals_bucket_cap = H::ConVars.FindVar("tf_weapon_criticals_bucket_cap");
 	const float flBucketCap = tf_weapon_criticals_bucket_cap->GetFloat();
 	bool bRapidFire = pWeapon->IsRapidFire();
 	float flFireRate = pWeapon->GetFireRate();
@@ -559,7 +559,7 @@ MAKE_HOOK(CTFGameStats_FindPlayerStats, S::CTFGameStats_FindPlayerStats(), void*
 
 void CCritHack::Draw(CTFPlayer* pLocal)
 {
-	static auto tf_weapon_criticals = U::ConVars.FindVar("tf_weapon_criticals");
+	static auto tf_weapon_criticals = H::ConVars.FindVar("tf_weapon_criticals");
 	if (!(Vars::Menu::Indicators.Value & Vars::Menu::IndicatorsEnum::CritHack) || !I::EngineClient->IsInGame() || !tf_weapon_criticals->GetBool())
 		return;
 
@@ -665,7 +665,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 					rightText = std::format("DMG: {}", std::max(0, damageNeeded));
 					rightColor = m_iAvailableCrits > 0 ? Color_t{ 40, 200, 40, 255 } : Color_t{ 200, 40, 40, 255 };
 					
-					static auto bucketCap = U::ConVars.FindVar("tf_weapon_criticals_bucket_cap");
+					static auto bucketCap = H::ConVars.FindVar("tf_weapon_criticals_bucket_cap");
 					targetProgress = currentBucket / bucketCap->GetFloat();
 				}
 			}

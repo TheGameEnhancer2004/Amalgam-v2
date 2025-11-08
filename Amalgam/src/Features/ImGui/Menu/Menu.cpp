@@ -1578,23 +1578,14 @@ void CMenu::MenuLogs(int iTab)
 				const auto vPlayers = F::PlayerUtils.m_vPlayerCache;
 				lock.unlock();
 				std::unordered_map<uint64_t, std::vector<const ListPlayer_t*>> mParties = {};
-				std::unordered_map<uint64_t, float> mHues = {}; // don't just shift based on party id in the case that it will be similar
+				int iPartyCount = 0;
 				for (auto& tPlayer : vPlayers)
 				{
 					if (tPlayer.m_iParty)
+					{
 						mParties[tPlayer.m_iParty].push_back(&tPlayer);
-				}
-				for (auto it = mParties.begin(); it != mParties.end();)
-				{
-					if (it->second.size() > 1)
-						it++;
-					else
-						it = mParties.erase(it);
-				}
-				{
-					float flParties = mParties.size() + 1 - mParties.contains(1);
-					int i = 0; for (auto& [iParty, _] : mParties)
-						mHues[iParty] = iParty != 1 ? 360 * ++i / flParties : 0;
+						iPartyCount = std::max(iPartyCount, tPlayer.m_iParty);
+					}
 				}
 
 				auto getTeamColor = [&](int iTeam, bool bAlive)
@@ -1648,10 +1639,19 @@ void CMenu::MenuLogs(int iTab)
 							{
 								std::vector<PriorityLabel_t> vLabels = {};
 								std::vector<std::pair<PriorityLabel_t*, int>> vTags = {};
-								if (mHues.contains(tPlayer.m_iParty))
-									vLabels.emplace_back("Party", F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(PARTY_TAG)].m_tColor.HueShift(mHues[tPlayer.m_iParty]));
+								if (int iParty = tPlayer.m_iParty)
+								{
+									auto pTag = &F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(PARTY_TAG)];
+									if (!--iParty)
+										vTags.emplace_back(pTag, 0);
+									else
+										vLabels.emplace_back(std::format("{}: {}", pTag->m_sName, iParty), pTag->m_tColor.HueShift(iParty * 360.f / iPartyCount));
+								}
 								if (tPlayer.m_bF2P)
-									vTags.emplace_back(&F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(F2P_TAG)], 0);
+								{
+									auto pTag = &F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(F2P_TAG)];
+									vTags.emplace_back(pTag, 0);
+								}
 								for (auto& iID : F::PlayerUtils.GetPlayerTags(tPlayer.m_uAccountID))
 								{
 									if (auto pTag = F::PlayerUtils.GetTag(iID))

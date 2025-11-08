@@ -211,6 +211,28 @@ void CEntities::Store()
 				mParties[uAccountID] = 1;
 			}
 		}
+
+		std::map<uint64_t, std::vector<uint32_t>> mParties2 = {};
+		for (auto& [uAccountID, uParty] : mParties)
+		{
+			if (uParty)
+				mParties2[uParty].push_back(uAccountID);
+		}
+		for (auto it = mParties2.begin(); it != mParties2.end();)
+		{
+			if (it->second.size() > 1)
+				it++;
+			else
+				it = mParties2.erase(it);
+		}
+		mParties.clear();
+		uint64_t uPartyCount = 0; for (auto& [uParty, vAccountIDs] : mParties2)
+		{
+			int iParty = uParty == 1 ? 1 : ++uPartyCount + 1;
+			for (auto uAccountID : vAccountIDs)
+				mParties[uAccountID] = iParty;
+		}
+		m_iPartyCount = uPartyCount;
 	}
 	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
 	{
@@ -332,7 +354,7 @@ void CEntities::Clear(bool bShutdown)
 
 void CEntities::ManualNetwork(const StartSoundParams_t& params)
 {
-	if (params.soundsource <= 0 || params.soundsource == I::EngineClient->GetLocalPlayer())
+	if (params.soundsource <= 0 || !params.origin || params.soundsource == I::EngineClient->GetLocalPlayer())
 		return;
 
 	auto pEntity = I::ClientEntityList->GetClientEntity(params.soundsource)->As<CBaseEntity>();
@@ -521,10 +543,7 @@ bool CEntities::IsF2P(int iIndex) { return m_mIF2P[iIndex]; }
 bool CEntities::IsF2P(uint32_t uAccountID) { return m_mUF2P[uAccountID]; }
 int CEntities::GetLevel(int iIndex) { return m_mILevels.contains(iIndex) ? m_mILevels[iIndex] : -2; }
 int CEntities::GetLevel(uint32_t uAccountID) { return m_mULevels.contains(uAccountID) ? m_mULevels[uAccountID] : -2; }
-uint64_t CEntities::GetParty(int iIndex) { return m_mIParty.contains(iIndex) ? m_mIParty[iIndex] : 0; }
-uint64_t CEntities::GetParty(uint32_t uAccountID) { return m_mUParty.contains(uAccountID) ? m_mUParty[uAccountID] : 0; }
-
-uint32_t CEntities::GetLocalAccountID()
-{
-	return m_uAccountID;
-}
+int CEntities::GetParty(int iIndex) { return m_mIParty.contains(iIndex) ? m_mIParty[iIndex] : 0; }
+int CEntities::GetParty(uint32_t uAccountID) { return m_mUParty.contains(uAccountID) ? m_mUParty[uAccountID] : 0; }
+int CEntities::GetPartyCount() { return m_iPartyCount; }
+uint32_t CEntities::GetLocalAccountID() { return m_uAccountID; }

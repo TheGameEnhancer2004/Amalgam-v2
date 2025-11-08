@@ -301,7 +301,7 @@ bool CMovementSimulation::SetupMoveData(MoveStorage& tStorage)
 
 static inline float GetGravity()
 {
-	static auto sv_gravity = U::ConVars.FindVar("sv_gravity");
+	static auto sv_gravity = H::ConVars.FindVar("sv_gravity");
 
 	return sv_gravity->GetFloat();
 }
@@ -311,7 +311,7 @@ static inline float GetFrictionScale(float flVelocityXY, float flTurn, float flV
 	if (0.f >= flVelocityZ || flVelocityZ > 250.f)
 		return 1.f;
 
-	static auto sv_airaccelerate = U::ConVars.FindVar("sv_airaccelerate");
+	static auto sv_airaccelerate = H::ConVars.FindVar("sv_airaccelerate");
 	float flScale = std::max(sv_airaccelerate->GetFloat(), 1.f);
 	flMin *= flScale, flMax *= flScale;
 

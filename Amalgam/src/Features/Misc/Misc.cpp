@@ -321,7 +321,7 @@ void CMisc::AutoStrafe(CTFPlayer* pLocal, CUserCmd* pCmd)
 	{
 	case Vars::Misc::Movement::AutoStrafeEnum::Legit:
 	{
-		static auto cl_sidespeed = U::ConVars.FindVar("cl_sidespeed");
+		static auto cl_sidespeed = H::ConVars.FindVar("cl_sidespeed");
 		const float flSideSpeed = cl_sidespeed->GetFloat();
 
 		if (pCmd->mousedx)
@@ -453,8 +453,8 @@ void CMisc::AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	static Timer tTimer = {};
 	m_bAntiAFK = false;
-	static auto mp_idledealmethod = U::ConVars.FindVar("mp_idledealmethod");
-	static auto mp_idlemaxtime = U::ConVars.FindVar("mp_idlemaxtime");
+	static auto mp_idledealmethod = H::ConVars.FindVar("mp_idledealmethod");
+	static auto mp_idlemaxtime = H::ConVars.FindVar("mp_idlemaxtime");
 	const int iIdleMethod = mp_idledealmethod->GetInt();
 	const float flMaxIdleTime = mp_idlemaxtime->GetFloat();
 	static bool bForce = false;
@@ -556,7 +556,7 @@ void CMisc::CallVoteSpam(CTFPlayer* pLocal)
 void CMisc::CheatsBypass()
 {
 	static bool bCheatSet = false;
-	static auto sv_cheats = U::ConVars.FindVar("sv_cheats");
+	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
 	if (Vars::Misc::Exploits::CheatsBypass.Value)
 	{
 		sv_cheats->m_nValue = 1;
@@ -571,8 +571,8 @@ void CMisc::CheatsBypass()
 
 void CMisc::WeaponSway()
 {
-	static auto cl_wpn_sway_interp = U::ConVars.FindVar("cl_wpn_sway_interp");
-	static auto cl_wpn_sway_scale = U::ConVars.FindVar("cl_wpn_sway_scale");
+	static auto cl_wpn_sway_interp = H::ConVars.FindVar("cl_wpn_sway_interp");
+	static auto cl_wpn_sway_scale = H::ConVars.FindVar("cl_wpn_sway_scale");
 
 	bool bSway = Vars::Visuals::Viewmodel::SwayInterp.Value || Vars::Visuals::Viewmodel::SwayScale.Value;
 	cl_wpn_sway_interp->SetValue(bSway ? Vars::Visuals::Viewmodel::SwayInterp.Value : 0.f);
@@ -894,7 +894,7 @@ void CMisc::PingReducer()
 	if (!pNetChan || !pResource)
 		return;
 
-	static auto cl_cmdrate = U::ConVars.FindVar("cl_cmdrate");
+	static auto cl_cmdrate = H::ConVars.FindVar("cl_cmdrate");
 	const int iCmdRate = cl_cmdrate->GetInt();
 	const int Ping = pResource->m_iPing(I::EngineClient->GetLocalPlayer());
 	const int iTarget = Vars::Misc::Exploits::PingReducer.Value && (Ping > Vars::Misc::Exploits::PingTarget.Value) ? -1 : iCmdRate;
@@ -1349,7 +1349,7 @@ void CMisc::ExecBuyBot(CTFPlayer* pLocal)
 	if (Vars::Misc::MannVsMachine::MaxCash.Value > 0 && pLocal->m_nCurrency() >= Vars::Misc::MannVsMachine::MaxCash.Value)
 		return;
 
-	static auto tfMvmRespec = U::ConVars.FindVar("tf_mvm_respec_enabled");
+	static auto tfMvmRespec = H::ConVars.FindVar("tf_mvm_respec_enabled");
 	if (tfMvmRespec->GetInt() != 1)
 		return;
 

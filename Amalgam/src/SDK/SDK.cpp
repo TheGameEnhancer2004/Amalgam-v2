@@ -622,7 +622,7 @@ int SDK::IsAttacking(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, const CUserCmd* 
 		CGameTrace trace = {};
 		CTraceFilterHitscan filter = {};
 		filter.pSkip = pLocal;
-		static auto tf_grapplinghook_max_distance = U::ConVars.FindVar("tf_grapplinghook_max_distance");
+		static auto tf_grapplinghook_max_distance = H::ConVars.FindVar("tf_grapplinghook_max_distance");
 		const float flGrappleDistance = tf_grapplinghook_max_distance->GetFloat();
 		Trace(vPos, vPos + vForward * flGrappleDistance, MASK_SOLID, &filter, &trace);
 		return trace.DidHit() && !(trace.surface.flags & SURF_SKY);
@@ -786,7 +786,7 @@ void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3 vTo, float flScale)
 
 void SDK::GetProjectileFireSetup(CTFPlayer* pPlayer, const Vec3& vAngIn, Vec3 vOffset, Vec3& vPosOut, Vec3& vAngOut, bool bPipes, bool bInterp, bool bAllowFlip)
 {
-	static auto cl_flipviewmodels = U::ConVars.FindVar("cl_flipviewmodels");
+	static auto cl_flipviewmodels = H::ConVars.FindVar("cl_flipviewmodels");
 	if (bAllowFlip && FNV1A::Hash32(cl_flipviewmodels->GetString()) == FNV1A::Hash32Const("1"))
 		vOffset.y *= -1.f;
 

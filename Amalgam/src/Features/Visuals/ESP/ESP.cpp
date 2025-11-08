@@ -83,30 +83,35 @@ static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* p
 
 			if (pGroup->m_tESP.Draw & ESPEnum::Labels)
 			{
-				std::vector<PriorityLabel_t*> vTags = {};
+				std::vector<std::tuple<std::string, Color_t, int>> vTags = {};
 				for (auto& iID : F::PlayerUtils.GetPlayerTags(uAccountID))
 				{
 					auto pTag = F::PlayerUtils.GetTag(iID);
 					if (pTag && pTag->m_bLabel)
-						vTags.push_back(pTag);
+						vTags.emplace_back(pTag->m_sName, pTag->m_tColor, pTag->m_iPriority);
 				}
 				if (H::Entities.IsFriend(uAccountID))
 				{
 					auto pTag = &F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(FRIEND_TAG)];
 					if (pTag->m_bLabel)
-						vTags.push_back(pTag);
+						vTags.emplace_back(pTag->m_sName, pTag->m_tColor, pTag->m_iPriority);
 				}
-				if (H::Entities.InParty(uAccountID))
+				if (auto iParty = H::Entities.GetParty(uAccountID))
 				{
 					auto pTag = &F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(PARTY_TAG)];
-					if (pTag->m_bLabel)
-						vTags.push_back(pTag);
+					if (int iPartyCount = H::Entities.GetPartyCount() + 1; pTag->m_bLabel)
+					{
+						if (!--iParty)
+							vTags.emplace_back(pTag->m_sName, pTag->m_tColor, pTag->m_iPriority);
+						else
+							vTags.emplace_back(std::format("{}: {}", pTag->m_sName, iParty), pTag->m_tColor.HueShift(iParty * 360.f / iPartyCount), pTag->m_iPriority);
+					}
 				}
 				if (H::Entities.IsF2P(uAccountID))
 				{
 					auto pTag = &F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(F2P_TAG)];
 					if (pTag->m_bLabel)
-						vTags.push_back(pTag);
+						vTags.emplace_back(pTag->m_sName, pTag->m_tColor, pTag->m_iPriority);
 				}
 
 				if (!vTags.empty())
@@ -114,14 +119,14 @@ static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* p
 					std::sort(vTags.begin(), vTags.end(), [&](const auto a, const auto b) -> bool
 						{
 							// sort by priority if unequal
-							if (a->m_iPriority != b->m_iPriority)
-								return a->m_iPriority > b->m_iPriority;
+							if (std::get<2>(a) != std::get<2>(b))
+								return std::get<2>(a) > std::get<2>(b);
 
-							return a->m_sName < b->m_sName;
+							return std::get<0>(a) < std::get<0>(b);
 						});
 
-					for (auto& pTag : vTags)
-						tCache.m_vText.emplace_back(ALIGN_TOPRIGHT, pTag->m_sName, pTag->m_tColor, pTag->m_tColor.IsColorDark() ? Color_t(255, 255, 255) : Color_t(0, 0, 0));
+					for (auto& [sName, tColor, _] : vTags)
+						tCache.m_vText.emplace_back(ALIGN_TOPRIGHT, sName, tColor, tColor.IsColorDark() ? Color_t(255, 255, 255) : Color_t(0, 0, 0));
 				}
 			}
 		}
@@ -1051,8 +1056,21 @@ void CESP::DrawPlayers()
 
 		if (tCache.m_iClassIcon)
 		{
-			int size = H::Draw.Scale(18, Scale_Round);
-			H::Draw.Texture(m, t - tOffset, size, size, tCache.m_iClassIcon - 1, ALIGN_BOTTOM);
+			const char* sTexture = "vgui/glyph_multiplayer.vtf";
+			switch (tCache.m_iClassIcon)
+			{
+			case TF_CLASS_SCOUT: sTexture = "hud/leaderboard_class_scout.vtf"; break;
+			case TF_CLASS_SOLDIER: sTexture = "hud/leaderboard_class_soldier.vtf"; break;
+			case TF_CLASS_PYRO: sTexture = "hud/leaderboard_class_pyro.vtf"; break;
+			case TF_CLASS_DEMOMAN: sTexture = "hud/leaderboard_class_demo.vtf"; break;
+			case TF_CLASS_HEAVY: sTexture = "hud/leaderboard_class_heavy.vtf"; break;
+			case TF_CLASS_ENGINEER: sTexture = "hud/leaderboard_class_engineer.vtf"; break;
+			case TF_CLASS_MEDIC: sTexture = "hud/leaderboard_class_medic.vtf"; break;
+			case TF_CLASS_SNIPER: sTexture = "hud/leaderboard_class_sniper.vtf"; break;
+			case TF_CLASS_SPY: sTexture = "hud/leaderboard_class_spy.vtf"; break;
+			}
+			int iSize = H::Draw.Scale(18, Scale_Round);
+			H::Draw.Texture(sTexture, m, t - tOffset, iSize, iSize, ALIGN_BOTTOM);
 		}
 
 		if (tCache.m_pWeaponIcon)

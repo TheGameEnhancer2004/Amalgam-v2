@@ -53,7 +53,7 @@ void CAutoAirblast::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCm
 	if (iWeaponID != TF_WEAPON_FLAMETHROWER && iWeaponID != TF_WEAPON_FLAME_BALL || SDK::AttribHookValue(0, "airblast_disabled", pWeapon))
 		return;
 
-	static auto tf_flamethrower_burstammo = U::ConVars.FindVar("tf_flamethrower_burstammo");
+	static auto tf_flamethrower_burstammo = H::ConVars.FindVar("tf_flamethrower_burstammo");
 	int iAmmoPerShot = tf_flamethrower_burstammo->GetInt() * SDK::AttribHookValue(1, "mult_airblast_cost", pWeapon);
 	int iAmmo = pLocal->GetAmmoCount(pWeapon->m_iPrimaryAmmoType());
 	int iBuffType = SDK::AttribHookValue(0, "set_buff_type", pWeapon);

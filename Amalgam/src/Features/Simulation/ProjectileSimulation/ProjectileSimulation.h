@@ -149,7 +149,7 @@ public:
 	{
 		float flReturn = 0.f;
 
-		static auto sv_gravity = U::ConVars.FindVar("sv_gravity");
+		static auto sv_gravity = H::ConVars.FindVar("sv_gravity");
 		float flGravity = sv_gravity->GetFloat() / 800.f;
 		switch (pProjectile->GetClassID())
 		{

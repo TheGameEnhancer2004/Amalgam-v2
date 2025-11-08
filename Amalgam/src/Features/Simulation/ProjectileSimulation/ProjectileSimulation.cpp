@@ -8,7 +8,7 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 	if (!pPlayer || !pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->IsTaunting() || !pWeapon)
 		return false;
 
-	static auto sv_gravity = U::ConVars.FindVar("sv_gravity");
+	static auto sv_gravity = H::ConVars.FindVar("sv_gravity");
 	float flGravity = sv_gravity->GetFloat() / 800.f;
 	bool bDucking = pPlayer->m_fFlags() & FL_DUCKING;
 
@@ -179,7 +179,7 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 	}
 	case TF_WEAPON_FLAMETHROWER:
 	{
-		static auto tf_flamethrower_boxsize = U::ConVars.FindVar("tf_flamethrower_boxsize");
+		static auto tf_flamethrower_boxsize = H::ConVars.FindVar("tf_flamethrower_boxsize");
 		const float flHull = tf_flamethrower_boxsize->GetFloat();
 
 		SDK::GetProjectileFireSetup(pPlayer, vAngles, { 40.f, 5.f, 0.f }, vPos, vAngle, true, bQuick, false);
@@ -204,7 +204,7 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 	case TF_WEAPON_BAT_WOOD:
 	case TF_WEAPON_BAT_GIFTWRAP:
 	{
-		static auto tf_scout_stunball_base_speed = U::ConVars.FindVar("tf_scout_stunball_base_speed");
+		static auto tf_scout_stunball_base_speed = H::ConVars.FindVar("tf_scout_stunball_base_speed");
 		const bool bWrapAssassin = pWeapon->GetWeaponID() == TF_WEAPON_BAT_GIFTWRAP;
 		
 		SDK::GetProjectileFireSetup(pPlayer, vAngles, { 0.f, 0.f, 0.f }, vPos, vAngle, true, bQuick);
@@ -239,8 +239,8 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 	}
 	case TF_WEAPON_GRAPPLINGHOOK:
 	{
-		static auto tf_grapplinghook_projectile_speed = U::ConVars.FindVar("tf_grapplinghook_projectile_speed");
-		static auto tf_grapplinghook_max_distance = U::ConVars.FindVar("tf_grapplinghook_max_distance");
+		static auto tf_grapplinghook_projectile_speed = H::ConVars.FindVar("tf_grapplinghook_projectile_speed");
+		static auto tf_grapplinghook_max_distance = H::ConVars.FindVar("tf_grapplinghook_max_distance");
 
 		SDK::GetProjectileFireSetup(pPlayer, vAngles, { 23.5f, -8.f, -3.f }, vPos, vAngle, !bTrace ? true : false, bQuick);
 		
@@ -594,7 +594,7 @@ void CProjectileSimulation::RunTick(ProjectileInfo& tProjInfo, bool bPath) // bu
 	/* // params.maxVelocity limits velocity uniformly
 	Vec3 vVelocity, vAngular;
 	m_pObj->GetVelocity(&vVelocity, &vAngular);
-	static auto sv_maxvelocity = U::ConVars.FindVar("sv_maxvelocity");
+	static auto sv_maxvelocity = H::ConVars.FindVar("sv_maxvelocity");
 	const float flMaxVel = sv_maxvelocity->GetFloat();
 	vVelocity = { std::clamp(vVelocity.x, -flMaxVel, flMaxVel), std::clamp(vVelocity.y, -flMaxVel, flMaxVel), std::clamp(vVelocity.z, -flMaxVel, flMaxVel) };
 	m_pObj->SetVelocity(&vVelocity, &vAngular);

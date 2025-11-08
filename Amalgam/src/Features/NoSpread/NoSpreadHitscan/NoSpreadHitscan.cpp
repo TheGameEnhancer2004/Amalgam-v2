@@ -30,7 +30,7 @@ bool CNoSpreadHitscan::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool
 
 int CNoSpreadHitscan::GetSeed(CUserCmd* pCmd)
 {
-	static auto sv_usercmd_custom_random_seed = U::ConVars.FindVar("sv_usercmd_custom_random_seed");
+	static auto sv_usercmd_custom_random_seed = H::ConVars.FindVar("sv_usercmd_custom_random_seed");
 	if (!sv_usercmd_custom_random_seed->GetBool())
 		return pCmd->random_seed & 255;
 

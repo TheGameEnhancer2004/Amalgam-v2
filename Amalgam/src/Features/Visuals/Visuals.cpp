@@ -860,7 +860,7 @@ MAKE_HOOK(NDebugOverlay_BoxAngles, S::NDebugOverlay_BoxAngles(), void,
 
 void CVisuals::FOV(CTFPlayer* pLocal, CViewSetup* pView)
 {
-	static auto fov_desired = U::ConVars.FindVar("fov_desired");
+	static auto fov_desired = H::ConVars.FindVar("fov_desired");
 	bool bZoomed = pLocal->InCond(TF_COND_ZOOMED);
 
 	float flRegularFOV = fov_desired->GetFloat();
@@ -906,7 +906,7 @@ void CVisuals::ThirdPerson(CTFPlayer* pLocal, CViewSetup* pView)
 		I::Input->CAM_ToFirstPerson();
 	pLocal->ThirdPersonSwitch();
 
-	static auto cam_ideallag = U::ConVars.FindVar("cam_ideallag");
+	static auto cam_ideallag = H::ConVars.FindVar("cam_ideallag");
 	cam_ideallag->SetValue(0.f);
 
 	if (I::Input->CAM_IsThirdPerson())
@@ -1225,7 +1225,7 @@ void CVisuals::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		iOldMedigunCharge = iNewMedigunCharge;
 	}
 
-	static auto r_aspectratio = U::ConVars.FindVar("r_aspectratio");
+	static auto r_aspectratio = H::ConVars.FindVar("r_aspectratio");
 	static float flStaticRatio = 0.f;
 	float flOldRatio = flStaticRatio;
 	float flNewRatio = flStaticRatio = Vars::Visuals::UI::AspectRatio.Value;

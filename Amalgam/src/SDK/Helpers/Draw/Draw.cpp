@@ -1,7 +1,6 @@
 #include "Draw.h"
 
 #include "../../SDK.h"
-#include "Icons.h"
 #include "../../Definitions/Interfaces.h"
 #include "../../../Utils/Math/Math.h"
 #include "../../../Utils/Timer/Timer.h"
@@ -58,9 +57,7 @@ void CDraw::UpdateW2SMatrix()
 	CViewSetup tViewSetup;
 	if (I::Client->GetPlayerView(tViewSetup))
 	{
-		static VMatrix mWorldToView;
-		static VMatrix mViewToProjection;
-		static VMatrix mWorldToPixels;
+		static VMatrix mWorldToView, mViewToProjection, mWorldToPixels;
 		I::RenderView->GetMatricesForView(tViewSetup, &mWorldToView, &mViewToProjection, &m_mWorldToProjection, &mWorldToPixels);
 	}
 }
@@ -411,8 +408,10 @@ void CDraw::LineCircle(int x, int y, float iRadius, int iSegments, Color_t tColo
 	I::MatSystemSurface->DrawOutlinedCircle(x, y, iRadius, iSegments);
 }
 
-void CDraw::Texture(int x, int y, int w, int h, int iId, EAlign eAlign)
+void CDraw::Texture(const char* sTexture, int x, int y, int w, int h, EAlign eAlign)
 {
+	static std::unordered_map<uint32_t, int> mTextures = {};
+
 	switch (eAlign)
 	{
 	case ALIGN_TOPLEFT: break;
@@ -426,14 +425,9 @@ void CDraw::Texture(int x, int y, int w, int h, int iId, EAlign eAlign)
 	case ALIGN_BOTTOMRIGHT: x -= w; y -= h; break;
 	}
 
-	int nTexture = 0;
-	if (ICONS::TEXTURES[iId].first != -1)
-		nTexture = ICONS::TEXTURES[iId].first;
-	else
-	{
-		nTexture = ICONS::TEXTURES[iId].first = I::MatSystemSurface->CreateNewTextureID();
-		I::MatSystemSurface->DrawSetTextureFile(nTexture, ICONS::TEXTURES[iId].second.c_str(), false, true);
-	}
+	auto& nTexture = mTextures[FNV1A::Hash32Const(sTexture)];
+	if (!nTexture)
+		I::MatSystemSurface->DrawSetTextureFile(nTexture = I::MatSystemSurface->CreateNewTextureID(), sTexture, false, true);
 
 	I::MatSystemSurface->DrawSetColor(255, 255, 255, 255);
 	I::MatSystemSurface->DrawSetTexture(nTexture);

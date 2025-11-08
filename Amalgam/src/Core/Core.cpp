@@ -34,7 +34,7 @@ static inline std::string GetProcessName(DWORD dwProcessID)
 
 static inline bool CheckDXLevel()
 {
-	auto mat_dxlevel = U::ConVars.FindVar("mat_dxlevel");
+	auto mat_dxlevel = H::ConVars.FindVar("mat_dxlevel");
 	if (mat_dxlevel->GetInt() < 90)
 	{
 		//const char* sMessage = "You are running with graphics options that Amalgam does not support. -dxlevel must be at least 90.";
@@ -139,7 +139,7 @@ void CCore::Load()
 #ifndef TEXTMODE
 	F::Materials.LoadMaterials();
 #endif
-	U::ConVars.Unlock();
+	H::ConVars.Unlock();
 #ifdef TEXTMODE
 	F::NamedPipe.Initialize();
 #endif
@@ -189,15 +189,15 @@ void CCore::Unload()
 			pLocal->ThirdPersonSwitch();
 		}
 	}
-	U::ConVars.FindVar("cl_wpn_sway_interp")->SetValue(0.f);
-	U::ConVars.FindVar("cl_wpn_sway_scale")->SetValue(0.f);
+	H::ConVars.FindVar("cl_wpn_sway_interp")->SetValue(0.f);
+	H::ConVars.FindVar("cl_wpn_sway_scale")->SetValue(0.f);
 
 	Sleep(250);
 #ifdef TEXTMODE
 	F::NamedPipe.Shutdown();
 #endif
 	F::EnginePrediction.Unload();
-	U::ConVars.Restore();
+	H::ConVars.Restore();
 	F::Materials.UnloadMaterials();
 
 	if (m_bFailed2)

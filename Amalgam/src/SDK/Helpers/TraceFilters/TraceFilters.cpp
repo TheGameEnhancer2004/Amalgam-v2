@@ -31,11 +31,9 @@ bool CTraceFilterHitscan::ShouldHitEntity(IHandleEntity* pServerEntity, int nCon
 	case ETFClassID::CObjectSentrygun:
 	case ETFClassID::CObjectDispenser:
 	case ETFClassID::CObjectTeleporter: 
-	{
 		if (iType != SKIP_CHECK && (iWeapon == WEAPON_INCLUDE ? bWeapon : !bWeapon))
 			return iType == FORCE_HIT ? true : false;
 		return pEntity->m_iTeamNum() != iTeam;
-	}
 	}
 
 	return true;
@@ -84,7 +82,6 @@ bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int 
 			return pEntity->m_iTeamNum() != iTeam;
 		break;
 	case ETFClassID::CTFPlayer:
-	{
 		if (iPlayer == PLAYER_ALL)
 			return true;
 		if (iPlayer == PLAYER_NONE)
@@ -92,7 +89,6 @@ bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int 
 		if (iType != SKIP_CHECK && (iWeapon == WEAPON_INCLUDE ? bWeapon : !bWeapon))
 			return iType == FORCE_HIT ? true : false;
 		return pEntity->m_iTeamNum() != iTeam;
-	}
 	case ETFClassID::CBaseObject:
 	case ETFClassID::CObjectSentrygun:
 	case ETFClassID::CObjectDispenser: return iObject == OBJECT_ALL ? true : iObject == OBJECT_NONE ? false : pEntity->m_iTeamNum() != iTeam;
@@ -102,9 +98,8 @@ bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int 
 	case ETFClassID::CMerasmus:
 	case ETFClassID::CEyeballBoss:
 	case ETFClassID::CHeadlessHatman:
-	case ETFClassID::CZombie:
-	case ETFClassID::CTFGrenadePipebombProjectile:
-		return bMisc ? true : false;
+	case ETFClassID::CZombie: return bMisc;
+	case ETFClassID::CTFGrenadePipebombProjectile: return bMisc && pEntity->As<CTFGrenadePipebombProjectile>()->m_iType() == TF_GL_MODE_REMOTE_DETONATE;
 	}
 
 	return false;
@@ -135,9 +130,7 @@ bool CTraceFilterWorldAndPropsOnly::ShouldHitEntity(IHandleEntity* pServerEntity
 	case ETFClassID::CObjectCartDispenser:
 	case ETFClassID::CFuncTrackTrain:
 	case ETFClassID::CFuncConveyor: return true;
-	case ETFClassID::CFuncRespawnRoomVisualizer:
-		if (nContentsMask & CONTENTS_PLAYERCLIP)
-			return pEntity->m_iTeamNum() != iTeam;
+	case ETFClassID::CFuncRespawnRoomVisualizer: return nContentsMask & CONTENTS_PLAYERCLIP && pEntity->m_iTeamNum() != iTeam;
 	}
 
 	return false;

@@ -425,11 +425,11 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 
 			for (auto& [tHitboxInfo, nHitbox, _] : vHitboxes)
 			{
-				Vec3 vAngle; Math::MatrixAngles(aBones[tHitboxInfo.m_iBone], vAngle);
 				Vec3 vMins = tHitboxInfo.m_iMin;
 				Vec3 vMaxs = tHitboxInfo.m_iMax;
 				Vec3 vCheckMins = (vMins + flBoneSubtract / flModelScale) * flBoneScale;
 				Vec3 vCheckMaxs = (vMaxs - flBoneSubtract / flModelScale) * flBoneScale;
+				Vec3 vAngle; Math::MatrixAngles(aBones[tHitboxInfo.m_iBone], vAngle);
 
 				Vec3 vOffset;
 				{
@@ -519,11 +519,10 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 			Vec3 vCheckMins = (vMins + flBoneSubtract) * flBoneScale;
 			Vec3 vCheckMaxs = (vMaxs - flBoneSubtract) * flBoneScale;
 
-			auto pCollideable = tTarget.m_pEntity->GetCollideable();
-			const matrix3x4& mTransform = pCollideable ? pCollideable->CollisionToWorldTransform() : tTarget.m_pEntity->RenderableToWorldTransform();
+			const matrix3x4& mTransform = tTarget.m_pEntity->m_Collision()->CollisionToWorldTransform();
 
 			std::vector<Vec3> vPoints = { Vec3() };
-			//if (Vars::Aimbot::Hitscan::PointScale.Value > 0.f)
+			//if (Vars::Aimbot::Hitscan::MultipointScale.Value > 0.f)
 			{
 				bool bTriggerbot = (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth
 					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive)
@@ -531,7 +530,7 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 
 				if (!bTriggerbot)
 				{
-					float flScale = 0.5f; //Vars::Aimbot::Hitscan::PointScale.Value / 100;
+					float flScale = 0.5f; //Vars::Aimbot::Hitscan::MultipointScale.Value / 100;
 					Vec3 vMinsS = (vMins - vMaxs) / 2 * flScale;
 					Vec3 vMaxsS = (vMaxs - vMins) / 2 * flScale;
 
@@ -700,7 +699,7 @@ bool CAimbotHitscan::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 // assume angle calculated outside with other overload
 void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 {
-	bool bUnsure = F::Ticks.IsTimingUnsure() || F::Ticks.GetTicks(H::Entities.GetWeapon());
+	bool bUnsure = F::Ticks.IsTimingUnsure();
 	switch (iMethod)
 	{
 	case Vars::Aimbot::General::AimTypeEnum::Plain:

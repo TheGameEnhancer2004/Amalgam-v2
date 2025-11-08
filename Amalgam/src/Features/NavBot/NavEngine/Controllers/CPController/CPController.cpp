@@ -112,7 +112,7 @@ bool CCPController::IsPointUseable(int iIndex, int iTeam)
 		return false;
 
 	// Linear cap means that it WILL require previous points (the cvar doesnt seem to work here though)
-	static auto tf_caplinear = U::ConVars.FindVar("tf_caplinear");
+	static auto tf_caplinear = H::ConVars.FindVar("tf_caplinear");
 	if (!tf_caplinear->GetBool() || m_pObjectiveResource->m_iNumControlPoints() == 1)
 		return true;
 

@@ -8,7 +8,7 @@ MAKE_SIGNATURE(CBasePlayer_GetAmmoCount, "client.dll", "48 89 5C 24 ? 57 48 83 E
 class CBasePlayer : public CBaseCombatCharacter
 {
 public:
-	NETVAR(m_Local, void*, "CBasePlayer", "m_Local");
+	NETVAR_EMBED(m_Local, void*, "CBasePlayer", "m_Local");
 	NETVAR(m_chAreaBits, void*, "CBasePlayer", "m_chAreaBits");
 	NETVAR(m_chAreaPortalBits, void*, "CBasePlayer", "m_chAreaPortalBits");
 	NETVAR(m_iHideHUD, int, "CBasePlayer", "m_iHideHUD");
@@ -45,8 +45,8 @@ public:
 	NETVAR(m_flDeathTime, float, "CBasePlayer", "m_flDeathTime");
 	NETVAR(m_nWaterLevel, byte, "CBasePlayer", "m_nWaterLevel");
 	NETVAR(m_flLaggedMovementValue, float, "CBasePlayer", "m_flLaggedMovementValue");
-	NETVAR(m_AttributeList, void*, "CBasePlayer", "m_AttributeList");
-	NETVAR(pl, void*, "CBasePlayer", "pl");
+	NETVAR_EMBED(m_AttributeList, void*, "CBasePlayer", "m_AttributeList");
+	NETVAR_EMBED(pl, void*, "CBasePlayer", "pl");
 	NETVAR(deadflag, int, "CBasePlayer", "deadflag");
 	NETVAR(m_iFOV, int, "CBasePlayer", "m_iFOV");
 	NETVAR(m_iFOVStart, int, "CBasePlayer", "m_iFOVStart");

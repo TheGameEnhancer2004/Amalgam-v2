@@ -2,8 +2,6 @@
 #include "../../../Utils/Macros/Macros.h"
 #include "../../Definitions/Classes.h"
 #include "../../Vars.h"
-#include <unordered_map>
-#include <unordered_set>
 
 Enum(Entity, Invalid = -1,
 	PlayerAll, PlayerEnemy, PlayerTeam,
@@ -52,13 +50,14 @@ private:
 	std::unordered_map<uint32_t, int> m_mUFollowPriorities = {};
 	std::unordered_map<int, bool> m_mIFriends = {};
 	std::unordered_map<uint32_t, bool> m_mUFriends = {};
-	std::unordered_map<int, uint64_t> m_mIParty = {};
-	std::unordered_map<uint32_t, uint64_t> m_mUParty = {};
+	std::unordered_map<int, int> m_mIParty = {};
+	std::unordered_map<uint32_t, int> m_mUParty = {};
 	std::unordered_map<int, bool> m_mIF2P = {};
 	std::unordered_map<uint32_t, bool> m_mUF2P = {};
 	std::unordered_map<int, int> m_mILevels = {};
 	std::unordered_map<uint32_t, int> m_mULevels = {};
 	uint32_t m_uAccountID;
+	int m_iPartyCount = 0;
 
 public:
 	void Store();
@@ -102,8 +101,9 @@ public:
 	bool IsF2P(uint32_t uAccountID);
 	int GetLevel(int iIndex);
 	int GetLevel(uint32_t uAccountID);
-	uint64_t GetParty(int iIndex);
-	uint64_t GetParty(uint32_t uAccountID);
+	int GetParty(int iIndex);
+	int GetParty(uint32_t uAccountID);
+	int GetPartyCount();
 	uint32_t GetLocalAccountID();
 };
 

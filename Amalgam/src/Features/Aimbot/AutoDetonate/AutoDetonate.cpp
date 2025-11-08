@@ -300,7 +300,7 @@ bool CAutoDetonate::StickyCheck(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 	float flLatency = Vars::Aimbot::Projectile::AutodetAccountPing.Value ? F::Backtrack.GetReal()/*std::max(F::Backtrack.GetReal() - 0.05f, 0.f)*/ : -1.f;
 
-	static auto tf_grenadelauncher_livetime = U::ConVars.FindVar("tf_grenadelauncher_livetime");
+	static auto tf_grenadelauncher_livetime = H::ConVars.FindVar("tf_grenadelauncher_livetime");
 	float flLiveTimeMod = 1.f;
 	if (pLocal->InCond(TF_COND_RUNE_HASTE))
 		flLiveTimeMod *= 0.5f;

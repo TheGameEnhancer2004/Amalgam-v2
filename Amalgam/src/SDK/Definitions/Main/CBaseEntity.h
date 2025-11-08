@@ -68,7 +68,7 @@ public:
 	NETVAR(m_hEffectEntity, EHANDLE, "CBaseEntity", "m_hEffectEntity");
 	NETVAR(moveparent, int, "CBaseEntity", "moveparent");
 	NETVAR(m_iParentAttachment, int, "CBaseEntity", "m_iParentAttachment");
-	NETVAR(m_Collision, CCollisionProperty*, "CBaseEntity", "m_Collision");
+	NETVAR_EMBED(m_Collision, CCollisionProperty*, "CBaseEntity", "m_Collision");
 	NETVAR(m_vecMinsPreScaled, Vec3, "CBaseEntity", "m_vecMinsPreScaled");
 	NETVAR(m_vecMaxsPreScaled, Vec3, "CBaseEntity", "m_vecMaxsPreScaled");
 	NETVAR(m_vecMins, Vec3, "CBaseEntity", "m_vecMins");
@@ -96,7 +96,7 @@ public:
 	NETVAR_OFF(m_MoveType, byte, "CTFPlayer", "m_nWaterLevel", -4);
 	NETVAR_OFF(m_MoveCollide, byte, "CTFPlayer", "m_nWaterLevel", -3);
 	NETVAR_OFF(m_nWaterType, byte, "CTFPlayer", "m_nWaterLevel", 1);
-	NETVAR_OFF(m_Particles, CParticleProperty*, "CBaseEntity", "m_flElasticity", -56);
+	NETVAR_EMBED_OFF(m_Particles, CParticleProperty*, "CBaseEntity", "m_flElasticity", -56);
 	NETVAR_OFF(m_iv_vecVelocity, CInterpolatedVar<Vec3>, "CBaseEntity", "m_iTeamNum", 156);
 	NETVAR_OFF(m_iv_vecOrigin, CInterpolatedVar<Vec3>, "CBaseEntity", "m_flShadowCastDistance", 84);
 	NETVAR_OFF(m_iv_angRotation, CInterpolatedVar<Vec3>, "CBaseEntity", "m_vecOrigin", -128);

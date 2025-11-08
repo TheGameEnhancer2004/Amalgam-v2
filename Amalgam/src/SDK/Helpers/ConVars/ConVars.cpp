@@ -1,6 +1,6 @@
 #include "ConVars.h"
 
-#include "../../SDK/Definitions/Interfaces/ICVar.h"
+#include "../../Definitions/Interfaces/ICVar.h"
 
 bool CConVars::Unlock()
 {

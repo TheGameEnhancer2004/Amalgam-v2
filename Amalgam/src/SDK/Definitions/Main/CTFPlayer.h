@@ -31,7 +31,7 @@ public:
 	NETVAR(m_bCustomModelVisibleToSelf, bool, "CTFPlayer", "m_bCustomModelVisibleToSelf");
 	NETVAR(m_bUseClassAnimations, bool, "CTFPlayer", "m_bUseClassAnimations");
 	NETVAR(m_iClassModelParity, int, "CTFPlayer", "m_iClassModelParity");
-	//NETVAR(m_Shared, void*, "CTFPlayer", "m_Shared");
+	NETVAR_EMBED(m_Shared, void*, "CTFPlayer", "m_Shared");
 	NETVAR(m_nPlayerCond, int, "CTFPlayer", "m_nPlayerCond");
 	NETVAR(m_bJumping, bool, "CTFPlayer", "m_bJumping");
 	NETVAR(m_nNumHealers, int, "CTFPlayer", "m_nNumHealers");
@@ -159,7 +159,7 @@ public:
 	NETVAR(m_bInPowerPlay, bool, "CTFPlayer", "m_bInPowerPlay");
 	NETVAR(m_iSpawnCounter, int, "CTFPlayer", "m_iSpawnCounter");
 	NETVAR(m_bArenaSpectator, bool, "CTFPlayer", "m_bArenaSpectator");
-	NETVAR(m_AttributeManager, void*, "CTFPlayer", "m_AttributeManager");
+	NETVAR_EMBED(m_AttributeManager, void*, "CTFPlayer", "m_AttributeManager");
 	NETVAR(m_hOuter, EHANDLE, "CTFPlayer", "m_hOuter");
 	NETVAR(m_ProviderType, int, "CTFPlayer", "m_ProviderType");
 	NETVAR(m_iReapplyProvisionParity, int, "CTFPlayer", "m_iReapplyProvisionParity");
@@ -183,11 +183,6 @@ public:
 	NETVAR(m_iCampaignMedals, int, "CTFPlayer", "m_iCampaignMedals");
 	NETVAR(m_iPlayerSkinOverride, int, "CTFPlayer", "m_iPlayerSkinOverride");
 	NETVAR(m_bViewingCYOAPDA, bool, "CTFPlayer", "m_bViewingCYOAPDA");
-	inline void* m_Shared()
-	{
-		static int nOffset = U::NetVars.GetNetVar("CTFPlayer", "m_Shared");
-		return reinterpret_cast<void*>(uintptr_t(this) + nOffset);
-	};
 
 	NETVAR_OFF(m_flInvisibility, float, "CTFPlayer", "m_flInvisChangeCompleteTime", -8);
 	NETVAR_OFF(m_flPrevInvisibility, float, "CTFPlayer", "m_flInvisChangeCompleteTime", -4);

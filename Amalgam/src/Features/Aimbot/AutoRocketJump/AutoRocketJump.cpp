@@ -171,7 +171,7 @@ void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 							{
 								const Vec3 vOriginal = pLocal->GetAbsOrigin();
 								pLocal->SetAbsOrigin(vOrigin);
-								Vec3 vPos; reinterpret_cast<CCollisionProperty*>(pLocal->GetCollideable())->CalcNearestPoint(vPoint, &vPos);
+								Vec3 vPos; pLocal->m_Collision()->CalcNearestPoint(vPoint, &vPos);
 								pLocal->SetAbsOrigin(vOriginal);
 
 								return vPoint.DistTo(vPos) < 120.f && SDK::VisPosWorld(pLocal, pLocal, vPoint, vOrigin + pLocal->m_vecViewOffset(), MASK_SHOT);

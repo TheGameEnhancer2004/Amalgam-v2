@@ -1,7 +1,7 @@
 #pragma once
-#include "../Macros/Macros.h"
-#include "../../SDK/Definitions/Misc/ConVar.h"
-#include "../Hash/FNV1A.h"
+#include "../../Definitions/Misc/ConVar.h"
+#include "../../../Utils/Macros/Macros.h"
+#include "../../../Utils/Hash/FNV1A.h"
 #include <unordered_map>
 
 class CConVars
@@ -18,4 +18,4 @@ public:
 	ConVar* FindVar(const char* sCVar);
 };
 
-ADD_FEATURE_CUSTOM(CConVars, ConVars, U);
+ADD_FEATURE_CUSTOM(CConVars, ConVars, H);

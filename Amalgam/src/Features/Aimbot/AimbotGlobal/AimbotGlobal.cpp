@@ -302,7 +302,7 @@ int CAimbotGlobal::GetPriority(int iIndex)
 
 bool CAimbotGlobal::FriendlyFire()
 {
-	static auto mp_friendlyfire = U::ConVars.FindVar("mp_friendlyfire");
+	static auto mp_friendlyfire = H::ConVars.FindVar("mp_friendlyfire");
 	return mp_friendlyfire->GetBool();
 }
 
@@ -348,7 +348,7 @@ bool CAimbotGlobal::ValidBomb(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEn
 			|| !FriendlyFire() && pEntity->m_iTeamNum() == pLocal->m_iTeamNum())
 			continue;
 
-		Vec3 vPos; reinterpret_cast<CCollisionProperty*>(pEntity->GetCollideable())->CalcNearestPoint(vOrigin, &vPos);
+		Vec3 vPos; pEntity->m_Collision()->CalcNearestPoint(vOrigin, &vPos);
 		if (vOrigin.DistTo(vPos) > 300.f)
 			continue;
 
