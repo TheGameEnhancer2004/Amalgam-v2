@@ -34,10 +34,19 @@ void CAutoHeal::AutoHeal(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 	}
 }
 
-void CAutoHeal::ActivateOnVoice(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* pCmd)
+static bool ShouldPopAtHealth(CTFPlayer* pTarget, float flScale)
 {
-	if (!Vars::Aimbot::Healing::ActivateOnVoice.Value)
+	return pTarget->m_iHealth() <= pTarget->GetMaxHealth() * flScale;
+}
+
+void CAutoHeal::Activate(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* pCmd)
+{
+	if (!Vars::Aimbot::Healing::ActivateOnVoice.Value && !Vars::Aimbot::Healing::ActivationHealthPercent.Value)
 		return;
+
+	float flHealthScale = Vars::Aimbot::Healing::ActivationHealthPercent.Value / 100;
+	if (flHealthScale && ShouldPopAtHealth(pLocal, flHealthScale))	// Self check
+		pCmd->buttons |= IN_ATTACK2;
 
 	auto pTarget = pWeapon->m_hHealingTarget().Get();
 	if (!pTarget
@@ -45,7 +54,8 @@ void CAutoHeal::ActivateOnVoice(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUse
 		&& !H::Entities.IsFriend(pTarget->entindex()) && !H::Entities.InParty(pTarget->entindex()))
 		return;
 
-	if (m_mMedicCallers.contains(pTarget->entindex()))
+	if ((Vars::Aimbot::Healing::ActivateOnVoice.Value && m_mMedicCallers.contains(pTarget->entindex())) ||
+		(flHealthScale && ShouldPopAtHealth(pTarget->As<CTFPlayer>(), flHealthScale)))
 		pCmd->buttons |= IN_ATTACK2;
 }
 
@@ -633,7 +643,7 @@ void CAutoHeal::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	AutoHeal(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
 
-	ActivateOnVoice(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
+	Activate(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
 	m_mMedicCallers.clear();
 	
 	AutoVaccinator(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);

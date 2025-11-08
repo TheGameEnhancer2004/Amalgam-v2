@@ -204,8 +204,9 @@ void CMenu::MenuAimbot(int iTab)
 					FToggle(Vars::Aimbot::Healing::AutoHeal, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::Healing::AutoArrow, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::Healing::AutoSandvich, FToggleEnum::Left);
-					FToggle(Vars::Aimbot::Healing::AutoVaccinator);
-					FToggle(Vars::Aimbot::Healing::ActivateOnVoice, FToggleEnum::Right);
+					FToggle(Vars::Aimbot::Healing::AutoVaccinator, FToggleEnum::Right);
+					FToggle(Vars::Aimbot::Healing::ActivateOnVoice, FToggleEnum::Left);
+					FSlider(Vars::Aimbot::Healing::ActivationHealthPercent, FSliderEnum::Right, Vars::Aimbot::Healing::ActivationHealthPercent[DEFAULT_BIND] <= 0.f ? "Off" : "%g%%");
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
