@@ -121,7 +121,7 @@ void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDesti
 	}
 }
 
-bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal, bool bIsRepath)
+bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal)
 {
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
 		return false;
@@ -137,7 +137,7 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		return false;
 
 	CNavArea* pDestArea = FindClosestNavArea(vDestination, false);
-	if (!m_pLocalArea || !pDestArea)
+	if (!pDestArea)
 		return false;
 
 	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea);
@@ -529,7 +529,7 @@ void CNavEngine::AbandonPath()
 	m_tLastCrumb.m_pNavArea = nullptr;
 	// We want to repath on failure
 	if (m_bRepathOnFail)
-		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal, false);
+		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal);
 	else
 		m_eCurrentPriority = PriorityListEnum::None;
 }

@@ -35,13 +35,10 @@ void CCPController::UpdateControlPoints()
 	}
 
 	static float flNextCapStatusRefresh = 0.0f;
-	const bool bCanUseGlobalVars = I::GlobalVars && I::GlobalVars->curtime >= 0.0f;
-	const float flCurrentTime = bCanUseGlobalVars ? I::GlobalVars->curtime : 0.0f;
-	const bool bShouldRefresh = !bCanUseGlobalVars || flCurrentTime >= flNextCapStatusRefresh;
-
-	if (bShouldRefresh)
+	const float flCurrentTime = I::GlobalVars->curtime;
+	if (flCurrentTime >= flNextCapStatusRefresh)
 	{
-		flNextCapStatusRefresh = bCanUseGlobalVars ? flCurrentTime + 1.0f : 0.0f;
+		flNextCapStatusRefresh = flCurrentTime + 1.0f;
 
 		for (int i = 0; i < iNumControlPoints; ++i)
 		{
@@ -114,9 +111,9 @@ bool CCPController::IsPointUseable(int iIndex, int iTeam)
 	if (m_pObjectiveResource->m_bCPLocked(iIndex))
 		return false;
 
-	// Linear cap means that it won't require previous points, bail
+	// Linear cap means that it WILL require previous points (the cvar doesnt seem to work here though)
 	static auto tf_caplinear = U::ConVars.FindVar("tf_caplinear");
-	if (tf_caplinear->GetBool())
+	if (!tf_caplinear->GetBool() || m_pObjectiveResource->m_iNumControlPoints() == 1)
 		return true;
 
 	// Any previous points necessary?

@@ -6,8 +6,8 @@
 ETFGameType GetGameType()
 {
 	// Check if we're on doomsday
-	auto map_name = std::string(I::EngineClient->GetLevelName());
-	F::GameObjectiveController.m_bDoomsday = map_name.find("sd_doomsday") != std::string::npos;
+	auto sMapName = std::string(I::EngineClient->GetLevelName());
+	F::GameObjectiveController.m_bDoomsday = sMapName.find("sd_doomsday") != std::string::npos;
 
 	int iType = TF_GAMETYPE_UNDEFINED;
 	if (auto pGameRules = I::TFGameRules())
@@ -39,6 +39,7 @@ void CGameObjectiveController::Update()
 	default:
 		if (m_bDoomsday)
 		{
+			// This isnt even the right way to do this. But who plays that map anyway??
 			F::FlagController.Update();
 			F::CPController.Update();
 		}

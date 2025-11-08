@@ -14,7 +14,7 @@ private:
 	// Overwrite to return true for payload carts as an example
 	bool m_bOverwriteCapture = false;
 private:
-	bool ShouldAssist(CTFPlayer* pLocal, int iTargetIdx);
+	bool ShouldAvoidPlayer(int iIndex);
 	bool GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut);
 	bool GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut);
 

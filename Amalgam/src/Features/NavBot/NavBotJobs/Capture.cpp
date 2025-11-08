@@ -7,21 +7,14 @@
 #include "../NavEngine/Controllers/Controller.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 
-bool CNavBotCapture::ShouldAssist(CTFPlayer* pLocal, int iTargetIdx)
+bool CNavBotCapture::ShouldAvoidPlayer(int iIndex)
 {
-	auto pEntity = I::ClientEntityList->GetClientEntity(iTargetIdx);
-	if (!pEntity || pEntity->As<CBaseEntity>()->m_iTeamNum() != pLocal->m_iTeamNum())
+#ifdef TEXTMODE
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iIndex)))
 		return false;
+#endif
 
-	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpFriendlyCaptureObjectives))
-		return true;
-
-	if (F::PlayerUtils.IsIgnored(iTargetIdx)
-		|| H::Entities.InParty(iTargetIdx)
-		|| H::Entities.IsFriend(iTargetIdx))
-		return true;
-
-	return false;
+	return !F::PlayerUtils.IsIgnored(iIndex);
 }
 
 bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
@@ -49,7 +42,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 		// Assist with capturing
 		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
 		{
-			if (ShouldAssist(pLocal, iCarrierIdx))
+			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
 				// Stay slightly behind and to the side to avoid blocking
 				Vector vOffset(40.0f, 40.0f, 0.0f);
@@ -228,7 +221,7 @@ bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam
 			continue;
 
 		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy || !pEnemy->IsAlive())
+		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 			continue;
 
 		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
@@ -487,7 +480,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 						continue;
 
 					auto pEnemy = pEntity->As<CTFPlayer>();
-					if (!pEnemy->IsAlive())
+					if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 						continue;
 
 					if (pEnemy->GetAbsOrigin().DistTo(vRocket) <= flThreatRadius)
@@ -522,7 +515,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 		// Help friendly carrier
 		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
 		{
-			if (ShouldAssist(pLocal, iCarrierIdx))
+			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
 				// Check if carrier is navigating to the rocket
 				auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
@@ -580,7 +573,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 			continue;
 
 		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy->IsAlive())
+		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 			continue;
 
 		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
