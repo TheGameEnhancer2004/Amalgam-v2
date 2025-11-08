@@ -7,21 +7,14 @@
 #include "../NavEngine/Controllers/Controller.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 
-bool CNavBotCapture::ShouldAssist(CTFPlayer* pLocal, int iTargetIdx)
+bool CNavBotCapture::ShouldAvoidPlayer(int iIndex)
 {
-	auto pEntity = I::ClientEntityList->GetClientEntity(iTargetIdx);
-	if (!pEntity || pEntity->As<CBaseEntity>()->m_iTeamNum() != pLocal->m_iTeamNum())
+#ifdef TEXTMODE
+	if (auto pResource = H::Entities.GetResource(); pResource && F::NamedPipe.IsLocalBot(pResource->m_iAccountID(iIndex)))
 		return false;
+#endif
 
-	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpFriendlyCaptureObjectives))
-		return true;
-
-	if (F::PlayerUtils.IsIgnored(iTargetIdx)
-		|| H::Entities.InParty(iTargetIdx)
-		|| H::Entities.IsFriend(iTargetIdx))
-		return true;
-
-	return false;
+	return !F::PlayerUtils.IsIgnored(iIndex);
 }
 
 bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
@@ -49,7 +42,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 		// Assist with capturing
 		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
 		{
-			if (ShouldAssist(pLocal, iCarrierIdx))
+			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
 				// Stay slightly behind and to the side to avoid blocking
 				Vector vOffset(40.0f, 40.0f, 0.0f);
@@ -228,7 +221,7 @@ bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam
 			continue;
 
 		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy || !pEnemy->IsAlive())
+		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 			continue;
 
 		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
@@ -410,6 +403,25 @@ bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam
 	Vector2D vFlatDelta(vAdjustedPos.x - vLocalOrigin.x, vAdjustedPos.y - vLocalOrigin.y);
 	if (vFlatDelta.LengthSqr() <= pow(45.0f, 2))
 	{
+		if (iControlPointIdx == -1)
+		{
+			m_vCurrentCaptureSpot.reset();
+			ReleaseCaptureSpotClaim();
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("NavBotCapture", "Capture.GetControlPointGoal: nearby control point index invalid, searching other points", { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+			return false;
+		}
+
+		std::pair<int, Vector> tVerify;
+		if (!F::CPController.GetClosestControlPointInfo(vLocalOrigin, iOurTeam, tVerify) || tVerify.first != iControlPointIdx)
+		{
+			m_vCurrentCaptureSpot.reset();
+			ReleaseCaptureSpotClaim();
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("NavBotCapture", std::format("Capture.GetControlPointGoal: control point {} no longer valid (verified {}), searching other points", iControlPointIdx, tVerify.first).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+			return false;
+		}
+
 		m_bOverwriteCapture = true;
 		return false;
 	}
@@ -468,7 +480,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 						continue;
 
 					auto pEnemy = pEntity->As<CTFPlayer>();
-					if (!pEnemy->IsAlive())
+					if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 						continue;
 
 					if (pEnemy->GetAbsOrigin().DistTo(vRocket) <= flThreatRadius)
@@ -503,7 +515,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 		// Help friendly carrier
 		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
 		{
-			if (ShouldAssist(pLocal, iCarrierIdx))
+			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
 				// Check if carrier is navigating to the rocket
 				auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
@@ -561,7 +573,7 @@ bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemy
 			continue;
 
 		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy->IsAlive())
+		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
 			continue;
 
 		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
@@ -635,22 +647,39 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	static Vector vPreviousTarget;
 
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::CaptureObjectives))
+	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavBotCapture", "Capture.Run: CaptureObjectives preference disabled", { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return false;
+	}
 
 	if (const auto& pGameRules = I::TFGameRules())
 	{
 		if (!((pGameRules->m_iRoundState() == GR_STATE_RND_RUNNING || pGameRules->m_iRoundState() == GR_STATE_STALEMATE) && !pGameRules->m_bInWaitingForPlayers())
 			|| pGameRules->m_iRoundState() == GR_STATE_TEAM_WIN
 			|| pGameRules->m_bPlayingSpecialDeliveryMode())
+		{
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("NavBotCapture", std::format("Capture.Run: game rules prevented capture (roundState={}, waiting={}, teamwin={}, specialDelivery={})",
+					pGameRules->m_iRoundState(), pGameRules->m_bInWaitingForPlayers(), pGameRules->m_iRoundState() == GR_STATE_TEAM_WIN, pGameRules->m_bPlayingSpecialDeliveryMode()).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			return false;
+		}
 	}
 
 	if (!tCaptureTimer.Check(2.f))
+	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavBotCapture", std::format("Capture.Run: on cooldown (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
+	}
 
 	// Priority too high, don't try
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Capture)
+	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavBotCapture", std::format("Capture.Run: priority too high (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return false;
+	}
 
 	int iOurTeam = pLocal->m_iTeamNum();
 	int iEnemyTeam = iOurTeam == TF_TEAM_BLUE ? TF_TEAM_RED : TF_TEAM_BLUE;
@@ -683,24 +712,38 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Overwritten, for example because we are currently on the payload, cancel any sort of pathing and return true
 	if (m_bOverwriteCapture)
 	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavBotCapture", "Capture.Run: overwritten capture (player is on objective or close enough)", { 150, 255, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		F::NavEngine.CancelPath();
 		return true;
 	}
+
 	// No target, bail and set on cooldown
-	else if (!bGotTarget)
+	if (!bGotTarget)
 	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavBotCapture", std::format("Capture.Run: no target found for gamemode {}", static_cast<int>(F::GameObjectiveController.m_eGameMode)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		tCaptureTimer.Update();
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
 	}
+
 	// If priority is not capturing, or we have a new target, try to path there
-	else if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture || vTarget != vPreviousTarget)
+	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture || vTarget != vPreviousTarget)
 	{
-		if (F::NavEngine.NavTo(vTarget, PriorityListEnum::Capture, true, !F::NavEngine.IsPathing()))
+		bool bNavOk = F::NavEngine.NavTo(vTarget, PriorityListEnum::Capture, true, !F::NavEngine.IsPathing());
+		if (bNavOk)
 		{
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("NavBotCapture", "Capture.Run: NavTo succeeded, started capture path", { 150, 255, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			vPreviousTarget = vTarget;
 			return true;
 		}
-		tCaptureTimer.Update();
+		else
+		{
+			if (Vars::Debug::Logging.Value)
+				SDK::Output("NavBotCapture", "Capture.Run: NavTo failed for capture target", { 255, 100, 100 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+			tCaptureTimer.Update();
+		}
 	}
 	return false;
 }

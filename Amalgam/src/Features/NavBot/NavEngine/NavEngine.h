@@ -50,6 +50,7 @@ private:
 	bool m_bUpdatedRespawnRooms = false;
 
 	bool IsSetupTime();
+	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath();
@@ -123,7 +124,7 @@ public:
 	void UpdateStuckTime(CTFPlayer* pLocal);
 
 	// Make sure to update m_pLocalArea with GetLocalNavArea before running
-	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIsRepath = true);
+	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true);
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
 
