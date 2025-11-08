@@ -284,7 +284,6 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 #ifndef TEXTMODE
 		F::Spectate.CreateMove(pCmd);
 #endif
-		F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
 		F::Misc.RunPre(pLocal, pCmd);
 		F::AutoJoin.Run(pLocal);
 		F::AutoItem.Run(pLocal);
@@ -293,6 +292,7 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 		F::BotUtils.Run(pLocal, pWeapon, pCmd);
 	F::Ticks.Start(pLocal, pCmd);
 		F::Aimbot.Run(pLocal, pWeapon, pCmd);
+		F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
 	F::Ticks.End(pLocal, pCmd);
 		F::FollowBot.Run(pLocal, pWeapon, pCmd);
 		F::NavBotCore.Run(pLocal, pWeapon, pCmd);

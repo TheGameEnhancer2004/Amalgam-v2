@@ -7,7 +7,7 @@ DWORD WINAPI MainThread(LPVOID lpParam)
 	U::CrashLog.Initialize(lpParam);
 	U::Core.Load();
 	U::Core.Loop();
-	U::CrashLog.Unload(); // 0xC0000409
+	U::CrashLog.Unload();
 	U::Core.Unload();
 
 	FreeLibraryAndExitThread(static_cast<HMODULE>(lpParam), EXIT_SUCCESS);

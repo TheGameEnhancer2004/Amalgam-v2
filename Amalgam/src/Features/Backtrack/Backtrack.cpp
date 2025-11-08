@@ -2,6 +2,7 @@
 
 #include "../PacketManip/FakeLag/FakeLag.h"
 #include "../Ticks/Ticks.h"
+#include "../Aimbot/Aimbot.h"
 
 void CBacktrack::Reset()
 {
@@ -67,7 +68,7 @@ int CBacktrack::GetAnticipatedChoke(int iMethod)
 
 void CBacktrack::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
+	if (F::Aimbot.m_bRan || Vars::Misc::Game::AntiCheatCompatibility.Value)
 		return;
 
 	// correct tick_count for fakeinterp / nointerp
@@ -475,51 +476,48 @@ std::optional<TickRecord> CBacktrack::GetHitRecord(CBaseEntity* pEntity, CTFWeap
 
 void CBacktrack::BacktrackToCrosshair(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+	if (G::Attacking != 1 || 
+		!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
 		return;
 
-	if (G::Attacking == 1 && G::CanPrimaryAttack)
+	const Vec3 vShootPos = F::Ticks.GetShootPos();
+	const Vec3 vAngles = pCmd->viewangles;
+
+	std::vector<std::pair<TickRecord, CrosshairRecordInfo_t>> vValidRecords;
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
-		const Vec3 vShootPos = F::Ticks.GetShootPos();
-		const Vec3 vAngles = pCmd->viewangles;
+		if (!pEntity)
+			continue;
 
-		std::vector<std::pair<TickRecord, CrosshairRecordInfo_t>> vValidRecords;
-		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-		{
-			if (!pEntity)
-				continue;
+		if (/*pEntity->IsDormant() || */!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost() || pEntity->As<CTFPlayer>()->IsInvulnerable())
+			continue;
 
-			if (/*pEntity->IsDormant() || */!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost() || pEntity->As<CTFPlayer>()->IsInvulnerable())
-				continue;
-
-			CrosshairRecordInfo_t sRecordInfo{};
-			if (auto pCheckRec = GetHitRecord(pEntity, pWeapon, pCmd, sRecordInfo, vAngles, vShootPos))
-				vValidRecords.push_back({ *pCheckRec, sRecordInfo });
-		}
-
-		std::optional<TickRecord> pReturnTick{};
-		if (!vValidRecords.empty())
-		{
-			auto pFinalTick = std::ranges::min_element(vValidRecords,
-				[&](const std::pair<TickRecord, CrosshairRecordInfo_t>& a, const std::pair<TickRecord, CrosshairRecordInfo_t>& b)
-				{
-					const bool bInsideBoth = a.second.m_bInsideThisRecord && b.second.m_bInsideThisRecord;
-					const bool bNotInsideRecords = !a.second.m_bInsideThisRecord && !b.second.m_bInsideThisRecord;
-
-					const bool bResult =
-					{
-							bInsideBoth ? a.second.m_flMinDist < b.second.m_flMinDist :
-							bNotInsideRecords ? a.second.m_flFov < b.second.m_flFov :
-							a.second.m_bInsideThisRecord
-					};
-					return bResult;
-				});
-			pReturnTick = pFinalTick->first;
-		}
-
-		if (pReturnTick)
-			pCmd->tick_count = TIME_TO_TICKS(pReturnTick->m_flSimTime + m_flFakeInterp);
+		CrosshairRecordInfo_t sRecordInfo{};
+		if (auto pCheckRec = GetHitRecord(pEntity, pWeapon, pCmd, sRecordInfo, vAngles, vShootPos))
+			vValidRecords.push_back({ *pCheckRec, sRecordInfo });
 	}
+
+	std::optional<TickRecord> pReturnTick{};
+	if (!vValidRecords.empty())
+	{
+		auto pFinalTick = std::ranges::min_element(vValidRecords, [&](const std::pair<TickRecord, CrosshairRecordInfo_t>& a, const std::pair<TickRecord, CrosshairRecordInfo_t>& b)
+												   {
+													   const bool bInsideBoth = a.second.m_bInsideThisRecord && b.second.m_bInsideThisRecord;
+													   const bool bNotInsideRecords = !a.second.m_bInsideThisRecord && !b.second.m_bInsideThisRecord;
+
+													   const bool bResult =
+													   {
+															   bInsideBoth ? a.second.m_flMinDist < b.second.m_flMinDist :
+															   bNotInsideRecords ? a.second.m_flFov < b.second.m_flFov :
+															   a.second.m_bInsideThisRecord
+													   };
+													   return bResult;
+												   });
+		pReturnTick = pFinalTick->first;
+	}
+
+	if (pReturnTick)
+		pCmd->tick_count = TIME_TO_TICKS(pReturnTick->m_flSimTime + m_flFakeInterp);
 }
 
 void CBacktrack::Draw(CTFPlayer* pLocal)
