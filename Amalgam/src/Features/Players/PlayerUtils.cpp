@@ -3,9 +3,6 @@
 #include "../../SDK/Definitions/Types.h"
 #include "../Output/Output.h"
 
-#include <algorithm>
-#include <cctype>
-
 uint32_t CPlayerlistUtils::GetAccountID(int iIndex)
 {
 	auto pResource = H::Entities.GetResource();

@@ -1,7 +1,5 @@
 #include "AimbotHitscan.h"
 
-#include <cmath>
-
 #include "../Aimbot.h"
 #include "../../Resolver/Resolver.h"
 #include "../../Ticks/Ticks.h"
