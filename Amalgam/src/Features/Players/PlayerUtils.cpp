@@ -3,6 +3,9 @@
 #include "../../SDK/Definitions/Types.h"
 #include "../Output/Output.h"
 
+#include <algorithm>
+#include <cctype>
+
 uint32_t CPlayerlistUtils::GetAccountID(int iIndex)
 {
 	auto pResource = H::Entities.GetResource();
@@ -33,14 +36,31 @@ PriorityLabel_t* CPlayerlistUtils::GetTag(int iID)
 
 int CPlayerlistUtils::GetTag(const std::string& sTag)
 {
-	auto uHash = FNV1A::Hash32(sTag.c_str());
+	if (sTag.empty())
+		return -1;
 
-	int iID = -1;
-	for (auto& tTag : m_vTags)
+	auto Normalize = [](const std::string& sInput) -> std::string
 	{
-		iID++;
-		if (uHash == FNV1A::Hash32(tTag.m_sName.c_str()))
-			return iID;
+		std::string sNormalized;
+		sNormalized.reserve(sInput.size());
+		for (unsigned char ch : sInput)
+		{
+			const unsigned char uch = ch;
+			if (std::isspace(uch) || uch == '_' || uch == '-')
+				continue;
+			sNormalized.push_back(static_cast<char>(std::tolower(uch)));
+		}
+		return sNormalized;
+	};
+
+	const std::string sLookup = Normalize(sTag);
+	if (sLookup.empty())
+		return -1;
+
+	for (size_t i = 0; i < m_vTags.size(); i++)
+	{
+		if (Normalize(m_vTags[i].m_sName) == sLookup)
+			return static_cast<int>(i);
 	}
 
 	return -1;
