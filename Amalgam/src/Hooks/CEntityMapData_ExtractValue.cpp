@@ -112,6 +112,10 @@ MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
 		case FNV1A::Hash32Const("trigger_push"):
 			eType = TriggerTypeEnum::Push;
 			break;
+#else
+		case FNV1A::Hash32Const("prop_physics_multiplayer"):
+		case FNV1A::Hash32Const("func_proprrespawnzone"):
+			return false;
 #endif
 		case FNV1A::Hash32Const("func_respawnroom"):
 			eType = TriggerTypeEnum::RespawnRoom;
