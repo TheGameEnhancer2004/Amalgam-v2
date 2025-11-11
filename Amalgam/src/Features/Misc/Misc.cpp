@@ -1109,8 +1109,8 @@ void CMisc::AutoReport()
 			if (H::Entities.IsFriend(i) ||
 				H::Entities.InParty(i) ||
 				F::PlayerUtils.IsIgnored(i) ||
-				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
-				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)))
+				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+				F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
 				continue;
 
 			uint64_t uSteamID64 = ((uint64_t)1 << 56) | ((uint64_t)1 << 52) | ((uint64_t)1 << 32) | uSteamId;
@@ -1147,8 +1147,8 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 		if (H::Entities.IsFriend(i) || 
 			H::Entities.InParty(i) ||
 			F::PlayerUtils.IsIgnored(i) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_IGNORE_TAG)) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(BOT_IGNORE_TAG)))
+			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
+			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
 			continue;
 
 		vPotentialTargets.push_back(i);

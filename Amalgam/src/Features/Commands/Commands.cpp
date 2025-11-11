@@ -230,14 +230,12 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 
 			if (F::PlayerUtils.HasTag(uFriendsID, iTagID))
 			{
-				F::PlayerUtils.RemoveTag(uFriendsID, iTagID, true);
-				SDK::Output(std::format("Removed tag {} from ID32 {}", sTag, uFriendsID).c_str());
+				SDK::Output(std::format("ID32 {} already has tag {}", uFriendsID, sTag).c_str());
+				return;
 			}
-			else
-			{
-				F::PlayerUtils.AddTag(uFriendsID, iTagID, true);
-				SDK::Output(std::format("Added tag {} to ID32 {}", sTag, uFriendsID).c_str());
-			}
+
+			F::PlayerUtils.AddTag(uFriendsID, iTagID, true);
+			SDK::Output(std::format("Added tag {} to ID32 {}", sTag, uFriendsID).c_str());
 		}
 	},
 	{

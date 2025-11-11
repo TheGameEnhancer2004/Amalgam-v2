@@ -138,6 +138,7 @@ namespace G
 
 	inline bool AntiAim = false;
 	inline bool Choking = false;
+	inline bool AimbotSteering = false;
 
 	inline bool UpdatingAnims = false;
 	inline bool FlipViewmodels = false;

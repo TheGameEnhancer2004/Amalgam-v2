@@ -699,6 +699,16 @@ bool CAimbotHitscan::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 // assume angle calculated outside with other overload
 void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 {
+	Vec3 vOldView = pCmd->viewangles;
+	auto MarkSteering = [&](const Vec3& vNew)
+	{
+		if (G::AimbotSteering)
+			return;
+		Vec3 vDelta = vNew.DeltaAngle(vOldView);
+		if (std::fabs(vDelta.x) > 0.01f || std::fabs(vDelta.y) > 0.01f || std::fabs(vDelta.z) > 0.01f)
+			G::AimbotSteering = true;
+	};
+
 	bool bUnsure = F::Ticks.IsTimingUnsure();
 	switch (iMethod)
 	{
@@ -710,6 +720,7 @@ void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 	case Vars::Aimbot::General::AimTypeEnum::Assistive:
 		pCmd->viewangles = vAngle;
 		I::EngineClient->SetViewAngles(vAngle);
+		MarkSteering(vAngle);
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Silent:
 		if (G::Attacking == 1 || bUnsure)
@@ -717,12 +728,14 @@ void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			SDK::FixMovement(pCmd, vAngle);
 			pCmd->viewangles = vAngle;
 			G::SilentAngles = true;
+			MarkSteering(vAngle);
 		}
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		SDK::FixMovement(pCmd, vAngle);
 		pCmd->viewangles = vAngle;
 		G::SilentAngles = true;
+		MarkSteering(vAngle);
 	}
 }
 
