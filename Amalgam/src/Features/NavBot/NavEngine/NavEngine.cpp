@@ -603,6 +603,44 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	static bool bCrouch = false; // Used to determine if we want to jump or if we want to crouch
 
 	size_t uCrumbsSize = m_vCrumbs.size();
+	auto DoLook = [&](const Vec3& vTarget, bool bTargetValid) -> void
+	{
+		if (G::Attacking == 1)
+		{
+			F::BotUtils.InvalidateHLAP();
+			return;
+		}
+
+		auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
+		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+		bool bHuman = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Human || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+
+		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
+		{
+			F::BotUtils.InvalidateHLAP();
+			return;
+		}
+
+		if (bSilent && G::AntiAim)
+		{
+			F::BotUtils.InvalidateHLAP();
+			return;
+		}
+
+		if (bHuman)
+		{
+			F::BotUtils.LookAtPathHumanized(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
+		}
+		else if (bTargetValid)
+		{
+			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
+		}
+		else
+		{
+			F::BotUtils.InvalidateHLAP();
+		}
+	};
 	// No more crumbs, reset status
 	if (!uCrumbsSize)
 	{
@@ -611,6 +649,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 		m_bRepathOnFail = false;
 		m_eCurrentPriority = PriorityListEnum::None;
+		DoLook(Vec3{}, false);
 		return;
 	}
 
@@ -655,6 +694,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	Vector vMoveDir{};
 	bool bDropCrumb = false;
 	bool bHasMoveDir = false;
+	bool bHasMoveTarget = false;
 	float flReachRadius = kDefaultReachRadius;
 
 	while (true)
@@ -714,7 +754,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			m_tInactivityTimer.Update();
 			uCrumbsSize = m_vCrumbs.size();
 			if (!uCrumbsSize)
+			{
+				DoLook(Vec3{}, false);
 				return;
+			}
 			continue;
 		}
 
@@ -729,7 +772,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				m_tTimeSpentOnCrumbTimer.Update();
 				uCrumbsSize = m_vCrumbs.size();
 				if (!uCrumbsSize)
+				{
+					DoLook(Vec3{}, false);
 					return;
+				}
 				m_tInactivityTimer.Update();
 				continue;
 			}
@@ -766,7 +812,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				m_tInactivityTimer.Update();
 				uCrumbsSize = m_vCrumbs.size();
 				if (!uCrumbsSize)
+				{
+					DoLook(Vec3{}, false);
 					return;
+				}
 				continue;
 			}
 		}
@@ -847,20 +896,32 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 	if (G::Attacking != 1)
 	{
-		// Look at path (nav spin) (smooth nav)
-		switch (Vars::Misc::Movement::NavEngine::LookAtPath.Value)
+		auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
+		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+		bool bHuman = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Human || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+
+		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
 		{
-		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off:
-			break;
-		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent:
-			if (G::AntiAim)
-				break;
-			[[fallthrough]];
-		case Vars::Misc::Movement::NavEngine::LookAtPathEnum::Plain:
-		default:
-			F::BotUtils.LookAtPath(pCmd, Vec2( vMoveTarget.x, vMoveTarget.y ), pLocal->GetEyePosition(), Vars::Misc::Movement::NavEngine::LookAtPath.Value == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent);
-			break;
+			F::BotUtils.InvalidateHLAP();
 		}
+		else if (bSilent && G::AntiAim)
+		{
+			F::BotUtils.InvalidateHLAP();
+		}
+		else if (bHuman)
+		{
+			Vec3 vLookTarget{ vMoveTarget.x, vMoveTarget.y, vMoveTarget.z };
+			F::BotUtils.LookAtPathHumanized(pLocal, pCmd, vLookTarget, bSilent);
+		}
+		else
+		{
+			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.LookAtPath(pCmd, Vec2(vMoveTarget.x, vMoveTarget.y), pLocal->GetEyePosition(), bSilent);
+		}
+	}
+	else
+	{
+		F::BotUtils.InvalidateHLAP();
 	}
 
 	SDK::WalkTo(pCmd, pLocal, vMoveTarget);
