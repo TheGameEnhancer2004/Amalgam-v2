@@ -6,8 +6,6 @@ void CAutoJoin::Run(CTFPlayer* pLocal)
 	static Timer tJoinTimer{}, tRandomTimer{};
 	static int iRandomClass = 0;
 
-	if (!pLocal) { iRandomClass = 0; return; }
-
 	int iDesiredClass = Vars::Misc::Automation::ForceClass.Value;
 
 	if (Vars::Misc::Automation::RandomClass.Value)
