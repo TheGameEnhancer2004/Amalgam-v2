@@ -1,5 +1,7 @@
 #include "Menu.h"
 
+#ifndef TEXTMODE
+
 #include "Components.h"
 #include "../../Configs/Configs.h"
 #include "../../Binds/Binds.h"
@@ -14,6 +16,7 @@
 #include <string_view>
 #include <cctype>
 #include <cstring>
+#include <d3d9.h>
 #include <wrl/client.h>
 #include <unordered_map>
 #include <vector>
@@ -176,6 +179,7 @@ namespace
 		return static_cast<ImTextureID>(0);
 	}
 }
+
 
 void CMenu::DrawMenu()
 {
@@ -4764,3 +4768,4 @@ void CMenu::DrawNotifications()
 		PopStyleVar(2);
 	}
 }
+#endif

@@ -1,5 +1,7 @@
 #pragma once
 #include "../../../SDK/SDK.h"
+
+#ifndef TEXTMODE
 #include "../Render.h"
 #include <ImGui/TextEditor.h>
 
@@ -54,5 +56,20 @@ public:
 	std::vector<Notification_t> m_vNotifications;
 	std::vector<Notification_t> m_vDeferredNotifications;
 };
+#else
+class CMenu
+{
+public:
+	void Render() {}
+	void AddOutput(const char*, const char*, Color_t = {}) {}
+	void ShowNotification(const char*, const char*) {}
+	void ShowDeferredNotification(const char*, const char*) {}
+	void ProcessDeferredNotifications() {}
+	void DrawNotifications() {}
+	bool m_bIsOpen = false;
+	bool m_bInKeybind = false;
+	bool m_bWindowHovered = false;
+};
+#endif // !TEXTMODE
 
 ADD_FEATURE(CMenu, Menu);
