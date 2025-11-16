@@ -1920,20 +1920,99 @@ void CMenu::MenuAnticheat(int iTab)
 
 						if (FBeginPopup(std::format("CheaterMenu{}", tEntry.first).c_str()))
 						{
-							if (FSelectable("Profile"))
+							PushStyleVar(ImGuiStyleVar_WindowPadding, { H::Draw.Scale(12), H::Draw.Scale(8) });
+							PushStyleVar(ImGuiStyleVar_WindowRounding, H::Draw.Scale(8));
+							PushStyleVar(ImGuiStyleVar_ItemSpacing, { H::Draw.Scale(4), H::Draw.Scale(4) });
+							PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
+							PushStyleColor(ImGuiCol_PopupBg, F::Render.Background0.Value);
+							PushStyleColor(ImGuiCol_Border, F::Render.Background2.Value);
+							PushStyleColor(ImGuiCol_Header, F::Render.Background1.Value);
+
+							const ImVec4 tAccent = F::Render.Accent.Value;
+							const ImVec4 tDanger = ColorToVec(Color_t{ 255, 120, 120, 255 });
+							const float flRowHeight = H::Draw.Scale(32);
+							const float flIconSlot = H::Draw.Scale(22);
+							int iPopupRow = 0;
+							auto PopupSelectable = [&](const std::string& sLabel, const char* sIcon, const ImVec4& tColor, auto&& fn)
+							{
+								const std::string sId = std::format("##CheaterAction{}{}{}", tEntry.first, sLabel, iPopupRow++);
+								ImVec2 vContentMin = GetWindowContentRegionMin();
+								ImVec2 vContentMax = GetWindowContentRegionMax();
+								float flRowWidth = std::max(0.f, vContentMax.x - vContentMin.x);
+								if (flRowWidth <= 0.f)
+									flRowWidth = GetContentRegionAvail().x;
+								if (flRowWidth <= 0.f)
+									flRowWidth = H::Draw.Scale(140);
+								const ImVec2 vRowSize = { flRowWidth, flRowHeight };
+
+								PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+								PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+								PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+								bool bActivated = Selectable(sId.c_str(), false, ImGuiSelectableFlags_None, vRowSize);
+								PopStyleColor(3);
+
+								ImVec2 vMin = GetItemRectMin();
+								ImVec2 vMax = GetItemRectMax();
+								const bool bHovered = IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+								ImDrawList* pDrawList = GetWindowDrawList();
+
+								const auto Tint = [&](float flAlpha) -> ImU32
+								{
+									ImVec4 tTint = tColor;
+									tTint.w = flAlpha;
+									return ColorConvertFloat4ToU32(tTint);
+								};
+
+								ImVec2 vIconMin = { vMin.x + H::Draw.Scale(8), vMin.y + (flRowHeight - flIconSlot) / 2 };
+								ImVec2 vIconMax = { vIconMin.x + flIconSlot, vIconMin.y + flIconSlot };
+								float flIconAlpha = bHovered ? 0.35f : 0.2f;
+								pDrawList->AddRectFilled(vIconMin, vIconMax, Tint(flIconAlpha), H::Draw.Scale(6));
+
+								const float flIconFontSize = F::Render.IconFont->FontSize;
+								const ImVec2 vIconSize = F::Render.IconFont->CalcTextSizeA(flIconFontSize, FLT_MAX, 0.f, sIcon);
+								const ImVec2 vIconPos = { vIconMin.x + (flIconSlot - vIconSize.x) / 2, vIconMin.y + (flIconSlot - vIconSize.y) / 2 };
+								pDrawList->AddText(F::Render.IconFont, flIconFontSize, vIconPos, ColorConvertFloat4ToU32(tColor), sIcon);
+
+								const ImVec2 vTextPos = { vIconMax.x + H::Draw.Scale(8), vMin.y + (flRowHeight - GetTextLineHeight()) / 2 };
+								pDrawList->AddText(vTextPos, GetColorU32(ImGuiCol_Text), sLabel.c_str());
+
+								if (bActivated)
+									fn();
+							};
+
+							PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+							TextUnformatted("Steam");
+							PopStyleColor();
+
+							PopupSelectable("Profile", ICON_MD_PERSON, tAccent, [&]
+							{
 								I::SteamFriends->ActivateGameOverlayToUser("steamid", CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual));
-							if (FSelectable("History"))
+							});
+							PopupSelectable("History", ICON_MD_HISTORY, tAccent, [&]
+							{
 								I::SteamFriends->ActivateGameOverlayToWebPage(std::format("https://steamhistory.net/id/{}", CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64()).c_str());
-							if (FSelectable("Refetch profile"))
+							});
+							PopupSelectable("Refetch profile", ICON_MD_SYNC, tAccent, [&]
 							{
 								ResetCheaterAvatar(tEntry.first);
 								F::SteamProfileCache.Invalidate(tEntry.first);
 								F::SteamProfileCache.TouchAvatar(tEntry.first);
 								const auto uSteamID64 = CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
 								SDK::Output("steamwebapi", std::format("Queued profile refetch for {}", uSteamID64).c_str(), { 175, 150, 255, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
-							}
-							if (FSelectable("Remove tag"))
+							});
+
+							Dummy({ 0, H::Draw.Scale(4) });
+							PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+							TextUnformatted("Tags");
+							PopStyleColor();
+
+							PopupSelectable("Remove tag", ICON_MD_DELETE, tDanger, [&]
+							{
 								F::PlayerUtils.RemoveTag(tEntry.first, F::PlayerUtils.TagToIndex(CHEATER_TAG), true, sName.c_str());
+							});
+
+							PopStyleColor(3);
+							PopStyleVar(4);
 							EndPopup();
 						}
 					};
