@@ -1,7 +1,31 @@
 #include "PlayerUtils.h"
+#include "SteamProfileCache.h"
 
 #include "../../SDK/Definitions/Types.h"
 #include "../Output/Output.h"
+
+#include <boost/property_tree/json_parser.hpp>
+#include <sstream>
+#include <ctime>
+#include <algorithm>
+#include <cstring>
+#include <cctype>
+
+namespace
+{
+	bool IsPlaceholderName(const std::string& sName)
+	{
+		if (sName.empty())
+			return true;
+
+		std::string sLower;
+		sLower.reserve(sName.size());
+		for (char ch : sName)
+			sLower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+
+		return sLower == "unknown" || sLower == "[unknown]" || sLower == "<unknown>" || sLower == "unknown player";
+	}
+}
 
 uint32_t CPlayerlistUtils::GetAccountID(int iIndex)
 {
@@ -118,30 +142,34 @@ int CPlayerlistUtils::GetTag(const std::string& sTag)
 // }
 
 
-void CPlayerlistUtils::AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags)
+void CPlayerlistUtils::AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags, const char* sReason, int iDetections, bool bAuto)
 {
 	if (!uAccountID)
 		return;
 
-	if (!HasTag(uAccountID, iID))
+	const bool bHadTag = HasTag(uAccountID, iID);
+	if (!bHadTag)
 	{
 		mPlayerTags[uAccountID].push_back(iID);
 		m_bSave = bSave;
 		if (auto pTag = GetTag(iID); pTag && sName)
 			F::Output.TagsChanged(sName, "Added", pTag->m_tColor.ToHexA().c_str(), pTag->m_sName.c_str());
 	}
+
+	if (IndexToTag(iID) == CHEATER_TAG)
+		UpdateCheaterRecord(uAccountID, sName, sReason, iDetections, bAuto);
 }
-void CPlayerlistUtils::AddTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags)
+void CPlayerlistUtils::AddTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags, const char* sReason, int iDetections, bool bAuto)
 {
-	AddTag(GetAccountID(iIndex), iID, bSave, sName, mPlayerTags);
+	AddTag(GetAccountID(iIndex), iID, bSave, sName, mPlayerTags, sReason, iDetections, bAuto);
 }
-void CPlayerlistUtils::AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName)
+void CPlayerlistUtils::AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, const char* sReason, int iDetections, bool bAuto)
 {
-	AddTag(uAccountID, iID, bSave, sName, m_mPlayerTags);
+	AddTag(uAccountID, iID, bSave, sName, m_mPlayerTags, sReason, iDetections, bAuto);
 }
-void CPlayerlistUtils::AddTag(int iIndex, int iID, bool bSave, const char* sName)
+void CPlayerlistUtils::AddTag(int iIndex, int iID, bool bSave, const char* sName, const char* sReason, int iDetections, bool bAuto)
 {
-	AddTag(iIndex, iID, bSave, sName, m_mPlayerTags);
+	AddTag(iIndex, iID, bSave, sName, m_mPlayerTags, sReason, iDetections, bAuto);
 }
 
 void CPlayerlistUtils::RemoveTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags)
@@ -150,6 +178,7 @@ void CPlayerlistUtils::RemoveTag(uint32_t uAccountID, int iID, bool bSave, const
 		return;
 
 	auto& vTags = mPlayerTags[uAccountID];
+	bool bRemoved = false;
 	for (auto it = vTags.begin(); it != vTags.end(); it++)
 	{
 		if (iID == *it)
@@ -158,11 +187,15 @@ void CPlayerlistUtils::RemoveTag(uint32_t uAccountID, int iID, bool bSave, const
 			m_bSave = bSave;
 			if (auto pTag = GetTag(iID); pTag && sName)
 				F::Output.TagsChanged(sName, "Removed", pTag->m_tColor.ToHexA().c_str(), pTag->m_sName.c_str());
+			bRemoved = true;
 			break;
 		}
 	}
 	if (vTags.empty())
 		mPlayerTags.erase(uAccountID);
+
+	if (bRemoved && IndexToTag(iID) == CHEATER_TAG)
+		RemoveCheaterRecord(uAccountID, bSave);
 }
 void CPlayerlistUtils::RemoveTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags)
 {
@@ -621,6 +654,9 @@ void CPlayerlistUtils::Store()
 			H::Entities.GetLevel(uAccountID),
 			H::Entities.GetParty(uAccountID)
 		);
+
+		if (uAccountID)
+			F::SteamProfileCache.Touch(uAccountID);
 	}
 }
 
@@ -635,4 +671,163 @@ void CPlayerlistUtils::IncrementBotIgnoreKillCount(uint32_t uAccountID)
 		tBotData.m_iKillCount++;
 		m_bSave = true;
 	}
+}
+
+std::string CPlayerlistUtils::ResolveAccountName(uint32_t uAccountID) const
+{
+	if (!uAccountID)
+		return "";
+
+	if (auto it = m_mPlayerAliases.find(uAccountID); it != m_mPlayerAliases.end() && !it->second.empty())
+		return it->second;
+
+	if (auto pResource = H::Entities.GetResource())
+	{
+		for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+		{
+			if (pResource->m_bValid(n) && !pResource->IsFakePlayer(n) && pResource->m_iAccountID(n) == uAccountID)
+			{
+				if (const char* sName = pResource->GetName(n); sName && *sName)
+					return sName;
+			}
+		}
+	}
+
+	if (I::SteamFriends)
+	{
+		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
+		if (const char* persona = I::SteamFriends->GetFriendPersonaName(steamID); persona && *persona && std::strcmp(persona, "Unknown") != 0)
+			return persona;
+	}
+
+	if (auto sRemote = F::SteamProfileCache.GetPersonaName(uAccountID); !sRemote.empty())
+		return sRemote;
+
+	F::SteamProfileCache.Touch(uAccountID);
+
+	return std::format("{}", CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64());
+}
+
+void CPlayerlistUtils::UpdateCheaterRecord(uint32_t uAccountID, const char* sName, const char* sReason, int iDetections, bool bAuto)
+{
+	if (!uAccountID)
+		return;
+
+	F::SteamProfileCache.TouchAvatar(uAccountID);
+
+	auto& tRecord = m_mCheaterRecords[uAccountID];
+	tRecord.m_uAccountID = uAccountID;
+	if (sName && *sName && !IsPlaceholderName(sName))
+		tRecord.m_sName = sName;
+	else if (tRecord.m_sName.empty() || tRecord.m_sName == "Unknown")
+		tRecord.m_sName = ResolveAccountName(uAccountID);
+
+	if (sReason && *sReason)
+		tRecord.m_sReason = sReason;
+	else if (tRecord.m_sReason.empty())
+		tRecord.m_sReason = "tagged by the player";
+
+	if (iDetections > 0)
+		tRecord.m_iDetections = std::max(tRecord.m_iDetections, iDetections);
+	else if (bAuto && tRecord.m_iDetections <= 0)
+		tRecord.m_iDetections = 1;
+
+	tRecord.m_bAuto = bAuto;
+	tRecord.m_iTimestamp = I::GlobalVars ? I::GlobalVars->tickcount : int(std::time(nullptr));
+
+	m_bCheaterSave = true;
+}
+
+void CPlayerlistUtils::RemoveCheaterRecord(uint32_t uAccountID, bool bMarkSave)
+{
+	if (!uAccountID || !m_mCheaterRecords.contains(uAccountID))
+		return;
+
+	m_mCheaterRecords.erase(uAccountID);
+	if (bMarkSave)
+		m_bCheaterSave = true;
+}
+
+std::vector<std::pair<uint32_t, CheaterRecord_t>> CPlayerlistUtils::GetCheaterVector()
+{
+	std::shared_lock lock(m_mutex);
+	std::vector<std::pair<uint32_t, CheaterRecord_t>> vCheaters;
+	vCheaters.reserve(m_mCheaterRecords.size());
+	for (auto& [uAccountID, tRecord] : m_mCheaterRecords)
+	{
+		auto tCopy = tRecord;
+		if (tCopy.m_sName.empty() || tCopy.m_sName == "Unknown" || IsPlaceholderName(tCopy.m_sName))
+			tCopy.m_sName = ResolveAccountName(uAccountID);
+		vCheaters.emplace_back(uAccountID, tCopy);
+	}
+	return vCheaters;
+}
+
+bool CPlayerlistUtils::ImportCheatersFromJson(const std::string& sJson, bool bMarkDirty)
+{
+	try
+	{
+		boost::property_tree::ptree tRead;
+		std::stringstream ssStream;
+		ssStream << sJson;
+		read_json(ssStream, tRead);
+
+		std::unordered_map<uint32_t, CheaterRecord_t> mTemp;
+		if (auto tCheaters = tRead.get_child_optional("Cheaters"))
+		{
+			for (auto& [sAccount, tChild] : *tCheaters)
+			{
+				uint32_t uAccountID = std::stoul(sAccount);
+				CheaterRecord_t tRecord;
+				tRecord.m_uAccountID = uAccountID;
+				tRecord.m_sName = tChild.get<std::string>("Name", "Unknown");
+				tRecord.m_sReason = tChild.get<std::string>("Reason", "tagged by the player");
+				tRecord.m_iDetections = tChild.get<int>("Detections", 0);
+				tRecord.m_bAuto = tChild.get<bool>("Auto", false);
+				tRecord.m_iTimestamp = tChild.get<int>("Timestamp", 0);
+				mTemp[uAccountID] = tRecord;
+			}
+		}
+
+		{
+			std::lock_guard lock(m_mutex);
+			m_mCheaterRecords = std::move(mTemp);
+			for (const auto& [uAccountID, _] : m_mCheaterRecords)
+			{
+				if (uAccountID)
+					F::SteamProfileCache.TouchAvatar(uAccountID);
+			}
+		}
+
+		m_bCheaterSave = bMarkDirty;
+		return true;
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
+std::string CPlayerlistUtils::ExportCheatersToJson() const
+{
+	boost::property_tree::ptree tWrite;
+	boost::property_tree::ptree tCheaters;
+	{
+		std::shared_lock lock(m_mutex);
+		for (auto& [uAccountID, tRecord] : m_mCheaterRecords)
+		{
+			boost::property_tree::ptree tEntry;
+			tEntry.put("Name", tRecord.m_sName.empty() ? "Unknown" : tRecord.m_sName);
+			tEntry.put("Reason", tRecord.m_sReason.empty() ? "tagged by the player" : tRecord.m_sReason);
+			tEntry.put("Detections", tRecord.m_iDetections);
+			tEntry.put("Auto", tRecord.m_bAuto);
+			tEntry.put("Timestamp", tRecord.m_iTimestamp);
+			tCheaters.put_child(std::to_string(uAccountID), tEntry);
+		}
+	}
+	tWrite.put_child("Cheaters", tCheaters);
+
+	std::ostringstream oss;
+	write_json(oss, tWrite);
+	return oss.str();
 }

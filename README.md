@@ -82,7 +82,7 @@
     - cat_path_to: Walks to given xyz coordinates using `Nav engine`
     - cat_save_nav_mesh: Saves currenly loaded nav mesh into the .nav file located at `Amalgam\Nav`
     - cat_ignore: Adds/Removes specified tag for given steamid32
-    - cat_dumpnames: Dumps names of players present on currently connected server
+    - cat_dump: Dumps names + avatars for players present on the currently connected server
     - cat_rent_item: Automatically rents an item with given item definition index
     - cat_achievement_unlock: Unlocks all in-game achievements
 - **Visual**
@@ -94,6 +94,9 @@
   - Nav engine:
     - Indicator: Shows info about `Navbot`'s current goal
     - Draw: Renders path, blacklisted nodes and local area
+- **Anticheat**
+  - More methods of detecting cheaters
+  - Import/export-able cheaterlist
 - **Other**
   - Added debug var automatic loading (`Load debug settings` in menu)
   - Auto accept item drops now removes the notification from ui aswell

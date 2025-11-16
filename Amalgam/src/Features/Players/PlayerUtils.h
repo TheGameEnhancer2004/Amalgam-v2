@@ -34,6 +34,16 @@ struct BotIgnoreData_t
 	bool m_bIsIgnored = false;
 };
 
+struct CheaterRecord_t
+{
+	uint32_t m_uAccountID = 0;
+	std::string m_sName = "";
+	std::string m_sReason = "tagged by the player";
+	int m_iDetections = 0;
+	bool m_bAuto = false;
+	int m_iTimestamp = 0;
+};
+
 struct PriorityLabel_t
 {
 	std::string m_sName = "";
@@ -54,6 +64,7 @@ public:
 	std::unordered_map<uint32_t, std::vector<int>> m_mPlayerTags = {};
 	std::unordered_map<uint32_t, std::string> m_mPlayerAliases = {};
 	std::unordered_map<uint32_t, BotIgnoreData_t> m_mBotIgnoreData = {};
+	std::unordered_map<uint32_t, CheaterRecord_t> m_mCheaterRecords = {};
 
 	std::vector<PriorityLabel_t> m_vTags = {
 		{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
@@ -71,6 +82,8 @@ public:
 
 	bool m_bLoad = true;
 	bool m_bSave = false;
+	bool m_bCheaterLoad = true;
+	bool m_bCheaterSave = false;
 
 	// Thai characters to check for auto-tagging
 	const std::vector<unsigned char> m_vSpecialChars = { 
@@ -81,10 +94,11 @@ public:
 		0xE0, 0xB9, 0x8C,  // '์'
 		0xE0, 0xB9, 0xB9   // 'ู'
 	};
-	std::shared_mutex m_mutex;
+	mutable std::shared_mutex m_mutex;
 
 private:
 	std::vector<int> m_vDummy = {};
+	std::string ResolveAccountName(uint32_t uAccountID) const;
 
 public:
 	void Store();
@@ -111,10 +125,10 @@ public:
 		return iID;
 	}
 
-	void AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void AddTag(uint32_t uAccountID, int iID, bool bSave = true, const char* sName = nullptr);
-	void AddTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
-	void AddTag(int iIndex, int iID, bool bSave = true, const char* sName = nullptr);
+	void AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags, const char* sReason = nullptr, int iDetections = 0, bool bAuto = false);
+	void AddTag(uint32_t uAccountID, int iID, bool bSave = true, const char* sName = nullptr, const char* sReason = nullptr, int iDetections = 0, bool bAuto = false);
+	void AddTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags, const char* sReason = nullptr, int iDetections = 0, bool bAuto = false);
+	void AddTag(int iIndex, int iID, bool bSave = true, const char* sName = nullptr, const char* sReason = nullptr, int iDetections = 0, bool bAuto = false);
 	void RemoveTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
 	void RemoveTag(uint32_t uAccountID, int iID, bool bSave = true, const char* sName = nullptr);
 	void RemoveTag(int iIndex, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags);
@@ -150,6 +164,13 @@ public:
 
 	std::vector<int>& GetPlayerTags(uint32_t uAccountID) { return m_mPlayerTags.contains(uAccountID) ? m_mPlayerTags[uAccountID] : m_vDummy; }
 	std::string* GetPlayerAlias(uint32_t uAccountID) { return m_mPlayerAliases.contains(uAccountID) ? &m_mPlayerAliases[uAccountID] : nullptr; }
+	const CheaterRecord_t* GetCheaterRecord(uint32_t uAccountID) const { return m_mCheaterRecords.contains(uAccountID) ? &m_mCheaterRecords.at(uAccountID) : nullptr; }
+	bool HasCheaterRecord(uint32_t uAccountID) const { return m_mCheaterRecords.contains(uAccountID); }
+	void UpdateCheaterRecord(uint32_t uAccountID, const char* sName, const char* sReason, int iDetections, bool bAuto);
+	void RemoveCheaterRecord(uint32_t uAccountID, bool bMarkSave = true);
+	std::vector<std::pair<uint32_t, CheaterRecord_t>> GetCheaterVector();
+	bool ImportCheatersFromJson(const std::string& sJson, bool bMarkDirty);
+	std::string ExportCheatersToJson() const;
 };
 
 ADD_FEATURE(CPlayerlistUtils, PlayerUtils);

@@ -61,7 +61,7 @@ private:
 	float m_flBuybotClock = 0.0f;
 
 public:
-	struct NameDumpResult_t
+	struct ProfileDumpResult_t
 	{
 		bool m_bResourceAvailable = false;
 		bool m_bFileOpened = false;
@@ -72,7 +72,11 @@ public:
 		size_t m_uSkippedSessionDuplicate = 0;
 		size_t m_uSkippedFileDuplicate = 0;
 		size_t m_uAppendedCount = 0;
+		size_t m_uAvatarsSaved = 0;
+		size_t m_uAvatarMissed = 0;
+		size_t m_uAvatarFailed = 0;
 		std::filesystem::path m_outputPath;
+		std::filesystem::path m_avatarFolder;
 	};
 
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);
@@ -86,7 +90,7 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	void AutoMvmReadyUp();
-	NameDumpResult_t DumpNames(bool bAnnounce = true);
+	ProfileDumpResult_t DumpProfiles(bool bAnnounce = true);
 
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;

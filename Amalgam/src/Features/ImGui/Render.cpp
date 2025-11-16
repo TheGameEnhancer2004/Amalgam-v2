@@ -14,6 +14,8 @@ void CRender::Render(IDirect3DDevice9* pDevice)
 {
 	using namespace ImGui;
 
+	m_pDevice = pDevice;
+
 	static std::once_flag initFlag;
 	std::call_once(initFlag, [&]
 		{

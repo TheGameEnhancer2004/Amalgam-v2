@@ -6,6 +6,8 @@ class CPlayerlistCore
 private:
 	void SavePlayerlist();
 	void LoadPlayerlist();
+	void SaveCheaterlist();
+	void LoadCheaterlist();
 
 public:
 	void Run();
