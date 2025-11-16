@@ -3,9 +3,6 @@
 #include "../ImGui/Menu/Menu.h"
 #include "../Configs/Configs.h"
 #include <functional>
-#ifndef TEXTMODE
-#include <imgui.h>
-#endif
 
 #define IsType(t) pBase->m_iType == typeid(t).hash_code()
 
