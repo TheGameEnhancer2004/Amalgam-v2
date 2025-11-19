@@ -13,96 +13,89 @@
 #include "../../Visuals/Visuals.h"
 #include "../../Misc/Misc.h"
 #include "../../Output/Output.h"
-#include <string_view>
-#include <cctype>
-#include <cstring>
-#include <d3d9.h>
+
 #include <wrl/client.h>
-#include <unordered_map>
-#include <vector>
 
-namespace
+struct CachedAvatar_t
 {
-	struct CachedAvatar_t
-	{
-		Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
-		double flNextAttempt = 0.0;
-		bool bLoggedCreateFailure = false;
-		bool bLoggedCreateSuccess = false;
-	};
+	Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
+	double flNextAttempt = 0.0;
+	bool bLoggedCreateFailure = false;
+	bool bLoggedCreateSuccess = false;
+};
 
-	std::unordered_map<uint32_t, CachedAvatar_t> g_mCheaterAvatars;
+static std::unordered_map<uint32_t, CachedAvatar_t> g_mCheaterAvatars;
 
-	void ResetCheaterAvatar(uint32_t uAccountID)
-	{
-		if (!uAccountID)
-			return;
-		g_mCheaterAvatars.erase(uAccountID);
-	}
+static void ResetCheaterAvatar(uint32_t uAccountID)
+{
+	if (!uAccountID)
+		return;
+	g_mCheaterAvatars.erase(uAccountID);
+}
 
-	ImTextureID GetCheaterAvatarTexture(uint32_t uAccountID)
-	{
-		if (!uAccountID)
-			return static_cast<ImTextureID>(0);
+static ImTextureID GetCheaterAvatarTexture(uint32_t uAccountID)
+{
+	if (!uAccountID)
+		return static_cast<ImTextureID>(0);
 
-		auto* pDevice = F::Render.GetDevice();
-		if (!pDevice)
-			return static_cast<ImTextureID>(0);
+	auto* pDevice = F::Render.GetDevice();
+	if (!pDevice)
+		return static_cast<ImTextureID>(0);
 
-		auto& tCache = g_mCheaterAvatars[uAccountID];
-		if (tCache.pTexture)
-			return reinterpret_cast<ImTextureID>(tCache.pTexture.Get());
+	auto& tCache = g_mCheaterAvatars[uAccountID];
+	if (tCache.pTexture)
+		return reinterpret_cast<ImTextureID>(tCache.pTexture.Get());
 
-		const uint64_t uSteamID64 = CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
-		constexpr Color_t tLogColor = { 175, 150, 255, 255 };
-		constexpr Color_t tErrorColor = { 255, 150, 150, 255 };
+	const uint64_t uSteamID64 = CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
+	constexpr Color_t tLogColor = { 175, 150, 255, 255 };
+	constexpr Color_t tErrorColor = { 255, 150, 150, 255 };
 
-		auto CreateTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> Microsoft::WRL::ComPtr<IDirect3DTexture9>
+	auto CreateTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> Microsoft::WRL::ComPtr<IDirect3DTexture9>
 		{
 			if (!pData || !uWidth || !uHeight)
 				return {};
 
 			auto LogFailure = [&](const char* sStage, HRESULT hr, D3DPOOL pool)
-			{
-				if (tCache.bLoggedCreateFailure)
-					return;
-				tCache.bLoggedCreateFailure = true;
-				const std::string sMessage = std::format("Failed to {} D3D texture for avatar {} (pool={}, hr=0x{:08X}).",
-					sStage,
-					uSteamID64,
-					pool == D3DPOOL_MANAGED ? "MANAGED" : "DEFAULT",
-					static_cast<uint32_t>(hr));
-				SDK::Output("steamwebapi", sMessage.c_str(), tErrorColor, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
-			};
+				{
+					if (tCache.bLoggedCreateFailure)
+						return;
+					tCache.bLoggedCreateFailure = true;
+					const std::string sMessage = std::format("Failed to {} D3D texture for avatar {} (pool={}, hr=0x{:08X}).",
+															 sStage,
+															 uSteamID64,
+															 pool == D3DPOOL_MANAGED ? "MANAGED" : "DEFAULT",
+															 static_cast<uint32_t>(hr));
+					SDK::Output("steamwebapi", sMessage.c_str(), tErrorColor, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+				};
 
 			auto TryCreate = [&](D3DPOOL pool, DWORD usage) -> Microsoft::WRL::ComPtr<IDirect3DTexture9>
-			{
-				Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
-				const HRESULT hrCreate = pDevice->CreateTexture(uWidth, uHeight, 1, usage, D3DFMT_A8R8G8B8, pool, &pTexture, nullptr);
-				if (FAILED(hrCreate))
 				{
-					LogFailure("create", hrCreate, pool);
-					return {};
-				}
+					Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
+					const HRESULT hrCreate = pDevice->CreateTexture(uWidth, uHeight, 1, usage, D3DFMT_A8R8G8B8, pool, &pTexture, nullptr);
+					if (FAILED(hrCreate))
+					{
+						LogFailure("create", hrCreate, pool);
+						return {};
+					}
 
-				D3DLOCKED_RECT tRect = {};
-				const DWORD lockFlags = (usage & D3DUSAGE_DYNAMIC) ? D3DLOCK_DISCARD : 0;
-				const HRESULT hrLock = pTexture->LockRect(0, &tRect, nullptr, lockFlags);
-				if (FAILED(hrLock))
-				{
-					LogFailure("lock", hrLock, pool);
-					return {};
-				}
+					D3DLOCKED_RECT tRect = {};
+					const DWORD lockFlags = (usage & D3DUSAGE_DYNAMIC) ? D3DLOCK_DISCARD : 0;
+					const HRESULT hrLock = pTexture->LockRect(0, &tRect, nullptr, lockFlags);
+					if (FAILED(hrLock))
+					{
+						LogFailure("lock", hrLock, pool);
+						return {};
+					}
 
-				uint8_t* pDst = static_cast<uint8_t*>(tRect.pBits);
-				for (uint32_t y = 0; y < uHeight; y++)
-				{
-					auto* pRowDst = pDst + y * static_cast<uint32_t>(tRect.Pitch);
-					std::memcpy(pRowDst, pData + y * uWidth * 4, uWidth * 4);
-				}
-				pTexture->UnlockRect(0);
-				return pTexture;
-			};
+					uint8_t* pDst = static_cast<uint8_t*>(tRect.pBits);
+					for (uint32_t y = 0; y < uHeight; y++)
+					{
+						auto* pRowDst = pDst + y * static_cast<uint32_t>(tRect.Pitch);
+						std::memcpy(pRowDst, pData + y * uWidth * 4, uWidth * 4);
+					}
+					pTexture->UnlockRect(0);
+					return pTexture;
+				};
 
 			if (auto pManaged = TryCreate(D3DPOOL_MANAGED, 0))
 			{
@@ -117,7 +110,7 @@ namespace
 			return {};
 		};
 
-		auto StoreTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> ImTextureID
+	auto StoreTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> ImTextureID
 		{
 			if (auto pTexture = CreateTexture(pData, uWidth, uHeight))
 			{
@@ -135,51 +128,49 @@ namespace
 			return static_cast<ImTextureID>(0);
 		};
 
-		// Always consume any finished remote download immediately, even if we're in the retry cooldown.
-		CSteamProfileCache::AvatarImage tImage;
-		if (F::SteamProfileCache.TryGetAvatarImage(uAccountID, tImage) && tImage.HasData())
-		{
-			if (ImTextureID pRemoteTex = StoreTexture(tImage.pixels->data(), tImage.width, tImage.height))
-				return pRemoteTex;
-		}
+	// Always consume any finished remote download immediately, even if we're in the retry cooldown.
+	CSteamProfileCache::AvatarImage_t tImage;
+	if (F::SteamProfileCache.TryGetAvatarImage(uAccountID, tImage) && tImage.HasData())
+	{
+		if (ImTextureID pRemoteTex = StoreTexture(tImage.m_pPixels->data(), tImage.m_uWidth, tImage.m_uHeight))
+			return pRemoteTex;
+	}
 
-		const double flNow = SDK::PlatFloatTime();
-		if (flNow < tCache.flNextAttempt)
-			return static_cast<ImTextureID>(0);
+	const double flNow = SDK::PlatFloatTime();
+	if (flNow < tCache.flNextAttempt)
+		return static_cast<ImTextureID>(0);
 
-		if (I::SteamFriends && I::SteamUtils)
+	if (I::SteamFriends && I::SteamUtils)
+	{
+		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
+		const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
+		uint32_t uWidth = 0, uHeight = 0;
+		if (nAvatar && I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) && uWidth && uHeight)
 		{
-			const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
-			const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
-			uint32_t uWidth = 0, uHeight = 0;
-			if (nAvatar && I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) && uWidth && uHeight)
+			std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
+			if (I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
 			{
-				std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
-				if (I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
+				std::vector<uint8_t> vBgra(vRgba.size());
+				for (uint32_t y = 0; y < uHeight; y++)
 				{
-					std::vector<uint8_t> vBgra(vRgba.size());
-					for (uint32_t y = 0; y < uHeight; y++)
+					for (uint32_t x = 0; x < uWidth; x++)
 					{
-						for (uint32_t x = 0; x < uWidth; x++)
-						{
-							const size_t uIndex = (static_cast<size_t>(y) * uWidth + x) * 4;
-							vBgra[uIndex + 0] = vRgba[uIndex + 2];
-							vBgra[uIndex + 1] = vRgba[uIndex + 1];
-							vBgra[uIndex + 2] = vRgba[uIndex + 0];
-							vBgra[uIndex + 3] = vRgba[uIndex + 3];
-						}
+						const size_t uIndex = (static_cast<size_t>(y) * uWidth + x) * 4;
+						vBgra[uIndex + 0] = vRgba[uIndex + 2];
+						vBgra[uIndex + 1] = vRgba[uIndex + 1];
+						vBgra[uIndex + 2] = vRgba[uIndex + 0];
+						vBgra[uIndex + 3] = vRgba[uIndex + 3];
 					}
-					if (ImTextureID pFriendTex = StoreTexture(vBgra.data(), uWidth, uHeight))
-						return pFriendTex;
 				}
+				if (ImTextureID pFriendTex = StoreTexture(vBgra.data(), uWidth, uHeight))
+					return pFriendTex;
 			}
 		}
-
-		tCache.flNextAttempt = flNow + 5.0;
-		return static_cast<ImTextureID>(0);
 	}
-}
 
+	tCache.flNextAttempt = flNow + 5.0;
+	return static_cast<ImTextureID>(0);
+}
 
 void CMenu::DrawMenu()
 {

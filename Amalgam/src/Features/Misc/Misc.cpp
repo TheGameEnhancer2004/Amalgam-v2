@@ -43,13 +43,13 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 		return sClean;
 	};
 
-	struct ProfileEntry
+	struct ProfileEntry_t
 	{
-		uint32_t accountID = 0;
-		std::string name;
+		uint32_t m_uAccountID = 0;
+		std::string m_sName = {};
 	};
 
-	std::vector<ProfileEntry> vProfiles;
+	std::vector<ProfileEntry_t> vProfiles;
 	std::unordered_set<uint32_t> setSessionAccounts;
 	vProfiles.reserve(I::EngineClient->GetMaxClients());
 	setSessionAccounts.reserve(I::EngineClient->GetMaxClients());
@@ -98,7 +98,7 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 			continue;
 		}
 
-		vProfiles.push_back(ProfileEntry{ uAccountID, std::move(sClean) });
+		vProfiles.push_back(ProfileEntry_t{ uAccountID, std::move(sClean) });
 	}
 
 	if (!tResult.m_uCandidateCount)
@@ -159,17 +159,17 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 			SDK::Output("ProfileScraper", std::format("Failed to read existing profiles from {}", sPath.string()).c_str());
 	}
 
-	struct ProfileLine
+	struct ProfileLine_t
 	{
-		uint64_t steamID64 = 0;
-		std::string name;
+		uint64_t m_uSteamID64 = 0;
+		std::string m_sName = {};
 	};
 
-	std::vector<ProfileLine> vNewProfiles;
+	std::vector<ProfileLine_t> vNewProfiles;
 	vNewProfiles.reserve(vProfiles.size());
-	for (const auto& entry : vProfiles)
+	for (const auto& tEntry : vProfiles)
 	{
-		const uint64_t uSteamID64 = CSteamID(entry.accountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
+		const uint64_t uSteamID64 = CSteamID(tEntry.m_uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
 		if (setExistingIDs.contains(uSteamID64))
 		{
 			tResult.m_uSkippedFileDuplicate++;
@@ -177,7 +177,7 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 		}
 
 		setExistingIDs.emplace(uSteamID64);
-		vNewProfiles.push_back({ uSteamID64, entry.name });
+		vNewProfiles.push_back({ uSteamID64, tEntry.m_sName });
 	}
 
 	tResult.m_uAppendedCount = vNewProfiles.size();
@@ -201,7 +201,7 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 		{
 			if (i)
 				file << '\n';
-			file << vNewProfiles[i].steamID64 << ',' << vNewProfiles[i].name;
+			file << vNewProfiles[i].m_uSteamID64 << ',' << vNewProfiles[i].m_sName;
 		}
 
 		if (!file.good())
@@ -256,18 +256,18 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 
 	if (I::SteamFriends && I::SteamUtils)
 	{
-		for (const auto& entry : vProfiles)
+		for (const auto& tEntry : vProfiles)
 		{
 			std::vector<uint8_t> vBgra;
 			uint32_t uWidth = 0, uHeight = 0;
-			if (!CaptureAvatar(entry.accountID, vBgra, uWidth, uHeight))
+			if (!CaptureAvatar(tEntry.m_uAccountID, vBgra, uWidth, uHeight))
 			{
 				tResult.m_uAvatarMissed++;
 				continue;
 			}
 
 			std::filesystem::path sAvatarPath;
-			if (CSteamProfileCache::SaveAvatarToDisk(entry.accountID, vBgra, uWidth, uHeight, &sAvatarPath, false))
+			if (CSteamProfileCache::SaveAvatarToDisk(tEntry.m_uAccountID, vBgra, uWidth, uHeight, &sAvatarPath, false))
 			{
 				tResult.m_uAvatarsSaved++;
 				if (tResult.m_avatarFolder.empty())

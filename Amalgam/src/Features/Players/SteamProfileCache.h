@@ -4,25 +4,21 @@
 
 #include <filesystem>
 #include <future>
-#include <memory>
 #include <shared_mutex>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 class CSteamProfileCache
 {
 public:
-	struct AvatarImage
+	struct AvatarImage_t
 	{
-		std::shared_ptr<const std::vector<uint8_t>> pixels;
-		uint32_t width = 0;
-		uint32_t height = 0;
-		uint32_t stride = 0;
+		std::shared_ptr<const std::vector<uint8_t>> m_pPixels;
+		uint32_t m_uWidth = 0;
+		uint32_t m_uHeight = 0;
+		uint32_t m_uStride = 0;
 
 		[[nodiscard]] bool HasData() const
 		{
-			return pixels && !pixels->empty() && width && height;
+			return m_pPixels && !m_pPixels->empty() && m_uWidth && m_uHeight;
 		}
 	};
 
@@ -30,59 +26,59 @@ public:
 	void TouchAvatar(uint32_t uAccountID);
 	void Pump();
 	std::string GetPersonaName(uint32_t uAccountID);
-	bool TryGetAvatarImage(uint32_t uAccountID, AvatarImage& outImage);
+	bool TryGetAvatarImage(uint32_t uAccountID, AvatarImage_t& tOutImage);
 	void Invalidate(uint32_t uAccountID);
 	static std::filesystem::path GetAvatarPath(uint32_t uAccountID);
-	static bool SaveAvatarToDisk(uint32_t uAccountID, const std::vector<uint8_t>& vPixels, uint32_t width, uint32_t height, std::filesystem::path* pOutPath = nullptr, bool bLog = true);
+	static bool SaveAvatarToDisk(uint32_t uAccountID, const std::vector<uint8_t>& vPixels, uint32_t uWidth, uint32_t uHeight, std::filesystem::path* pOutPath = nullptr, bool bLog = true);
 
 private:
-	struct SummaryResult
+	struct SummaryResult_t
 	{
-		bool success = false;
-		bool permanentFailure = false;
-		std::string personaName;
-		std::string avatarUrl;
-		double retryDelay = 300.0;
+		bool m_bSuccess = false;
+		bool m_bPermanentFailure = false;
+		std::string m_sPersonaName;
+		std::string m_sAvatarUrl;
+		double m_dRetryDelay = 300.0;
 	};
 
-	struct AvatarResult
+	struct AvatarResult_t
 	{
-		bool success = false;
-		std::vector<uint8_t> pixels;
-		uint32_t width = 0;
-		uint32_t height = 0;
-		double retryDelay = 120.0;
+		bool m_bSuccess = false;
+		std::vector<uint8_t> m_vPixels;
+		uint32_t m_uWidth = 0;
+		uint32_t m_uHeight = 0;
+		double m_dRetryDelay = 120.0;
 	};
 
-	struct Entry
+	struct Entry_t
 	{
-		std::string personaName;
-		std::string avatarUrl;
-		std::shared_ptr<std::vector<uint8_t>> avatarPixels;
-		uint32_t avatarWidth = 0;
-		uint32_t avatarHeight = 0;
-		bool summaryResolved = false;
-		bool summaryFailed = false;
-		bool avatarResolved = false;
-		bool avatarFailed = false;
-		bool avatarUrlWarned = false;
-		double nextSummaryAttempt = 0.0;
-		double nextAvatarAttempt = 0.0;
-		std::future<SummaryResult> summaryFuture;
-		std::future<AvatarResult> avatarFuture;
+		std::string m_sPersonaName;
+		std::string m_sAvatarUrl;
+		std::shared_ptr<std::vector<uint8_t>> m_pAvatarPixels;
+		uint32_t m_uAvatarWidth = 0;
+		uint32_t m_uAvatarHeight = 0;
+		bool m_bSummaryResolved = false;
+		bool m_bSummaryFailed = false;
+		bool m_bAvatarResolved = false;
+		bool m_bAvatarFailed = false;
+		bool m_bAvatarUrlWarned = false;
+		double m_dNextSummaryAttempt = 0.0;
+		double m_dNextAvatarAttempt = 0.0;
+		std::future<SummaryResult_t> m_fuSummary;
+		std::future<AvatarResult_t> m_fuAvatar;
 	};
 
 	mutable std::shared_mutex m_mutex;
-	std::unordered_map<uint32_t, Entry> m_entries;
+	std::unordered_map<uint32_t, Entry_t> m_mEntries;
 	double m_flNextSummaryDispatch = 0.0;
 	uint32_t m_uSummaryInFlight = 0;
 
-	void EnsureSummary(uint32_t uAccountID, Entry& entry);
-	void EnsureAvatar(uint32_t uAccountID, Entry& entry);
-	void ProcessFutures(uint32_t uAccountID, Entry& entry);
+	void EnsureSummary(uint32_t uAccountID, Entry_t& tEntry);
+	void EnsureAvatar(uint32_t uAccountID, Entry_t& tEntry);
+	void ProcessFutures(uint32_t uAccountID, Entry_t& tEntry);
 
-	static SummaryResult FetchSummary(uint32_t uAccountID, std::string sApiKey);
-	static AvatarResult FetchAvatar(uint32_t uAccountID, const std::string& sUrl);
+	static SummaryResult_t FetchSummary(uint32_t uAccountID, std::string sApiKey);
+	static AvatarResult_t FetchAvatar(uint32_t uAccountID, const std::string& sUrl);
 };
 
 ADD_FEATURE(CSteamProfileCache, SteamProfileCache);

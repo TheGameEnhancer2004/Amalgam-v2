@@ -3,8 +3,6 @@
 #include "../Players/PlayerUtils.h"
 #include "../Output/Output.h"
 
-#include <algorithm>
-
 bool CCheaterDetection::ShouldScan()
 {
 	if (!Vars::CheaterDetection::Methods.Value /*|| I::EngineClient->IsPlayingDemo()*/)

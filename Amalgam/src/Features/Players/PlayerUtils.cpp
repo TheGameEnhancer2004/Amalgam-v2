@@ -5,26 +5,18 @@
 #include "../Output/Output.h"
 
 #include <boost/property_tree/json_parser.hpp>
-#include <sstream>
-#include <ctime>
-#include <algorithm>
-#include <cstring>
-#include <cctype>
 
-namespace
+static bool IsPlaceholderName(const std::string& sName)
 {
-	bool IsPlaceholderName(const std::string& sName)
-	{
-		if (sName.empty())
-			return true;
+	if (sName.empty())
+		return true;
 
-		std::string sLower;
-		sLower.reserve(sName.size());
-		for (char ch : sName)
-			sLower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+	std::string sLower;
+	sLower.reserve(sName.size());
+	for (char ch : sName)
+		sLower.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
 
-		return sLower == "unknown" || sLower == "[unknown]" || sLower == "<unknown>" || sLower == "unknown player";
-	}
+	return sLower == "unknown" || sLower == "[unknown]" || sLower == "<unknown>" || sLower == "unknown player";
 }
 
 uint32_t CPlayerlistUtils::GetAccountID(int iIndex)

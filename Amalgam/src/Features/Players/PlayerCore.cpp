@@ -4,8 +4,6 @@
 #include "SteamProfileCache.h"
 #include "../Configs/Configs.h"
 
-#include <fstream>
-
 void CPlayerlistCore::Run()
 {
 	F::SteamProfileCache.Pump();
