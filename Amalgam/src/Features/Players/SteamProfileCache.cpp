@@ -24,7 +24,6 @@ using Microsoft::WRL::ComPtr;
 constexpr Color_t kLogColor = { 175, 150, 255, 255 };
 constexpr Color_t kErrorColor = { 255, 150, 150, 255 };
 
-static double g_flNextMissingKeyLog = 0.0;
 static double g_flNextSummaryFailLog = 0.0;
 static double g_flNextAvatarFailLog = 0.0;
 
@@ -407,10 +406,7 @@ void CSteamProfileCache::EnsureSummary(uint32_t uAccountID, Entry_t& tEntry)
 
 	const std::string sApiKey = Vars::Config::SteamWebAPIKey.Value;
 	if (sApiKey.empty())
-	{
-		LogThrottled("steamwebapi key missing. Set it under Anticheat > Cheaters.", g_flNextMissingKeyLog, 15.0, kErrorColor);
 		return;
-	}
 
 	tEntry.m_fuSummary = std::async(std::launch::async, [uAccountID, sApiKey]() -> SummaryResult_t
 	{
