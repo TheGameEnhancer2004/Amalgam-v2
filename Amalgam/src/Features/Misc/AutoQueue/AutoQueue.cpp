@@ -45,7 +45,7 @@ void CAutoQueue::Run()
 		}
 	}
 
-	if (Vars::Misc::Queueing::AutoDumpNames.Value && Vars::Misc::Queueing::AutoCasualQueue.Value && !Vars::Misc::Queueing::AutoCommunityQueue.Value)
+	if (Vars::Misc::Queueing::AutoDumpProfiles.Value && Vars::Misc::Queueing::AutoCasualQueue.Value && !Vars::Misc::Queueing::AutoCommunityQueue.Value)
 	{
 		if (bInGameNow && !bIsLoadingMapNow && !m_bAutoDumpedThisMatch)
 		{
@@ -56,7 +56,7 @@ void CAutoQueue::Run()
 
 			if ((flCurrentTime - m_flAutoDumpStartTime) >= flDelay)
 			{
-				const auto tResult = F::Misc.DumpNames(false);
+				const auto tResult = F::Misc.DumpProfiles(false);
 				if (!tResult.m_bResourceAvailable || tResult.m_uCandidateCount == 0)
 					m_flAutoDumpStartTime = flCurrentTime;
 				else
@@ -67,10 +67,13 @@ void CAutoQueue::Run()
 					if (I::TFGCClientSystem)
 					{
 						const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
-						SDK::Output("AutoQueue", std::format("Auto dump complete: {} new names, {} duplicates skipped, {} comma filtered. Abandoning match for requeue.",
+						SDK::Output("AutoQueue", std::format("Auto dump complete: {} new profiles, {} duplicates skipped, {} comma filtered. Avatars: {} saved, {} unavailable, {} failed. Abandoning match for requeue.",
 							tResult.m_uAppendedCount,
 							uDuplicateCount,
-							tResult.m_uSkippedComma).c_str(), { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+							tResult.m_uSkippedComma,
+							tResult.m_uAvatarsSaved,
+							tResult.m_uAvatarMissed,
+							tResult.m_uAvatarFailed).c_str(), { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
 						I::TFGCClientSystem->AbandonCurrentMatch();
 						bWasInGame = false;
 						bWasDisconnected = true;

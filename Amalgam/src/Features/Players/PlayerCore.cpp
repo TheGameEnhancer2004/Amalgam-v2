@@ -1,16 +1,21 @@
 #include "PlayerCore.h"
 
 #include "PlayerUtils.h"
+#include "SteamProfileCache.h"
 #include "../Configs/Configs.h"
 
 void CPlayerlistCore::Run()
 {
+	F::SteamProfileCache.Pump();
+
 	static Timer tTimer = {};
 	if (!tTimer.Run(1.f))
 		return;
 
 	LoadPlayerlist();
 	SavePlayerlist();
+	LoadCheaterlist();
+	SaveCheaterlist();
 }
 
 void CPlayerlistCore::SavePlayerlist()
@@ -204,5 +209,66 @@ void CPlayerlistCore::LoadPlayerlist()
 	catch (...)
 	{
 		SDK::Output("Amalgam", "Load playerlist failed", { 175, 150, 255, 127 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+	}
+}
+
+void CPlayerlistCore::SaveCheaterlist()
+{
+	if (!F::PlayerUtils.m_bCheaterSave || F::PlayerUtils.m_bCheaterLoad)
+		return;
+
+	try
+	{
+		const std::string sJson = F::PlayerUtils.ExportCheatersToJson();
+		std::ofstream fStream(F::Configs.m_sCorePath + "Cheaters.json", std::ios::out | std::ios::trunc);
+		fStream << sJson;
+		fStream.close();
+
+		F::PlayerUtils.m_bCheaterSave = false;
+		SDK::Output("Amalgam", "Saved cheaterlist", { 255, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+	}
+	catch (...)
+	{
+		SDK::Output("Amalgam", "Save cheaterlist failed", { 255, 150, 150, 127 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+	}
+}
+
+void CPlayerlistCore::LoadCheaterlist()
+{
+	if (!F::PlayerUtils.m_bCheaterLoad)
+		return;
+
+	try
+	{
+		const std::string sPath = F::Configs.m_sCorePath + "Cheaters.json";
+		if (!std::filesystem::exists(sPath))
+		{
+			F::PlayerUtils.m_bCheaterLoad = false;
+			return;
+		}
+
+		std::ifstream fStream(sPath);
+		if (!fStream.is_open())
+		{
+			F::PlayerUtils.m_bCheaterLoad = false;
+			return;
+		}
+
+		std::string sContents((std::istreambuf_iterator<char>(fStream)), std::istreambuf_iterator<char>());
+		fStream.close();
+
+		if (F::PlayerUtils.ImportCheatersFromJson(sContents, false))
+		{
+			F::PlayerUtils.m_bCheaterLoad = false;
+			SDK::Output("Amalgam", "Loaded cheaterlist", { 255, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+		}
+		else
+		{
+			SDK::Output("Amalgam", "Load cheaterlist failed", { 255, 150, 150, 127 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+		}
+	}
+	catch (...)
+	{
+		SDK::Output("Amalgam", "Load cheaterlist failed", { 255, 150, 150, 127 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 	}
 }

@@ -63,8 +63,16 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 				case BindEnum::KeyEnum::Toggle: bKey = U::KeyHandler.Pressed(tBind.m_iKey, false, &tBind.m_tKeyStorage); break;
 				case BindEnum::KeyEnum::DoubleClick: bKey = U::KeyHandler.Double(tBind.m_iKey, false, &tBind.m_tKeyStorage); break;
 				}
+				bool bAllowMenuInput = false;
+				if (F::Menu.m_bIsOpen)
+				{
+					bAllowMenuInput = !F::Menu.m_bInKeybind && (!F::Menu.m_bWindowHovered || tBind.m_iKey != VK_LBUTTON && tBind.m_iKey != VK_RBUTTON);
+	#ifndef TEXTMODE
+					bAllowMenuInput &= !ImGui::GetIO().WantTextInput;
+	#endif
+				}
 				const bool bShouldUse = !I::EngineVGui->IsGameUIVisible() && (!I::MatSystemSurface->IsCursorVisible() || I::EngineClient->IsPlayingDemo())
-					|| F::Menu.m_bIsOpen && !ImGui::GetIO().WantTextInput && !F::Menu.m_bInKeybind && (!F::Menu.m_bWindowHovered || tBind.m_iKey != VK_LBUTTON && tBind.m_iKey != VK_RBUTTON); // allow in menu
+					|| bAllowMenuInput; // allow in menu
 				bKey = bShouldUse && bKey;
 
 				switch (tBind.m_iInfo)

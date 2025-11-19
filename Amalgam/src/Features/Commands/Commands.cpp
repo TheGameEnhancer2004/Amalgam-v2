@@ -239,10 +239,10 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		}
 	},
 	{
-		FNV1A::Hash32Const("cat_dumpnames"),
+		FNV1A::Hash32Const("cat_dump"),
 		[](const std::deque<const char*>& vArgs)
 		{
-			F::Misc.DumpNames();
+			F::Misc.DumpProfiles();
 		}
 	},
 	{

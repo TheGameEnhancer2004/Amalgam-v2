@@ -172,6 +172,7 @@ namespace Vars
 {
 	NAMESPACE_BEGIN(Config)
 		CVar(LoadDebugSettings, "Load debug settings", false);
+		CVar(SteamWebAPIKey, "steamwebapi key", std::string(""), NOBIND);
 	NAMESPACE_END(Config);
 
 	NAMESPACE_BEGIN(Menu)
@@ -547,13 +548,18 @@ namespace Vars
 	NAMESPACE_END(Resolver);
 
 	NAMESPACE_BEGIN(CheaterDetection, Cheater Detection)
-		CVarEnum(Methods, "Detection methods", 0b0000, DROPDOWN_MULTI, nullptr,
-			VA_LIST("Invalid pitch", "Packet choking", "Aim flicking", "Duck Speed"),
-			InvalidPitch = 1 << 0, PacketChoking = 1 << 1, AimFlicking = 1 << 2, DuckSpeed = 1 << 3);
+		CVarEnum(Methods, "Detection methods", 0b000000, DROPDOWN_MULTI, nullptr,
+			VA_LIST("Invalid pitch", "Packet choking", "Aim flicking", "Duck Speed", "Lagcomp abuse", "Critbucket"),
+			InvalidPitch = 1 << 0, PacketChoking = 1 << 1, AimFlicking = 1 << 2, DuckSpeed = 1 << 3, LagCompAbuse = 1 << 4, CritManipulation = 1 << 5);
 		CVar(DetectionsRequired, "Detections required", 10, SLIDER_MIN, 0, 50);
 		CVar(MinimumChoking, "Minimum choking", 20, SLIDER_MIN, 4, 22);
 		CVar(MinimumFlick, "Minimum flick angle", 20.f, SLIDER_PRECISION, 10.f, 30.f); // min flick size to suspect
 		CVar(MaximumNoise, "Maximum flick noise", 1.f, SLIDER_PRECISION, 1.f, 10.f); // max difference between angles before and after flick
+		CVar(LagCompMinimumDelta, "Lag burst delta", 3, SLIDER_MIN, 2, 8);
+		CVar(LagCompWindow, "Lag burst window", 1.f, SLIDER_PRECISION, 0.25f, 2.f, 0.05f);
+		CVar(LagCompBurstCount, "Lag burst count", 3, SLIDER_MIN, 1, 6);
+		CVar(CritWindow, "Crit window size", 12, SLIDER_MIN, 6, 30);
+		CVar(CritThreshold, "Crit rate threshold", 85.f, SLIDER_PRECISION, 50.f, 100.f, 5.f);
 	NAMESPACE_END(CheaterDetection);
 
 	NAMESPACE_BEGIN(ESP)
@@ -988,7 +994,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
 			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", false);
-			CVar(AutoDumpNames, "Auto dump names", false);
+			CVar(AutoDumpProfiles, "Auto dump profiles", false);
 			CVar(AutoDumpDelay, "Auto dump delay", 15, SLIDER_CLAMP, 0, 120, 1, "%is");
 			CVar(QueueDelay, "Queue delay", 5, SLIDER_MIN, 0, 10, 1, "%im");
 			CVar(RQif, "Requeue if...", false); // Dropdown?

@@ -1,15 +1,176 @@
 #include "Menu.h"
 
+#ifndef TEXTMODE
+
 #include "Components.h"
 #include "../../Configs/Configs.h"
 #include "../../Binds/Binds.h"
 #include "../../Visuals/Groups/Groups.h"
 #include "../../Players/PlayerUtils.h"
+#include "../../Players/SteamProfileCache.h"
 #include "../../Spectate/Spectate.h"
 #include "../../Resolver/Resolver.h"
 #include "../../Visuals/Visuals.h"
 #include "../../Misc/Misc.h"
 #include "../../Output/Output.h"
+
+#include <wrl/client.h>
+
+struct CachedAvatar_t
+{
+	Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
+	double flNextAttempt = 0.0;
+	bool bLoggedCreateFailure = false;
+	bool bLoggedCreateSuccess = false;
+};
+
+static std::unordered_map<uint32_t, CachedAvatar_t> g_mCheaterAvatars;
+
+static void ResetCheaterAvatar(uint32_t uAccountID)
+{
+	if (!uAccountID)
+		return;
+	g_mCheaterAvatars.erase(uAccountID);
+}
+
+static ImTextureID GetCheaterAvatarTexture(uint32_t uAccountID)
+{
+	if (!uAccountID)
+		return static_cast<ImTextureID>(0);
+
+	auto* pDevice = F::Render.GetDevice();
+	if (!pDevice)
+		return static_cast<ImTextureID>(0);
+
+	auto& tCache = g_mCheaterAvatars[uAccountID];
+	if (tCache.pTexture)
+		return reinterpret_cast<ImTextureID>(tCache.pTexture.Get());
+
+	const uint64_t uSteamID64 = CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
+	constexpr Color_t tLogColor = { 175, 150, 255, 255 };
+	constexpr Color_t tErrorColor = { 255, 150, 150, 255 };
+
+	auto CreateTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> Microsoft::WRL::ComPtr<IDirect3DTexture9>
+		{
+			if (!pData || !uWidth || !uHeight)
+				return {};
+
+			auto LogFailure = [&](const char* sStage, HRESULT hr, D3DPOOL pool)
+				{
+					if (tCache.bLoggedCreateFailure)
+						return;
+					tCache.bLoggedCreateFailure = true;
+					const std::string sMessage = std::format("Failed to {} D3D texture for avatar {} (pool={}, hr=0x{:08X}).",
+															 sStage,
+															 uSteamID64,
+															 pool == D3DPOOL_MANAGED ? "MANAGED" : "DEFAULT",
+															 static_cast<uint32_t>(hr));
+					SDK::Output("steamwebapi", sMessage.c_str(), tErrorColor, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+				};
+
+			auto TryCreate = [&](D3DPOOL pool, DWORD usage) -> Microsoft::WRL::ComPtr<IDirect3DTexture9>
+				{
+					Microsoft::WRL::ComPtr<IDirect3DTexture9> pTexture;
+					const HRESULT hrCreate = pDevice->CreateTexture(uWidth, uHeight, 1, usage, D3DFMT_A8R8G8B8, pool, &pTexture, nullptr);
+					if (FAILED(hrCreate))
+					{
+						LogFailure("create", hrCreate, pool);
+						return {};
+					}
+
+					D3DLOCKED_RECT tRect = {};
+					const DWORD lockFlags = (usage & D3DUSAGE_DYNAMIC) ? D3DLOCK_DISCARD : 0;
+					const HRESULT hrLock = pTexture->LockRect(0, &tRect, nullptr, lockFlags);
+					if (FAILED(hrLock))
+					{
+						LogFailure("lock", hrLock, pool);
+						return {};
+					}
+
+					uint8_t* pDst = static_cast<uint8_t*>(tRect.pBits);
+					for (uint32_t y = 0; y < uHeight; y++)
+					{
+						auto* pRowDst = pDst + y * static_cast<uint32_t>(tRect.Pitch);
+						std::memcpy(pRowDst, pData + y * uWidth * 4, uWidth * 4);
+					}
+					pTexture->UnlockRect(0);
+					return pTexture;
+				};
+
+			if (auto pManaged = TryCreate(D3DPOOL_MANAGED, 0))
+			{
+				tCache.bLoggedCreateFailure = false;
+				return pManaged;
+			}
+			if (auto pDefault = TryCreate(D3DPOOL_DEFAULT, D3DUSAGE_DYNAMIC))
+			{
+				tCache.bLoggedCreateFailure = false;
+				return pDefault;
+			}
+			return {};
+		};
+
+	auto StoreTexture = [&](const uint8_t* pData, uint32_t uWidth, uint32_t uHeight) -> ImTextureID
+		{
+			if (auto pTexture = CreateTexture(pData, uWidth, uHeight))
+			{
+				tCache.pTexture = pTexture;
+				tCache.flNextAttempt = 0.0;
+				if (!tCache.bLoggedCreateSuccess)
+				{
+					const std::string sMessage = std::format("ImGui now displaying avatar for {} ({}x{}).", uSteamID64, uWidth, uHeight);
+					SDK::Output("steamwebapi", sMessage.c_str(), tLogColor, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+					tCache.bLoggedCreateSuccess = true;
+				}
+				return reinterpret_cast<ImTextureID>(tCache.pTexture.Get());
+			}
+			tCache.bLoggedCreateSuccess = false;
+			return static_cast<ImTextureID>(0);
+		};
+
+	// Always consume any finished remote download immediately, even if we're in the retry cooldown.
+	CSteamProfileCache::AvatarImage_t tImage;
+	if (F::SteamProfileCache.TryGetAvatarImage(uAccountID, tImage) && tImage.HasData())
+	{
+		if (ImTextureID pRemoteTex = StoreTexture(tImage.m_pPixels->data(), tImage.m_uWidth, tImage.m_uHeight))
+			return pRemoteTex;
+	}
+
+	const double flNow = SDK::PlatFloatTime();
+	if (flNow < tCache.flNextAttempt)
+		return static_cast<ImTextureID>(0);
+
+	if (I::SteamFriends && I::SteamUtils)
+	{
+		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
+		const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
+		uint32_t uWidth = 0, uHeight = 0;
+		if (nAvatar && I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) && uWidth && uHeight)
+		{
+			std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
+			if (I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
+			{
+				std::vector<uint8_t> vBgra(vRgba.size());
+				for (uint32_t y = 0; y < uHeight; y++)
+				{
+					for (uint32_t x = 0; x < uWidth; x++)
+					{
+						const size_t uIndex = (static_cast<size_t>(y) * uWidth + x) * 4;
+						vBgra[uIndex + 0] = vRgba[uIndex + 2];
+						vBgra[uIndex + 1] = vRgba[uIndex + 1];
+						vBgra[uIndex + 2] = vRgba[uIndex + 0];
+						vBgra[uIndex + 3] = vRgba[uIndex + 3];
+					}
+				}
+				if (ImTextureID pFriendTex = StoreTexture(vBgra.data(), uWidth, uHeight))
+					return pFriendTex;
+			}
+		}
+	}
+
+	tCache.flNextAttempt = flNow + 5.0;
+	return static_cast<ImTextureID>(0);
+}
 
 void CMenu::DrawMenu()
 {
@@ -68,7 +229,7 @@ void CMenu::DrawMenu()
 			PopStyleColor();
 		}
 
-		static int iTab = 0, iAimbotTab = 0, iVisualsTab = 0, iHvHTab = 0, iMiscTab = 0, iLogsTab = 0, iSettingsTab = 0;
+		static int iTab = 0, iAimbotTab = 0, iVisualsTab = 0, iHvHTab = 0, iMiscTab = 0, iAnticheatTab = 0, iLogsTab = 0, iSettingsTab = 0;
 		PushFont(F::Render.FontBold);
 		FTabs(
 			{
@@ -76,14 +237,15 @@ void CMenu::DrawMenu()
 				{ "VISUALS", "ESP", "AIMDRAW", "MISC##", "MENU" },
 				{ "HVH", "MAIN" },
 				{ "MISC", "MAIN", "BOT"},
+				{ "ANTICHEAT", "CHEATERS", "DETECTION" },
 				{ "LOGS", "PLAYERLIST", "SETTINGS##", "OUTPUT" },
 				{ "SETTINGS", "CONFIG", "BINDS", "MATERIALS", "EXTRA" }
 			},
-			{ &iTab, &iAimbotTab, &iVisualsTab, &iHvHTab, &iMiscTab, &iLogsTab, &iSettingsTab },
+			{ &iTab, &iAimbotTab, &iVisualsTab, &iHvHTab, &iMiscTab, &iAnticheatTab, &iLogsTab, &iSettingsTab },
 			{ H::Draw.Scale(flSideSize - 16), H::Draw.Scale(36) },
 			{ H::Draw.Scale(8), H::Draw.Scale(8) + flOffset },
 			FTabsEnum::Vertical | FTabsEnum::HorizontalIcons | FTabsEnum::AlignLeft | FTabsEnum::BarLeft,
-			{ { ICON_MD_PERSON }, { ICON_MD_VISIBILITY }, { ICON_MD_SECURITY }, { ICON_MD_ARTICLE }, { ICON_MD_IMPORT_CONTACTS }, { ICON_MD_SETTINGS } },
+			{ { ICON_MD_PERSON }, { ICON_MD_VISIBILITY }, { ICON_MD_SECURITY }, { ICON_MD_ARTICLE }, { ICON_MD_GPP_MAYBE }, { ICON_MD_IMPORT_CONTACTS }, { ICON_MD_SETTINGS } },
 			{ H::Draw.Scale(10), 0 }, {},
 			{}, { H::Draw.Scale(22), 0 }
 		);
@@ -114,8 +276,9 @@ void CMenu::DrawMenu()
 				case 1: MenuVisuals(iVisualsTab); break;
 				case 2: MenuHvH(iHvHTab); break;
 				case 3: MenuMisc(iMiscTab); break;
-				case 4: MenuLogs(iLogsTab); break;
-				case 5: MenuSettings(iSettingsTab); break;
+				case 4: MenuAnticheat(iAnticheatTab); break;
+				case 5: MenuLogs(iLogsTab); break;
+				case 6: MenuSettings(iSettingsTab); break;
 				}
 			}
 			else
@@ -1177,26 +1340,6 @@ void CMenu::MenuHvH(int iTab)
 				{
 					FToggle(Vars::AutoPeek::Enabled);
 				} EndSection();
-				if (Section("Cheater Detection"))
-				{
-					FDropdown(Vars::CheaterDetection::Methods);
-					PushTransparent(!Vars::CheaterDetection::DetectionsRequired.Value);
-					{
-						FSlider(Vars::CheaterDetection::DetectionsRequired);
-					}
-					PopTransparent();
-					PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::PacketChoking));
-					{
-						FSlider(Vars::CheaterDetection::MinimumChoking);
-					}
-					PopTransparent();
-					PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::AimFlicking));
-					{
-						FSlider(Vars::CheaterDetection::MinimumFlick, FSliderEnum::Left);
-						FSlider(Vars::CheaterDetection::MaximumNoise, FSliderEnum::Right);
-					}
-					PopTransparent();
-				} EndSection();
 				if (Section("Speedhack", 8))
 				{
 					FToggle(Vars::Speedhack::Enabled);
@@ -1508,8 +1651,8 @@ void CMenu::MenuMisc(int iTab)
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
 						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);
-						FToggle(Vars::Misc::Queueing::AutoDumpNames, FToggleEnum::Left);
-						PushTransparent(!Vars::Misc::Queueing::AutoDumpNames.Value);
+						FToggle(Vars::Misc::Queueing::AutoDumpProfiles, FToggleEnum::Left);
+						PushTransparent(!Vars::Misc::Queueing::AutoDumpProfiles.Value);
 						{
 							FSlider(Vars::Misc::Queueing::AutoDumpDelay);
 						}
@@ -1563,6 +1706,390 @@ void CMenu::MenuMisc(int iTab)
 			}
 			EndTable();
 		}
+		break;
+	}
+	}
+}
+
+void CMenu::MenuAnticheat(int iTab)
+{
+	using namespace ImGui;
+
+	switch (iTab)
+	{
+	// Cheaters
+	case 0:
+	{
+		if (Section("API key"))
+		{
+			static std::string sAPIKeyBuffer = Vars::Config::SteamWebAPIKey.Value;
+			static bool bEditingApiKey = false;
+			static bool bRevealApiKey = false;
+			if (!bEditingApiKey && sAPIKeyBuffer != Vars::Config::SteamWebAPIKey.Value)
+				sAPIKeyBuffer = Vars::Config::SteamWebAPIKey.Value;
+
+			const float flRowHeight = H::Draw.Scale(36);
+			SetCursorPosY(GetCursorPosY() + H::Draw.Scale(4));
+			const ImGuiInputTextFlags nApiKeyFlags = (bRevealApiKey ? 0 : ImGuiInputTextFlags_Password) | ImGuiInputTextFlags_EnterReturnsTrue;
+			bool bSubmitted = false;
+			bool bFinished = false;
+			if (BeginTable("APIKeyRow", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoPadInnerX))
+			{
+				TableSetupColumn("Key", ImGuiTableColumnFlags_WidthStretch);
+				TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, H::Draw.Scale(150));
+				TableNextRow(ImGuiTableRowFlags_None, flRowHeight);
+				TableSetColumnIndex(0);
+				SetCursorPosY(GetCursorPosY() + H::Draw.Scale(2));
+				const float flInputWidth = std::max(GetContentRegionAvail().x - H::Draw.Scale(6), H::Draw.Scale(160));
+				bSubmitted = FInputText("Steam Web API key", sAPIKeyBuffer, flInputWidth, nApiKeyFlags);
+				bFinished = bSubmitted || IsItemDeactivatedAfterEdit();
+				bEditingApiKey = IsItemActive();
+
+				TableSetColumnIndex(1);
+				BeginGroup();
+				PushStyleVar(ImGuiStyleVar_FrameRounding, H::Draw.Scale(8));
+				PushStyleColor(ImGuiCol_Button, F::Render.Background0.Value);
+				PushStyleColor(ImGuiCol_ButtonHovered, F::Render.Background0p5.Value);
+				PushStyleColor(ImGuiCol_ButtonActive, F::Render.Background1.Value);
+				if (IconButton(bRevealApiKey ? ICON_MD_VISIBILITY : ICON_MD_VISIBILITY_OFF, flRowHeight))
+					bRevealApiKey = !bRevealApiKey;
+				PopStyleColor(3);
+				SameLine(0.f, H::Draw.Scale(6));
+				const ImVec2 vGetKeySize = { H::Draw.Scale(90), flRowHeight };
+				if (Button("GET KEY", vGetKeySize))
+					ShellExecuteA(NULL, "open", "https://steamcommunity.com/dev/apikey", NULL, NULL, SW_SHOWNORMAL);
+				PopStyleVar();
+				EndGroup();
+				EndTable();
+			}
+
+			if (bFinished && sAPIKeyBuffer != Vars::Config::SteamWebAPIKey.Value)
+			{
+				Vars::Config::SteamWebAPIKey.Map[DEFAULT_BIND] = sAPIKeyBuffer;
+				Vars::Config::SteamWebAPIKey.Value = sAPIKeyBuffer;
+				SDK::Output("steamwebapi", sAPIKeyBuffer.empty() ? "Cleared API key" : "Saved steamwebapi key", { 175, 150, 255, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+			}
+
+			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+			FText("Used for downloading names and avatars via GetPlayerSummaries.");
+			if (Vars::Config::SteamWebAPIKey.Value.empty())
+				FText("Set a key to enable lookups for non-friends.");
+			PopStyleColor();
+		}
+		EndSection();
+		if (Section("Cheater List"))
+		{
+			auto vCheaters = F::PlayerUtils.GetCheaterVector();
+			if (vCheaters.empty())
+			{
+				SetCursorPos({ H::Draw.Scale(15), H::Draw.Scale(40) });
+				FText("Nothings here...");
+				DebugDummy({ 0, H::Draw.Scale(8) });
+			}
+			else
+			{
+				auto toLower = [](std::string sText) -> std::string
+					{
+						std::transform(sText.begin(), sText.end(), sText.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+						return sText;
+					};
+
+				auto getReasonColor = [&](const CheaterRecord_t& tRecord) -> Color_t
+					{
+						if (!tRecord.m_bAuto)
+							return { 185, 185, 185, 255 };
+
+						const std::string sReason = toLower(tRecord.m_sReason);
+						auto contains = [&](std::string_view sNeedle) -> bool { return sReason.find(sNeedle) != std::string::npos; };
+
+						if (contains("crit"))
+							return { 210, 140, 255, 255 };
+						if (contains("lag") || contains("burst"))
+							return { 255, 180, 130, 255 };
+						if (contains("chok"))
+							return { 255, 150, 150, 255 };
+						if (contains("flick") || contains("aim"))
+							return { 140, 190, 255, 255 };
+						if (contains("duck"))
+							return { 255, 210, 150, 255 };
+						if (contains("pitch"))
+							return { 150, 210, 210, 255 };
+
+						return { 255, 120, 120, 255 };
+					};
+
+				std::sort(vCheaters.begin(), vCheaters.end(), [](const auto& a, const auto& b) -> bool
+					{
+						if (a.second.m_bAuto != b.second.m_bAuto)
+							return a.second.m_bAuto > b.second.m_bAuto;
+						if (a.second.m_iDetections != b.second.m_iDetections)
+							return a.second.m_iDetections > b.second.m_iDetections;
+						return a.second.m_sName < b.second.m_sName;
+					});
+
+				auto drawCheater = [&](const std::pair<uint32_t, CheaterRecord_t>& tEntry, int x, int y)
+					{
+						const auto& tRecord = tEntry.second;
+						F::SteamProfileCache.TouchAvatar(tEntry.first);
+						const std::string sName = tRecord.m_sName.empty() ? std::format("{}", tEntry.first) : tRecord.m_sName;
+						std::string sReason = tRecord.m_sReason.empty() ? (tRecord.m_bAuto ? "detected by Amalgam" : "tagged by the player") : tRecord.m_sReason;
+						if (!tRecord.m_bAuto)
+							sReason = "tagged by the player";
+						std::string sDetections = tRecord.m_bAuto ? std::format("Detections: {}", std::max(0, tRecord.m_iDetections)) : "Manual tag";
+						const Color_t tCardColor = getReasonColor(tRecord);
+						const ImColor tFillColor = ColorToVec(tCardColor.Lerp(Vars::Menu::Theme::Background.Value, 0.55f, LerpEnum::NoAlpha));
+						const ImColor tBorderColor = ColorToVec(tCardColor);
+						const ImColor tReasonColor = ColorToVec(tCardColor);
+						const ImU32 uFillColor = ImGui::ColorConvertFloat4ToU32(tFillColor.Value);
+						const ImU32 uBorderColor = ImGui::ColorConvertFloat4ToU32(tBorderColor.Value);
+						const ImU32 uReasonColor = ImGui::ColorConvertFloat4ToU32(tReasonColor.Value);
+						const float flAvatarSize = H::Draw.Scale(40);
+						const float flPadding = H::Draw.Scale(8);
+						const float flTextOffset = flPadding * 2 + flAvatarSize;
+
+						ImVec2 vOriginalPos = { !x ? GetStyle().WindowPadding.x : GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(35 + 64 * y) };
+						float flWidth = GetWindowWidth() / 2 - GetStyle().WindowPadding.x * 1.5f;
+						float flHeight = H::Draw.Scale(56);
+						ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
+						auto pDrawList = GetWindowDrawList();
+						pDrawList->AddRectFilled(vDrawPos, { vDrawPos.x + flWidth, vDrawPos.y + flHeight }, uFillColor, H::Draw.Scale(4));
+						pDrawList->AddRect(vDrawPos, { vDrawPos.x + flWidth, vDrawPos.y + flHeight }, uBorderColor, H::Draw.Scale(4), ImDrawFlags_None, H::Draw.Scale());
+
+						ImVec2 vAvatarPos = { vOriginalPos.x + flPadding, vOriginalPos.y + (flHeight - flAvatarSize) / 2 };
+						if (ImTextureID pAvatar = GetCheaterAvatarTexture(tEntry.first))
+						{
+							SetCursorPos(vAvatarPos);
+							Image(pAvatar, { flAvatarSize, flAvatarSize });
+						}
+						else
+						{
+							ImVec2 vAvatarDrawPos = GetDrawPos() + vAvatarPos;
+							ImVec2 vAvatarDrawEnd = { vAvatarDrawPos.x + flAvatarSize, vAvatarDrawPos.y + flAvatarSize };
+							const ImColor tAvatarBg = ColorToVec(Vars::Menu::Theme::Background.Value.Lerp(tCardColor, 0.25f, LerpEnum::NoAlpha));
+							pDrawList->AddRectFilled(vAvatarDrawPos, vAvatarDrawEnd, ImGui::ColorConvertFloat4ToU32(tAvatarBg.Value), H::Draw.Scale(4));
+							char cInitial = '?';
+							for (char cChar : sName)
+							{
+								if (std::isalpha(static_cast<unsigned char>(cChar)))
+								{
+									cInitial = static_cast<char>(std::toupper(static_cast<unsigned char>(cChar)));
+									break;
+								}
+							}
+							const std::string sInitial(1, cInitial);
+							const ImVec2 vTextSize = F::Render.FontBold->CalcTextSizeA(F::Render.FontBold->FontSize, FLT_MAX, 0.f, sInitial.c_str());
+							const ImVec2 vTextPos = { vAvatarDrawPos.x + (flAvatarSize - vTextSize.x) / 2, vAvatarDrawPos.y + (flAvatarSize - vTextSize.y) / 2 };
+							const auto tBg = Vars::Menu::Theme::Background.Value;
+							const float flLuma = 0.2126f * (tBg.r / 255.f) + 0.7152f * (tBg.g / 255.f) + 0.0722f * (tBg.b / 255.f);
+							const ImU32 uInitialColor = flLuma < 0.5f ? IM_COL32(240, 240, 240, 230) : IM_COL32(20, 20, 20, 230);
+							pDrawList->AddText(F::Render.FontBold, F::Render.FontBold->FontSize, vTextPos, uInitialColor, sInitial.c_str());
+						}
+
+						const float flAvailableWidth = flWidth - flTextOffset - H::Draw.Scale(28);
+						SetCursorPos({ vOriginalPos.x + flTextOffset, vOriginalPos.y + H::Draw.Scale(6) });
+						FText(TruncateText(sName, flAvailableWidth, F::Render.FontBold).c_str(), 0, F::Render.FontBold);
+						SetCursorPos({ vOriginalPos.x + flTextOffset, vOriginalPos.y + H::Draw.Scale(24) });
+						PushStyleColor(ImGuiCol_Text, tReasonColor.Value);
+						FText(TruncateText(sReason, flAvailableWidth).c_str());
+						PopStyleColor();
+						SetCursorPos({ vOriginalPos.x + flTextOffset, vOriginalPos.y + H::Draw.Scale(38) });
+						PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+						FText(sDetections.c_str());
+						PopStyleColor();
+
+						SetCursorPos({ vOriginalPos.x + flWidth - H::Draw.Scale(24), vOriginalPos.y + H::Draw.Scale(4) });
+						bool bRemove = IconButton(ICON_MD_DELETE);
+
+						SetCursorPos(vOriginalPos);
+						Button(std::format("##Cheater{}", tEntry.first).c_str(), { flWidth, flHeight });
+
+						bool bPopup = IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
+						if (bPopup)
+							OpenPopup(std::format("CheaterMenu{}", tEntry.first).c_str());
+
+						if (bRemove)
+						{
+							F::PlayerUtils.RemoveTag(tEntry.first, F::PlayerUtils.TagToIndex(CHEATER_TAG), true, sName.c_str());
+							return;
+						}
+
+						if (FBeginPopup(std::format("CheaterMenu{}", tEntry.first).c_str()))
+						{
+							PushStyleVar(ImGuiStyleVar_WindowPadding, { H::Draw.Scale(12), H::Draw.Scale(8) });
+							PushStyleVar(ImGuiStyleVar_WindowRounding, H::Draw.Scale(8));
+							PushStyleVar(ImGuiStyleVar_ItemSpacing, { H::Draw.Scale(4), H::Draw.Scale(4) });
+							PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
+							PushStyleColor(ImGuiCol_PopupBg, F::Render.Background0.Value);
+							PushStyleColor(ImGuiCol_Border, F::Render.Background2.Value);
+							PushStyleColor(ImGuiCol_Header, F::Render.Background1.Value);
+
+							const ImVec4 tAccent = F::Render.Accent.Value;
+							const ImVec4 tDanger = ColorToVec(Color_t{ 255, 120, 120, 255 });
+							const float flRowHeight = H::Draw.Scale(32);
+							const float flIconSlot = H::Draw.Scale(22);
+							int iPopupRow = 0;
+							auto PopupSelectable = [&](const std::string& sLabel, const char* sIcon, const ImVec4& tColor, auto&& fn)
+							{
+								const std::string sId = std::format("##CheaterAction{}{}{}", tEntry.first, sLabel, iPopupRow++);
+								ImVec2 vContentMin = GetWindowContentRegionMin();
+								ImVec2 vContentMax = GetWindowContentRegionMax();
+								float flRowWidth = std::max(0.f, vContentMax.x - vContentMin.x);
+								if (flRowWidth <= 0.f)
+									flRowWidth = GetContentRegionAvail().x;
+								if (flRowWidth <= 0.f)
+									flRowWidth = H::Draw.Scale(140);
+								const ImVec2 vRowSize = { flRowWidth, flRowHeight };
+
+								PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+								PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+								PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+								bool bActivated = Selectable(sId.c_str(), false, ImGuiSelectableFlags_None, vRowSize);
+								PopStyleColor(3);
+
+								ImVec2 vMin = GetItemRectMin();
+								ImVec2 vMax = GetItemRectMax();
+								const bool bHovered = IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+								ImDrawList* pDrawList = GetWindowDrawList();
+
+								const auto Tint = [&](float flAlpha) -> ImU32
+								{
+									ImVec4 tTint = tColor;
+									tTint.w = flAlpha;
+									return ColorConvertFloat4ToU32(tTint);
+								};
+
+								ImVec2 vIconMin = { vMin.x + H::Draw.Scale(8), vMin.y + (flRowHeight - flIconSlot) / 2 };
+								ImVec2 vIconMax = { vIconMin.x + flIconSlot, vIconMin.y + flIconSlot };
+								float flIconAlpha = bHovered ? 0.35f : 0.2f;
+								pDrawList->AddRectFilled(vIconMin, vIconMax, Tint(flIconAlpha), H::Draw.Scale(6));
+
+								const float flIconFontSize = F::Render.IconFont->FontSize;
+								const ImVec2 vIconSize = F::Render.IconFont->CalcTextSizeA(flIconFontSize, FLT_MAX, 0.f, sIcon);
+								const ImVec2 vIconPos = { vIconMin.x + (flIconSlot - vIconSize.x) / 2, vIconMin.y + (flIconSlot - vIconSize.y) / 2 };
+								pDrawList->AddText(F::Render.IconFont, flIconFontSize, vIconPos, ColorConvertFloat4ToU32(tColor), sIcon);
+
+								const ImVec2 vTextPos = { vIconMax.x + H::Draw.Scale(8), vMin.y + (flRowHeight - GetTextLineHeight()) / 2 };
+								pDrawList->AddText(vTextPos, GetColorU32(ImGuiCol_Text), sLabel.c_str());
+
+								if (bActivated)
+									fn();
+							};
+
+							PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+							TextUnformatted("Steam");
+							PopStyleColor();
+
+							PopupSelectable("Profile", ICON_MD_PERSON, tAccent, [&]
+							{
+								I::SteamFriends->ActivateGameOverlayToUser("steamid", CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual));
+							});
+							PopupSelectable("History", ICON_MD_HISTORY, tAccent, [&]
+							{
+								I::SteamFriends->ActivateGameOverlayToWebPage(std::format("https://steamhistory.net/id/{}", CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64()).c_str());
+							});
+							PopupSelectable("Refetch profile", ICON_MD_SYNC, tAccent, [&]
+							{
+								ResetCheaterAvatar(tEntry.first);
+								F::SteamProfileCache.Invalidate(tEntry.first);
+								F::SteamProfileCache.TouchAvatar(tEntry.first);
+								const auto uSteamID64 = CSteamID(tEntry.first, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
+								SDK::Output("steamwebapi", std::format("Queued profile refetch for {}", uSteamID64).c_str(), { 175, 150, 255, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_MENU);
+							});
+
+							Dummy({ 0, H::Draw.Scale(4) });
+							PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+							TextUnformatted("Tags");
+							PopStyleColor();
+
+							PopupSelectable("Remove tag", ICON_MD_DELETE, tDanger, [&]
+							{
+								F::PlayerUtils.RemoveTag(tEntry.first, F::PlayerUtils.TagToIndex(CHEATER_TAG), true, sName.c_str());
+							});
+
+							PopStyleColor(3);
+							PopStyleVar(4);
+							EndPopup();
+						}
+					};
+
+				int iBlu = 0, iRed = 0;
+				for (size_t i = 0; i < vCheaters.size(); i++)
+				{
+					int x = int(i % 2);
+					int y = int(i / 2);
+					drawCheater(vCheaters[i], x, y);
+					if (!x) iBlu++; else iRed++;
+				}
+				SetCursorPos({ 0, H::Draw.Scale(36 + 64 * std::max(iBlu, iRed)) });
+				DebugDummy({ 0, H::Draw.Scale(8) });
+			}
+		}
+		EndSection();
+		{
+			PushDisabled(F::PlayerUtils.m_bCheaterLoad);
+			{
+				SetCursorPosY(GetCursorPosY() - H::Draw.Scale(8));
+				if (FButton(ICON_MD_SYNC, FButtonEnum::None, { 30, 30 }, 0, F::Render.IconFont))
+					F::PlayerUtils.m_bCheaterLoad = true;
+
+				if (FButton("Export", FButtonEnum::Fit | FButtonEnum::SameLine))
+				{
+					SDK::SetClipboard(F::PlayerUtils.ExportCheatersToJson());
+					SDK::Output("Amalgam", "Copied cheaterlist to clipboard", { 255, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
+				}
+
+				if (FButton("Import", FButtonEnum::Fit | FButtonEnum::SameLine))
+				{
+					if (F::PlayerUtils.ImportCheatersFromJson(SDK::GetClipboard(), true))
+						SDK::Output("Amalgam", "Imported cheaterlist", { 255, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
+					else
+						SDK::Output("Amalgam", "Failed to import cheaterlist", { 255, 150, 150, 127 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
+				}
+			}
+			PopDisabled();
+
+			if (FButton("Folder", FButtonEnum::Fit | FButtonEnum::SameLine))
+				ShellExecuteA(NULL, NULL, F::Configs.m_sCorePath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+		}
+		break;
+	}
+	// Detection
+	case 1:
+	{
+		if (Section("Cheater Detection"))
+		{
+			FDropdown(Vars::CheaterDetection::Methods);
+			PushTransparent(!Vars::CheaterDetection::DetectionsRequired.Value);
+			{
+				FSlider(Vars::CheaterDetection::DetectionsRequired);
+			}
+			PopTransparent();
+			PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::PacketChoking));
+			{
+				FSlider(Vars::CheaterDetection::MinimumChoking);
+			}
+			PopTransparent();
+			PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::AimFlicking));
+			{
+				FSlider(Vars::CheaterDetection::MinimumFlick, FSliderEnum::Left);
+				FSlider(Vars::CheaterDetection::MaximumNoise, FSliderEnum::Right);
+			}
+			PopTransparent();
+			PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::LagCompAbuse));
+			{
+				FSlider(Vars::CheaterDetection::LagCompMinimumDelta, FSliderEnum::Left);
+				FSlider(Vars::CheaterDetection::LagCompBurstCount, FSliderEnum::Right);
+				FSlider(Vars::CheaterDetection::LagCompWindow);
+			}
+			PopTransparent();
+			PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::CritManipulation));
+			{
+				FSlider(Vars::CheaterDetection::CritWindow, FSliderEnum::Left);
+				FSlider(Vars::CheaterDetection::CritThreshold, FSliderEnum::Right);
+			}
+			PopTransparent();
+		}
+		EndSection();
 		break;
 	}
 	}
@@ -4232,3 +4759,4 @@ void CMenu::DrawNotifications()
 		PopStyleVar(2);
 	}
 }
+#endif
