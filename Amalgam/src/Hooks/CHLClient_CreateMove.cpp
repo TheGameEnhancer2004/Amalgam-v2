@@ -275,7 +275,9 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 	if (!pLocal || G::Unload)
 		return;
 
-	bool* pSendPacket = reinterpret_cast<bool*>(uintptr_t(_AddressOfReturnAddress()) + 0x20);
+	static auto uSendPackedAddr = reinterpret_cast<uintptr_t>(_AddressOfReturnAddress()) + 0x20;
+	auto pSendPacket = reinterpret_cast<bool*>(uSendPackedAddr);
+
 	CUserCmd* pCmd = &I::Input->m_pCommands[sequence_number % MULTIPLAYER_BACKUP];
 
 	I::Prediction->Update(I::ClientState->m_nDeltaTick, I::ClientState->m_nDeltaTick > 0, I::ClientState->last_command_ack, I::ClientState->lastoutgoingcommand + I::ClientState->chokedcommands);
