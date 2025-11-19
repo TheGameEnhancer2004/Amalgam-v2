@@ -73,8 +73,7 @@ bool CInterfaces::Initialize()
 				break;
 			}
 
-			auto dwAddress = U::Memory.RelToAbs(dwDest);
-			*Interface->m_pPtr = reinterpret_cast<void*>(dwAddress + Interface->m_nOffset);
+			*Interface->m_pPtr = reinterpret_cast<void*>(U::Memory.RelToAbs(dwDest) + Interface->m_nOffset);
 			break;
 		}
 		}

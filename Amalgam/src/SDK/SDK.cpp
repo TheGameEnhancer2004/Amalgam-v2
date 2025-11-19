@@ -313,32 +313,32 @@ bool SDK::IsOnScreen(CBaseEntity* pEntity, bool bShouldGetOwner)
 	return IsOnScreen(pEntity, pEntity->entindex() == I::EngineClient->GetLocalPlayer() && !I::EngineClient->IsPlayingDemo() ? F::EnginePrediction.m_vOrigin : pEntity->GetAbsOrigin());
 }
 
-void SDK::Trace(const Vec3& vecStart, const Vec3& vecEnd, unsigned int nMask, ITraceFilter* pFilter, CGameTrace* pTrace)
+void SDK::Trace(const Vec3& vStart, const Vec3& vEnd, unsigned int nMask, ITraceFilter* pFilter, CGameTrace* pTrace)
 {
 	Ray_t ray;
-	ray.Init(vecStart, vecEnd);
+	ray.Init(vStart, vEnd);
 	I::EngineTrace->TraceRay(ray, nMask, pFilter, pTrace);
 
 #ifdef DEBUG_TRACES
 	if (Vars::Debug::VisualizeTraces.Value)
-		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vecStart, Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vecEnd), I::GlobalVars->curtime + 0.015f, Color_t(), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
+		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vStart, Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vEnd), I::GlobalVars->curtime + 0.015f, Color_t(), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
 #endif
 }
 
-void SDK::TraceHull(const Vec3& vecStart, const Vec3& vecEnd, const Vec3& vecHullMin, const Vec3& vecHullMax, unsigned int nMask, ITraceFilter* pFilter, CGameTrace* pTrace)
+void SDK::TraceHull(const Vec3& vStart, const Vec3& vEnd, const Vec3& vHullMin, const Vec3& vHullMax, unsigned int nMask, ITraceFilter* pFilter, CGameTrace* pTrace)
 {
 	Ray_t ray;
-	ray.Init(vecStart, vecEnd, vecHullMin, vecHullMax);
+	ray.Init(vStart, vEnd, vHullMin, vHullMax);
 	I::EngineTrace->TraceRay(ray, nMask, pFilter, pTrace);
 
 #ifdef DEBUG_TRACES
 	if (Vars::Debug::VisualizeTraces.Value)
 	{
-		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vecStart, Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vecEnd), I::GlobalVars->curtime + 0.015f, Color_t(), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
-		if (!(vecHullMax - vecHullMin).IsZero())
+		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vStart, Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vEnd), I::GlobalVars->curtime + 0.015f, Color_t(), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
+		if (!(vHullMax - vHullMin).IsZero())
 		{
-			G::BoxStorage.emplace_back(vecStart, vecHullMin, vecHullMax, Vec3(), I::GlobalVars->curtime + 0.015f, Color_t(), Color_t(0, 0, 0, 0), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
-			G::BoxStorage.emplace_back(Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vecEnd, vecHullMin, vecHullMax, Vec3(), I::GlobalVars->curtime + 0.015f, Color_t(), Color_t(0, 0, 0, 0), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
+			G::BoxStorage.emplace_back(vStart, vHullMin, vHullMax, Vec3(), I::GlobalVars->curtime + 0.015f, Color_t(), Color_t(0, 0, 0, 0), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
+			G::BoxStorage.emplace_back(Vars::Debug::VisualizeTraceHits.Value ? pTrace->endpos : vEnd, vHullMin, vHullMax, Vec3(), I::GlobalVars->curtime + 0.015f, Color_t(), Color_t(0, 0, 0, 0), bool(GetAsyncKeyState(VK_MENU) & 0x8000));
 		}
 	}
 #endif

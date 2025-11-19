@@ -277,7 +277,6 @@ MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
                     break;
 
                 pCVar->SetValue(sValue.c_str());
-                SDK::Output("Cbuf_ExecuteCommand", std::format("{}: {}, {}, {}", sCommand, pCVar->GetString(), pCVar->GetFloat(), pCVar->GetInt()).c_str());
             }
             catch (...) {}
 

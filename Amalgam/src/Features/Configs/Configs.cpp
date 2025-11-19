@@ -395,10 +395,10 @@ bool CConfigs::SaveConfig(const std::string& sConfigName, bool bNotify)
 
 		{
 			boost::property_tree::ptree tSub;
-			const bool bNosave = Vars::Config::LoadDebugSettings.Value || GetAsyncKeyState(VK_SHIFT) & 0x8000;
+			bool bNosave = Vars::Config::LoadDebugSettings.Value || GetAsyncKeyState(VK_SHIFT) & 0x8000;
 			for (auto& pBase : G::Vars)
 			{
-				if (!bNosave && pBase->m_iFlags & NOSAVE)
+				if (bNosave && pBase->m_iFlags & NOSAVE)
 					continue;
 
 				Save(bool, tSub)
@@ -471,7 +471,6 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 {
 	try
 	{
-		bool bLoadNosave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 		if (!std::filesystem::exists(m_sConfigPath + sConfigName + m_sConfigExtension))
 		{
 			if (sConfigName == std::string("default"))
@@ -513,9 +512,10 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 		if (auto tSub = tRead.get_child_optional("Vars");
 			tSub || (tSub = tRead.get_child_optional("ConVars")))
 		{
+			bool bNoSave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 			for (auto& pBase : G::Vars)
 			{
-				if (!bLoadNosave && pBase->m_iFlags & NOSAVE)
+				if (bNoSave && pBase->m_iFlags & NOSAVE)
 					continue;
 				
 				Load(bool, *tSub)
@@ -530,8 +530,8 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 				else Load(DragBox_t, *tSub)
 				else Load(WindowBox_t, *tSub)
 
-				if (!bLoadNosave && pBase->m_sName.find("LoadDebugSettings") != std::string::npos && pBase->As<bool>()->Map[DEFAULT_BIND])
-					bLoadNosave = true;
+				if (bNoSave && pBase->m_sName.find("LoadDebugSettings") != std::string::npos && pBase->As<bool>()->Map[DEFAULT_BIND])
+					bNoSave = false;
 			}
 		}
 
@@ -604,10 +604,10 @@ bool CConfigs::SaveVisual(const std::string& sConfigName, bool bNotify)
 
 		{
 			boost::property_tree::ptree tSub;
-			const bool bNosave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
+			bool bNoSave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 			for (auto& pBase : G::Vars)
 			{
-				if (!(pBase->m_iFlags & VISUAL) || !bNosave && pBase->m_iFlags & NOSAVE)
+				if (!(pBase->m_iFlags & VISUAL) || !bNoSave && pBase->m_iFlags & NOSAVE)
 					continue;
 
 				SaveMisc(bool, tSub)
@@ -689,10 +689,10 @@ bool CConfigs::LoadVisual(const std::string& sConfigName, bool bNotify)
 		if (auto tSub = tRead.get_child_optional("Vars");
 			tSub || (tSub = tRead))
 		{
-			const bool bNosave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
+			bool bNoSave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 			for (auto& pBase : G::Vars)
 			{
-				if (!(pBase->m_iFlags & VISUAL) || !bNosave && pBase->m_iFlags & NOSAVE)
+				if (!(pBase->m_iFlags & VISUAL) || !bNoSave && pBase->m_iFlags & NOSAVE)
 					continue;
 
 				LoadMisc(bool, *tSub)
@@ -793,10 +793,10 @@ void CConfigs::ResetConfig(const std::string& sConfigName, bool bNotify)
 		F::Binds.m_vBinds.clear();
 		F::Groups.m_vGroups.clear();
 
-		const bool bNosave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
+		bool bNoSave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 		for (auto& pBase : G::Vars)
 		{
-			if (!bNosave && pBase->m_iFlags & NOSAVE)
+			if (!bNoSave && pBase->m_iFlags & NOSAVE)
 				continue;
 
 			Reset(bool)
@@ -846,10 +846,10 @@ void CConfigs::ResetVisual(const std::string& sConfigName, bool bNotify)
 	{
 		F::Groups.m_vGroups.clear();
 
-		const bool bNosave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
+		bool bNoSave = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 		for (auto& pBase : G::Vars)
 		{
-			if (!(pBase->m_iFlags & VISUAL) || !bNosave && pBase->m_iFlags & NOSAVE)
+			if (!(pBase->m_iFlags & VISUAL) || !bNoSave && pBase->m_iFlags & NOSAVE)
 				continue;
 
 			Reset(bool)
