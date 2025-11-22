@@ -13,7 +13,7 @@ MAKE_HOOK(CMaterial_Uncache, S::CMaterial_Uncache(), void,
 		return CALL_ORIGINAL(rcx, bPreserveVars);
 #endif
 
-	if (rcx && F::Materials.m_mMatList.contains(rcx))
+	if (F::Materials.m_mMatList.contains(rcx))
 		return;
 
 	CALL_ORIGINAL(rcx, bPreserveVars);

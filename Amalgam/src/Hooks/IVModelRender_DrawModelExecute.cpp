@@ -18,16 +18,6 @@ MAKE_HOOK(IVModelRender_DrawModelExecute, U::Memory.GetVirtual(I::ModelRender, 1
 		return CALL_ORIGINAL(rcx, pState, pInfo, pBoneToWorld);
 #endif
 
-	/*
-	if (!F::Chams.iRendering && !F::Glow.m_bRendering && !I::EngineVGui->IsGameUIVisible())
-	{
-		if (const auto& pEntity = I::ClientEntityList->GetClientEntity(pInfo.m_nEntIndex))
-			Utils::ConLog("Entity", std::format("{}, {}, {}", pInfo.m_nEntIndex, int(pEntity->GetClassID()), I::ModelInfoClient->GetModelName(pInfo.m_pModel)).c_str());
-		else
-			Utils::ConLog("Model", std::format("{}, {}", pInfo.m_nEntIndex, I::ModelInfoClient->GetModelName(pInfo.m_pModel)).c_str());
-	}
-	*/
-
 	if (I::EngineVGui->IsGameUIVisible() || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot()
 		|| F::CameraWindow.m_bDrawing || !F::Materials.m_bLoaded || G::Unload)
 		return CALL_ORIGINAL(rcx, pState, pInfo, pBoneToWorld);
@@ -37,7 +27,7 @@ MAKE_HOOK(IVModelRender_DrawModelExecute, U::Memory.GetVirtual(I::ModelRender, 1
 	if (F::Glow.m_bRendering)
 		return F::Glow.RenderHandler(pState, pInfo, pBoneToWorld);
 
-	if (F::Chams.m_mEntities[pInfo.entity_index])
+	if (F::Chams.m_mEntities.contains(pInfo.entity_index))
 		return;
 
 	auto pEntity = I::ClientEntityList->GetClientEntity(pInfo.entity_index);

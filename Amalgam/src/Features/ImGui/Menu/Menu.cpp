@@ -2108,9 +2108,9 @@ void CMenu::MenuLogs(int iTab)
 		{
 			if (I::EngineClient->IsInGame())
 			{
-				std::unique_lock lock(F::PlayerUtils.m_mutex);
+				std::shared_lock tLock(F::PlayerUtils.m_tMutex);
 				const auto vPlayers = F::PlayerUtils.m_vPlayerCache;
-				lock.unlock();
+				tLock.unlock();
 				std::unordered_map<uint64_t, std::vector<const ListPlayer_t*>> mParties = {};
 				int iPartyCount = 0;
 				for (auto& tPlayer : vPlayers)
@@ -3347,9 +3347,11 @@ void CMenu::MenuSettings(int iTab)
 
 				drawConfigs(sStaticName);
 			} EndSection();
-			SetCursorPosX(GetCursorPosX() + 8);
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+			SetCursorPosX(GetCursorPosX() + GetStyle().WindowPadding.x);
 			FText("Built @ " __DATE__ ", " __TIME__ ", " __CONFIGURATION__);
+			//SetCursorPosX(GetCursorPosX() + GetStyle().WindowPadding.x);
+			//FText(std::format("Time @ {}, {}", SDK::GetDate(), SDK::GetTime()).c_str());
 			PopStyleColor();
 
 			/* Column 2 */
@@ -3470,7 +3472,7 @@ void CMenu::MenuSettings(int iTab)
 								if (iParent != _tBind.m_iParent || mBinds.contains(_iBind))
 									continue;
 
-								mBinds[_iBind] = true;
+								mBinds[_iBind];
 
 								i++;
 								//if (iParent == iLayer && iNumber >= i)
@@ -3513,7 +3515,7 @@ void CMenu::MenuSettings(int iTab)
 						if (iParent != DEFAULT_BIND - 1 && iParent != _tBind.m_iParent || mBinds.contains(_iBind))
 							continue;
 
-						mBinds[_iBind] = true;
+						mBinds[_iBind];
 
 						std::string sType; std::string sInfo;
 						switch (_tBind.m_iType)

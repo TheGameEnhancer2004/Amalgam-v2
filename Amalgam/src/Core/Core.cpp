@@ -37,12 +37,17 @@ static inline bool CheckDXLevel()
 	auto mat_dxlevel = H::ConVars.FindVar("mat_dxlevel");
 	if (mat_dxlevel->GetInt() < 90)
 	{
-		//const char* sMessage = "You are running with graphics options that Amalgam does not support. -dxlevel must be at least 90.";
-		const char* sMessage = "You are running with graphics options that Amalgam does not support. It is recommended for -dxlevel to be at least 90.";
+		/*
+		const char* sMessage = "You are running with graphics options that Amalgam does not support. -dxlevel must be at least 90.";
 		U::Core.AppendFailText(sMessage);
 		F::Menu.ShowDeferredNotification("Graphics Warning", sMessage);
 		SDK::Output("Amalgam", sMessage, { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
-		//return false;
+		return false;
+		*/
+
+		const char* sMessage = "You are running with graphics options that Amalgam does not support. It is recommended for -dxlevel to be at least 90.";
+		F::Menu.ShowDeferredNotification("Graphics Warning", sMessage);
+		SDK::Output("Amalgam", sMessage, { 175, 150, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 	}
 
 	return true;
@@ -50,20 +55,28 @@ static inline bool CheckDXLevel()
 
 void CCore::AppendFailText(const char* sMessage)
 {
+	if (m_ssFailStream.str().empty())
+	{
+		m_ssFailStream << "Built @ " __DATE__ ", " __TIME__ ", " __CONFIGURATION__ "\n";
+		m_ssFailStream << std::format("Time @ {}, {}\n", SDK::GetDate(), SDK::GetTime());
+		m_ssFailStream << "\n";
+	}
+
 	m_ssFailStream << std::format("{}\n", sMessage);
 	OutputDebugStringA(std::format("{}\n", sMessage).c_str());
 }
 
 void CCore::LogFailText()
 {
-	m_ssFailStream << "\nBuilt @ " __DATE__ ", " __TIME__ ", " __CONFIGURATION__ "\n";
-	m_ssFailStream << "Ctrl + C to copy. \n";
 	try
 	{
 		std::ofstream file;
 		file.open(F::Configs.m_sConfigPath + "fail_log.txt", std::ios_base::app);
 		file << m_ssFailStream.str() + "\n\n\n";
 		file.close();
+
+		m_ssFailStream << "\n";
+		m_ssFailStream << "Ctrl + C to copy. \n";
 		m_ssFailStream << "Logged to Amalgam\\fail_log.txt. ";
 	}
 	catch (...) {}
