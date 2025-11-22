@@ -82,7 +82,7 @@
     <ClCompile Include="src\SDK\Definitions\Misc\ChecksumCRC.cpp" />
     <ClCompile Include="src\Hooks\Direct3DDevice9.cpp" />
     <ClCompile Include="src\SDK\Events\Events.cpp" />
-    <ClCompile Include="src\Utils\CrashLog\CrashLog.cpp" />
+    <ClCompile Include="src\Utils\ErrorLog\ErrorLog.cpp" />
     <ClCompile Include="src\BytePatches\BytePatches.cpp" />
     <ClCompile Include="include\ImGui\imgui_freetype.cpp" />
     <ClCompile Include="src\Features\Misc\AutoVote\AutoVote.cpp" />
@@ -495,7 +495,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CCaptureFlag.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IPanel.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGCClientSystem.h" />
-    <ClInclude Include="src\Utils\CrashLog\CrashLog.h" />
+    <ClInclude Include="src\Utils\ErrorLog\ErrorLog.h" />
     <ClInclude Include="src\BytePatches\BytePatches.h" />
     <ClInclude Include="include\freetype\config\ftconfig.h" />
     <ClInclude Include="include\freetype\config\ftheader.h" />

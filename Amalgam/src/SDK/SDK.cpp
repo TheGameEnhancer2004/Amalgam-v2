@@ -113,6 +113,22 @@ std::string SDK::GetClipboard()
 	return sString;
 }
 
+std::string SDK::GetDate()
+{
+	time_t tTime = time(nullptr);
+	tm timeinfo; localtime_s(&timeinfo, &tTime);
+	char buffer[16]; strftime(buffer, sizeof(buffer), "%b %e %Y", &timeinfo);
+	return buffer;
+}
+
+std::string SDK::GetTime()
+{
+	time_t tTime = time(nullptr);
+	tm timeinfo; localtime_s(&timeinfo, &tTime);
+	char buffer[16]; strftime(buffer, sizeof(buffer), "%T", &timeinfo);
+	return buffer;
+}
+
 HWND SDK::GetTeamFortressWindow()
 {
 	static HWND hWindow = nullptr;

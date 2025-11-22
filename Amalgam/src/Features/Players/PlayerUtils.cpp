@@ -1,7 +1,5 @@
 #include "PlayerUtils.h"
 #include "SteamProfileCache.h"
-
-#include "../../SDK/Definitions/Types.h"
 #include "../Output/Output.h"
 
 #include <boost/property_tree/json_parser.hpp>
@@ -614,8 +612,9 @@ void CPlayerlistUtils::Store()
 	if (!tTimer.Run(1.f))
 		return;
 
-	std::lock_guard lock(m_mutex);
+	std::lock_guard tLock(m_tMutex);
 	m_vPlayerCache.clear();
+
 	auto pResource = H::Entities.GetResource();
 	if (!pResource)
 		return;
@@ -742,7 +741,7 @@ void CPlayerlistUtils::RemoveCheaterRecord(uint32_t uAccountID, bool bMarkSave)
 
 std::vector<std::pair<uint32_t, CheaterRecord_t>> CPlayerlistUtils::GetCheaterVector()
 {
-	std::shared_lock lock(m_mutex);
+	std::shared_lock tLock(m_tMutex);
 	std::vector<std::pair<uint32_t, CheaterRecord_t>> vCheaters;
 	vCheaters.reserve(m_mCheaterRecords.size());
 	for (auto& [uAccountID, tRecord] : m_mCheaterRecords)
@@ -782,7 +781,7 @@ bool CPlayerlistUtils::ImportCheatersFromJson(const std::string& sJson, bool bMa
 		}
 
 		{
-			std::lock_guard lock(m_mutex);
+			std::lock_guard tLock(m_tMutex);
 			m_mCheaterRecords = std::move(mTemp);
 			for (const auto& [uAccountID, _] : m_mCheaterRecords)
 			{
@@ -805,7 +804,7 @@ std::string CPlayerlistUtils::ExportCheatersToJson() const
 	boost::property_tree::ptree tWrite;
 	boost::property_tree::ptree tCheaters;
 	{
-		std::shared_lock lock(m_mutex);
+		std::shared_lock tLock(m_tMutex);
 		for (auto& [uAccountID, tRecord] : m_mCheaterRecords)
 		{
 			boost::property_tree::ptree tEntry;
@@ -816,6 +815,7 @@ std::string CPlayerlistUtils::ExportCheatersToJson() const
 			tEntry.put("Timestamp", tRecord.m_iTimestamp);
 			tCheaters.put_child(std::to_string(uAccountID), tEntry);
 		}
+		tLock.unlock();
 	}
 	tWrite.put_child("Cheaters", tCheaters);
 

@@ -94,8 +94,7 @@ public:
 		0xE0, 0xB9, 0x8C,  // '์'
 		0xE0, 0xB9, 0xB9   // 'ู'
 	};
-	mutable std::shared_mutex m_mutex;
-
+	mutable std::shared_mutex m_tMutex;
 private:
 	std::vector<int> m_vDummy = {};
 	std::string ResolveAccountName(uint32_t uAccountID) const;

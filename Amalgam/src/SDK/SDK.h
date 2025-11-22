@@ -79,6 +79,9 @@ namespace SDK
 	void SetClipboard(const std::string& sString);
 	std::string GetClipboard();
 
+	std::string GetDate();
+	std::string GetTime();
+
 	HWND GetTeamFortressWindow();
 	bool IsGameWindowInFocus();
 

@@ -37,7 +37,7 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 		int iVoiceMenu = msgData.ReadByte();
 		int iCommandID = msgData.ReadByte();
 		if (iVoiceMenu == 1 && iCommandID == 6)
-			F::AutoHeal.m_mMedicCallers[iEntityID] = true;
+			F::AutoHeal.m_mMedicCallers[iEntityID];
 
 		break;
 	}

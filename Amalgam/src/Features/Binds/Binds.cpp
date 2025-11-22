@@ -16,14 +16,17 @@ static inline void SetMain(BaseVar*& pBase, int iBind)
 }
 #define Set(t, b) if (IsType(t)) SetMain<t>(pBase, b);
 
+static std::unordered_map<BaseVar*, bool> s_mVars = {};
+
 static inline void LoopVars(int iBind, std::vector<BaseVar*>& vVars = G::Vars)
 {
 	const bool bDefault = iBind == DEFAULT_BIND;
 	for (auto pBase : vVars)
 	{
-		if (pBase->m_iFlags & (NOSAVE | NOBIND) && !bDefault)
+		if (s_mVars.contains(pBase) || pBase->m_iFlags & (NOSAVE | NOBIND) && !bDefault)
 			continue;
 
+		s_mVars[pBase];
 		Set(bool, iBind)
 		else Set(int, iBind)
 		else Set(float, iBind)
@@ -44,7 +47,7 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 	if (vBinds.empty())
 		return;
 
-	for (int i = int(vBinds.size() - 1); i >= 0; i--) // reverse so higher binds have priority over vars
+	for (int i = 0; i < vBinds.size(); i++)
 	{
 		auto& tBind = vBinds[i];
 		if (iParent != tBind.m_iParent || !tBind.m_bEnabled)
@@ -138,8 +141,9 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 
 void CBinds::SetVars(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bManage)
 {
-	LoopVars(DEFAULT_BIND);
+	s_mVars.clear();
 	GetBinds(DEFAULT_BIND, pLocal, pWeapon, m_vBinds, bManage);
+	LoopVars(DEFAULT_BIND);
 }
 
 void CBinds::Run()

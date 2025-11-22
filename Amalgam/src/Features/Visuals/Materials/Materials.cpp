@@ -11,7 +11,7 @@
 IMaterial* CMaterials::Create(char const* szName, KeyValues* pKV)
 {
 	IMaterial* pMaterial = I::MaterialSystem->CreateMaterial(szName, pKV);
-	m_mMatList[pMaterial] = true;
+	m_mMatList[pMaterial];
 	return pMaterial;
 }
 
