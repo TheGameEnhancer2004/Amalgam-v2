@@ -14,7 +14,45 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <algorithm>
+
+static const std::string base64_chars =
+             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+             "abcdefghijklmnopqrstuvwxyz"
+             "0123456789+/";
+
+static std::string base64_encode(const std::string &in) {
+    std::string out;
+    int val = 0, valb = -6;
+    for (unsigned char c : in) {
+        val = (val << 8) + c;
+        valb += 8;
+        while (valb >= 0) {
+            out.push_back(base64_chars[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+    if (valb > -6) out.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (out.size() % 4) out.push_back('=');
+    return out;
+}
+
+static std::string base64_decode(const std::string &in) {
+    std::string out;
+    std::vector<int> T(256, -1);
+    for (int i = 0; i < 64; i++) T[base64_chars[i]] = i;
+
+    int val = 0, valb = -8;
+    for (unsigned char c : in) {
+        if (T[c] == -1) break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            out.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return out;
+}
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
@@ -176,11 +214,14 @@ void CNamedPipe::ConnectAndMaintainPipe()
 	F::NamedPipe.Log("ConnectAndMaintainPipe started");
 	srand(static_cast<unsigned int>(time(nullptr)));
 
+	static std::string sReadBuffer;
+
 	while (F::NamedPipe.m_shouldRun.load())
 	{
 		DWORD dwCurrentTime = GetTickCount();
 		if (F::NamedPipe.m_hPipe == INVALID_HANDLE_VALUE)
 		{
+			sReadBuffer.clear();
 			int iReconnectDelay = F::NamedPipe.GetReconnectDelayMs();
 			if (dwCurrentTime - F::NamedPipe.m_dwLastConnectAttemptTime > static_cast<DWORD>(iReconnectDelay) || F::NamedPipe.m_dwLastConnectAttemptTime == 0)
 			{
@@ -253,12 +294,19 @@ void CNamedPipe::ConnectAndMaintainPipe()
 			}
 			F::NamedPipe.ProcessMessageQueue();
 
-			F::NamedPipe.QueueMessage("Status", "Heartbeat", true);
-			F::NamedPipe.ProcessMessageQueue();
-
-			static int iUpdateCounter = 0;
-			if (++iUpdateCounter % 3 == 0)
+			static DWORD dwLastHeartbeat = 0;
+			DWORD dwNow = GetTickCount();
+			if (dwNow - dwLastHeartbeat >= 1000)
 			{
+				F::NamedPipe.QueueMessage("Status", "Heartbeat", true);
+				F::NamedPipe.ProcessMessageQueue();
+				dwLastHeartbeat = dwNow;
+			}
+
+			static DWORD dwLastStatus = 0;
+			if (dwNow - dwLastStatus >= 1000)
+			{
+				dwLastStatus = dwNow;
 				std::unique_lock lock(F::NamedPipe.m_infoMutex);
 
 				// Client info
@@ -339,17 +387,22 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					if (dwBytesRead > 0)
 					{
 						cBuffer[dwBytesRead] = '\0'; // Ensure null termination
-						std::string sMessage(cBuffer, dwBytesRead);
-						F::NamedPipe.Log("Received message: " + sMessage);
+						sReadBuffer.append(cBuffer, dwBytesRead);
+						// F::NamedPipe.Log("Received chunk: " + std::string(cBuffer, dwBytesRead));
 
-						std::stringstream ss(sMessage);
-						std::string sLine;
-						while (std::getline(ss, sLine))
+						size_t pos = 0;
+						size_t newlinePos;
+						while ((newlinePos = sReadBuffer.find('\n', pos)) != std::string::npos)
 						{
+							std::string sLine = sReadBuffer.substr(pos, newlinePos - pos);
+							pos = newlinePos + 1;
+
 							if (sLine.empty())
 								continue;
 
-							std::istringstream iss(sLine);
+							// F::NamedPipe.Log("Processing line: " + sLine);
+							std::string sDecoded = base64_decode(sLine);
+							std::istringstream iss(sDecoded);
 							std::string sBotNumber, sMessageType, sContent;
 							std::getline(iss, sBotNumber, ':');
 							std::getline(iss, sMessageType, ':');
@@ -367,6 +420,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 							else
 								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
 						}
+						sReadBuffer.erase(0, pos);
 					}
 				}
 				CloseHandle(tOverlapped.hEvent);
@@ -376,7 +430,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 		if (F::NamedPipe.m_hPipe == INVALID_HANDLE_VALUE)
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		else
-			std::this_thread::sleep_for(std::chrono::milliseconds(333));
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
 
 	{
@@ -390,7 +444,8 @@ void CNamedPipe::ConnectAndMaintainPipe()
 		{
 			if (F::NamedPipe.m_iBotId != -1)
 			{
-				std::string sMessage = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting\n";
+				std::string sContent = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting";
+				std::string sMessage = base64_encode(sContent) + "\n";
 				DWORD dwBytesWritten = 0;
 				WriteFile(F::NamedPipe.m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 			}
@@ -456,14 +511,42 @@ void CNamedPipe::ProcessMessageQueue()
 	auto it = m_vMessageQueue.begin();
 	while (it != m_vMessageQueue.end() && processCount < 10)
 	{
-		std::string sMessage;
+		std::string sContent;
 		if (m_iBotId != -1)
-			sMessage = std::to_string(m_iBotId) + ":" + it->m_sType + ":" + it->m_sContent + "\n";
+			sContent = std::to_string(m_iBotId) + ":" + it->m_sType + ":" + it->m_sContent;
 		else
-			sMessage = "0:" + it->m_sType + ":" + it->m_sContent + "\n";
+			sContent = "0:" + it->m_sType + ":" + it->m_sContent;
+
+		std::string sMessage = base64_encode(sContent) + "\n";
 
 		DWORD dwBytesWritten = 0;
-		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
+		OVERLAPPED tOverlapped = { 0 };
+		tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+		if (tOverlapped.hEvent == NULL)
+		{
+			Log("Failed to create event for write: " + std::to_string(GetLastError()));
+			break;
+		}
+
+		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, &tOverlapped);
+
+		if (!bSuccess && GetLastError() == ERROR_IO_PENDING)
+		{
+			DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
+			if (waitResult == WAIT_OBJECT_0)
+			{
+				bSuccess = GetOverlappedResult(m_hPipe, &tOverlapped, &dwBytesWritten, FALSE);
+			}
+			else
+			{
+				bSuccess = FALSE;
+				CancelIo(m_hPipe);
+			}
+		}
+
+		CloseHandle(tOverlapped.hEvent);
+
 		if (bSuccess && dwBytesWritten == sMessage.length())
 		{
 			it = m_vMessageQueue.erase(it);
