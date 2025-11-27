@@ -152,6 +152,7 @@ namespace G
 
 	inline int SavedDefIndexes[3] = {-1,-1,-1};
 	inline int SavedWepIds[3] = {-1,-1,-1};
+	inline int SavedWepSlots[3] = {-1,-1,-1};
 	inline WeaponAmmoInfo_t AmmoInSlot[2] = {WeaponAmmoInfo_t(), WeaponAmmoInfo_t()};
 	
 	inline int* RandomSeed()

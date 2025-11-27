@@ -943,7 +943,7 @@ bool SDK::WeaponDoesNotUseAmmo(int iWeaponID, int iDefIdx, bool bIncludeInfinite
 
 bool SDK::WeaponDoesNotUseAmmo(CTFWeaponBase* pWeapon, bool bIncludeInfiniteAmmo)
 {
-	return WeaponDoesNotUseAmmo(pWeapon->GetWeaponID(), pWeapon->m_iItemDefinitionIndex());
+	return WeaponDoesNotUseAmmo(pWeapon->GetWeaponID(), pWeapon->m_iItemDefinitionIndex(), bIncludeInfiniteAmmo);
 }
 
 // Is there a way of doing this without hardcoded numbers???

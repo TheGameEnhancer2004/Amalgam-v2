@@ -108,22 +108,23 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::GetAmmo)
 		return false;
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i <= SLOT_MELEE; i++)
 	{
-		if (!G::AmmoInSlot[i].m_bUsesAmmo)
+		int iActualSlot = G::SavedWepSlots[i];
+		if (iActualSlot == SLOT_MELEE || !G::AmmoInSlot[iActualSlot].m_bUsesAmmo)
 			continue;
 
-		int iWeaponID = G::SavedWepIds[i];
-		int iReserveAmmo = G::AmmoInSlot[i].m_iReserve;
+		int iWeaponID = G::SavedWepIds[iActualSlot];
+		int iReserveAmmo = G::AmmoInSlot[iActualSlot].m_iReserve;
 		if (iReserveAmmo <= 5 &&
 			(iWeaponID == TF_WEAPON_SNIPERRIFLE ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP))
 			return true;
 
-		int iClip = G::AmmoInSlot[i].m_iClip;
-		int iMaxClip = G::AmmoInSlot[i].m_iMaxClip;
-		int iMaxReserveAmmo = G::AmmoInSlot[i].m_iMaxReserve;
+		int iClip = G::AmmoInSlot[iActualSlot].m_iClip;
+		int iMaxClip = G::AmmoInSlot[iActualSlot].m_iMaxClip;
+		int iMaxReserveAmmo = G::AmmoInSlot[iActualSlot].m_iMaxReserve;
 
 		// If clip and reserve are both very low, definitely get ammo
 		if (iMaxClip > 0 && iClip <= iMaxClip * 0.25f && iReserveAmmo <= iMaxReserveAmmo * 0.25f)

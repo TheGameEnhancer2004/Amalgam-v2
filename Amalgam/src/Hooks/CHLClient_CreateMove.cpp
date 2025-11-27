@@ -63,22 +63,24 @@ static inline void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		{
 			int iDefIndex = pWeaponInSlot->m_iItemDefinitionIndex(), iWeaponID = pWeaponInSlot->GetWeaponID();
 			bool bWeaponChanged = G::SavedDefIndexes[i] != iDefIndex || G::SavedWepIds[i] != iWeaponID;
-			if (i != SLOT_MELEE)
+			int iActualWeaponSlot = pWeaponInSlot->GetSlot(); // this whole thing is fucked up
+			G::SavedWepSlots[i] = iActualWeaponSlot;
+			G::SavedDefIndexes[iActualWeaponSlot] = iDefIndex;
+			G::SavedWepIds[iActualWeaponSlot] = iWeaponID;
+
+			if (iActualWeaponSlot != SLOT_MELEE)
 			{
-				G::AmmoInSlot[i].m_iClip = pWeaponInSlot->m_iClip1();
-				G::AmmoInSlot[i].m_iReserve = pLocal->GetAmmoCount(pWeaponInSlot->m_iPrimaryAmmoType());
+				G::AmmoInSlot[iActualWeaponSlot].m_iClip = pWeaponInSlot->m_iClip1();
+				G::AmmoInSlot[iActualWeaponSlot].m_iReserve = pLocal->GetAmmoCount(pWeaponInSlot->m_iPrimaryAmmoType());
 				if (bWeaponChanged)
 				{
-					G::AmmoInSlot[i].m_iMaxClip = pWeaponInSlot->GetWeaponInfo() ? pWeaponInSlot->GetWeaponInfo()->iMaxClip1 : 0;
-					G::AmmoInSlot[i].m_iMaxReserve = SDK::GetWeaponMaxReserveAmmo(iWeaponID, iDefIndex);
-					G::AmmoInSlot[i].m_bUsesAmmo = !SDK::WeaponDoesNotUseAmmo(iWeaponID, iDefIndex);
+					G::AmmoInSlot[iActualWeaponSlot].m_iMaxClip = pWeaponInSlot->GetWeaponInfo() ? pWeaponInSlot->GetWeaponInfo()->iMaxClip1 : 0;
+					G::AmmoInSlot[iActualWeaponSlot].m_iMaxReserve = SDK::GetWeaponMaxReserveAmmo(iWeaponID, iDefIndex);
+					G::AmmoInSlot[iActualWeaponSlot].m_bUsesAmmo = !SDK::WeaponDoesNotUseAmmo(iWeaponID, iDefIndex);
 				}
 			}
-			if (bWeaponChanged)
-			{
-				G::SavedDefIndexes[i] = iDefIndex;
-				G::SavedWepIds[i] = iWeaponID;
-			}
+			else if (i != SLOT_MELEE)
+				G::AmmoInSlot[i].m_bUsesAmmo = false;
 		}
 	}
 
