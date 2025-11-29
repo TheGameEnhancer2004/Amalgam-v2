@@ -11,6 +11,7 @@
 #pragma comment(lib, "imagehlp.lib")
 
 #define STATUS_RUNTIME_ERROR ((DWORD)0xE06D7363)
+#define MS_VC_EXCEPTION ((DWORD)0x406D1388)
 
 struct Frame_t
 {
@@ -114,6 +115,7 @@ static LONG APIENTRY ExceptionFilter(PEXCEPTION_POINTERS ExceptionInfo)
 	case STATUS_STACK_OVERFLOW: sError = "STACK OVERFLOW"; break;
 	case STATUS_HEAP_CORRUPTION: sError = "HEAP CORRUPTION"; break;
 	case STATUS_RUNTIME_ERROR: sError = "RUNTIME ERROR"; break;
+	case MS_VC_EXCEPTION:
 	case DBG_PRINTEXCEPTION_C: return EXCEPTION_EXECUTE_HANDLER;
 	}
 
