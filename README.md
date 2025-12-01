@@ -38,7 +38,7 @@
 - **General**
   - Nav engine
     - Pathfinding tool used by `Navbot` and such
-    - Requires nav meshes (.nav files) to run
+    - Requires nav meshes (.nav files placed in `tf\maps` folder. `Amalgam\Nav` is ONLY used for saving already loaded nav mesh via `cat_save_nav_mesh` command)
   - Navbot
     - Utilizes `Nav engine` to complete goals specified by navbot preferences
     - Also includes misc features: `Auto scope`, `Force weapon` and `Recharge DT`
@@ -64,7 +64,7 @@
   - '-insecure' bypass (Bypasses client-side checks allowing to join vac protected servers. `Valve allows cheats` in menu)
   - Added weapon shooting sound break exploit (Switches weapons back and forth every attack avoiding shoot sound. Soldier only)
   - MvM:
-    - Buybot
+    - Buybot: Performs MVM upgrade station exploit which can result in huge amounts of cash (You have to be playing medic with a vaccinator and walk to the upgrade station while the `Buybot` automatically buys and refunds an upgrade giving you additional cash). Stops at a specified cash count.
     - Auto ready up
   - Ping reducer now uses target ping value instead of `cl_cmdrate`
   - Added option for auto detonation to wait for sufficient damage before detonating (Not recommended to use it as it's far from being perfect)
@@ -102,4 +102,4 @@
   - Auto accept item drops now removes the notification from ui aswell
   - Changed loading process allowing for early injection (e.g. Xenos manual launch)
   - Added signature generator for crash log call trace
-  - Fixed menu tooltips not accounting for newlines
+  - Fixed menu tooltips not accounting for newlines (also fixed on the official repo since [this commit](https://github.com/rei-2/Amalgam/commit/68c1d0530f37554cdd84dbefb6eb475f13b45b07))

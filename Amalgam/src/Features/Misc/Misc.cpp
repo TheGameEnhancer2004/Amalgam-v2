@@ -13,297 +13,6 @@
 MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
 MAKE_SIGNATURE(ReportPlayerAccount, "client.dll", "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 8B FA 48 C1 E9", 0x0);
 
-CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
-{
-	ProfileDumpResult_t tResult{};
-	auto pResource = H::Entities.GetResource();
-	if (!pResource)
-	{
-		if (bAnnounce)
-			SDK::Output("ProfileScraper", "Player resource unavailable");
-		return tResult;
-	}
-	tResult.m_bResourceAvailable = true;
-
-	auto SanitizeName = [](const char* sRaw) -> std::string
-	{
-		if (!sRaw)
-			return {};
-
-		std::string sClean;
-		sClean.reserve(std::strlen(sRaw));
-		for (unsigned char c : std::string_view{sRaw})
-		{
-			if (c < 32 || c > 126)
-				continue;
-			if (c == ',')
-				return {};
-			sClean.push_back(static_cast<char>(c));
-		}
-		return sClean;
-	};
-
-	struct ProfileEntry_t
-	{
-		uint32_t m_uAccountID = 0;
-		std::string m_sName = {};
-	};
-
-	std::vector<ProfileEntry_t> vProfiles;
-	std::unordered_set<uint32_t> setSessionAccounts;
-	vProfiles.reserve(I::EngineClient->GetMaxClients());
-	setSessionAccounts.reserve(I::EngineClient->GetMaxClients());
-
-	const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
-	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
-	{
-		if (n == iLocalPlayer)
-			continue;
-
-		if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
-			continue;
-
-		tResult.m_uCandidateCount++;
-
-		const uint32_t uAccountID = pResource->m_iAccountID(n);
-		if (!uAccountID)
-		{
-			tResult.m_uSkippedInvalid++;
-			continue;
-		}
-
-		const char* pszName = pResource->GetName(n);
-		if (!pszName)
-		{
-			tResult.m_uSkippedInvalid++;
-			continue;
-		}
-
-		if (std::strchr(pszName, ','))
-		{
-			tResult.m_uSkippedComma++;
-			continue;
-		}
-
-		std::string sClean = SanitizeName(pszName);
-		if (sClean.empty())
-		{
-			tResult.m_uSkippedInvalid++;
-			continue;
-		}
-
-		if (!setSessionAccounts.emplace(uAccountID).second)
-		{
-			tResult.m_uSkippedSessionDuplicate++;
-			continue;
-		}
-
-		vProfiles.push_back(ProfileEntry_t{ uAccountID, std::move(sClean) });
-	}
-
-	if (!tResult.m_uCandidateCount)
-	{
-		if (bAnnounce)
-			SDK::Output("ProfileScraper", "No player profiles found");
-		return tResult;
-	}
-
-	if (vProfiles.empty())
-	{
-		if (bAnnounce)
-		{
-			const char* pszReason = tResult.m_uSkippedComma ? "All player names contained commas" : "No valid player profiles to save";
-			SDK::Output("ProfileScraper", pszReason);
-		}
-		return tResult;
-	}
-
-	auto sPath = std::filesystem::current_path() / "Amalgam" / "profiles.csv";
-	std::error_code ec;
-	std::filesystem::create_directories(sPath.parent_path(), ec);
-
-	std::unordered_set<uint64_t> setExistingIDs;
-	setExistingIDs.reserve(vProfiles.size() * 2);
-
-	bool bAppendNewline = false;
-	if (std::filesystem::exists(sPath))
-	{
-		std::ifstream input(sPath);
-		if (input)
-		{
-			tResult.m_bFileOpened = true;
-			std::string sLine;
-			while (std::getline(input, sLine))
-			{
-				if (sLine.empty())
-					continue;
-				auto iComma = sLine.find(',');
-				if (iComma == std::string::npos)
-					continue;
-				try
-				{
-					uint64_t uExisting = std::stoull(sLine.substr(0, iComma));
-					setExistingIDs.emplace(uExisting);
-				}
-				catch (...)
-				{
-					continue;
-				}
-			}
-
-			input.clear();
-			input.seekg(0, std::ios::end);
-			bAppendNewline = input.tellg() > 0;
-		}
-		else if (bAnnounce)
-			SDK::Output("ProfileScraper", std::format("Failed to read existing profiles from {}", sPath.string()).c_str());
-	}
-
-	struct ProfileLine_t
-	{
-		uint64_t m_uSteamID64 = 0;
-		std::string m_sName = {};
-	};
-
-	std::vector<ProfileLine_t> vNewProfiles;
-	vNewProfiles.reserve(vProfiles.size());
-	for (const auto& tEntry : vProfiles)
-	{
-		const uint64_t uSteamID64 = CSteamID(tEntry.m_uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
-		if (setExistingIDs.contains(uSteamID64))
-		{
-			tResult.m_uSkippedFileDuplicate++;
-			continue;
-		}
-
-		setExistingIDs.emplace(uSteamID64);
-		vNewProfiles.push_back({ uSteamID64, tEntry.m_sName });
-	}
-
-	tResult.m_uAppendedCount = vNewProfiles.size();
-	tResult.m_outputPath = sPath;
-
-	if (!vNewProfiles.empty())
-	{
-		std::ofstream file(sPath, std::ios::app);
-		if (!file)
-		{
-			if (bAnnounce)
-				SDK::Output("ProfileScraper", std::format("Failed to open {}", sPath.string()).c_str());
-			return tResult;
-		}
-
-		tResult.m_bFileOpened = true;
-		if (bAppendNewline)
-			file << '\n';
-
-		for (size_t i = 0; i < vNewProfiles.size(); i++)
-		{
-			if (i)
-				file << '\n';
-			file << vNewProfiles[i].m_uSteamID64 << ',' << vNewProfiles[i].m_sName;
-		}
-
-		if (!file.good())
-		{
-			if (bAnnounce)
-				SDK::Output("ProfileScraper", "Failed to write profiles");
-			return tResult;
-		}
-
-		tResult.m_bSuccess = true;
-	}
-	else if (bAnnounce)
-	{
-		const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
-		SDK::Output("ProfileScraper", std::format("No new profiles to save ({} duplicates skipped, {} comma filtered)",
-			uDuplicateCount,
-			tResult.m_uSkippedComma).c_str());
-	}
-
-	auto CaptureAvatar = [](uint32_t uAccountID, std::vector<uint8_t>& vBgra, uint32_t& uWidth, uint32_t& uHeight) -> bool
-	{
-		if (!I::SteamFriends || !I::SteamUtils)
-			return false;
-
-		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
-		I::SteamFriends->RequestUserInformation(steamID, true);
-		const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
-		if (nAvatar <= 0)
-			return false;
-
-		if (!I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) || !uWidth || !uHeight)
-			return false;
-
-		std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
-		if (!I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
-			return false;
-
-		vBgra.resize(vRgba.size());
-		for (uint32_t y = 0; y < uHeight; y++)
-		{
-			for (uint32_t x = 0; x < uWidth; x++)
-			{
-				const size_t idx = (static_cast<size_t>(y) * uWidth + x) * 4;
-				vBgra[idx + 0] = vRgba[idx + 2];
-				vBgra[idx + 1] = vRgba[idx + 1];
-				vBgra[idx + 2] = vRgba[idx + 0];
-				vBgra[idx + 3] = vRgba[idx + 3];
-			}
-		}
-		return true;
-	};
-
-	if (I::SteamFriends && I::SteamUtils)
-	{
-		for (const auto& tEntry : vProfiles)
-		{
-			std::vector<uint8_t> vBgra;
-			uint32_t uWidth = 0, uHeight = 0;
-			if (!CaptureAvatar(tEntry.m_uAccountID, vBgra, uWidth, uHeight))
-			{
-				tResult.m_uAvatarMissed++;
-				continue;
-			}
-
-			std::filesystem::path sAvatarPath;
-			if (CSteamProfileCache::SaveAvatarToDisk(tEntry.m_uAccountID, vBgra, uWidth, uHeight, &sAvatarPath, false))
-			{
-				tResult.m_uAvatarsSaved++;
-				if (tResult.m_avatarFolder.empty())
-					tResult.m_avatarFolder = sAvatarPath.parent_path();
-			}
-			else
-			{
-				tResult.m_uAvatarFailed++;
-			}
-		}
-	}
-	else if (bAnnounce)
-	{
-		SDK::Output("ProfileScraper", "Steam avatar interfaces unavailable; skipped avatar scraping.");
-	}
-
-	if (bAnnounce)
-	{
-		const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
-		SDK::Output("ProfileScraper", std::format(
-			"Saved {} new profiles to {} ({} duplicates skipped, {} comma filtered). Avatars: {} saved, {} unavailable, {} failed.",
-			tResult.m_uAppendedCount,
-			sPath.string(),
-			uDuplicateCount,
-			tResult.m_uSkippedComma,
-			tResult.m_uAvatarsSaved,
-			tResult.m_uAvatarMissed,
-			tResult.m_uAvatarFailed).c_str());
-
-		if (!tResult.m_avatarFolder.empty())
-			SDK::Output("ProfileScraper", std::format("Avatar output directory: {}", tResult.m_avatarFolder.string()).c_str());
-	}
-
-	return tResult;
-}
-
 void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	NoiseSpam(pLocal);
@@ -1594,4 +1303,295 @@ void CMisc::MicSpam()
 
 		bShouldRestore = false;
 	}
+}
+
+CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
+{
+	ProfileDumpResult_t tResult{};
+	auto pResource = H::Entities.GetResource();
+	if (!pResource)
+	{
+		if (bAnnounce)
+			SDK::Output("ProfileScraper", "Player resource unavailable");
+		return tResult;
+	}
+	tResult.m_bResourceAvailable = true;
+
+	auto SanitizeName = [](const char* sRaw) -> std::string
+	{
+		if (!sRaw)
+			return {};
+
+		std::string sClean;
+		sClean.reserve(std::strlen(sRaw));
+		for (unsigned char c : std::string_view{sRaw})
+		{
+			if (c < 32 || c > 126)
+				continue;
+			if (c == ',')
+				return {};
+			sClean.push_back(static_cast<char>(c));
+		}
+		return sClean;
+	};
+
+	struct ProfileEntry_t
+	{
+		uint32_t m_uAccountID = 0;
+		std::string m_sName = {};
+	};
+
+	std::vector<ProfileEntry_t> vProfiles;
+	std::unordered_set<uint32_t> setSessionAccounts;
+	vProfiles.reserve(I::EngineClient->GetMaxClients());
+	setSessionAccounts.reserve(I::EngineClient->GetMaxClients());
+
+	const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+	{
+		if (n == iLocalPlayer)
+			continue;
+
+		if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
+			continue;
+
+		tResult.m_uCandidateCount++;
+
+		const uint32_t uAccountID = pResource->m_iAccountID(n);
+		if (!uAccountID)
+		{
+			tResult.m_uSkippedInvalid++;
+			continue;
+		}
+
+		const char* pszName = pResource->GetName(n);
+		if (!pszName)
+		{
+			tResult.m_uSkippedInvalid++;
+			continue;
+		}
+
+		if (std::strchr(pszName, ','))
+		{
+			tResult.m_uSkippedComma++;
+			continue;
+		}
+
+		std::string sClean = SanitizeName(pszName);
+		if (sClean.empty())
+		{
+			tResult.m_uSkippedInvalid++;
+			continue;
+		}
+
+		if (!setSessionAccounts.emplace(uAccountID).second)
+		{
+			tResult.m_uSkippedSessionDuplicate++;
+			continue;
+		}
+
+		vProfiles.push_back(ProfileEntry_t{ uAccountID, std::move(sClean) });
+	}
+
+	if (!tResult.m_uCandidateCount)
+	{
+		if (bAnnounce)
+			SDK::Output("ProfileScraper", "No player profiles found");
+		return tResult;
+	}
+
+	if (vProfiles.empty())
+	{
+		if (bAnnounce)
+		{
+			const char* pszReason = tResult.m_uSkippedComma ? "All player names contained commas" : "No valid player profiles to save";
+			SDK::Output("ProfileScraper", pszReason);
+		}
+		return tResult;
+	}
+
+	auto sPath = std::filesystem::current_path() / "Amalgam" / "profiles.csv";
+	std::error_code ec;
+	std::filesystem::create_directories(sPath.parent_path(), ec);
+
+	std::unordered_set<uint64_t> setExistingIDs;
+	setExistingIDs.reserve(vProfiles.size() * 2);
+
+	bool bAppendNewline = false;
+	if (std::filesystem::exists(sPath))
+	{
+		std::ifstream input(sPath);
+		if (input)
+		{
+			tResult.m_bFileOpened = true;
+			std::string sLine;
+			while (std::getline(input, sLine))
+			{
+				if (sLine.empty())
+					continue;
+				auto iComma = sLine.find(',');
+				if (iComma == std::string::npos)
+					continue;
+				try
+				{
+					uint64_t uExisting = std::stoull(sLine.substr(0, iComma));
+					setExistingIDs.emplace(uExisting);
+				}
+				catch (...)
+				{
+					continue;
+				}
+			}
+
+			input.clear();
+			input.seekg(0, std::ios::end);
+			bAppendNewline = input.tellg() > 0;
+		}
+		else if (bAnnounce)
+			SDK::Output("ProfileScraper", std::format("Failed to read existing profiles from {}", sPath.string()).c_str());
+	}
+
+	struct ProfileLine_t
+	{
+		uint64_t m_uSteamID64 = 0;
+		std::string m_sName = {};
+	};
+
+	std::vector<ProfileLine_t> vNewProfiles;
+	vNewProfiles.reserve(vProfiles.size());
+	for (const auto& tEntry : vProfiles)
+	{
+		const uint64_t uSteamID64 = CSteamID(tEntry.m_uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64();
+		if (setExistingIDs.contains(uSteamID64))
+		{
+			tResult.m_uSkippedFileDuplicate++;
+			continue;
+		}
+
+		setExistingIDs.emplace(uSteamID64);
+		vNewProfiles.push_back({ uSteamID64, tEntry.m_sName });
+	}
+
+	tResult.m_uAppendedCount = vNewProfiles.size();
+	tResult.m_outputPath = sPath;
+
+	if (!vNewProfiles.empty())
+	{
+		std::ofstream file(sPath, std::ios::app);
+		if (!file)
+		{
+			if (bAnnounce)
+				SDK::Output("ProfileScraper", std::format("Failed to open {}", sPath.string()).c_str());
+			return tResult;
+		}
+
+		tResult.m_bFileOpened = true;
+		if (bAppendNewline)
+			file << '\n';
+
+		for (size_t i = 0; i < vNewProfiles.size(); i++)
+		{
+			if (i)
+				file << '\n';
+			file << vNewProfiles[i].m_uSteamID64 << ',' << vNewProfiles[i].m_sName;
+		}
+
+		if (!file.good())
+		{
+			if (bAnnounce)
+				SDK::Output("ProfileScraper", "Failed to write profiles");
+			return tResult;
+		}
+
+		tResult.m_bSuccess = true;
+	}
+	else if (bAnnounce)
+	{
+		const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
+		SDK::Output("ProfileScraper", std::format("No new profiles to save ({} duplicates skipped, {} comma filtered)",
+			uDuplicateCount,
+			tResult.m_uSkippedComma).c_str());
+	}
+
+	auto CaptureAvatar = [](uint32_t uAccountID, std::vector<uint8_t>& vBgra, uint32_t& uWidth, uint32_t& uHeight) -> bool
+	{
+		if (!I::SteamFriends || !I::SteamUtils)
+			return false;
+
+		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
+		I::SteamFriends->RequestUserInformation(steamID, true);
+		const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
+		if (nAvatar <= 0)
+			return false;
+
+		if (!I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) || !uWidth || !uHeight)
+			return false;
+
+		std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
+		if (!I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
+			return false;
+
+		vBgra.resize(vRgba.size());
+		for (uint32_t y = 0; y < uHeight; y++)
+		{
+			for (uint32_t x = 0; x < uWidth; x++)
+			{
+				const size_t idx = (static_cast<size_t>(y) * uWidth + x) * 4;
+				vBgra[idx + 0] = vRgba[idx + 2];
+				vBgra[idx + 1] = vRgba[idx + 1];
+				vBgra[idx + 2] = vRgba[idx + 0];
+				vBgra[idx + 3] = vRgba[idx + 3];
+			}
+		}
+		return true;
+	};
+
+	if (I::SteamFriends && I::SteamUtils)
+	{
+		for (const auto& tEntry : vProfiles)
+		{
+			std::vector<uint8_t> vBgra;
+			uint32_t uWidth = 0, uHeight = 0;
+			if (!CaptureAvatar(tEntry.m_uAccountID, vBgra, uWidth, uHeight))
+			{
+				tResult.m_uAvatarMissed++;
+				continue;
+			}
+
+			std::filesystem::path sAvatarPath;
+			if (CSteamProfileCache::SaveAvatarToDisk(tEntry.m_uAccountID, vBgra, uWidth, uHeight, &sAvatarPath, false))
+			{
+				tResult.m_uAvatarsSaved++;
+				if (tResult.m_avatarFolder.empty())
+					tResult.m_avatarFolder = sAvatarPath.parent_path();
+			}
+			else
+			{
+				tResult.m_uAvatarFailed++;
+			}
+		}
+	}
+	else if (bAnnounce)
+	{
+		SDK::Output("ProfileScraper", "Steam avatar interfaces unavailable; skipped avatar scraping.");
+	}
+
+	if (bAnnounce)
+	{
+		const size_t uDuplicateCount = tResult.m_uSkippedSessionDuplicate + tResult.m_uSkippedFileDuplicate;
+		SDK::Output("ProfileScraper", std::format(
+			"Saved {} new profiles to {} ({} duplicates skipped, {} comma filtered). Avatars: {} saved, {} unavailable, {} failed.",
+			tResult.m_uAppendedCount,
+			sPath.string(),
+			uDuplicateCount,
+			tResult.m_uSkippedComma,
+			tResult.m_uAvatarsSaved,
+			tResult.m_uAvatarMissed,
+			tResult.m_uAvatarFailed).c_str());
+
+		if (!tResult.m_avatarFolder.empty())
+			SDK::Output("ProfileScraper", std::format("Avatar output directory: {}", tResult.m_avatarFolder.string()).c_str());
+	}
+
+	return tResult;
 }

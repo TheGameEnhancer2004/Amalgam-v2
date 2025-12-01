@@ -1434,6 +1434,7 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
 					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
 					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
+					FTooltip("Automatically performs MVM upgrade station exploit (buys and refunds a fake upgrade giving you additional cash)\nHowever:\n1. You have to be playing medic with a vaccinator\n2. You still have to manually walk to the upgrade station");
 					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
 					{
 						FSlider(Vars::Misc::MannVsMachine::MaxCash);
