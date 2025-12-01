@@ -232,22 +232,13 @@ void CMenu::DrawMenu()
 		static int iTab = 0, iAimbotTab = 0, iVisualsTab = 0, iHvHTab = 0, iMiscTab = 0, iAnticheatTab = 0, iLogsTab = 0, iSettingsTab = 0;
 		PushFont(F::Render.FontBold);
 		FTabs(
-			{
-				{ "AIMBOT", "GENERAL" },
-				{ "VISUALS", "ESP", "AIMDRAW", "MISC##", "MENU" },
-				{ "HVH", "MAIN" },
-				{ "MISC", "MAIN", "BOT"},
-				{ "ANTICHEAT", "CHEATERS", "DETECTION" },
-				{ "LOGS", "PLAYERLIST", "SETTINGS##", "OUTPUT" },
-				{ "SETTINGS", "CONFIG", "BINDS", "MATERIALS", "EXTRA" }
-			},
-			{ &iTab, &iAimbotTab, &iVisualsTab, &iHvHTab, &iMiscTab, &iAnticheatTab, &iLogsTab, &iSettingsTab },
-			{ H::Draw.Scale(flSideSize - 16), H::Draw.Scale(36) },
+			{ "AIMBOT", "VISUALS", "HVH", "MISC", "ANTICHEAT", "LOGS", "SETTINGS" },
+			&iTab,
+			{ H::Draw.Scale(flSideSize - 16), H::Draw.Scale(32) },
 			{ H::Draw.Scale(8), H::Draw.Scale(8) + flOffset },
 			FTabsEnum::Vertical | FTabsEnum::HorizontalIcons | FTabsEnum::AlignLeft | FTabsEnum::BarLeft,
-			{ { ICON_MD_PERSON }, { ICON_MD_VISIBILITY }, { ICON_MD_SECURITY }, { ICON_MD_ARTICLE }, { ICON_MD_GPP_MAYBE }, { ICON_MD_IMPORT_CONTACTS }, { ICON_MD_SETTINGS } },
-			{ H::Draw.Scale(10), 0 }, {},
-			{}, { H::Draw.Scale(22), 0 }
+			{ ICON_MD_PERSON, ICON_MD_VISIBILITY, ICON_MD_SECURITY, ICON_MD_ARTICLE, ICON_MD_GPP_MAYBE, ICON_MD_IMPORT_CONTACTS, ICON_MD_SETTINGS },
+			{ H::Draw.Scale(10), 0 }
 		);
 		PopFont();
 
@@ -270,6 +261,28 @@ void CMenu::DrawMenu()
 		{
 			if (!bSearch)
 			{
+				PushFont(F::Render.FontBold);
+				std::vector<const char*> vSubTabs = {};
+				int* pSubTab = nullptr;
+
+				switch (iTab)
+				{
+				case 0: vSubTabs = { "GENERAL" }; pSubTab = &iAimbotTab; break;
+				case 1: vSubTabs = { "ESP", "AIMDRAW", "MISC##", "MENU" }; pSubTab = &iVisualsTab; break;
+				case 2: vSubTabs = { "MAIN" }; pSubTab = &iHvHTab; break;
+				case 3: vSubTabs = { "MAIN", "BOT" }; pSubTab = &iMiscTab; break;
+				case 4: vSubTabs = { "CHEATERS", "DETECTION" }; pSubTab = &iAnticheatTab; break;
+				case 5: vSubTabs = { "PLAYERLIST", "SETTINGS##", "OUTPUT" }; pSubTab = &iLogsTab; break;
+				case 6: vSubTabs = { "CONFIG", "BINDS", "MATERIALS", "EXTRA" }; pSubTab = &iSettingsTab; break;
+				}
+
+				if (pSubTab && !vSubTabs.empty())
+				{
+					FTabs(vSubTabs, pSubTab, { H::Draw.Scale(15), H::Draw.Scale(30) }, { GetCursorPosX(), GetCursorPosY() }, FTabsEnum::Fit | FTabsEnum::BarBottom);
+					SetCursorPosY(GetCursorPosY() + H::Draw.Scale(5));
+				}
+				PopFont();
+
 				switch (iTab)
 				{
 				case 0: MenuAimbot(iAimbotTab); break;
