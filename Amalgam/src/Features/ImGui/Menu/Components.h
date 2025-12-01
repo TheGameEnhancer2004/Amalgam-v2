@@ -232,8 +232,8 @@ namespace ImGui
 
 		pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBackground, H::Draw.Scale(3));
 		
-		flInset += H::Draw.Scale(0.5f) - 0.5f - H::Draw.Scale();
-		pDrawList->AddRect({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBorder, H::Draw.Scale(4), ImDrawFlags_None, H::Draw.Scale());
+		//flInset += H::Draw.Scale(0.5f) - 0.5f - H::Draw.Scale();
+		//pDrawList->AddRect({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBorder, H::Draw.Scale(4), ImDrawFlags_None, H::Draw.Scale());
 	}
 	inline void RenderTwoToneBackground(float flSize, ImU32 uTitle, ImU32 uBackground, bool bHorizontal = false)
 	{
@@ -262,19 +262,19 @@ namespace ImGui
 		{
 			pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y + flSize }, uTitle, H::Draw.Scale(3), ImDrawFlags_RoundCornersTopLeft | ImDrawFlags_RoundCornersTopRight);
 			pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flSize }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBackground, H::Draw.Scale(3), ImDrawFlags_RoundCornersBottomLeft | ImDrawFlags_RoundCornersBottomRight);
-			if (bTwoToneBorder)
-				pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flSize - H::Draw.Scale() }, {vDrawPos.x - flInset + vSize.x, vDrawPos.y + flSize }, uBorder);
+			//if (bTwoToneBorder)
+			//	pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flSize - H::Draw.Scale() }, {vDrawPos.x - flInset + vSize.x, vDrawPos.y + flSize }, uBorder);
 		}
 		else
 		{
 			pDrawList->AddRectFilled({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x + flSize, vDrawPos.y - flInset + vSize.y }, uTitle, H::Draw.Scale(3), ImDrawFlags_RoundCornersTopLeft | ImDrawFlags_RoundCornersBottomLeft);
 			pDrawList->AddRectFilled({ vDrawPos.x + flSize, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBackground, H::Draw.Scale(3), ImDrawFlags_RoundCornersTopRight | ImDrawFlags_RoundCornersBottomRight);
-			if (bTwoToneBorder)
-				pDrawList->AddRectFilled({ vDrawPos.x + flSize - H::Draw.Scale(), vDrawPos.y + flInset }, { vDrawPos.x + flSize, vDrawPos.y - flInset + vSize.y }, uBorder);
+			//if (bTwoToneBorder)
+			//	pDrawList->AddRectFilled({ vDrawPos.x + flSize - H::Draw.Scale(), vDrawPos.y + flInset }, { vDrawPos.x + flSize, vDrawPos.y - flInset + vSize.y }, uBorder);
 		}
 		
-		flInset += H::Draw.Scale(0.5f) - 0.5f - H::Draw.Scale();
-		pDrawList->AddRect({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBorder, H::Draw.Scale(4), ImDrawFlags_None, H::Draw.Scale());
+		//flInset += H::Draw.Scale(0.5f) - 0.5f - H::Draw.Scale();
+		//pDrawList->AddRect({ vDrawPos.x + flInset, vDrawPos.y + flInset }, { vDrawPos.x - flInset + vSize.x, vDrawPos.y - flInset + vSize.y }, uBorder, H::Draw.Scale(4), ImDrawFlags_None, H::Draw.Scale());
 	}
 	inline void Divider(float flInset = H::Draw.Scale(), float flPrePadding = H::Draw.Scale(8), float flPostPadding = H::Draw.Scale(7), ImU32 uBorder = F::Render.Background2)
 	{
@@ -855,6 +855,9 @@ namespace ImGui
 				ImVec2 vCurTextOffset = vAllTextOffset + (j ? vSubTextOffset : ImVec2());
 				ImVec2 vCurBarOffset = vAllBarOffset + (j ? vSubBarOffset : ImVec2());
 
+				if (j && bVertical)
+					vCurTextOffset.x += H::Draw.Scale(10);
+
 				if (!iTabState)
 					PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
 				else if (iTabState == 2)
@@ -1121,20 +1124,30 @@ namespace ImGui
 		if (Disabled)
 			bReturn = false;
 		else if (IsItemHovered() && GetMouseCursor() != ImGuiMouseCursor_Hand)
-		{
 			SetMouseCursor(ImGuiMouseCursor_Hand);
-
-			ImColor tTransparent = tColor;
-			tTransparent.Value.w *= (IsMouseDown(ImGuiMouseButton_Left) ? 0.1f : 0.05f) * GetStyle().Alpha;
-			ImDrawList* pDrawList = GetWindowDrawList();
-			ImVec2 vDrawPos = GetDrawPos() + ImVec2(vOriginalPos.x + H::Draw.Scale(12), vOriginalPos.y + H::Draw.Scale(3 + 9 * iWraps));
-			pDrawList->AddCircleFilled(vDrawPos, H::Draw.Scale(12), tTransparent);
-		}
+		
 		if (bReturn)
 			*pVar = !*pVar;
 
-		SetCursorPos({ vOriginalPos.x + H::Draw.Scale(4), vOriginalPos.y + H::Draw.Scale(-5 + 9 * iWraps) });
-		IconImage(*pVar ? ICON_MD_CHECK_BOX : ICON_MD_CHECK_BOX_OUTLINE_BLANK, tColor);
+		ImVec2 vDrawPos = GetDrawPos() + vOriginalPos;
+		ImDrawList* pDrawList = GetWindowDrawList();
+		float flBoxSize = H::Draw.Scale(14);
+		ImVec2 vBoxMin = { vDrawPos.x + H::Draw.Scale(2), vDrawPos.y + H::Draw.Scale(2 + 9 * iWraps) - flBoxSize / 2 };
+		ImVec2 vBoxMax = { vBoxMin.x + flBoxSize, vBoxMin.y + flBoxSize };
+
+		if (*pVar)
+		{
+			pDrawList->AddRectFilled(vBoxMin, vBoxMax, tColor, H::Draw.Scale(3));
+			PushFont(F::Render.IconFont);
+			const char* sIcon = ICON_MD_CHECK;
+			ImVec2 vIconSize = CalcTextSize(sIcon);
+			pDrawList->AddText({ vBoxMin.x + (flBoxSize - vIconSize.x) / 2, vBoxMin.y + (flBoxSize - vIconSize.y) / 2 }, F::Render.Background0, sIcon);
+			PopFont();
+		}
+		else
+		{
+			pDrawList->AddRect(vBoxMin, vBoxMax, F::Render.Inactive, H::Draw.Scale(3), ImDrawFlags_None, H::Draw.Scale(1.5f));
+		}
 
 		for (size_t i = 0; i < iWraps; i++)
 		{
@@ -1301,27 +1314,29 @@ namespace ImGui
 #else
 		ImVec2 vMins = { H::Draw.Scale(6), vSize.y - H::Draw.Scale(8) }, vMaxs = { vSize.x - H::Draw.Scale(6), vSize.y - H::Draw.Scale(6) };
 #endif
-		ImColor tAccent = F::Render.Accent, tMuted = tAccent, tWashed = tAccent, tTransparent = tAccent;
-		{
-			float flA = GetStyle().Alpha;
-			tAccent.Value.w *= flA, tMuted.Value.w *= 0.8f * flA, tWashed.Value.w *= 0.4f * flA, tTransparent.Value.w *= 0.1f * flA;
-		}
+		ImColor tAccent = F::Render.Accent, tMuted = F::Render.Inactive;
+		tMuted.Value.w *= 0.3f;
 
 		bool bWithin = IsWindowHovered() && IsMouseWithin(vDrawPos.x + vMins.x - H::Draw.Scale(6), vDrawPos.y + vMins.y - H::Draw.Scale(6), (vMaxs.x - vMins.x) + H::Draw.Scale(12), (vMaxs.y - vMins.y) + H::Draw.Scale(12));
 		if (!Disabled && bWithin)
 			SetMouseCursor(ImGuiMouseCursor_Hand);
 		ImVec2 vMouse = GetMousePos();
 		float flMousePerc = (vMouse.x - (vDrawPos.x + vMins.x)) / ((vDrawPos.x + vMaxs.x) - (vDrawPos.x + vMins.x)) + (flStep / 2) / (flMax - flMin);
+		
+		pDrawList->AddRectFilled({ vDrawPos.x + vMins.x, vDrawPos.y + vMins.y }, { vDrawPos.x + vMaxs.x, vDrawPos.y + vMaxs.y }, tMuted, H::Draw.Scale(4));
+
 		if (pVar2)
 		{
 			float flLowerPerc = std::clamp((flSVar1 - flMin) / (flMax - flMin), 0.f, 1.f), flUpperPerc = std::clamp((flSVar2 - flMin) / (flMax - flMin), 0.f, 1.f);
 			float flLowerPos = vMins.x + (vMaxs.x - vMins.x) * flLowerPerc, flUpperPos = vMins.x + (vMaxs.x - vMins.x) * flUpperPerc;
 
-			AddSteppedRect(vDrawPos, vMins, vMaxs, vMins, { flLowerPos, vMaxs.y }, flMin, flMax, flStep, tWashed, tMuted, H::Draw.Scale(2));
-			AddSteppedRect(vDrawPos, vMins, vMaxs, { flLowerPos, vMins.y }, { flUpperPos, vMaxs.y }, flMin, flMax, flStep, tAccent, tWashed, H::Draw.Scale(2));
-			AddSteppedRect(vDrawPos, vMins, vMaxs, { flUpperPos, vMins.y }, vMaxs, flMin, flMax, flStep, tWashed, tMuted, H::Draw.Scale(2));
-			pDrawList->AddCircleFilled({ vDrawPos.x + flLowerPos, vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(3), tAccent);
-			pDrawList->AddCircleFilled({ vDrawPos.x + flUpperPos, vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(3), tAccent);
+			pDrawList->AddRectFilled({ vDrawPos.x + flLowerPos, vDrawPos.y + vMins.y }, { vDrawPos.x + flUpperPos, vDrawPos.y + vMaxs.y }, tAccent, H::Draw.Scale(4));
+
+			pDrawList->AddCircleFilled({ vDrawPos.x + flLowerPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(5), F::Render.Background0);
+			pDrawList->AddCircleFilled({ vDrawPos.x + flLowerPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(3), tAccent);
+			
+			pDrawList->AddCircleFilled({ vDrawPos.x + flUpperPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(5), F::Render.Background0);
+			pDrawList->AddCircleFilled({ vDrawPos.x + flUpperPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(3), tAccent);
 
 			if (!Disabled)
 			{
@@ -1330,7 +1345,6 @@ namespace ImGui
 					int iVar = fabsf(vMouse.x - (vDrawPos.x + flLowerPos)) < fabsf(vMouse.x - (vDrawPos.x + flUpperPos)) ? 1 : 2;
 					if (IsMouseClicked(ImGuiMouseButton_Left))
 						mActiveMap[uHash] = iVar;
-					pDrawList->AddCircleFilled({ vDrawPos.x + (iVar == 1 ? flLowerPos : flUpperPos), vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(12), tTransparent);
 				}
 				else if (mActiveMap[uHash] && IsMouseDown(ImGuiMouseButton_Left))
 				{
@@ -1338,7 +1352,6 @@ namespace ImGui
 					float& flVar = bVar1 ? flSVar1 : flSVar2;
 					flVar = flMin + (flMax - flMin) * flMousePerc;
 					flVar = std::clamp(flVar - fnmodf(flVar, flStep), !bVar1 ? flSVar1 + flStep : flMin, bVar1 ? flSVar2 - flStep : flMax);
-					pDrawList->AddCircleFilled({ vDrawPos.x + (bVar1 ? flLowerPos : flUpperPos), vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(16), tTransparent);
 				}
 				else
 					mActiveMap[uHash] = false;
@@ -1355,9 +1368,10 @@ namespace ImGui
 			float flPercent = std::clamp((flSVar1 - flMin) / (flMax - flMin), 0.f, 1.f);
 			float flPos = vMins.x + (vMaxs.x - vMins.x) * flPercent;
 
-			AddSteppedRect(vDrawPos, vMins, vMaxs, vMins, { flPos, vMaxs.y }, flMin, flMax, flStep, tAccent, tWashed, H::Draw.Scale(2));
-			AddSteppedRect(vDrawPos, vMins, vMaxs, { flPos, vMins.y }, vMaxs, flMin, flMax, flStep, tWashed, tMuted, H::Draw.Scale(2));
-			pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(3), tAccent);
+			pDrawList->AddRectFilled({ vDrawPos.x + vMins.x, vDrawPos.y + vMins.y }, { vDrawPos.x + flPos, vDrawPos.y + vMaxs.y }, tAccent, H::Draw.Scale(4));
+
+			pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(5), F::Render.Background0);
+			pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(3), tAccent);
 
 			if (!Disabled)
 			{
@@ -1365,13 +1379,11 @@ namespace ImGui
 				{
 					if (IsMouseClicked(ImGuiMouseButton_Left))
 						mActiveMap[uHash] = 1;
-					pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(12), tTransparent);
 				}
 				else if (mActiveMap[uHash] && IsMouseDown(ImGuiMouseButton_Left))
 				{
 					flSVar1 = flMin + (flMax - flMin) * flMousePerc;
 					flSVar1 = std::clamp(flSVar1 - fnmodf(flSVar1, flStep), flMin, flMax);
-					pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(16), tTransparent);
 				}
 				else
 					mActiveMap[uHash] = false;
