@@ -105,8 +105,11 @@ static bool ModulesLoaded()
 	}
 	else 
 		return false;
-
+#ifdef TEXTMODE
+	return GetModuleHandleA("TextmodeTF2x64Release.dll") && GetModuleHandleA("engine.dll") &&
+#else
 	return GetModuleHandleA("engine.dll") &&
+#endif
 		GetModuleHandleA("server.dll") &&
 		GetModuleHandleA("tier0.dll") &&
 		GetModuleHandleA("vstdlib.dll") &&
@@ -126,6 +129,10 @@ void CCore::Load()
 		AppendFailText("Invalid process");
 		return;
 	}
+
+#ifdef TEXTMODE
+	F::NamedPipe.Initialize();
+#endif
 
 	float flTime = 0.f;
 	while (!ModulesLoaded())
@@ -153,9 +160,7 @@ void CCore::Load()
 	F::Materials.LoadMaterials();
 #endif
 	H::ConVars.Unlock();
-#ifdef TEXTMODE
-	F::NamedPipe.Initialize();
-#endif
+
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
 	I::EngineClient->ClientCmd_Unrestricted("exec catexec");
@@ -180,6 +185,9 @@ void CCore::Loop()
 
 void CCore::Unload()
 {
+#ifdef TEXTMODE
+	F::NamedPipe.Shutdown();
+#endif
 	if (m_bFailed)
 	{
 		LogFailText();
@@ -206,9 +214,7 @@ void CCore::Unload()
 	H::ConVars.FindVar("cl_wpn_sway_scale")->SetValue(0.f);
 
 	Sleep(250);
-#ifdef TEXTMODE
-	F::NamedPipe.Shutdown();
-#endif
+
 	F::EnginePrediction.Unload();
 	H::ConVars.Restore();
 	F::Materials.UnloadMaterials();
