@@ -1314,7 +1314,7 @@
     <ClCompile Include="src\SDK\Helpers\TraceFilters\TraceFilters.cpp" />
     <ClCompile Include="src\SDK\SDK.cpp" />
     <ClCompile Include="src\SDK\Helpers\ConVars\ConVars.cpp" />
-    <ClCompile Include="src\Utils\ErrorLog\ErrorLog.cpp" />
+    <ClCompile Include="src\Utils\ExceptionHandler\ExceptionHandler.cpp" />
     <ClCompile Include="src\Utils\Hooks\Hooks.cpp" />
     <ClCompile Include="src\Utils\Interfaces\Interfaces.cpp" />
     <ClCompile Include="src\Utils\KeyHandler\KeyHandler.cpp" />
@@ -1735,7 +1735,7 @@
     <ClInclude Include="src\SDK\SDK.h" />
     <ClInclude Include="src\SDK\Vars.h" />
     <ClInclude Include="src\SDK\Helpers\ConVars\ConVars.h" />
-    <ClInclude Include="src\Utils\ErrorLog\ErrorLog.h" />
+    <ClInclude Include="src\Utils\ExceptionHandler\ExceptionHandler.h" />
     <ClInclude Include="src\Utils\Macros\Macros.h" />
     <ClInclude Include="src\Utils\Hash\FNV1A.h" />
     <ClInclude Include="src\Utils\Hooks\Hooks.h" />

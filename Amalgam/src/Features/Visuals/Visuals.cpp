@@ -76,9 +76,10 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 	filter.pSkip = pPlayer;
 	int nMask = MASK_SOLID;
 	F::ProjSim.SetupTrace(filter, nMask, pWeapon, 0, bQuick);
-
 	Vec3* pNormal = nullptr;
-	for (int n = 1; n <= TIME_TO_TICKS(tProjInfo.m_flLifetime); n++)
+
+	int iTicks = TIME_TO_TICKS(std::min(tProjInfo.m_flLifetime, 10.f));
+	for (int n = 1; n <= iTicks; n++)
 	{
 		Vec3 Old = F::ProjSim.GetOrigin();
 		F::ProjSim.RunTick(tProjInfo);

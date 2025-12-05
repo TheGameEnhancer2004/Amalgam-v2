@@ -133,8 +133,8 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 
 		if (tBind.m_bActive)
 		{
-			LoopVars(i, tBind.m_vVars);
 			GetBinds(i, pLocal, pWeapon, vBinds, bManage);
+			LoopVars(i, tBind.m_vVars);
 		}
 	}
 }

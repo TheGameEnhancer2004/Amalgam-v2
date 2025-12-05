@@ -2,11 +2,11 @@
 #include "../Macros/Macros.h"
 #include <Windows.h>
 
-class CErrorLog
+class CExceptionHandler
 {
 public:
 	void Initialize(LPVOID lpParam = nullptr);
 	void Unload();
 };
 
-ADD_FEATURE_CUSTOM(CErrorLog, ErrorLog, U);
+ADD_FEATURE_CUSTOM(CExceptionHandler, ExceptionHandler, U);

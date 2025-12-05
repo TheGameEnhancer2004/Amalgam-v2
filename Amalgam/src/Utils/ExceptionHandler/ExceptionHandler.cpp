@@ -1,4 +1,4 @@
-#include "ErrorLog.h"
+#include "ExceptionHandler.h"
 
 #include "../../Features/Configs/Configs.h"
 
@@ -197,12 +197,12 @@ static LONG APIENTRY ExceptionFilter(PEXCEPTION_POINTERS ExceptionInfo)
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
-void CErrorLog::Initialize(LPVOID lpParam)
+void CExceptionHandler::Initialize(LPVOID lpParam)
 {
 	s_pHandle = AddVectoredExceptionHandler(1, ExceptionFilter);
 	s_lpParam = lpParam;
 }
-void CErrorLog::Unload()
+void CExceptionHandler::Unload()
 {
 	RemoveVectoredExceptionHandler(s_pHandle);
 }
