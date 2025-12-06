@@ -913,6 +913,9 @@ I dont think this is a good idea to disable simulations completely:
 				CVar(Interval, "Interval", 3.0f, SLIDER_CLAMP | SLIDER_PRECISION, 0.5f, 10.0f, 0.5f, "%0.1fs");
 				CVar(TeamChat, "Team chat", false);
 				CVar(Randomize, "Randomize", false);
+				CVar(AutoReply, "Auto reply", false);
+				CVar(ChatRelay, "Chat relay", false);
+				CVar(VoteKickReply, "Vote kick reply", false);
 			SUBNAMESPACE_END(ChatSpam);
 
 			SUBNAMESPACE_BEGIN(AutoItem)

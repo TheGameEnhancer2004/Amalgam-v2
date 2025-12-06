@@ -39,6 +39,8 @@ private:
 	//bool bSteamCleared = false;
 
 	std::vector<std::string> m_vChatSpamLines;
+	struct AutoReply_t { std::vector<std::string> vTriggers; std::vector<std::string> vReplies; };
+	std::vector<AutoReply_t> m_vAutoReplies;
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
 
@@ -90,11 +92,14 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	void AutoMvmReadyUp();
+	void OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg);
+	std::string ReplaceTags(std::string sMsg, std::string sTarget = "");
 	ProfileDumpResult_t DumpProfiles(bool bAnnounce = true);
 
 	int m_iWishCmdrate = -1;
 	//int m_iWishUpdaterate = -1;
 	bool m_bAntiAFK = false;
+	std::string m_sLastKilledName = "";
 	Timer m_tAutoVotekickTimer;
 };
 
