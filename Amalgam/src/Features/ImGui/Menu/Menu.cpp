@@ -1698,6 +1698,9 @@ void CMenu::MenuMisc(int iTab)
 						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
 					}
 					PopTransparent();
+					FToggle(Vars::Misc::Automation::ChatSpam::AutoReply, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::ChatSpam::ChatRelay, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::ChatSpam::VoteKickReply, FToggleEnum::Left);
 					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
 					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);

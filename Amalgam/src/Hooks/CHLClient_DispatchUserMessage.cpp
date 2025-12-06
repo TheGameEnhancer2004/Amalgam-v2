@@ -41,6 +41,17 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 
 		break;
 	}
+	case SayText2:
+	{
+		int iEntityID = msgData.ReadByte();
+		msgData.ReadByte();
+		char sMsgName[256]; msgData.ReadString(sMsgName, sizeof(sMsgName));
+		char sName[256]; msgData.ReadString(sName, sizeof(sName));
+		char sMsg[256]; msgData.ReadString(sMsg, sizeof(sMsg));
+
+		F::Misc.OnChatMessage(iEntityID, sName, sMsg);
+		break;
+	}
 	case TextMsg:
 	{
 		char rawMsg[256]; msgData.ReadString(rawMsg, sizeof(rawMsg), true);

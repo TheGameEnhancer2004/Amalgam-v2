@@ -560,6 +560,17 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		break;
 	case FNV1A::Hash32Const("player_death"):
 	{
+		const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+		const int iAttacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
+		const int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+
+		if (iAttacker == iLocalPlayer && iAttacker != iVictim)
+		{
+			player_info_t pi;
+			if (I::EngineClient->GetPlayerInfo(iVictim, &pi))
+				m_sLastKilledName = pi.name;
+		}
+
 		if (!Vars::Misc::Automation::AutoTaunt.Value)
 			break;
 
@@ -570,9 +581,6 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		if (pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
 			break;
 
-		const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
-		const int iAttacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
-		const int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
 		if (iAttacker != iLocalPlayer || iAttacker == iVictim)
 			break;
 
@@ -967,7 +975,7 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 	if (vPotentialTargets.empty())
 		return;
 
-	int iRandom = SDK::RandomInt(0, vPotentialTargets.size() - 1);
+	int iRandom = SDK::RandomInt(0, static_cast<int>(vPotentialTargets.size()) - 1);
 	int iTarget = vPotentialTargets[iRandom];
 
 	I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pResource->m_iUserID(iTarget)).c_str());
@@ -1103,6 +1111,8 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 	std::string sChatLine = FetchNextChatLine();
 	if (sChatLine.empty())
 		return;
+
+	sChatLine = ReplaceTags(sChatLine);
 
 	if (sChatLine.length() > 150)
 		sChatLine.resize(150);
@@ -1594,4 +1604,225 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 	}
 
 	return tResult;
+}
+
+std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget)
+{
+	auto ReplaceAll = [&](std::string& str, const std::string& from, const std::string& to) {
+		if (from.empty()) return;
+		size_t start_pos = 0;
+		while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+			str.replace(start_pos, from.length(), to);
+			start_pos += to.length();
+		}
+	};
+
+	if (!sTarget.empty())
+		ReplaceAll(sMsg, "{target}", sTarget);
+
+	if (sMsg.find("{lastkilled}") != std::string::npos)
+		ReplaceAll(sMsg, "{lastkilled}", m_sLastKilledName.empty() ? "unknown" : m_sLastKilledName);
+
+	if (sMsg.find("{highestscore}") != std::string::npos)
+	{
+		int iHighestScore = -1;
+		std::string sHighestScoreName = "unknown";
+		auto pResource = H::Entities.GetResource();
+		if (pResource)
+		{
+			for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+			{
+				if (!pResource->m_bValid(i)) continue;
+				int iScore = pResource->m_iTotalScore(i);
+				if (iScore > iHighestScore)
+				{
+					iHighestScore = iScore;
+					sHighestScoreName = pResource->GetName(i);
+				}
+			}
+		}
+		ReplaceAll(sMsg, "{highestscore}", sHighestScoreName);
+	}
+
+	auto GetRandomPlayer = [&](bool bFriend, bool bIgnored) -> std::string {
+		std::vector<std::string> vCandidates;
+		auto pResource = H::Entities.GetResource();
+		if (pResource)
+		{
+			for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+			{
+				if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i)) continue;
+				
+				bool isFriend = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG));
+				bool isIgnored = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG));
+
+				if (bFriend && !isFriend) continue;
+				if (bIgnored && !isIgnored) continue;
+
+				vCandidates.push_back(pResource->GetName(i));
+			}
+		}
+		if (vCandidates.empty()) return "unknown";
+		return vCandidates[SDK::RandomInt(0, static_cast<int>(vCandidates.size()) - 1)];
+	};
+
+	if (sMsg.find("{random}") != std::string::npos)
+		ReplaceAll(sMsg, "{random}", GetRandomPlayer(false, false));
+	
+	if (sMsg.find("{friend}") != std::string::npos)
+		ReplaceAll(sMsg, "{friend}", GetRandomPlayer(true, false));
+
+	if (sMsg.find("{ignored}") != std::string::npos)
+		ReplaceAll(sMsg, "{ignored}", GetRandomPlayer(false, true));
+
+	return sMsg;
+}
+
+void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg)
+{
+	if (iEntIndex == I::EngineClient->GetLocalPlayer())
+		return;
+
+	if (Vars::Misc::Automation::ChatSpam::AutoReply.Value)
+	{
+		if (m_vAutoReplies.empty())
+		{
+			std::string sPath = I::EngineClient->GetGameDirectory();
+			sPath += "\\Amalgam\\autoreply.txt";
+
+			if (!std::filesystem::exists(sPath))
+			{
+				std::ofstream newFile(sPath);
+				if (newFile.good())
+				{
+					newFile << "// Auto Reply Configuration\n";
+					newFile << "// Format: trigger1, trigger2 : response1, response2\n";
+					newFile << "// Example:\n";
+					newFile << "hello, hi : hi there, hello!\n";
+					newFile << "bot, hacker : I am not a bot, I am just good\n";
+				}
+			}
+
+			std::ifstream file(sPath);
+			if (file.good())
+			{
+				std::string line;
+				while (std::getline(file, line))
+				{
+					if (line.empty() || line.find("//") == 0) continue;
+
+					size_t delimiterPos = line.find(':');
+					if (delimiterPos != std::string::npos)
+					{
+						std::string triggersStr = line.substr(0, delimiterPos);
+						std::string repliesStr = line.substr(delimiterPos + 1);
+
+						AutoReply_t entry;
+
+						auto ParseTokens = [](std::string str) -> std::vector<std::string> {
+							std::vector<std::string> tokens;
+							size_t pos = 0;
+							std::string token;
+							while ((pos = str.find(',')) != std::string::npos) {
+								token = str.substr(0, pos);
+								if (token.find_first_not_of(" \t") != std::string::npos)
+								{
+									token.erase(0, token.find_first_not_of(" \t"));
+									token.erase(token.find_last_not_of(" \t") + 1);
+									if (!token.empty()) tokens.push_back(token);
+								}
+								str.erase(0, pos + 1);
+							}
+							token = str;
+							if (token.find_first_not_of(" \t") != std::string::npos)
+							{
+								token.erase(0, token.find_first_not_of(" \t"));
+								token.erase(token.find_last_not_of(" \t") + 1);
+								if (!token.empty()) tokens.push_back(token);
+							}
+							return tokens;
+						};
+
+						entry.vTriggers = ParseTokens(triggersStr);
+						entry.vReplies = ParseTokens(repliesStr);
+
+						if (!entry.vTriggers.empty() && !entry.vReplies.empty())
+							m_vAutoReplies.push_back(entry);
+					}
+				}
+			}
+		}
+
+		for (const auto& entry : m_vAutoReplies)
+		{
+			bool bTriggered = false;
+			for (const auto& trigger : entry.vTriggers)
+			{
+				if (sMsg.find(trigger) != std::string::npos)
+				{
+					bTriggered = true;
+					break;
+				}
+			}
+
+			if (bTriggered)
+			{
+				if (!entry.vReplies.empty())
+				{
+					//static cast my ass
+					int index = SDK::RandomInt(0, static_cast<int>(entry.vReplies.size()) - 1);
+					std::string sReply = ReplaceTags(entry.vReplies[index], sName);
+					std::string cmd = "say " + sReply;
+					I::EngineClient->ClientCmd_Unrestricted(cmd.c_str());
+					break;
+				}
+			}
+		}
+	}
+
+	if (Vars::Misc::Automation::ChatSpam::ChatRelay.Value)
+	{
+		// fucking compiler warnings :middle_finger: :middle_finger: :middle_finger: :middle_finger: 
+		char* pAppData = nullptr;
+		size_t len = 0;
+		_dupenv_s(&pAppData, &len, "APPDATA");
+		std::string sAppData = pAppData ? pAppData : "";
+		free(pAppData);
+
+		std::string sPath = sAppData + "\\Amalgam\\chat_relay.txt";
+		std::filesystem::create_directories(sAppData + "\\Amalgam");
+
+		std::string sServerIP = "";
+		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
+			sServerIP = pNetChan->GetAddress();
+
+		std::string sMapName = "";
+		if (const char* pMapName = I::EngineClient->GetLevelName())
+			sMapName = std::filesystem::path(pMapName).stem().string();
+
+		std::string sLogLine = std::format("[{}] [{}] {}: {}", sServerIP, sMapName, sName, sMsg);
+
+		{
+			std::ifstream file(sPath);
+			if (file.good())
+			{
+				file.seekg(0, std::ios::end);
+				std::streampos length = file.tellg();
+				if (length > 0)
+				{
+					int readSize = std::min((int)length, 4096);
+					file.seekg(-readSize, std::ios::end);
+					std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+					if (content.find(sLogLine) != std::string::npos)
+						return;
+				}
+			}
+		}
+
+		std::ofstream outfile(sPath, std::ios::app);
+		if (outfile.good())
+		{
+			outfile << sLogLine << std::endl;
+		}
+	}
 }
