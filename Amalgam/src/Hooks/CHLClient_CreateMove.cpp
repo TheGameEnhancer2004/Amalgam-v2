@@ -36,7 +36,7 @@ struct CmdHistory_t
 	bool m_bSendingPacket;
 };
 
-static inline void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+__declspec(noinline) static void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	G::PSilentAngles = G::SilentAngles = G::Attacking = G::Throwing = false;
 	G::LastUserCmd = G::CurrentUserCmd ? G::CurrentUserCmd : pCmd;
@@ -178,7 +178,7 @@ static inline void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	G::CanHeadshot = pWeapon->CanHeadshot() || pWeapon->AmbassadorCanHeadshot(TICKS_TO_TIME(pLocal->m_nTickBase()));
 }
 #ifndef TEXTMODE
-static inline void LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
+__declspec(noinline) static void LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
 {
 	static std::vector<Vec3> vAngles = {};
 	vAngles.push_back(pCmd->viewangles);
@@ -204,7 +204,7 @@ static inline void LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSend
 	}
 }
 #endif
-static inline void AntiCheatCompatibility(CUserCmd* pCmd, bool* pSendPacket)
+__declspec(noinline) static void AntiCheatCompatibility(CUserCmd* pCmd, bool* pSendPacket)
 {
 	if (!Vars::Misc::Game::AntiCheatCompatibility.Value)
 		return;
@@ -271,14 +271,14 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 #endif
 
 	CALL_ORIGINAL(rcx, sequence_number, input_sample_frametime, active);
+	
+	static auto uSendPackedAddr = reinterpret_cast<uintptr_t>(_AddressOfReturnAddress()) + 0x20;
+	auto pSendPacket = reinterpret_cast<bool*>(uSendPackedAddr);
 
 	auto pLocal = H::Entities.GetLocal();
 	auto pWeapon = H::Entities.GetWeapon();
 	if (!pLocal || G::Unload)
 		return;
-
-	static auto uSendPackedAddr = reinterpret_cast<uintptr_t>(_AddressOfReturnAddress()) + 0x20;
-	auto pSendPacket = reinterpret_cast<bool*>(uSendPackedAddr);
 
 	CUserCmd* pCmd = &I::Input->m_pCommands[sequence_number % MULTIPLAYER_BACKUP];
 
