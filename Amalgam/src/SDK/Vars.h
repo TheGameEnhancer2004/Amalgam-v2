@@ -508,16 +508,16 @@ namespace Vars
 	NAMESPACE_BEGIN(AntiAim, Antiaim)
 		CVar(Enabled, VA_LIST("Enabled", "Antiaim enabled"), false);
 		CVarEnum(PitchReal, "Real pitch", 0, NONE, nullptr,
-			VA_LIST("None", "Up", "Down", "Zero", "Jitter", "Reverse jitter"),
-			None, Up, Down, Zero, Jitter, ReverseJitter);
+			VA_LIST("None", "Up", "Down", "Zero", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random"),
+			None, Up, Down, Zero, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom);
 		CVarEnum(PitchFake, "Fake pitch", 0, NONE, nullptr,
-			VA_LIST("None", "Up", "Down", "Jitter", "Reverse jitter"),
-			None, Up, Down, Jitter, ReverseJitter);
-		Enum(Yaw, Forward, Left, Right, Backwards, Edge, Jitter, Spin);
+			VA_LIST("None", "Up", "Down", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random"),
+			None, Up, Down, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom);
+		Enum(Yaw, Forward, Left, Right, Backwards, Edge, Jitter, Spin, Random, Wiggle, Mercedes, Star, UltraRandom);
 		CVarValues(YawReal, "Real yaw", 0, NONE, nullptr,
-			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin");
+			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random");
 		CVarValues(YawFake, "Fake yaw", 0, NONE, nullptr,
-			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin");
+			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random");
 		Enum(YawMode, View, Target);
 		CVarValues(RealYawBase, "Real base", 0, NONE, nullptr,
 			"View", "Target");

@@ -113,6 +113,43 @@ float CAntiAim::GetYawOffset(CTFPlayer* pEntity, bool bFake)
 	case Vars::AntiAim::YawEnum::Edge: return (bFake ? Vars::AntiAim::FakeYawValue.Value : Vars::AntiAim::RealYawValue.Value) * GetEdge(pEntity, I::EngineClient->GetViewAngles().y);
 	case Vars::AntiAim::YawEnum::Jitter: return (bFake ? Vars::AntiAim::FakeYawValue.Value : Vars::AntiAim::RealYawValue.Value) * iJitter;
 	case Vars::AntiAim::YawEnum::Spin: return fmod(I::GlobalVars->tickcount * Vars::AntiAim::SpinSpeed.Value + 180.f, 360.f) - 180.f;
+	case Vars::AntiAim::YawEnum::Random: return SDK::RandomFloat(-180.f, 180.f);
+	case Vars::AntiAim::YawEnum::Wiggle: return (sin(I::GlobalVars->tickcount * Vars::AntiAim::SpinSpeed.Value * 0.1f) * 90.f);
+	case Vars::AntiAim::YawEnum::Mercedes:
+	{
+		int iStep = I::GlobalVars->tickcount % 3;
+		return (iStep == 1 ? 120.f : (iStep == 2 ? -120.f : 0.f));
+	}
+	case Vars::AntiAim::YawEnum::Star:
+	{
+		int iStep = I::GlobalVars->tickcount % 5;
+		return (iStep == 1 ? 72.f : (iStep == 2 ? 144.f : (iStep == 3 ? -144.f : (iStep == 4 ? -72.f : 0.f))));
+	}
+	case Vars::AntiAim::YawEnum::UltraRandom:
+	{
+		static float flNextChange[2] = { 0.f, 0.f };
+		static float flYawOffset[2] = { 0.f, 0.f };
+		static bool bSpin[2] = { false, false };
+		static float flSpinSpeed[2] = { 0.f, 0.f };
+
+		int i = bFake ? 1 : 0;
+		float flCurTime = I::GlobalVars->curtime;
+
+		if (flCurTime > flNextChange[i])
+		{
+			flNextChange[i] = flCurTime + SDK::RandomFloat(0.5f, 5.f);
+			bSpin[i] = SDK::RandomInt(0, 1);
+			if (bSpin[i])
+				flSpinSpeed[i] = SDK::RandomFloat(-30.f, 30.f);
+			else
+				flYawOffset[i] = SDK::RandomFloat(-180.f, 180.f);
+		}
+
+		if (bSpin[i])
+			return fmod(I::GlobalVars->tickcount * flSpinSpeed[i] + 180.f, 360.f) - 180.f;
+		else
+			return flYawOffset[i];
+	}
 	}
 	return 0.f;
 }
@@ -178,6 +215,22 @@ float CAntiAim::GetPitch(float flCurPitch)
 	case Vars::AntiAim::PitchRealEnum::Zero: flRealPitch = 0.f; break;
 	case Vars::AntiAim::PitchRealEnum::Jitter: flRealPitch = -89.f * iJitter; break;
 	case Vars::AntiAim::PitchRealEnum::ReverseJitter: flRealPitch = 89.f * iJitter; break;
+	case Vars::AntiAim::PitchRealEnum::HalfUp: flRealPitch = -45.f; break;
+	case Vars::AntiAim::PitchRealEnum::HalfDown: flRealPitch = 45.f; break;
+	case Vars::AntiAim::PitchRealEnum::Random: flRealPitch = SDK::RandomFloat(-89.f, 89.f); break;
+	case Vars::AntiAim::PitchRealEnum::Spin: flRealPitch = fmod(I::GlobalVars->tickcount * Vars::AntiAim::SpinSpeed.Value + 180.f, 360.f) - 180.f; break;
+	case Vars::AntiAim::PitchRealEnum::UltraRandom:
+	{
+		static float flNextChange = 0.f;
+		static float flPitch = 0.f;
+		if (I::GlobalVars->curtime > flNextChange)
+		{
+			flNextChange = I::GlobalVars->curtime + SDK::RandomFloat(0.5f, 5.f);
+			flPitch = SDK::RandomFloat(-89.f, 89.f);
+		}
+		flRealPitch = flPitch;
+		break;
+	}
 	}
 
 	switch (Vars::AntiAim::PitchFake.Value)
@@ -186,6 +239,22 @@ float CAntiAim::GetPitch(float flCurPitch)
 	case Vars::AntiAim::PitchFakeEnum::Down: flFakePitch = 89.f; break;
 	case Vars::AntiAim::PitchFakeEnum::Jitter: flFakePitch = -89.f * iJitter; break;
 	case Vars::AntiAim::PitchFakeEnum::ReverseJitter: flFakePitch = 89.f * iJitter; break;
+	case Vars::AntiAim::PitchFakeEnum::HalfUp: flFakePitch = -45.f; break;
+	case Vars::AntiAim::PitchFakeEnum::HalfDown: flFakePitch = 45.f; break;
+	case Vars::AntiAim::PitchFakeEnum::Random: flFakePitch = SDK::RandomFloat(-89.f, 89.f); break;
+	case Vars::AntiAim::PitchFakeEnum::Spin: flFakePitch = fmod(I::GlobalVars->tickcount * Vars::AntiAim::SpinSpeed.Value + 180.f, 360.f) - 180.f; break;
+	case Vars::AntiAim::PitchFakeEnum::UltraRandom:
+	{
+		static float flNextChange = 0.f;
+		static float flPitch = 0.f;
+		if (I::GlobalVars->curtime > flNextChange)
+		{
+			flNextChange = I::GlobalVars->curtime + SDK::RandomFloat(0.5f, 5.f);
+			flPitch = SDK::RandomFloat(-89.f, 89.f);
+		}
+		flFakePitch = flPitch;
+		break;
+	}
 	}
 
 	if (Vars::AntiAim::PitchReal.Value && Vars::AntiAim::PitchFake.Value)
