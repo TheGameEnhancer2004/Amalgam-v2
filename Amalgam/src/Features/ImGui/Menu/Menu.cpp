@@ -312,6 +312,7 @@ void CMenu::MenuAimbot(int iTab)
 					FDropdown(Vars::Aimbot::General::TargetSelection, FDropdownEnum::Right);
 					FDropdown(Vars::Aimbot::General::Target, FDropdownEnum::Left);
 					FDropdown(Vars::Aimbot::General::Ignore, FDropdownEnum::Right);
+					FDropdown(Vars::Aimbot::General::BypassIgnore);
 					FSlider(Vars::Aimbot::General::AimFOV);
 					FSlider(Vars::Aimbot::General::MaxTargets, FSliderEnum::Left);
 					PushTransparent(!(Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invisible));
@@ -1551,6 +1552,7 @@ void CMenu::MenuMisc(int iTab)
 					{
 						FSlider(Vars::Misc::Movement::BotUtils::LookAtPathSpeed, FSliderEnum::None);
 						FTooltip("Specifies how smooth the viewangles will change when using 'Look at path' in nav engine or followbot");
+						FToggle(Vars::Misc::Movement::BotUtils::LookAtPathDebug);
 					}
 					PopTransparent();
 					FToggle(Vars::Misc::Automation::RandomClass, FToggleEnum::Right);
@@ -1648,7 +1650,8 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-					FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+		//			FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
 						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);

@@ -292,6 +292,9 @@ namespace Vars
 			CVarEnum(Ignore, "Ignore", 0b00000001000, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Friends", "Party", "Unprioritized", "Invulnerable", "Invisible", "Unsimulated", "Dead ringer", "Vaccinator", "Disguised", "Taunting", "Team", "Sentry busters"),
 				Friends = 1 << 0, Party = 1 << 1, Unprioritized = 1 << 2, Invulnerable = 1 << 3, Invisible = 1 << 4, Unsimulated = 1 << 5, DeadRinger = 1 << 6, Vaccinator = 1 << 7, Disguised = 1 << 8, Taunting = 1 << 9, Team = 1 << 10, SentryBusters = 1 << 11);
+			CVarEnum(BypassIgnore, "Bypass ignore", 0, DROPDOWN_MULTI, nullptr,
+				VA_LIST("Friends", "Ignored", "Local bots"),
+				Friends = 1 << 0, Ignored = 1 << 1, LocalBots = 1 << 2);
 			CVar(AimFOV, "Aim FOV", 30.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 359.f);
 			CVar(MaxTargets, "Max targets", 2, SLIDER_MIN, 1, 6);
 			CVar(IgnoreInvisible, "Ignore invisible", 50.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 10.f, "%g%%");
@@ -790,8 +793,8 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Path", "Areas", "Blacklisted zones"),
 					Path = 1 << 0, Area = 1 << 1, Blacklist = 1 << 2);
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
-					VA_LIST("Off", "Plain", "Silent", "Human", "Human silent"),
-					Off, Plain, Silent, Human, HumanSilent);
+					VA_LIST("Off", "Plain", "Silent", "Legit", "Legit silent"),
+					Off, Plain, Silent, Legit, LegitSilent);
 
 				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
 				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
@@ -816,6 +819,7 @@ I dont think this is a good idea to disable simulations completely:
 					Off, Simple, MoveSim);
 				CVar(AutoScopeCancelTime, "Auto scope cancel time", 3, SLIDER_MIN, 1, 5, 1, "%is");
 				CVar(AutoScopeUseCachedResults, "Auto scope use cached results", true, NOSAVE | DEBUGVAR);
+				CVar(LookAtPathDebug, "Look at path debug", false, NOSAVE | DEBUGVAR);
 			SUBNAMESPACE_END(BotUtils);
 
 			SUBNAMESPACE_BEGIN(NavBot)
@@ -955,7 +959,7 @@ I dont think this is a good idea to disable simulations completely:
 		SUBNAMESPACE_END(Game);
 
 		SUBNAMESPACE_BEGIN(Queueing)
-			CVarEnum(ForceRegions, "Force regions", 0b0, DROPDOWN_MULTI, nullptr, // i'm not sure all of these are actually used for tf2 servers
+			CVarEnum(ForceRegions, "Force regions", 0b0, DROPDOWN_MULTI, nullptr, // i'm not sure all of these are actually used for tf2 servers (they are)
 				VA_LIST("Atlanta", "Chicago", "Dallas", "Los Angeles", "Seattle", "Virginia", "##Divider", "Amsterdam", "Falkenstein", "Frankfurt", "Helsinki", "London", "Madrid", "Paris", "Stockholm", "Vienna", "Warsaw", "##Divider", "Buenos Aires", "Lima", "Santiago", "Sao Paulo", "##Divider", "Chennai", "Dubai", "Hong Kong", "Mumbai", "Seoul", "Singapore", "Tokyo", "##Divider", "Sydney", "##Divider", "Johannesburg"),
 				// North America
 				ATL = 1 << 0, // Atlanta
@@ -996,7 +1000,8 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(FreezeQueue, "Freeze queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
-			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", false);
+			CVar(MapBarBoost, "Boost Playercount Visualizer", false);
+			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", true);
 			CVar(AutoDumpProfiles, "Auto dump profiles", false);
 			CVar(AutoDumpDelay, "Auto dump delay", 15, SLIDER_CLAMP, 0, 120, 1, "%is");
 			CVar(QueueDelay, "Queue delay", 5, SLIDER_MIN, 0, 10, 1, "%im");

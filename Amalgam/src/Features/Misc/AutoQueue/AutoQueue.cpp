@@ -19,6 +19,13 @@ void CAutoQueue::Run()
 	const char* pszLevelName = I::EngineClient->GetLevelName();
 	const std::string sLevelName = pszLevelName ? pszLevelName : "";
 
+	if (Vars::Misc::Queueing::MapBarBoost.Value && bIsLoadingMapNow)
+	{
+		if (I::TFGCClientSystem)
+			I::TFGCClientSystem->AbandonCurrentMatch();
+		return;
+	}
+
 	if (sLevelName != m_sLastLevelName)
 	{
 		m_sLastLevelName = sLevelName;

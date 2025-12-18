@@ -21,7 +21,7 @@ private:
 	bool HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	void UpdateBestSlot(CTFPlayer* pLocal);
 
-	struct HumanLookState_t
+	struct legitLookState_t
 	{
 		Vec3 m_vAnchor = {};
 		Vec3 m_vOffset = {};
@@ -29,6 +29,9 @@ private:
 		Vec3 m_vLastTarget = {};
 		Vec3 m_vGlanceCurrent = {};
 		Vec3 m_vGlanceGoal = {};
+		int m_iLastTarget = -1;
+		float m_flLastSeen = 0.f;
+		Vec3 m_vLastPos = {};
 		float m_flNextOffset = 1.f;
 		float m_flPhase = 0.f;
 		float m_flGlanceDuration = 0.f;
@@ -40,7 +43,7 @@ private:
 		Timer m_tGlanceCooldown = {};
 	};
 
-	HumanLookState_t m_tHLAP = {};
+	legitLookState_t m_tLLAP = {};
 public:
 
 	int m_iCurrentSlot = -1;
@@ -59,8 +62,8 @@ public:
 	void DoSlowAim(Vec3& vWishAngles, float flSpeed , Vec3 vPreviousAngles);
 	void LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool bSilent);
 	void LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, bool bSilent, bool bSmooth = true);
-	void LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
-	void InvalidateHLAP();
+	void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
+	void InvalidateLLAP();
 
 	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
