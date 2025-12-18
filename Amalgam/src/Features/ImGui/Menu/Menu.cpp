@@ -312,6 +312,7 @@ void CMenu::MenuAimbot(int iTab)
 					FDropdown(Vars::Aimbot::General::TargetSelection, FDropdownEnum::Right);
 					FDropdown(Vars::Aimbot::General::Target, FDropdownEnum::Left);
 					FDropdown(Vars::Aimbot::General::Ignore, FDropdownEnum::Right);
+					FDropdown(Vars::Aimbot::General::BypassIgnore);
 					FSlider(Vars::Aimbot::General::AimFOV);
 					FSlider(Vars::Aimbot::General::MaxTargets, FSliderEnum::Left);
 					PushTransparent(!(Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Invisible));
