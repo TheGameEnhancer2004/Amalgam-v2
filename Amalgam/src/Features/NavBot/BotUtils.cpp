@@ -411,11 +411,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	
 	CTFPlayer* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
+	auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		auto pEnemy = pEntity->As<CTFPlayer>();
 		if (!pEnemy || !pEnemy->IsAlive() || pEnemy->IsDormant())
+			continue;
+
+		if (ShouldTarget(pLocal, pWeapon, pEnemy->entindex()) == ShouldTargetEnum::DontTarget)
 			continue;
 
 		Vec3 vEnemyEye = pEnemy->GetEyePosition();
