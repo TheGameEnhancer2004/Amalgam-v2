@@ -2,6 +2,7 @@
 
 #include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
+#include "../../Visuals/SpectatorList/SpectatorList.h"
 
 bool CAutoRocketJump::SetAngles(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
@@ -104,6 +105,12 @@ bool CAutoRocketJump::SetAngles(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 
 void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
+	if (Vars::Aimbot::General::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
+	{
+		m_iFrame = -1;
+		return;
+	}
+
 	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || I::EngineVGui->IsGameUIVisible())
 	{
 		m_iFrame = -1;

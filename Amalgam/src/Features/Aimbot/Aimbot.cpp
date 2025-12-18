@@ -9,9 +9,13 @@
 #include "AutoRocketJump/AutoRocketJump.h"
 #include "../Misc/Misc.h"
 #include "../Visuals/Visuals.h"
+#include "../Visuals/SpectatorList/SpectatorList.h"
 
 bool CAimbot::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
+	if (Vars::Aimbot::General::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
+		return false;
+
 	if (!pWeapon || !pLocal->CanAttack()
 		|| !SDK::AttribHookValue(1, "mult_dmg", pWeapon)
 		/*|| I::EngineVGui->IsGameUIVisible()*/)

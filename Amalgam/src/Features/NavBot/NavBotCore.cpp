@@ -14,6 +14,7 @@
 #include "../CritHack/CritHack.h"
 #include "../Ticks/Ticks.h"
 #include "../Misc/Misc.h"
+#include "../Visuals/SpectatorList/SpectatorList.h"
 
 void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot)
 {
@@ -275,6 +276,13 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value ||
 		!pLocal->IsAlive() || F::NavEngine.m_eCurrentPriority == PriorityListEnum::Followbot || F::FollowBot.m_bActive || !F::NavEngine.IsReady())
+	{
+		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
+		F::NavBotReload.m_iLastReloadSlot = -1;
+		return;
+	}
+
+	if (Vars::Misc::Movement::NavBot::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
 	{
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;

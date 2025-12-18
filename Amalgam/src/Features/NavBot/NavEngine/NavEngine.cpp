@@ -3,6 +3,7 @@
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
 #include "../../FollowBot/FollowBot.h"
+#include "../../Visuals/SpectatorList/SpectatorList.h"
 #include <limits>
 #include <algorithm>
 #include <cmath>
@@ -472,6 +473,9 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		bWasOn = true;
 		Reset(true);
 	}
+
+	if (Vars::Misc::Movement::NavEngine::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
+		return;
 
 	if (!m_bUpdatedRespawnRooms)
 		UpdateRespawnRooms();

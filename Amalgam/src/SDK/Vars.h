@@ -305,6 +305,7 @@ namespace Vars
 			CVar(NoSpread, "No spread", false);
 			CVar(PrioritizeNavbot, "Prioritize navbot target", false);
 			CVar(PrioritizeFollowbot, "Prioritize followbot target", false);
+			CVar(DisableOnSpectate, "Disable on spectate", false);
 
 			CVarEnum(AimHoldsFire, "Aim holds fire", 2, NOSAVE | DEBUGVAR, nullptr,
 				VA_LIST("False", "Minigun only", "Always"),
@@ -510,6 +511,7 @@ namespace Vars
 
 	NAMESPACE_BEGIN(AntiAim, Antiaim)
 		CVar(Enabled, VA_LIST("Enabled", "Antiaim enabled"), false);
+		CVar(DisableOnSpectate, "Disable on spectate", false);
 		CVarEnum(PitchReal, "Real pitch", 0, NONE, nullptr,
 			VA_LIST("None", "Up", "Down", "Zero", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random"),
 			None, Up, Down, Zero, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom);
@@ -788,6 +790,7 @@ I dont think this is a good idea to disable simulations completely:
 
 			SUBNAMESPACE_BEGIN(NavEngine)
 				CVar(Enabled, VA_LIST("Enabled", "Nav engine enabled"), false);
+				CVar(DisableOnSpectate, "Disable on spectate", false);
 				CVar(PathInSetup, "Path in setup time", false);
 				CVarEnum(Draw, "Draw", 0b011, VISUAL | DROPDOWN_MULTI, nullptr,
 					VA_LIST("Path", "Areas", "Blacklisted zones"),
@@ -824,6 +827,7 @@ I dont think this is a good idea to disable simulations completely:
 
 			SUBNAMESPACE_BEGIN(NavBot)
 				CVar(Enabled, VA_LIST("Enabled", "Navbot enabled"), false);
+				CVar(DisableOnSpectate, "Disable on spectate", false);
 				CVarEnum(Blacklist, "Blacklist", 0b0101111, DROPDOWN_MULTI, "None",
 					VA_LIST("Normal threats", "Dormant threats", "##Divider", "Players", "Stickies", "Projectiles", "Sentries"),
 					NormalThreats = 1 << 0, DormantThreats = 1 << 1, Players = 1 << 2, Stickies = 1 << 3, Projectiles = 1 << 4, Sentries = 1 << 5);

@@ -1303,6 +1303,7 @@ void CMenu::MenuHvH(int iTab)
 					FToggle(Vars::AntiAim::MinWalk, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::AntiOverlap, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::InvalidShootPitch, FToggleEnum::Right);
+					FToggle(Vars::AntiAim::DisableOnSpectate, FToggleEnum::Left);
 				} EndSection();
 			}
 			/* Column 2 */
@@ -1501,6 +1502,7 @@ void CMenu::MenuMisc(int iTab)
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
@@ -1515,7 +1517,8 @@ void CMenu::MenuMisc(int iTab)
 				{
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
-						FToggle(Vars::Misc::Movement::NavBot::Enabled);
+						FToggle(Vars::Misc::Movement::NavBot::Enabled, FToggleEnum::Left);
+						FToggle(Vars::Misc::Movement::NavBot::DisableOnSpectate, FToggleEnum::Right);
 						PushTransparent(!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value);
 						{
 							FDropdown(Vars::Misc::Movement::NavBot::RechargeDT);
