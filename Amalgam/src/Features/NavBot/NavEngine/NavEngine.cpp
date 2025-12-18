@@ -607,38 +607,38 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	{
 		if (G::Attacking == 1)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 			return;
 		}
 
 		auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
-		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
-		bool bHuman = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Human || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
+		bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
 
 		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 			return;
 		}
 
 		if (bSilent && G::AntiAim)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 			return;
 		}
 
-		if (bHuman)
+		if (bLegit)
 		{
-			F::BotUtils.LookAtPathHumanized(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
+			F::BotUtils.LookLegit(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
 		}
 		else if (bTargetValid)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 			F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
 		}
 		else
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 		}
 	};
 	// No more crumbs, reset status
@@ -897,31 +897,31 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	if (G::Attacking != 1)
 	{
 		auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
-		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
-		bool bHuman = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Human || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::HumanSilent;
+		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
+		bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
 
 		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 		}
 		else if (bSilent && G::AntiAim)
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 		}
-		else if (bHuman)
+		else if (bLegit)
 		{
 			Vec3 vLookTarget{ vMoveTarget.x, vMoveTarget.y, vMoveTarget.z };
-			F::BotUtils.LookAtPathHumanized(pLocal, pCmd, vLookTarget, bSilent);
+			F::BotUtils.LookLegit(pLocal, pCmd, vLookTarget, bSilent);
 		}
 		else
 		{
-			F::BotUtils.InvalidateHLAP();
+			F::BotUtils.InvalidateLLAP();
 			F::BotUtils.LookAtPath(pCmd, Vec2(vMoveTarget.x, vMoveTarget.y), pLocal->GetEyePosition(), bSilent);
 		}
 	}
 	else
 	{
-		F::BotUtils.InvalidateHLAP();
+		F::BotUtils.InvalidateLLAP();
 	}
 
 	SDK::WalkTo(pCmd, pLocal, vMoveTarget);

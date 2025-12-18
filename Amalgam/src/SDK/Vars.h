@@ -790,8 +790,8 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Path", "Areas", "Blacklisted zones"),
 					Path = 1 << 0, Area = 1 << 1, Blacklist = 1 << 2);
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
-					VA_LIST("Off", "Plain", "Silent", "Human", "Human silent"),
-					Off, Plain, Silent, Human, HumanSilent);
+					VA_LIST("Off", "Plain", "Silent", "Legit", "Legit silent"),
+					Off, Plain, Silent, Legit, LegitSilent);
 
 				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
 				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
@@ -955,7 +955,7 @@ I dont think this is a good idea to disable simulations completely:
 		SUBNAMESPACE_END(Game);
 
 		SUBNAMESPACE_BEGIN(Queueing)
-			CVarEnum(ForceRegions, "Force regions", 0b0, DROPDOWN_MULTI, nullptr, // i'm not sure all of these are actually used for tf2 servers
+			CVarEnum(ForceRegions, "Force regions", 0b0, DROPDOWN_MULTI, nullptr, // i'm not sure all of these are actually used for tf2 servers (they are)
 				VA_LIST("Atlanta", "Chicago", "Dallas", "Los Angeles", "Seattle", "Virginia", "##Divider", "Amsterdam", "Falkenstein", "Frankfurt", "Helsinki", "London", "Madrid", "Paris", "Stockholm", "Vienna", "Warsaw", "##Divider", "Buenos Aires", "Lima", "Santiago", "Sao Paulo", "##Divider", "Chennai", "Dubai", "Hong Kong", "Mumbai", "Seoul", "Singapore", "Tokyo", "##Divider", "Sydney", "##Divider", "Johannesburg"),
 				// North America
 				ATL = 1 << 0, // Atlanta
@@ -996,7 +996,8 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(FreezeQueue, "Freeze queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
-			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", false);
+			CVar(MapBarBoost, "Boost Playercount Visualizer", false);
+			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", true);
 			CVar(AutoDumpProfiles, "Auto dump profiles", false);
 			CVar(AutoDumpDelay, "Auto dump delay", 15, SLIDER_CLAMP, 0, 120, 1, "%is");
 			CVar(QueueDelay, "Queue delay", 5, SLIDER_MIN, 0, 10, 1, "%im");

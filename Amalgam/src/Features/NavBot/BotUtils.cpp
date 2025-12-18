@@ -385,7 +385,7 @@ void CBotUtils::LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, 
 	m_vLastAngles = vWishAngles;
 }
 
-void CBotUtils::LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent)
+void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent)
 {
 	if (!pLocal)
 		return;
@@ -394,7 +394,7 @@ void CBotUtils::LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec
 	{
 		Vec3 vCurrent = I::EngineClient->GetViewAngles();
 		m_vLastAngles = vCurrent;
-		auto& tState = m_tHLAP;
+		auto& tState = m_tLLAP;
 		if (tState.m_bInitialized)
 			tState.m_vAnchor = vCurrent;
 		return;
@@ -402,21 +402,89 @@ void CBotUtils::LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec
 
 	Vec3 vEye = pLocal->GetEyePosition();
 	Vec3 vLook = vDest;
-	if (vLook.IsZero())
+	bool bEnemyLock = false;
+
+	// 1. look at visible enemies
+	static int iLastTarget = -1;
+	static float flLastSeen = 0.f;
+	static Vec3 vLastPos = {};
+	
+	CTFPlayer* pBestEnemy = nullptr;
+	float flBestDist = FLT_MAX;
+
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
-		Vec3 vForward;
-		Math::AngleVectors(I::EngineClient->GetViewAngles(), &vForward, nullptr, nullptr);
-		vLook = vEye + vForward * 64.f;
+		auto pEnemy = pEntity->As<CTFPlayer>();
+		if (!pEnemy || !pEnemy->IsAlive() || pEnemy->IsDormant())
+			continue;
+
+		Vec3 vEnemyEye = pEnemy->GetEyePosition();
+		if (SDK::VisPos(pLocal, pEnemy, vEye, vEnemyEye))
+		{
+			float flDist = vEye.DistTo(vEnemyEye);
+			if (flDist < flBestDist)
+			{
+				flBestDist = flDist;
+				pBestEnemy = pEnemy;
+			}
+		}
 	}
 
-	const float flHeightDelta = std::clamp(vLook.z - vEye.z, -72.f, 96.f);
-	const float flPitchFactor = flHeightDelta >= 0.f ? 0.55f : 0.22f;
-	Vec3 vFocus = { vLook.x, vLook.y, vEye.z + flHeightDelta * flPitchFactor + 6.f };
+	if (pBestEnemy)
+	{
+		vLook = pBestEnemy->GetEyePosition();
+		// look slightly below head (chest/neck)
+		vLook.z -= 10.f; 
+		
+		iLastTarget = pBestEnemy->entindex();
+		flLastSeen = I::GlobalVars->curtime;
+		vLastPos = vLook;
+		bEnemyLock = true;
+	}
+	else if ((I::GlobalVars->curtime - flLastSeen) < 1.5f && !vLastPos.IsZero())
+	{
+		// look at last known position for a bit
+		vLook = vLastPos;
+		bEnemyLock = true;
+	}
+	else
+	{
+		// 2. movement direction
+		// look ahead based on velocity
+		const Vec3 vVelocity = pLocal->m_vecVelocity();
+		const float flSpeed = vVelocity.Length2D();
+		if (flSpeed > 25.f)
+		{
+			Vec3 vForward = vVelocity;
+			vForward.Normalize();
+			vLook = vEye + (vForward * 500.f);
+		}
+		else if (vLook.IsZero())
+		{
+			Vec3 vForward;
+			Math::AngleVectors(I::EngineClient->GetViewAngles(), &vForward, nullptr, nullptr);
+			vLook = vEye + vForward * 64.f;
+		}
+	}
+
+	Vec3 vFocus;
+	if (bEnemyLock)
+	{
+		// If looking at an enemy/spot, look directly there
+		vFocus = vLook;
+	}
+	else
+	{
+		// If pathing, use"terrain" following logic
+		const float flHeightDelta = std::clamp(vLook.z - vEye.z, -72.f, 96.f);
+		const float flPitchFactor = flHeightDelta >= 0.f ? 0.55f : 0.22f;
+		vFocus = { vLook.x, vLook.y, vEye.z + flHeightDelta * flPitchFactor + 6.f };
+	}
 
 	Vec3 vDesired = Math::CalcAngle(vEye, vFocus);
 	Math::ClampAngles(vDesired);
 
-	auto& tState = m_tHLAP;
+	auto& tState = m_tLLAP;
 	const float flTargetDelta = tState.m_vLastTarget.IsZero() ? FLT_MAX : tState.m_vLastTarget.DistToSqr(vFocus);
 	if (!tState.m_bInitialized || !std::isfinite(flTargetDelta) || flTargetDelta > 4096.f)
 	{
@@ -496,9 +564,9 @@ void CBotUtils::LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec
 	Math::ClampAngles(vGoal);
 	vGoal.x = std::clamp(vGoal.x, -8.f, 22.f);
 
-	float flSpeed = std::max(1.f, static_cast<float>(Vars::Misc::Movement::BotUtils::LookAtPathSpeed.Value));
+	float flSpeedVal = std::max(1.f, static_cast<float>(Vars::Misc::Movement::BotUtils::LookAtPathSpeed.Value));
 	Vec3 vWish = vGoal;
-	DoSlowAim(vWish, flSpeed, m_vLastAngles);
+	DoSlowAim(vWish, flSpeedVal, m_vLastAngles);
 
 	if (bSilent)
 		pCmd->viewangles = vWish;
@@ -508,9 +576,9 @@ void CBotUtils::LookAtPathHumanized(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec
 	m_vLastAngles = vWish;
 }
 
-void CBotUtils::InvalidateHLAP()
+void CBotUtils::InvalidateLLAP()
 {
-	m_tHLAP = {};
+	m_tLLAP = {};
 }
 
 void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
@@ -743,5 +811,5 @@ void CBotUtils::Reset()
 	m_tClosestEnemy = {};
 	m_iBestSlot = -1;
 	m_iCurrentSlot = -1;
-	InvalidateHLAP();
+	InvalidateLLAP();
 }

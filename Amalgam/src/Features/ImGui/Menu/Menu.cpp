@@ -1648,7 +1648,8 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-					FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+		//			FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
 						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);
