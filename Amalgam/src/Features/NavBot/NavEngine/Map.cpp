@@ -42,6 +42,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
 		pCachedEntry = &itCache->second;
 
+	if (pCachedEntry && !pCachedEntry->m_bPassable)
+		continue;
+
 	NavPoints_t tPoints{};
 	DropdownHint_t tDropdown{};
 	float flBaseCost = std::numeric_limits<float>::max();
