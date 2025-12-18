@@ -409,9 +409,18 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	static float flLastSeen = 0.f;
 	static Vec3 vLastPos = {};
 	
-	CTFPlayer* pBestEnemy = nullptr;
+	CBaseEntity* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
 	auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
+
+	if (G::AimTarget.m_iEntIndex)
+	{
+		if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
+		{
+			pBestEnemy = pTarget;
+			flBestDist = -1.f;
+		}
+	}
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
@@ -434,12 +443,40 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		}
 	}
 
+	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
+	{
+		auto pBuilding = pEntity->As<CBaseObject>();
+		if (!pBuilding || pBuilding->m_iHealth() <= 0 || pBuilding->IsDormant())
+			continue;
+
+		if (ShouldTargetBuilding(pLocal, pBuilding->entindex()) == ShouldTargetEnum::DontTarget)
+			continue;
+
+		Vec3 vBuildingCenter = pBuilding->GetCenter();
+		if (SDK::VisPos(pLocal, pBuilding, vEye, vBuildingCenter))
+		{
+			float flDist = vEye.DistTo(vBuildingCenter);
+			if (flDist < flBestDist)
+			{
+				flBestDist = flDist;
+				pBestEnemy = pBuilding;
+			}
+		}
+	}
+
 	if (pBestEnemy)
 	{
-		vLook = pBestEnemy->GetEyePosition();
-		// look slightly below head (chest/neck)
-		vLook.z -= 10.f; 
-		
+		if (pBestEnemy->IsPlayer())
+		{
+			vLook = pBestEnemy->As<CTFPlayer>()->GetEyePosition();
+			// look slightly below head (chest/neck)
+			vLook.z -= 10.f;
+		}
+		else
+		{
+			vLook = pBestEnemy->GetCenter();
+		}
+
 		iLastTarget = pBestEnemy->entindex();
 		flLastSeen = I::GlobalVars->curtime;
 		vLastPos = vLook;
