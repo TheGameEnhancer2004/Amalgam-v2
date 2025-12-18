@@ -816,6 +816,7 @@ I dont think this is a good idea to disable simulations completely:
 					Off, Simple, MoveSim);
 				CVar(AutoScopeCancelTime, "Auto scope cancel time", 3, SLIDER_MIN, 1, 5, 1, "%is");
 				CVar(AutoScopeUseCachedResults, "Auto scope use cached results", true, NOSAVE | DEBUGVAR);
+				CVar(LookAtPathDebug, "Look at path debug", false, NOSAVE | DEBUGVAR);
 			SUBNAMESPACE_END(BotUtils);
 
 			SUBNAMESPACE_BEGIN(NavBot)

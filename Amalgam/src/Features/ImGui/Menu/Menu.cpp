@@ -1551,6 +1551,7 @@ void CMenu::MenuMisc(int iTab)
 					{
 						FSlider(Vars::Misc::Movement::BotUtils::LookAtPathSpeed, FSliderEnum::None);
 						FTooltip("Specifies how smooth the viewangles will change when using 'Look at path' in nav engine or followbot");
+						FToggle(Vars::Misc::Movement::BotUtils::LookAtPathDebug);
 					}
 					PopTransparent();
 					FToggle(Vars::Misc::Automation::RandomClass, FToggleEnum::Right);

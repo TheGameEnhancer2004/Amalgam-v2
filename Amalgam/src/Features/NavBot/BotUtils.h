@@ -29,6 +29,9 @@ private:
 		Vec3 m_vLastTarget = {};
 		Vec3 m_vGlanceCurrent = {};
 		Vec3 m_vGlanceGoal = {};
+		int m_iLastTarget = -1;
+		float m_flLastSeen = 0.f;
+		Vec3 m_vLastPos = {};
 		float m_flNextOffset = 1.f;
 		float m_flPhase = 0.f;
 		float m_flGlanceDuration = 0.f;
