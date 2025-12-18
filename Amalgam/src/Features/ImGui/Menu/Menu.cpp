@@ -336,6 +336,7 @@ void CMenu::MenuAimbot(int iTab)
 					FToggle(Vars::Aimbot::General::NoSpread, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::General::PrioritizeNavbot, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::PrioritizeFollowbot, FToggleEnum::Right);
+					FToggle(Vars::Aimbot::General::DisableOnSpectate, FToggleEnum::Left);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
