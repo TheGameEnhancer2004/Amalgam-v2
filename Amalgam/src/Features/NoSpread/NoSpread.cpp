@@ -2,11 +2,10 @@
 
 #include "NoSpreadProjectile/NoSpreadProjectile.h"
 #include "NoSpreadHitscan/NoSpreadHitscan.h"
-#include "../Visuals/SpectatorList/SpectatorList.h"
 
 bool CNoSpread::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
-	if (Vars::Aimbot::General::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
+	if (Vars::Aimbot::General::DisableOnSpectate.Value && H::Entities.IsSpectated())
 		return false;
 
 	if (!Vars::Aimbot::General::NoSpread.Value

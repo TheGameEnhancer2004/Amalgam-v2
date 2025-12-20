@@ -79,24 +79,6 @@ bool CSpectatorList::GetSpectators(CTFPlayer* pTarget)
 	return !m_vSpectators.empty();
 }
 
-bool CSpectatorList::IsSpectated(CTFPlayer* pLocal)
-{
-	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
-	{
-		if (n == I::EngineClient->GetLocalPlayer())
-			continue;
-
-		auto pPlayer = I::ClientEntityList->GetClientEntity(n)->As<CTFPlayer>();
-		if (!pPlayer || pPlayer->IsDormant() || !pPlayer->IsPlayer() || pPlayer->IsAlive())
-			continue;
-
-		if (pPlayer->m_hObserverTarget().GetEntryIndex() == pLocal->entindex() && pPlayer->m_iObserverMode() == OBS_MODE_FIRSTPERSON)
-			return true;
-	}
-
-	return false;
-}
-
 void CSpectatorList::Draw(CTFPlayer* pLocal)
 {
 	if (!(Vars::Menu::Indicators.Value & Vars::Menu::IndicatorsEnum::Spectators))

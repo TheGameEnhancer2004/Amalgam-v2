@@ -234,6 +234,10 @@ void CEntities::Store()
 		}
 		m_iPartyCount = uPartyCount;
 	}
+	
+	int iLocalPlayer = I::EngineClient->GetLocalPlayer();
+	m_bIsSpectated = false;
+	
 	for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
 	{
 		if (bUpdateInfo)
@@ -241,7 +245,7 @@ void CEntities::Store()
 			auto pResource = GetResource();
 			if (pResource && pResource->m_bValid(n))
 			{
-				bool bLocal = n == I::EngineClient->GetLocalPlayer();
+				bool bLocal = n == iLocalPlayer;
 				uint32_t uAccountID = pResource->m_iAccountID(n);
 				if (bLocal) m_uAccountID = uAccountID;
 
@@ -258,11 +262,19 @@ void CEntities::Store()
 		if (!pPlayer || !pPlayer->IsPlayer() || ManageDormancy(pPlayer))
 			continue;
 
+		// Check if this player is spectating the local player
+		if (n != iLocalPlayer && !pPlayer->IsDormant() && !pPlayer->IsAlive()
+			&& pPlayer->m_hObserverTarget().GetEntryIndex() == m_pLocal->entindex()
+			&& pPlayer->m_iObserverMode() == OBS_MODE_FIRSTPERSON)
+		{
+			m_bIsSpectated = true;
+		}
+
 		m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pPlayer->GetModel()));
 		m_mGroups[EntityEnum::PlayerAll].push_back(pPlayer);
 		m_mGroups[pPlayer->m_iTeamNum() != m_pLocal->m_iTeamNum() ? EntityEnum::PlayerEnemy : EntityEnum::PlayerTeam].push_back(pPlayer);
 		
-		if (n != I::EngineClient->GetLocalPlayer())
+		if (n != iLocalPlayer)
 		{
 			bool bDormant = pPlayer->IsDormant();
 			float flSimTime = pPlayer->m_flSimulationTime(), flOldSimTime = pPlayer->m_flOldSimulationTime();
@@ -547,3 +559,4 @@ int CEntities::GetParty(int iIndex) { return m_mIParty.contains(iIndex) ? m_mIPa
 int CEntities::GetParty(uint32_t uAccountID) { return m_mUParty.contains(uAccountID) ? m_mUParty[uAccountID] : 0; }
 int CEntities::GetPartyCount() { return m_iPartyCount; }
 uint32_t CEntities::GetLocalAccountID() { return m_uAccountID; }
+bool CEntities::IsSpectated() { return m_bIsSpectated; }

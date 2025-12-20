@@ -4,7 +4,6 @@
 #include "../../Players/PlayerUtils.h"
 #include "../../Misc/Misc.h"
 #include "../../Aimbot/AutoRocketJump/AutoRocketJump.h"
-#include "../../Visuals/SpectatorList/SpectatorList.h"
 
 bool CAntiAim::AntiAimOn()
 {
@@ -32,7 +31,7 @@ bool CAntiAim::YawOn()
 
 bool CAntiAim::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (Vars::AntiAim::DisableOnSpectate.Value && F::SpectatorList.IsSpectated(pLocal))
+	if (Vars::AntiAim::DisableOnSpectate.Value && H::Entities.IsSpectated())
 		return false;
 
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || (pLocal->IsTaunting() && !Vars::AntiAim::TauntSpin.Value) || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->InCond(TF_COND_HALLOWEEN_KART)

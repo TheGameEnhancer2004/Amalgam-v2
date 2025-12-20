@@ -20,7 +20,6 @@ private:
 
 public:
 	bool GetSpectators(CTFPlayer* pTarget);
-	bool IsSpectated(CTFPlayer* pLocal);
 	void Draw(CTFPlayer* pLocal);
 };
 
