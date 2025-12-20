@@ -17,7 +17,7 @@ public:
 	void Store(CBaseEntity* pEntity, size_t iSize);
 	void Store(bool bFrameStageNotify = true);
 
-	bool m_bRan = false;
+	EWeaponType m_eRanType = EWeaponType::UNKNOWN;
 	bool m_bRunningSecondary = false;
 
 	DrawPath_t m_tPath = {};

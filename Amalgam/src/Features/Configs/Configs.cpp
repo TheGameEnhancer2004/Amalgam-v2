@@ -200,8 +200,8 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 
 			std::string& m = *o;
 			Color_t c;
-			float flStart, flEnd;
-			bool bSmoothAlpha;
+			float flStart = 0.f, flEnd = 8192.f;
+			bool bSmoothAlpha = false;
 			LoadJson(tLayer, "Color", c);
 			LoadJson(tLayer, "Start", flStart);
 			LoadJson(tLayer, "End", flEnd);

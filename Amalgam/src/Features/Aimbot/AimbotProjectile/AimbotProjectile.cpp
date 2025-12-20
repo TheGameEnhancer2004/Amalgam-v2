@@ -1859,8 +1859,8 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 				}
 			}
 		}
-
-		F::Aimbot.m_bRan = G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true);
+		if (G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true))
+			F::Aimbot.m_eRanType = EWeaponType::PROJECTILE;
 		DrawVisuals(iResult, tTarget, m_vPlayerPath, m_vProjectilePath, m_vBoxes);
 
 		Aim(pCmd, tTarget.m_vAngleTo);

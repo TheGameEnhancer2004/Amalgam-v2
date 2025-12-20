@@ -1192,7 +1192,7 @@ void CVisuals::RestoreWorldModulation()
 
 void CVisuals::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
-	if (Vars::Visuals::Simulation::ShotPath.Value && G::Attacking == 1 && !F::Aimbot.m_bRan)
+	if (Vars::Visuals::Simulation::ShotPath.Value && G::Attacking == 1 && F::Aimbot.m_eRanType != EWeaponType::PROJECTILE)
 	{
 		switch (pWeapon->GetWeaponID())
 		{

@@ -68,7 +68,7 @@ int CBacktrack::GetAnticipatedChoke(int iMethod)
 
 void CBacktrack::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	if (F::Aimbot.m_bRan || Vars::Misc::Game::AntiCheatCompatibility.Value)
+	if (F::Aimbot.m_eRanType != EWeaponType::UNKNOWN || Vars::Misc::Game::AntiCheatCompatibility.Value)
 		return;
 
 	// correct tick_count for fakeinterp / nointerp

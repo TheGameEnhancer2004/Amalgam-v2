@@ -48,7 +48,7 @@ void CAimbot::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::AimbotProjectile.m_iLastTickCancel = 0;
 	}
 
-	m_bRan = false;
+	m_eRanType = EWeaponType::UNKNOWN;
 	if (abs(G::AimTarget.m_iTickCount - I::GlobalVars->tickcount) > G::AimTarget.m_iDuration)
 		G::AimTarget = {};
 	if (abs(G::AimPoint.m_iTickCount - I::GlobalVars->tickcount) > G::AimPoint.m_iDuration)

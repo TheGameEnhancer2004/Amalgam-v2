@@ -884,6 +884,7 @@ void CAimbotHitscan::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pC
 		G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true);
 		if (G::Attacking == 1 && nWeaponID != TF_WEAPON_LASER_POINTER)
 		{
+			F::Aimbot.m_eRanType = EWeaponType::HITSCAN;
 			if (tTarget.m_pEntity->IsPlayer())
 				F::Resolver.HitscanRan(pLocal, tTarget.m_pEntity->As<CTFPlayer>(), pWeapon, tTarget.m_nAimedHitbox);
 

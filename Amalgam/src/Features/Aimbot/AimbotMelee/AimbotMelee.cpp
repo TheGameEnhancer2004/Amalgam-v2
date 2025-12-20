@@ -586,7 +586,8 @@ void CAimbotMelee::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd
 				F::Ticks.m_bDoubletap = true;
 		}
 
-		G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true);
+		if (G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true))
+			F::Aimbot.m_eRanType = EWeaponType::MELEE;
 		if (G::Attacking == 1)
 		{
 			if (tTarget.m_bBacktrack)
