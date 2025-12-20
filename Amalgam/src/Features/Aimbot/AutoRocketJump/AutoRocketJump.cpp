@@ -104,6 +104,12 @@ bool CAutoRocketJump::SetAngles(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 
 void CAutoRocketJump::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
+	if (Vars::Aimbot::General::DisableOnSpectate.Value && H::Entities.IsSpectated())
+	{
+		m_iFrame = -1;
+		return;
+	}
+
 	if (!pWeapon || !pLocal->IsAlive() || pLocal->IsAGhost() || I::EngineVGui->IsGameUIVisible())
 	{
 		m_iFrame = -1;

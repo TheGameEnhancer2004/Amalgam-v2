@@ -1388,7 +1388,7 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 		}
 
 		std::string sClean = SanitizeName(pszName);
-		if (sClean.empty())
+		if (sClean.empty() || sClean == "  " || sClean == "ERRORNAME")
 		{
 			tResult.m_uSkippedInvalid++;
 			continue;
