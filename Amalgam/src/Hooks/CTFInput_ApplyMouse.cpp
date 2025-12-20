@@ -45,7 +45,7 @@ MAKE_HOOK(CTFInput_CAM_CapYaw, S::CTFInput_CAM_CapYaw(), float,
 	void* rcx, float fVal)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFInput_ApplyMouse[DEFAULT_BIND])
+	if (!Vars::Hooks::CTFInput_CAM_CapYaw[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, fVal);
 #endif
 

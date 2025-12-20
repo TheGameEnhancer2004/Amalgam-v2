@@ -4,6 +4,11 @@
 MAKE_HOOK(IMaterialSystem_FindTexture, U::Memory.GetVirtual(I::MaterialSystem, 79), ITexture*,
 	void* rcx, char const* pTextureName, const char* pTextureGroupName, bool complain, int nAdditionalCreationFlags)
 {
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::IMaterialSystem_FindTexture[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, pTextureName, pTextureGroupName, complain, nAdditionalCreationFlags);
+#endif
+
 	auto pReturn = CALL_ORIGINAL(rcx, pTextureName, pTextureGroupName, complain, nAdditionalCreationFlags);
 
 	auto uHash = FNV1A::Hash32(Vars::Visuals::World::WorldTexture.Value.c_str());

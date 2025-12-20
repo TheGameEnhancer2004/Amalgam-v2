@@ -14,6 +14,11 @@ struct Restore_t
 MAKE_HOOK(CWeaponMedigun_PrimaryAttack, S::CWeaponMedigun_PrimaryAttack(), void,
 	void* rcx)
 {
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::CWeaponMedigun_PrimaryAttack[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx);
+#endif
+
 	auto pWeapon = reinterpret_cast<CWeaponMedigun*>(rcx);
 	auto pOwner = pWeapon->m_hOwner()->As<CTFPlayer>();
 	if (!pOwner || !pOwner->m_pCurrentCommand())

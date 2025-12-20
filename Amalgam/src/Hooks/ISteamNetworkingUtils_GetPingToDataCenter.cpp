@@ -75,7 +75,7 @@ MAKE_HOOK(CTFPartyClient_RequestQueueForMatch, S::CTFPartyClient_RequestQueueFor
 	void* rcx, int eMatchGroup)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::ISteamNetworkingUtils_GetPingToDataCenter[DEFAULT_BIND])
+	if (!Vars::Hooks::CTFPartyClient_RequestQueueForMatch[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, eMatchGroup);
 #endif
 

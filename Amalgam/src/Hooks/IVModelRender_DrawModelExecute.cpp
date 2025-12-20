@@ -18,7 +18,7 @@ MAKE_HOOK(IVModelRender_DrawModelExecute, U::Memory.GetVirtual(I::ModelRender, 1
 		return CALL_ORIGINAL(rcx, pState, pInfo, pBoneToWorld);
 #endif
 
-	if (I::EngineVGui->IsGameUIVisible() || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot()
+	if (I::EngineVGui->IsGameUIVisible() || SDK::CleanScreenshot()
 		|| F::CameraWindow.m_bDrawing || !F::Materials.m_bLoaded || G::Unload)
 		return CALL_ORIGINAL(rcx, pState, pInfo, pBoneToWorld);
 
@@ -49,14 +49,14 @@ MAKE_HOOK(CBaseAnimating_DrawModel, S::CBaseAnimating_DrawModel(), int,
 	void* rcx, int flags)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IVModelRender_DrawModelExecute[DEFAULT_BIND])
+	if (!Vars::Hooks::CBaseAnimating_DrawModel[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, flags);
 #endif
 
-	static const auto dwDrawModel = S::CEconEntity_DrawOverriddenViewmodel_DrawModel_Call();
+	const auto dwDesired = S::CEconEntity_DrawOverriddenViewmodel_DrawModel_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-	if (dwRetAddr != dwDrawModel || I::EngineVGui->IsGameUIVisible() || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot()
+	if (dwRetAddr != dwDesired || I::EngineVGui->IsGameUIVisible() || SDK::CleanScreenshot()
 		|| F::CameraWindow.m_bDrawing || !F::Materials.m_bLoaded || G::Unload)
 		return CALL_ORIGINAL(rcx, flags);
 

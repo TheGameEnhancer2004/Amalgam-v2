@@ -14,12 +14,12 @@ MAKE_HOOK(GetClientInterpAmount, S::GetClientInterpAmount(), float)
 	if (!Vars::Visuals::Removals::Lerp.Value && !Vars::Visuals::Removals::Interpolation.Value)
 		return CALL_ORIGINAL();
 
-	static const auto dwDesired1 = S::CNetGraphPanel_DrawTextFields_GetClientInterpAmount_Call1();
-	static const auto dwDesired2 = S::CNetGraphPanel_DrawTextFields_GetClientInterpAmount_Call2();
+	const auto dwUndesired1 = S::CNetGraphPanel_DrawTextFields_GetClientInterpAmount_Call1();
+	const auto dwUndesired2 = S::CNetGraphPanel_DrawTextFields_GetClientInterpAmount_Call2();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-	if (dwRetAddr == dwDesired1 || dwRetAddr == dwDesired2)
-		return CALL_ORIGINAL();
-	
-	return 0.f;
+	if (dwRetAddr != dwUndesired1 && dwRetAddr != dwUndesired2)
+		return 0.f;
+
+	return CALL_ORIGINAL();
 }

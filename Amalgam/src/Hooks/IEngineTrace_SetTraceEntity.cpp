@@ -46,7 +46,7 @@ MAKE_HOOK(IEngineTrace_SetTraceEntity, U::Memory.GetVirtual(I::EngineTrace, 20),
 		return CALL_ORIGINAL(rcx, pCollideable, pTrace);
 #endif
 
-	static const auto dwDesired = S::IEngineTrace_TraceRay_SetTraceEntity_Call();
+	const auto dwDesired = S::IEngineTrace_TraceRay_SetTraceEntity_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	CALL_ORIGINAL(rcx, pCollideable, pTrace);
@@ -59,7 +59,7 @@ MAKE_HOOK(CM_BoxTrace, S::CM_BoxTrace(), void,
 	const Ray_t& ray, int headnode, int brushmask, bool computeEndpt, trace_t& tr)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_SetTraceEntity[DEFAULT_BIND])
+	if (!Vars::Hooks::CM_BoxTrace[DEFAULT_BIND])
 		return CALL_ORIGINAL(ray, headnode, brushmask, computeEndpt, tr);
 #endif
 
@@ -72,7 +72,7 @@ MAKE_HOOK(CM_TraceToLeaf_True, S::CM_TraceToLeaf_True(), void,
 	TraceInfo_t* pTraceInfo, int ndxLeaf, float startFrac, float endFrac)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_SetTraceEntity[DEFAULT_BIND])
+	if (!Vars::Hooks::CM_TraceToLeaf_True[DEFAULT_BIND])
 		return CALL_ORIGINAL(pTraceInfo, ndxLeaf, startFrac, endFrac);
 #endif
 
@@ -92,7 +92,7 @@ MAKE_HOOK(CM_TraceToLeaf_False, S::CM_TraceToLeaf_False(), void,
 	TraceInfo_t* pTraceInfo, int ndxLeaf, float startFrac, float endFrac)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_SetTraceEntity[DEFAULT_BIND])
+	if (!Vars::Hooks::CM_TraceToLeaf_False[DEFAULT_BIND])
 		return CALL_ORIGINAL(pTraceInfo, ndxLeaf, startFrac, endFrac);
 #endif
 
@@ -112,7 +112,7 @@ MAKE_HOOK(CM_ClipBoxToBrush_True, S::CM_ClipBoxToBrush_True(), void,
 	TraceInfo_t* pTraceInfo, void* brush)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_SetTraceEntity[DEFAULT_BIND])
+	if (!Vars::Hooks::CM_ClipBoxToBrush_True[DEFAULT_BIND])
 		return CALL_ORIGINAL(pTraceInfo, brush);
 #endif
 
@@ -129,7 +129,7 @@ MAKE_HOOK(CM_ClipBoxToBrush_False, S::CM_ClipBoxToBrush_False(), void,
 	TraceInfo_t* pTraceInfo, void* brush)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_SetTraceEntity[DEFAULT_BIND])
+	if (!Vars::Hooks::CM_ClipBoxToBrush_False[DEFAULT_BIND])
 		return CALL_ORIGINAL(pTraceInfo, brush);
 #endif
 

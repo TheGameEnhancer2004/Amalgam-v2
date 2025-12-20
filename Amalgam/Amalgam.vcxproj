@@ -1255,7 +1255,6 @@
     <ClCompile Include="src\Hooks\CTFPlayer_DoAnimationEvent.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_IsPlayerClass.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayer_ShouldDraw.cpp" />
-    <ClCompile Include="src\Hooks\CTFPlayer_UpdateStepSound.cpp" />
     <ClCompile Include="src\Hooks\CTFRagdoll_CreateTFRagdoll.cpp" />
     <ClCompile Include="src\Hooks\CTFWeaponBase_CalcIsAttackCritical.cpp" />
     <ClCompile Include="src\Hooks\CTFWeaponBase_GetShootSound.cpp" />
@@ -1284,7 +1283,6 @@
     <ClCompile Include="src\Hooks\ISteamNetworkingUtils_GetPingToDataCenter.cpp" />
     <ClCompile Include="src\Hooks\IVModelRender_DrawModelExecute.cpp" />
     <ClCompile Include="src\Hooks\IVModelRender_ForcedMaterialOverride.cpp" />
-    <ClCompile Include="src\Hooks\KeyValues_SetInt.cpp" />
     <ClCompile Include="src\Hooks\NotificationQueue_Add.cpp" />
     <ClCompile Include="src\Hooks\RecvProxy_SimulationTime.cpp" />
     <ClCompile Include="src\Hooks\R_DrawSkyBox.cpp" />

@@ -9,8 +9,8 @@ MAKE_HOOK(CBasePlayer_CalcView, S::CBasePlayer_CalcView(), void,
 	void* rcx, Vector& eyeOrigin, QAngle& eyeAngles, float& zNear, float& zFar, float& fov)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcPlayerView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
+	if (!Vars::Hooks::CBasePlayer_CalcView[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, zNear, zFar, fov);
 #endif
 
 	if (!Vars::Visuals::Removals::ViewPunch.Value && F::Spectate.m_iTarget == -1)

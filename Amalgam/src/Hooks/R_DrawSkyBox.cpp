@@ -11,7 +11,7 @@ MAKE_HOOK(R_DrawSkyBox, S::R_DrawSkyBox(), void,
 		return CALL_ORIGINAL(zFar, nDrawFlags);
 #endif
 
-	if (FNV1A::Hash32(Vars::Visuals::World::SkyboxChanger.Value.c_str()) == FNV1A::Hash32Const("Off") || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot())
+	if (FNV1A::Hash32(Vars::Visuals::World::SkyboxChanger.Value.c_str()) == FNV1A::Hash32Const("Off") || SDK::CleanScreenshot())
 		return CALL_ORIGINAL(zFar, nDrawFlags);
 
 	static auto sv_skyname = H::ConVars.FindVar("sv_skyname");

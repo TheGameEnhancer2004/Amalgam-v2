@@ -9,7 +9,7 @@ MAKE_HOOK(CBasePlayer_CalcObserverView, S::CBasePlayer_CalcObserverView(), void,
 	void* rcx, Vector& eyeOrigin, QAngle& eyeAngles, float& fov)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcPlayerView[DEFAULT_BIND])
+	if (!Vars::Hooks::CBasePlayer_CalcObserverView[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
 #endif
 

@@ -129,20 +129,6 @@ std::string SDK::GetTime()
 	return buffer;
 }
 
-HWND SDK::GetTeamFortressWindow()
-{
-	static HWND hWindow = nullptr;
-	if (!hWindow)
-		EnumWindows(TeamFortressWindow, reinterpret_cast<LPARAM>(&hWindow));
-	return hWindow;
-}
-
-bool SDK::IsGameWindowInFocus()
-{
-	HWND hWindow = GetTeamFortressWindow();
-	return hWindow == GetForegroundWindow() || !hWindow;
-}
-
 std::wstring SDK::ConvertUtf8ToWide(const std::string& source)
 {
 	int size = MultiByteToWideChar(CP_UTF8, 0, source.data(), -1, nullptr, 0);
@@ -157,6 +143,20 @@ std::string SDK::ConvertWideToUTF8(const std::wstring& source)
 	std::string result(size, 0);
 	WideCharToMultiByte(CP_UTF8, 0, source.data(), -1, result.data(), size, nullptr, nullptr);
 	return result;
+}
+
+HWND SDK::GetTeamFortressWindow()
+{
+	static HWND hWindow = nullptr;
+	if (!hWindow)
+		EnumWindows(TeamFortressWindow, reinterpret_cast<LPARAM>(&hWindow));
+	return hWindow;
+}
+
+bool SDK::IsGameWindowInFocus()
+{
+	HWND hWindow = GetTeamFortressWindow();
+	return hWindow == GetForegroundWindow() || !hWindow;
 }
 
 double SDK::PlatFloatTime()
@@ -1051,4 +1051,9 @@ bool TriggerData_t::PointIsWithin(Vec3 vPoint) const
 	ray.Init(vPoint, vPoint);
 	S::CM_TransformedBoxTrace.Call<void>(ray, m_pModel->brush.firstnode, 0x0/*i dont think mask matters here*/, m_vOrigin, Vec3(), &trace);
 	return trace.startsolid;
+}
+
+bool SDK::CleanScreenshot()
+{
+	return Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot();
 }

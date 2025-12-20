@@ -43,12 +43,12 @@ MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(
 	return false;
 #else
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
+	if (!Vars::Hooks::CBasePlayer_ShouldDrawThisPlayer[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	//static const auto dwDesired = S::CTFWeaponBase_PostDataUpdate_ShouldDrawThisPlayer_Call();
-	static const auto dwUndesired = S::CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThisPlayer_Call();
+	//const auto dwDesired = S::CTFWeaponBase_PostDataUpdate_ShouldDrawThisPlayer_Call();
+	const auto dwUndesired = S::CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThisPlayer_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	//if (dwRetAddr == dwDesired)
@@ -78,11 +78,11 @@ MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlaye
 	return false;
 #else
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
+	if (!Vars::Hooks::CBasePlayer_ShouldDrawLocalPlayer[DEFAULT_BIND])
 		return CALL_ORIGINAL(/*rcx*/);
 #endif
 
-	//static const auto dwDesired = S::CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call();
+	//const auto dwDesired = S::CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call();
 	//const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	//if (dwRetAddr == dwDesired)
@@ -106,7 +106,7 @@ MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 	return false;
 #else
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
+	if (!Vars::Hooks::CBaseCombatWeapon_ShouldDraw[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
 #endif
 
@@ -126,7 +126,7 @@ MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 {
 #ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
+	if (!Vars::Hooks::CViewRender_DrawViewModels[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, viewRender, drawViewmodel);
 #endif
 

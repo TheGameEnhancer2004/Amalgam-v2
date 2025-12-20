@@ -17,13 +17,11 @@ MAKE_HOOK(CAttributeManager_AttribHookInt, S::CAttributeManager_AttribHookInt(),
 		return CALL_ORIGINAL(value, name, econent, buffer, isGlobalConstString);
 #endif
 
-	static const auto dwDesired = S::CTFPlayer_FireEvent_AttribHookValue_Call();
+	const auto dwDesired = S::CTFPlayer_FireEvent_AttribHookValue_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-	if (!Vars::Visuals::Effects::SpellFootsteps.Value || econent != H::Entities.GetLocal() || I::EngineClient->IsTakingScreenshot() && Vars::Visuals::UI::CleanScreenshots.Value)
-		return CALL_ORIGINAL(value, name, econent, buffer, isGlobalConstString);
-
-	if (dwRetAddr == dwDesired && FNV1A::Hash32(name) == FNV1A::Hash32Const("halloween_footstep_type"))
+	if (dwRetAddr == dwDesired && Vars::Visuals::Effects::SpellFootsteps.Value
+		&& econent == H::Entities.GetLocal() && FNV1A::Hash32(name) == FNV1A::Hash32Const("halloween_footstep_type"))
 	{
 		switch (Vars::Visuals::Effects::SpellFootsteps.Value)
 		{

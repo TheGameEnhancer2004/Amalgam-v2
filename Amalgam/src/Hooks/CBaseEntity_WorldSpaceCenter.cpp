@@ -12,8 +12,11 @@ MAKE_HOOK(CBaseEntity_WorldSpaceCenter, S::CBaseEntity_WorldSpaceCenter(), const
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	static const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_WorldSpaceCenter_Call();
+	const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_WorldSpaceCenter_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-	return dwRetAddr == dwDesired && Vars::Visuals::Effects::DrawDamageNumbersThroughWalls.Value ? S::MainViewOrigin.Call<const Vec3&>() : CALL_ORIGINAL(rcx);
+	if (dwRetAddr == dwDesired && Vars::Visuals::Effects::DrawDamageNumbersThroughWalls.Value)
+		return S::MainViewOrigin.Call<const Vec3&>();
+
+	return CALL_ORIGINAL(rcx);
 }

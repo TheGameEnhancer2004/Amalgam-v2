@@ -12,8 +12,6 @@ MAKE_HOOK(CClientModeShared_OverrideView, U::Memory.GetVirtual(I::ClientModeShar
 #endif
 
 	CALL_ORIGINAL(rcx, pView);
-	if (Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot())
-		return;
 
 	auto pLocal = H::Entities.GetLocal();
 	if (pLocal && pView)

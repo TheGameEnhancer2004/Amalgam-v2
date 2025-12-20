@@ -18,3 +18,40 @@ MAKE_HOOK(CStaticPropMgr_DrawStaticProps, S::CStaticPropMgr_DrawStaticProps(), v
 	s_bDrawingProps = false;
 #endif
 }
+
+MAKE_HOOK(CStudioRender_SetColorModulation, U::Memory.GetVirtual(I::StudioRender, 27), void,
+	void* rcx, const float* pColor)
+{
+#ifndef TEXTMODE
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::CStudioRender_SetColorModulation[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, pColor);
+#endif
+
+	if (!s_bDrawingProps || !(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Prop) || SDK::CleanScreenshot())
+		return CALL_ORIGINAL(rcx, pColor);
+
+	float flColor[3] = {
+		Vars::Colors::PropModulation.Value.r / 255.f,
+		Vars::Colors::PropModulation.Value.g / 255.f,
+		Vars::Colors::PropModulation.Value.b / 255.f
+	};
+	CALL_ORIGINAL(rcx, flColor);
+#endif
+}
+
+MAKE_HOOK(CStudioRender_SetAlphaModulation, U::Memory.GetVirtual(I::StudioRender, 28), void,
+	void* rcx, float flAlpha)
+{
+#ifndef TEXTMODE
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::CStudioRender_SetAlphaModulation[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, flAlpha);
+#endif
+
+	if (!s_bDrawingProps || !(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Prop) || SDK::CleanScreenshot())
+		return CALL_ORIGINAL(rcx, flAlpha);
+
+	CALL_ORIGINAL(rcx, Vars::Colors::PropModulation.Value.a / 255.f * flAlpha);
+#endif
+}

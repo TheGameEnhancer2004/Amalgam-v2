@@ -21,6 +21,9 @@
 #include "../Utils/Macros/Macros.h"
 #include <intrin.h>
 
+#define DEFAULT_COLOR		Color_t(175, 150, 255, 255)
+#define ALTERNATE_COLOR		Color_t(175, 150, 255, 127)
+
 #define VK_0              0x30
 #define VK_1              0x31
 #define VK_2              0x32
@@ -82,11 +85,11 @@ namespace SDK
 	std::string GetDate();
 	std::string GetTime();
 
-	HWND GetTeamFortressWindow();
-	bool IsGameWindowInFocus();
-
 	std::wstring ConvertUtf8ToWide(const std::string& source);
 	std::string ConvertWideToUTF8(const std::wstring& source);
+
+	HWND GetTeamFortressWindow();
+	bool IsGameWindowInFocus();
 
 	double PlatFloatTime();
 	int StdRandomInt(int iMin, int iMax);
@@ -138,4 +141,6 @@ namespace SDK
 	bool WeaponDoesNotUseAmmo(CTFWeaponBase* pWeapon, bool bIncludeInfiniteAmmo = true);
 	int GetWeaponMaxReserveAmmo(int iWeaponID, int iDefIdx);
 	std::string GetLevelName();
+
+	bool CleanScreenshot();
 }

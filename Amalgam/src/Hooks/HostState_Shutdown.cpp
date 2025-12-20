@@ -19,7 +19,7 @@ MAKE_HOOK(HostState_Shutdown, S::HostState_Shutdown(), void)
 MAKE_HOOK(HostState_Restart, S::HostState_Restart(), void)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::HostState_Shutdown[DEFAULT_BIND])
+	if (!Vars::Hooks::HostState_Restart[DEFAULT_BIND])
 		return CALL_ORIGINAL();
 #endif
 

@@ -97,6 +97,7 @@ public:
 	NETVAR(m_nForceEscortPushLogic, int, "CTFGameRulesProxy", "m_nForceEscortPushLogic");
 	NETVAR(m_bRopesHolidayLightsAllowed, bool, "CTFGameRulesProxy", "m_bRopesHolidayLightsAllowed");
 
+	VIRTUAL(DefaultFOV, int, 30, this);
 	VIRTUAL(GetViewVectors, CViewVectors*, 31, this);
 
 	inline bool IsPlayerReady(int playerIndex)

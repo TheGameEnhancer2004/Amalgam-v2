@@ -19,14 +19,14 @@ MAKE_HOOK(CVoiceStatus_IsPlayerBlocked, S::CVoiceStatus_IsPlayerBlocked(), bool,
     void* rcx, int playerIndex)
 {
 #ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::VGuiMenuBuilder_AddMenuItem[DEFAULT_BIND])
+    if (!Vars::Hooks::CVoiceStatus_IsPlayerBlocked[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, playerIndex);
 #endif
 
-    static const auto dwDesired = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_IsPlayerBlocked_Call();
+    const auto dwDesired = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_IsPlayerBlocked_Call();
     const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-    if (Vars::Visuals::UI::ScoreboardUtility.Value && dwRetAddr == dwDesired)
+    if (dwRetAddr == dwDesired && Vars::Visuals::UI::ScoreboardUtility.Value)
         s_iPlayerIndex = playerIndex;
 
     return CALL_ORIGINAL(rcx, playerIndex);
@@ -40,10 +40,10 @@ MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
         return CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);
 #endif
 
-    static const auto dwDesired = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_AddMenuItem_Call();
+    const auto dwDesired = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_AddMenuItem_Call();
     const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
-    if (Vars::Visuals::UI::ScoreboardUtility.Value && dwRetAddr == dwDesired && s_iPlayerIndex != -1)
+    if (dwRetAddr == dwDesired && Vars::Visuals::UI::ScoreboardUtility.Value && s_iPlayerIndex != -1)
     {
         auto pReturn = CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);
 
@@ -78,7 +78,7 @@ MAKE_HOOK(CTFClientScoreBoardDialog_OnCommand, S::CTFClientScoreBoardDialog_OnCo
     void* rcx, const char* command)
 {
 #ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::VGuiMenuBuilder_AddMenuItem[DEFAULT_BIND])
+    if (!Vars::Hooks::CTFClientScoreBoardDialog_OnCommand[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, command);
 #endif
 

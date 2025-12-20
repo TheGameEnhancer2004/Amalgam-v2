@@ -11,7 +11,7 @@ MAKE_HOOK(DoEnginePostProcessing, S::DoEnginePostProcessing(), void,
 		return CALL_ORIGINAL(x, y, w, h, bFlashlightIsOn, bPostVGui);
 #endif
 
-	if (!Vars::Visuals::Removals::PostProcessing.Value || Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot())
+	if (!Vars::Visuals::Removals::PostProcessing.Value || SDK::CleanScreenshot())
 		CALL_ORIGINAL(x, y, w, h, bFlashlightIsOn, bPostVGui);
 #endif
 }

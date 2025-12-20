@@ -613,6 +613,8 @@ enum Collision_Group_t
 class CThreadMutex;
 typedef CThreadMutex CSourceMutex;
 
+#pragma region Hitboxes
+
 enum EHitboxes
 {
 	HITBOX_HEAD,
@@ -635,6 +637,34 @@ enum EHitboxes
 	HITBOX_RIGHT_FOOT,
 	HITBOX_MAX
 };
+
+// 1: scout, 2: soldier, 3: pyro, 4: demoman, 5: heavy, 6: engineer, 7: medic, 8: sniper, 9: spy
+
+#pragma region Mann vs Machine
+enum EBot6Hitboxes
+{	// engineer bot has no pelvis
+	HITBOX_BOT6_HEAD,
+	HITBOX_BOT6_SPINE0,
+	HITBOX_BOT6_SPINE1,
+	HITBOX_BOT6_SPINE2,
+	HITBOX_BOT6_SPINE3,
+	HITBOX_BOT6_LEFT_UPPERARM,
+	HITBOX_BOT6_LEFT_FOREARM,
+	HITBOX_BOT6_LEFT_HAND,
+	HITBOX_BOT6_RIGHT_UPPERARM,
+	HITBOX_BOT6_RIGHT_FOREARM,
+	HITBOX_BOT6_RIGHT_HAND,
+	HITBOX_BOT6_LEFT_THIGH,
+	HITBOX_BOT6_LEFT_CALF,
+	HITBOX_BOT6_LEFT_FOOT,
+	HITBOX_BOT6_RIGHT_THIGH,
+	HITBOX_BOT6_RIGHT_CALF,
+	HITBOX_BOT6_RIGHT_FOOT,
+	HITBOX_BOT6_MAX
+};
+#pragma endregion
+
+#pragma region Versus Saxton Hale
 enum ESaxtonHitboxes
 {
 	HITBOX_SAXTON_HEAD,
@@ -658,10 +688,10 @@ enum ESaxtonHitboxes
 	HITBOX_SAXTON_SPINE3,
 	HITBOX_SAXTON_MAX
 };
+#pragma endregion
 
 #pragma region Zombie Infection
 // these models are all terrible
-// 1: scout, 2: soldier, 3: pyro, 4: demoman, 5: heavy, 6: engineer, 7: medic, 8: sniper, 9: spy
 // reused where possible
 // not adding garbage hitboxes that shouldn't exist
 
@@ -846,6 +876,8 @@ enum EZombie9Hitboxes
 	HITBOX_ZOMBIE9_RIGHT_FOOT,
 	HITBOX_ZOMBIE9_MAX
 };
+#pragma endregion
+
 #pragma endregion
 
 enum MinigunState_t

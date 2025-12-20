@@ -158,6 +158,7 @@ public:
 	NETVAR(m_flLastDamageTime, float, "CTFPlayer", "m_flLastDamageTime");
 	NETVAR(m_bInPowerPlay, bool, "CTFPlayer", "m_bInPowerPlay");
 	NETVAR(m_iSpawnCounter, int, "CTFPlayer", "m_iSpawnCounter");
+	NETVAR(m_bFlipViewModels, bool, "CTFPlayer", "m_bFlipViewModels");
 	NETVAR(m_bArenaSpectator, bool, "CTFPlayer", "m_bArenaSpectator");
 	NETVAR_EMBED(m_AttributeManager, void*, "CTFPlayer", "m_AttributeManager");
 	NETVAR(m_hOuter, EHANDLE, "CTFPlayer", "m_hOuter");

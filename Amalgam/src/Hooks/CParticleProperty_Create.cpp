@@ -14,14 +14,14 @@ MAKE_HOOK(CParticleProperty_Create_Name, S::CParticleProperty_Create_Name(), voi
 	void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, const char* pszAttachmentName)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CParticleProperty_Create[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, pszAttachmentName);
+    if (!Vars::Hooks::CParticleProperty_Create_Name[DEFAULT_BIND])
+        return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, pszAttachmentName);
 #endif
 
-	static const auto dwUpdateEffects1 = S::CWeaponMedigun_UpdateEffects_CreateName_Call1();
-	static const auto dwUpdateEffects2 = S::CWeaponMedigun_UpdateEffects_CreateName_Call2();
-	static const auto dwManageChargeEffect = S::CWeaponMedigun_ManageChargeEffect_CreateName_Call();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+    const auto dwUpdateEffects1 = S::CWeaponMedigun_UpdateEffects_CreateName_Call1();
+    const auto dwUpdateEffects2 = S::CWeaponMedigun_UpdateEffects_CreateName_Call2();
+    const auto dwManageChargeEffect = S::CWeaponMedigun_ManageChargeEffect_CreateName_Call();
+    const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	bool bUpdateEffects = dwRetAddr == dwUpdateEffects1 || dwRetAddr == dwUpdateEffects2, bManageChargeEffect = dwRetAddr == dwManageChargeEffect;
 	if (bUpdateEffects || bManageChargeEffect)
@@ -98,8 +98,8 @@ MAKE_HOOK(CParticleProperty_Create_Point, S::CParticleProperty_Create_Point(), v
 	void* rcx, const char* pszParticleName, ParticleAttachment_t iAttachType, int iAttachmentPoint, Vector vecOriginOffset)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CParticleProperty_Create[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
+    if (!Vars::Hooks::CParticleProperty_Create_Point[DEFAULT_BIND])
+        return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
 #endif
 
 	if (FNV1A::Hash32(Vars::Visuals::Effects::ProjectileTrail.Value.c_str()) != FNV1A::Hash32Const("Default"))
@@ -204,6 +204,11 @@ MAKE_HOOK(CParticleProperty_Create_Point, S::CParticleProperty_Create_Point(), v
 MAKE_HOOK(CParticleProperty_AddControlPoint_Pointer, S::CParticleProperty_AddControlPoint_Pointer(), void,
     void* rcx, void* pEffect, int iPoint, CBaseEntity* pEntity, ParticleAttachment_t iAttachType, const char* pszAttachmentName, Vector vecOriginOffset)
 {
+#ifdef DEBUG_HOOKS
+    if (!Vars::Hooks::CParticleProperty_AddControlPoint_Pointer[DEFAULT_BIND])
+        return CALL_ORIGINAL(rcx, pEffect, iPoint, pEntity, iAttachType, pszAttachmentName, vecOriginOffset);
+#endif
+
     if (!pEffect)
         return; // crash fix
 

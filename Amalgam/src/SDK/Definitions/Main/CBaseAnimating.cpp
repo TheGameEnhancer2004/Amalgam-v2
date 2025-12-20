@@ -35,7 +35,7 @@ Vec3 CBaseAnimating::GetHitboxOrigin(matrix3x4* aBones, int nHitbox, Vec3 vOffse
 	auto pHDR = I::ModelInfoClient->GetStudiomodel(pModel);
 	if (!pHDR) return {};
 	auto pSet = pHDR->pHitboxSet(m_nHitboxSet());
-	if (!pSet) return {};
+	if (!pSet || pSet->numhitboxes <= nHitbox) return {};
 	auto pBox = pSet->pHitbox(nHitbox);
 	if (!pBox) return {};
 
@@ -50,7 +50,7 @@ Vec3 CBaseAnimating::GetHitboxCenter(matrix3x4* aBones, int nHitbox, Vec3 vOffse
 	auto pHDR = I::ModelInfoClient->GetStudiomodel(pModel);
 	if (!pHDR) return {};
 	auto pSet = pHDR->pHitboxSet(m_nHitboxSet());
-	if (!pSet) return {};
+	if (!pSet || pSet->numhitboxes <= nHitbox) return {};
 	auto pBox = pSet->pHitbox(nHitbox);
 	if (!pBox) return {};
 
@@ -65,7 +65,7 @@ void CBaseAnimating::GetHitboxInfo(matrix3x4* aBones, int nHitbox, Vec3* pCenter
 	auto pHDR = I::ModelInfoClient->GetStudiomodel(pModel);
 	if (!pHDR) return;
 	auto pSet = pHDR->pHitboxSet(m_nHitboxSet());
-	if (!pSet) return;
+	if (!pSet || pSet->numhitboxes <= nHitbox) return;
 	auto pBox = pSet->pHitbox(nHitbox);
 	if (!pBox) return;
 

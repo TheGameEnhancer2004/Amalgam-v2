@@ -826,6 +826,11 @@ void CVisuals::DrawHitboxes(int iStore)
 MAKE_HOOK(CBaseAnimating_DrawServerHitboxes, S::CBaseAnimating_DrawServerHitboxes(), void,
 	void* rcx, float duration, bool monocolor)
 {
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::CBaseAnimating_DrawServerHitboxes[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, duration, monocolor);
+#endif
+
 	if (s_bBoxesHeadOnly)
 		monocolor = false;
 
@@ -835,9 +840,14 @@ MAKE_HOOK(CBaseAnimating_DrawServerHitboxes, S::CBaseAnimating_DrawServerHitboxe
 MAKE_HOOK(NDebugOverlay_BoxAngles, S::NDebugOverlay_BoxAngles(), void,
 	Vector& origin, Vector& mins, Vector& maxs, QAngle& angles, int r, int g, int b, int a, float duration)
 {
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::NDebugOverlay_BoxAngles[DEFAULT_BIND])
+		return CALL_ORIGINAL(origin, mins, maxs, angles, r, g, b, a, duration);
+#endif
+
 	if (s_bBoxesHeadOnly)
 	{
-		static const auto dwDesired = S::CBaseAnimating_DrawServerHitboxes_BoxAngles_Call();
+		const auto dwDesired = S::CBaseAnimating_DrawServerHitboxes_BoxAngles_Call();
 		const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 		if (dwRetAddr == dwDesired && (r != 255 || g != 127 || b != 127))
@@ -861,6 +871,7 @@ MAKE_HOOK(NDebugOverlay_BoxAngles, S::NDebugOverlay_BoxAngles(), void,
 void CVisuals::FOV(CTFPlayer* pLocal, CViewSetup* pView)
 {
 	static auto fov_desired = H::ConVars.FindVar("fov_desired");
+	static auto default_fov = H::ConVars.FindVar("default_fov");
 	bool bZoomed = pLocal->InCond(TF_COND_ZOOMED);
 
 	float flRegularFOV = fov_desired->GetFloat();
@@ -868,6 +879,8 @@ void CVisuals::FOV(CTFPlayer* pLocal, CViewSetup* pView)
 
 	float flRegularOverride = Vars::Visuals::UI::FieldOfView.Value;
 	float flZoomOverride = Vars::Visuals::UI::ZoomFieldOfView.Value;
+	if (SDK::CleanScreenshot())
+		flRegularOverride = flZoomOverride = 0.f;
 
 	if (flRegularOverride || flZoomOverride)
 	{
@@ -887,8 +900,13 @@ void CVisuals::FOV(CTFPlayer* pLocal, CViewSetup* pView)
 		}
 	}
 
-	pLocal->m_iFOV() = pView->fov;
-	pLocal->m_iDefaultFOV() = std::max(flRegularOverride, flRegularFOV);
+	F::Aimbot.m_flFOV = pView->fov;
+	if (pLocal->IsAlive())
+	{
+		pLocal->m_iFOV() = pView->fov;
+		pLocal->m_iDefaultFOV() = std::max(flRegularOverride, flRegularFOV);
+		default_fov->SetValue(pLocal->m_iDefaultFOV());
+	}
 }
 
 void CVisuals::ThirdPerson(CTFPlayer* pLocal, CViewSetup* pView)
@@ -900,7 +918,7 @@ void CVisuals::ThirdPerson(CTFPlayer* pLocal, CViewSetup* pView)
 	//if (bForce)
 	//	return;
 
-	if (Vars::Visuals::Thirdperson::Enabled.Value || bForce)
+	if (Vars::Visuals::Thirdperson::Enabled.Value && !SDK::CleanScreenshot() || bForce)
 		I::Input->CAM_ToThirdPerson();
 	else
 		I::Input->CAM_ToFirstPerson();
@@ -1147,7 +1165,7 @@ static inline void ApplyModulation(Color_t tColor, bool bSky = false)
 
 void CVisuals::Modulate()
 {
-	const bool bScreenshot = Vars::Visuals::UI::CleanScreenshots.Value && I::EngineClient->IsTakingScreenshot();
+	const bool bScreenshot = SDK::CleanScreenshot();
 	const bool bWorldModulation = Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::World && !bScreenshot;
 	const bool bSkyModulation = Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Sky && !bScreenshot;
 
