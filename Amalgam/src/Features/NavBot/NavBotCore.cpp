@@ -181,39 +181,46 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 	// Prioritize reloading
 	int iReloadSlot = F::NavBotReload.m_iLastReloadSlot = F::NavBotReload.GetReloadWeaponSlot(pLocal, tClosestEnemy);
 
-	// Special case for engineer bots
-	if (F::NavBotEngineer.IsEngieMode(pLocal))
-	{
-		int iSwitch = 0;
-		switch (F::NavBotEngineer.m_eTaskStage)
+		if (F::NavBotEngineer.IsEngieMode(pLocal))
 		{
-		// We are currently building something (we dont really need to hold the melee weapon)
-		case EngineerTaskStageEnum::BuildSentry:
-		case EngineerTaskStageEnum::BuildDispenser:
-			iSwitch = 2 * (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f);
-			break;
-		// We are currently upgrading/repairing something
-		case EngineerTaskStageEnum::SmackSentry:
-			iSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
-			break;
-		case EngineerTaskStageEnum::SmackDispenser:
-			iSwitch = F::NavBotEngineer.m_flDistToDispenser <= 500.f;
-			break;
-		default:
-			break;
-		}
-
-		if (iSwitch)
-		{
-			if (iSwitch == 1)
+			int iSwitch = 0;
+			switch (F::NavBotEngineer.m_eTaskStage)
 			{
-				if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
-					F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
+			// We are currently building something
+			case EngineerTaskStageEnum::BuildSentry:
+			case EngineerTaskStageEnum::BuildDispenser:
+				if (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f)
+				{
+					if (pLocal->m_bCarryingObject())
+					{
+						auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
+						if (pWeapon && pWeapon->GetSlot() != 3) 
+							F::BotUtils.SetSlot(pLocal, SLOT_PRIMARY); 
+					}
+					return;
+				}
+				break;
+			// We are currently upgrading/repairing something
+			case EngineerTaskStageEnum::SmackSentry:
+				iSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
+				break;
+			case EngineerTaskStageEnum::SmackDispenser:
+				iSwitch = F::NavBotEngineer.m_flDistToDispenser <= 500.f;
+				break;
+			default:
+				break;
 			}
-			// Dont interrupt building process
-			return;
+
+			if (iSwitch)
+			{
+				if (iSwitch == 1)
+				{
+					if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
+						F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
+				}
+				return;
+			}
 		}
-	}
 
 	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
 		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
@@ -361,18 +368,18 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	if (F::NavBotDanger.EscapeSpawn(pLocal)
 		|| F::NavBotDanger.EscapeProjectiles(pLocal)
-		|| F::NavBotMelee.Run(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotDanger.EscapeDanger(pLocal)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health)
+		|| F::NavBotEngineer.Run(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
+		|| F::NavBotMelee.Run(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo)
 		//|| F::NavBotReload.Run(pLocal, pWeapon)
-		|| F::NavBotReload.RunSafe(pLocal, pWeapon)
-		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotCapture.Run(pLocal, pWeapon)
-		|| F::NavBotEngineer.Run(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotSnipe.Run(pLocal)
+		|| F::NavBotReload.RunSafe(pLocal, pWeapon)
 		|| F::NavBotStayNear.Run(pLocal, pWeapon)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health | GetSupplyEnum::LowPrio)
+		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotRoam.Run(pLocal, pWeapon))
 	{
 		// Force crithack in dangerous conditions

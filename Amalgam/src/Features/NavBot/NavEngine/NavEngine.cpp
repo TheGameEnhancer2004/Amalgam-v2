@@ -1,4 +1,5 @@
 #include "NavEngine.h"
+#include "../NavBotJobs/Engineer.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
@@ -991,5 +992,7 @@ void CNavEngine::Render()
 	{
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 			H::Draw.RenderLine(m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos, Vars::Colors::NavbotPath.Value, false);
-	}	
+	}
+
+	F::NavBotEngineer.Render();
 }
