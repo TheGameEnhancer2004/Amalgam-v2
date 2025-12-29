@@ -373,24 +373,6 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		vLastLocalOrigin = vLocalOrigin.Get2D();
 	flLast2DVel = flCurrent2DVel;
 
-	float flHeightDiff = vDest.z - vLocalOrigin.z;
-	if (flDot > 0.65f && flHeightDiff > pLocal->m_flStepSize() && vLocalOrigin.DistTo(vDest) <= 140.f)
-	{
-		static bool bLastAttempted = false;
-		const bool bCurGrounded = pLocal->m_hGroundEntity();
-		if (!bCurGrounded || !pLocal->IsDucking())
-		{
-			if (bCurGrounded)
-			{
-				if (!bLastAttempted)
-					pCmd->buttons |= IN_JUMP;
-			}
-			else if (flHeightDiff > PLAYER_JUMP_HEIGHT)
-				pCmd->buttons |= IN_DUCK;
-		}
-		bLastAttempted = pCmd->buttons & IN_JUMP;
-	}
-
 	SDK::WalkTo(pCmd, pLocal, vDest);
 }
 

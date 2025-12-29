@@ -77,11 +77,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		Vector vStart = tPoints.m_vCurrent;
 		Vector vMid = tPoints.m_vCenter;
 		Vector vEnd = tPoints.m_vNext;
-		vStart.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		vMid.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		vEnd.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-		if (F::NavEngine.IsPlayerPassableNavigation(vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(vMid, vEnd))
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd))
 		{
 			bPassable = true;
 			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);

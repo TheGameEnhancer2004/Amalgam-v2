@@ -11,6 +11,15 @@ struct ClosestEnemy_t
 
 Enum(ShouldTarget, Invalid = -1, DontTarget, Target);
 
+enum EJumpState
+{
+	STATE_AWAITING_JUMP,
+	STATE_CTAP,
+	STATE_JUMP,
+	STATE_ASCENDING,
+	STATE_DESCENDING
+};
+
 class CBotUtils
 {
 private:
@@ -21,7 +30,9 @@ private:
 	bool HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 	void UpdateBestSlot(CTFPlayer* pLocal);
 
-	struct legitLookState_t
+	EJumpState m_eJumpState = STATE_AWAITING_JUMP;
+
+	struct LegitLook_t
 	{
 		Vec3 m_vAnchor = {};
 		Vec3 m_vOffset = {};
@@ -43,8 +54,12 @@ private:
 		Timer m_tGlanceCooldown = {};
 	};
 
-	legitLookState_t m_tLLAP = {};
+	LegitLook_t m_tLLAP = {};
+
 public:
+	Vector m_vPredictedJumpPos = {};
+	Vector m_vJumpPeakPos = {};
+	std::vector<std::pair<Vector, Vector>> m_vWalkableSegments = {};
 
 	int m_iCurrentSlot = -1;
 	int m_iBestSlot = -1;
@@ -64,6 +79,12 @@ public:
 	void LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, bool bSilent, bool bSmooth = true);
 	void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
 	void InvalidateLLAP();
+
+	bool IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd);
+	bool IsSurfaceWalkable(const Vector& vNormal);
+	bool SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd);
+	void HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd);
+	void ForceJump() { if (m_eJumpState == STATE_AWAITING_JUMP) m_eJumpState = Vars::Misc::Movement::AutoCTap.Value ? STATE_CTAP : STATE_JUMP; }
 
 	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);

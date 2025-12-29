@@ -60,7 +60,7 @@ public:
 	// Vischeck
 	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);
 	// Checks if player can walk from one position to another without bumping into anything
-	bool IsPlayerPassableNavigation(const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
+	bool IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
 
 	// Are we currently pathing?
 	bool IsPathing() { return !m_vCrumbs.empty(); }

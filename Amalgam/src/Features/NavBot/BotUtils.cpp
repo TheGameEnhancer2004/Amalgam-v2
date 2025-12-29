@@ -4,6 +4,7 @@
 #include "../Players/PlayerUtils.h"
 #include "../Misc/Misc.h"
 #include "../Aimbot/AimbotGlobal/AimbotGlobal.h"
+#include "../Aimbot/AutoRocketJump/AutoRocketJump.h"
 #include "../Misc/NamedPipe/NamedPipe.h"
 #include "../Ticks/Ticks.h"
 
@@ -859,5 +860,232 @@ void CBotUtils::Reset()
 	m_tClosestEnemy = {};
 	m_iBestSlot = -1;
 	m_iCurrentSlot = -1;
+	m_eJumpState = STATE_AWAITING_JUMP;
+	m_vPredictedJumpPos = {};
+	m_vJumpPeakPos = {};
 	InvalidateLLAP();
+}
+
+bool CBotUtils::IsSurfaceWalkable(const Vector& vNormal)
+{
+	static const Vector vUp = { 0.f, 0.f, 1.f };
+	float flAngle = RAD2DEG(std::acos(vNormal.Dot(vUp)));
+	return flAngle < 45.f; // MAX_WALKABLE_ANGLE
+}
+
+bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd)
+{
+	if (!pLocal) return false;
+
+	m_vWalkableSegments.clear();
+	const float flStepHeight = pLocal->m_flStepSize();
+	const float flMaxFallDistance = 250.f;
+	const Vector vStepHeight = { 0.f, 0.f, flStepHeight };
+	const Vector vMaxFallDistance = { 0.f, 0.f, flMaxFallDistance };
+	const Vector vHullMin = { -20.f, -20.f, 0.f };
+	const Vector vHullMax = { 20.f, 20.f, 72.f };
+
+	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
+	{
+		CGameTrace trace = {};
+		CTraceFilterCollideable filter = {};
+		filter.pSkip = pLocal;
+		filter.iPlayer = PLAYER_NONE;
+		filter.iObject = OBJECT_ALL;
+		SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
+		return trace;
+	};
+
+	auto AdjustDirectionToSurface = [&](Vector vDir, const Vector& vNormal) -> Vector
+	{
+		vDir.Normalize();
+		if (!IsSurfaceWalkable(vNormal)) return vDir;
+
+		float flDot = vDir.Dot(vNormal);
+		vDir.z -= vNormal.z * flDot;
+		vDir.Normalize();
+		return vDir;
+	};
+
+	CGameTrace groundTrace = PerformTraceHull(vStart + vStepHeight, vStart - vMaxFallDistance);
+	Vector vCurrentPos = groundTrace.endpos;
+	Vector vLastPos = vCurrentPos;
+	Vector vGoalDir = vEnd - vCurrentPos;
+	Vector vLastDir = AdjustDirectionToSurface(vGoalDir, groundTrace.plane.normal);
+
+	float flMaxDist = vEnd.DistTo2D(vStart);
+	float flMinStepSize = 10.f;
+
+	for (int i = 0; i < 64; i++) 
+	{
+		Vector vIterStartPos = vCurrentPos;
+		float flDistToGoal = (vEnd - vCurrentPos).Length();
+		Vector vNextPos = vCurrentPos + vLastDir * std::min(flDistToGoal, 32.f);
+
+		CGameTrace wallTrace = PerformTraceHull(vCurrentPos + vStepHeight, vNextPos + vStepHeight);
+		Vector vPreGroundPos = wallTrace.endpos;
+
+		if (wallTrace.startsolid) return false;
+
+		float flTotalDist = (vPreGroundPos - vIterStartPos).Length();
+		
+		int iNumSegments = std::max(1, static_cast<int>(std::floor(flTotalDist / flMinStepSize)));
+
+		bool bFoundGround = false;
+		for (int s = 1; s <= iNumSegments; s++)
+		{
+			float t = static_cast<float>(s) / iNumSegments;
+			Vector vSegmentPos = vIterStartPos + (vPreGroundPos - vIterStartPos) * t;
+			CGameTrace segGroundTrace = PerformTraceHull(vSegmentPos + vStepHeight, vSegmentPos - vMaxFallDistance);
+
+			m_vWalkableSegments.push_back({ vCurrentPos, segGroundTrace.endpos });
+
+			if (segGroundTrace.fraction == 1.0f) return false; // Pit or ledge too high
+
+			if (IsSurfaceWalkable(segGroundTrace.plane.normal))
+			{
+				vLastDir = AdjustDirectionToSurface(vLastDir, segGroundTrace.plane.normal);
+				vCurrentPos = segGroundTrace.endpos;
+				bFoundGround = true;
+			}
+			else return false; // Too steep
+		}
+
+		if (!bFoundGround) return false;
+
+		float flCurrentDist = vCurrentPos.DistTo2D(vEnd);
+		if (flCurrentDist < 16.f)
+		{
+			if (std::abs(vEnd.z - vCurrentPos.z) < flStepHeight + 2.f) return true;
+		}
+
+		if (vCurrentPos.DistTo(vIterStartPos) < 1.f) return false; // Infinite loopfix
+	}
+
+	return false;
+}
+
+bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
+{
+	if (!pLocal || !pLocal->IsAlive() || !Vars::Misc::Movement::NavBot::SmartJump.Value) return false;
+
+	if (pLocal->OnSolid())
+	{
+		Vector vVelocity = pLocal->m_vecVelocity();
+		Vector vMoveInput = { pCmd->forwardmove, -pCmd->sidemove, 0.f };
+		if (vMoveInput.Length() > 0.f)
+		{
+			Vector vViewAngles = I::EngineClient->GetViewAngles();
+			Vector vForward, vRight;
+			Math::AngleVectors(vViewAngles, &vForward, &vRight, nullptr);
+			vForward.z = vRight.z = 0.f;
+			vForward.Normalize();
+			vRight.Normalize();
+
+			Vector vRotatedMoveDir = vForward * vMoveInput.x + vRight * vMoveInput.y;
+			vVelocity = vRotatedMoveDir.Normalized() * std::max(10.f, vVelocity.Length());
+		}
+
+		const float flJumpForce = 277.f;
+		const float flGravity = 800.f;
+		float flTimeToPeak = flJumpForce / flGravity;
+		float flDistTravelled = vVelocity.Length2D() * flTimeToPeak;
+		Vector vJumpDirection = vVelocity.Normalized();
+		Vector vJumpPeakPos = pLocal->GetAbsOrigin() + vJumpDirection * flDistTravelled;
+		m_vJumpPeakPos = vJumpPeakPos;
+
+		const Vector vHullMin = { -23.99f, -23.99f, 0.f };
+		const Vector vHullMax = { 23.99f, 23.99f, 62.f };
+		const Vector vStepHeight = { 0.f, 0.f, 18.f };
+		const Vector vMaxJumpHeight = { 0.f, 0.f, 72.f };
+
+		Vector vTraceStart = pLocal->GetAbsOrigin() + vStepHeight;
+		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
+
+		CGameTrace forwardTrace = {};
+		CTraceFilterHitscan filter = {};
+		filter.pSkip = pLocal;
+		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
+
+		m_vPredictedJumpPos = forwardTrace.endpos;
+
+		if (forwardTrace.fraction < 1.0f)
+		{
+			CGameTrace downwardTrace = {};
+			SDK::TraceHull(forwardTrace.endpos, forwardTrace.endpos - vMaxJumpHeight, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &downwardTrace);
+
+			Vector vLandingPos = downwardTrace.endpos + vJumpDirection * 10.f;
+			CGameTrace landingTrace = {};
+			SDK::TraceHull(vLandingPos + vMaxJumpHeight, vLandingPos, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &landingTrace);
+
+			m_vPredictedJumpPos = landingTrace.endpos;
+
+			if (landingTrace.fraction > 0.f && landingTrace.fraction < 0.75f) // JUMP_FRACTION
+			{
+				if (IsSurfaceWalkable(landingTrace.plane.normal))
+					return true;
+			}
+		}
+	}
+	else if (pCmd->buttons & IN_JUMP)
+		return true;
+
+	return false;
+}
+
+void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
+{
+	if (!pLocal || !pLocal->IsAlive() || F::AutoRocketJump.IsRunning())
+	{
+		m_eJumpState = STATE_AWAITING_JUMP;
+		return;
+	}
+
+	bool bOnGround = pLocal->OnSolid();
+	bool bDucking = pLocal->IsDucking();
+
+	if (bOnGround && bDucking)
+		m_eJumpState = STATE_AWAITING_JUMP;
+
+	switch (m_eJumpState)
+	{
+	case STATE_AWAITING_JUMP:
+		if (SmartJump(pLocal, pCmd))
+			m_eJumpState = (Vars::Misc::Movement::AutoCTap.Value && bOnGround) ? STATE_CTAP : STATE_JUMP;
+		break;
+	case STATE_CTAP:
+		pCmd->buttons |= IN_DUCK;
+		pCmd->buttons &= ~IN_JUMP;
+		m_eJumpState = STATE_JUMP;
+		break;
+	case STATE_JUMP:
+		pCmd->buttons &= ~IN_DUCK;
+		pCmd->buttons |= IN_JUMP;
+		m_eJumpState = STATE_ASCENDING;
+		break;
+	case STATE_ASCENDING:
+		pCmd->buttons |= IN_DUCK;
+		if (pLocal->m_vecVelocity().z <= 0.f)
+			m_eJumpState = STATE_DESCENDING;
+		else if (bOnGround)
+			m_eJumpState = STATE_AWAITING_JUMP;
+		break;
+	case STATE_DESCENDING:
+		pCmd->buttons &= ~IN_DUCK;
+		if (!bOnGround)
+		{
+			if (SmartJump(pLocal, pCmd))
+			{
+				pCmd->buttons &= ~IN_DUCK;
+				pCmd->buttons |= IN_JUMP;
+				m_eJumpState = (Vars::Misc::Movement::AutoCTap.Value && bOnGround) ? STATE_CTAP : STATE_JUMP;
+			}
+		}
+		else
+		{
+			pCmd->buttons |= IN_DUCK;
+			m_eJumpState = STATE_AWAITING_JUMP;
+		}
+		break;
+	}
 }

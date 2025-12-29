@@ -1503,7 +1503,8 @@ void CMenu::MenuMisc(int iTab)
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);

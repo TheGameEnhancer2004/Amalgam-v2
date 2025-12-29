@@ -836,6 +836,8 @@ I dont think this is a good idea to disable simulations completely:
 				CVar(BlacklistDormantDelay, "Blacklist dormant scan delay", 1.f, SLIDER_MIN, 0.5f, 5.f, 0.5f, "%gs");
 				CVar(BlacklistSlightDangerLimit, "Blacklist slight danger limit", 2, SLIDER_MIN, 1, 10);
 
+				CVar(SmartJump, "Smart jump", false);
+
 				CVarEnum(RechargeDT, "Recharge DT", 0, NONE, nullptr,
 					VA_LIST("Off", "On", "If not fakelagging"),
 					Off, Always, WaitForFL);

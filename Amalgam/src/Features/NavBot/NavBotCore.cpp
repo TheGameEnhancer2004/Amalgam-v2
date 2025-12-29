@@ -257,7 +257,7 @@ bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, 
 			vAlreadyRecursed.push_back(tConnection.m_pArea);
 
 			std::pair<CNavArea*, int> tSpot;
-			if (FindClosestHidingSpot(tConnection.m_pArea, vVischeckPoint, iRecursionCount, tSpot, iRecursionIndex, bVischeck) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
+			if (FindClosestHidingSpot(tConnection.m_pArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iRecursionIndex) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
 				tBestSpot = tSpot;
 		}
 		tOut = tBestSpot;
@@ -286,6 +286,21 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
 		return;
+	}
+
+	if (Vars::Debug::Info.Value)
+	{
+		for (const auto& segment : F::BotUtils.m_vWalkableSegments)
+		{
+			G::LineStorage.push_back({ { segment.first, segment.second }, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 0, 255, 0, 255 } });
+		}
+
+		if (F::BotUtils.m_vPredictedJumpPos.Length() > 0.f)
+		{
+			G::LineStorage.push_back({ { pLocal->GetAbsOrigin(), F::BotUtils.m_vPredictedJumpPos }, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 255, 255, 0, 255 } });
+			G::SphereStorage.push_back({ F::BotUtils.m_vJumpPeakPos, 5.f, 10, 10, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 255, 0, 0, 255 }, { 0, 0, 0, 0 } });
+			G::SphereStorage.push_back({ F::BotUtils.m_vPredictedJumpPos, 5.f, 10, 10, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 0, 0, 255, 255 }, { 0, 0, 0, 0 } });
+		}
 	}
 
 	if (Vars::Misc::Movement::NavBot::DisableOnSpectate.Value && H::Entities.IsSpectated())
