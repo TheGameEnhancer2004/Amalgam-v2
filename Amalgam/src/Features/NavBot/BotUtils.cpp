@@ -996,6 +996,8 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 		const Vector vHullMin = { -23.99f, -23.99f, 0.f };
 		const Vector vHullMax = { 23.99f, 23.99f, 62.f };
+		const Vector vHullMinSjump = { -16.f, -16.f, 0.f };
+		const Vector vHullMaxSjump = { 16.f, 16.f, 62.f };
 		const Vector vStepHeight = { 0.f, 0.f, 18.f };
 		const Vector vMaxJumpHeight = { 0.f, 0.f, 72.f };
 
@@ -1005,14 +1007,14 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		CGameTrace forwardTrace = {};
 		CTraceFilterHitscan filter = {};
 		filter.pSkip = pLocal;
-		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
+		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;
 
-		if (forwardTrace.fraction < 1.0f)
+		if (forwardTrace.fraction < 1.0f && !IsSurfaceWalkable(forwardTrace.plane.normal))
 		{
 			CGameTrace downwardTrace = {};
-			SDK::TraceHull(forwardTrace.endpos, forwardTrace.endpos - vMaxJumpHeight, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &downwardTrace);
+			SDK::TraceHull(forwardTrace.endpos, forwardTrace.endpos - vMaxJumpHeight, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &downwardTrace);
 
 			Vector vLandingPos = downwardTrace.endpos + vJumpDirection * 10.f;
 			CGameTrace landingTrace = {};
