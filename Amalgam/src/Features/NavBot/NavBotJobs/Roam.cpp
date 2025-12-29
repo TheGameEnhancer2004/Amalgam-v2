@@ -92,6 +92,8 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 	m_bDefending = false;
+	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
+		return true;
 
 	// Reset current target if we are not pathing or it's invalid
 	pCurrentTargetArea = nullptr;
@@ -146,13 +148,20 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Reset fail counter since we found valid areas
 	iConsecutiveFails = 0;
 
-	// Try to path to shuffled areas
+	// Sort by distance first (farthest first)
 	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b) {
-		float flDistA = a->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		float flDistB = b->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		// Prefer further areas with some randomness
-		return (flDistA * SDK::RandomFloat(0.7f, 1.3f)) > (flDistB * SDK::RandomFloat(0.7f, 1.3f));
+		return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
 	});
+
+	for (size_t i = 0; i < vValidAreas.size(); ++i)
+	{
+		if (SDK::RandomFloat(0.f, 1.f) < 0.2f) 
+		{
+			size_t j = (i + 1 < vValidAreas.size()) ? i + 1 : (i > 0 ? i - 1 : i);
+			if (i != j)
+				std::swap(vValidAreas[i], vValidAreas[j]);
+		}
+	}
 
 	for (auto pArea : vValidAreas)
 	{
