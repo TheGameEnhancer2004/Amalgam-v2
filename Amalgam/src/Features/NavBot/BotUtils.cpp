@@ -472,7 +472,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		}
 	}
 
-	auto& tState = m_tLLAP;
 	if (pBestEnemy)
 	{
 		if (pBestEnemy->IsPlayer())
@@ -486,169 +485,40 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			vLook = pBestEnemy->GetCenter();
 		}
 
-		tState.m_iLastTarget = pBestEnemy->entindex();
-		tState.m_flLastSeen = I::GlobalVars->curtime;
-		tState.m_vLastPos = vLook;
+		iLastTarget = pBestEnemy->entindex();
+		flLastSeen = I::GlobalVars->curtime;
+		vLastPos = vLook;
 		bEnemyLock = true;
 	}
-	else if ((I::GlobalVars->curtime - tState.m_flLastSeen) < 1.2f && !tState.m_vLastPos.IsZero())
+	else if ((I::GlobalVars->curtime - flLastSeen) < 1.2f && !vLastPos.IsZero())
 	{
 		// look at last known position for a bit
-		vLook = tState.m_vLastPos;
+		vLook = vLastPos;
 		bEnemyLock = true;
 	}
 	else
 	{
-		// 2. Look at dormant enemies occasionally
-		static int iDormantCheckIdx = 0;
-		if (!tState.m_bGlancing && tState.m_tGlanceCooldown.Check(tState.m_flNextGlance))
+		// 2. movement direction
+		// look ahead based on velocity
+		const Vec3 vVelocity = pLocal->m_vecVelocity();
+		const float flSpeed = vVelocity.Length2D();
+		if (flSpeed > 25.f)
 		{
-			std::vector<int> vDormantIndices;
-			for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-			{
-				if (pEntity->IsDormant() && H::Entities.GetDormancy(pEntity->entindex()))
-					vDormantIndices.push_back(pEntity->entindex());
-			}
+			Vec3 vForward = vVelocity;
+			vForward.Normalize();
+			vLook = vEye + (vForward * 500.f);
 
-			if (!vDormantIndices.empty())
-			{
-				int iTargetIdx = vDormantIndices[SDK::RandomInt(0, vDormantIndices.size() - 1)];
-				Vector vDormantPos;
-				if (GetDormantOrigin(iTargetIdx, vDormantPos))
-				{
-					vDormantPos.z += PLAYER_EYE_HEIGHT;
-					if (SDK::VisPos(pLocal, nullptr, vEye, vDormantPos))
-					{
-						tState.m_bGlancing = true;
-						tState.m_vGlanceGoal = vDormantPos;
-						tState.m_flGlanceDuration = SDK::RandomFloat(0.8f, 1.2f);
-						tState.m_tGlanceTimer.Update();
-						tState.m_flNextGlance = SDK::RandomFloat(2.f, 5.f);
-						tState.m_tGlanceCooldown.Update();
-					}
-				}
-			}
+			float flSweep = std::sin(I::GlobalVars->curtime * 1.5f) * 15.f;
+			Vec3 vAngles = Math::CalcAngle(vEye, vLook);
+			vAngles.y += flSweep;
+			Math::AngleVectors(vAngles, &vForward);
+			vLook = vEye + (vForward * 500.f);
 		}
-
-		if (tState.m_bGlancing)
+		else if (vLook.IsZero())
 		{
-			if (tState.m_tGlanceTimer.Check(tState.m_flGlanceDuration))
-			{
-				tState.m_bGlancing = false;
-			}
-			else
-			{
-				vLook = tState.m_vGlanceGoal;
-				bEnemyLock = true;
-			}
-		}
-
-		if (!bEnemyLock)
-		{
-			// 3. scanning for open spaces / corners
-			if (tState.m_tScanTimer.Run(tState.m_flNextScan))
-			{
-				tState.m_flNextScan = SDK::RandomFloat(1.5f, 3.5f);
-				
-				// Scan in a cone ahead
-				Vec3 vAngles = I::EngineClient->GetViewAngles();
-				float flBestDist = -1.f;
-				Vec3 vBestPos = {};
-
-				for (int i = 0; i < 5; i++)
-				{
-					float flYawOffset = SDK::RandomFloat(-45.f, 45.f);
-					float flPitchOffset = SDK::RandomFloat(-10.f, 10.f);
-					
-					Vec3 vScanAng = vAngles;
-					vScanAng.y += flYawOffset;
-					vScanAng.x += flPitchOffset;
-					
-					Vec3 vForward;
-					Math::AngleVectors(vScanAng, &vForward);
-					
-					CGameTrace trace;
-					CTraceFilterHitscan filter;
-					filter.pSkip = pLocal;
-					SDK::Trace(vEye, vEye + (vForward * 1000.f), MASK_SHOT, &filter, &trace);
-					
-					if (trace.fraction > 0.3f) // Only care about somewhat open areas
-					{
-						float flDist = vEye.DistTo(trace.endpos);
-						if (flDist > flBestDist)
-						{
-							flBestDist = flDist;
-							vBestPos = trace.endpos;
-						}
-					}
-				}
-
-				if (flBestDist > 0.f)
-				{
-					tState.m_bGlancing = true;
-					tState.m_vGlanceGoal = vBestPos;
-					tState.m_flGlanceDuration = SDK::RandomFloat(0.6f, 1.0f);
-					tState.m_tGlanceTimer.Update();
-				}
-			}
-
-			// 4. Backwards look
-			if (!tState.m_bGlancing && tState.m_tBackwardsLookTimer.Run(tState.m_flNextBackwardsLook))
-			{
-				tState.m_flNextBackwardsLook = SDK::RandomFloat(12.f, 90.f);
-				
-				Vec3 vAngles = I::EngineClient->GetViewAngles();
-				vAngles.y += 180.f;
-				vAngles.x = SDK::RandomFloat(-10.f, 10.f);
-				Math::ClampAngles(vAngles);
-				
-				Vec3 vForward;
-				Math::AngleVectors(vAngles, &vForward);
-				
-				tState.m_bGlancing = true;
-				tState.m_vGlanceGoal = vEye + (vForward * 500.f);
-				tState.m_flGlanceDuration = SDK::RandomFloat(0.6f, 1.0f);
-				tState.m_tGlanceTimer.Update();
-			}
-		}
-
-		if (!bEnemyLock)
-		{
-			// 5. movement direction (with path preference)
-			const Vec3 vVelocity = pLocal->m_vecVelocity();
-			const float flSpeed = vVelocity.Length2D();
-			
-			// Decide whether to look exactly at path or slightly offset
-			if (tState.m_tExplorationChanceTimer.Run(60.f))
-				tState.m_flExplorationChance = SDK::RandomFloat(0.4f, 0.6f);
-
-			bool bLookExactPath = SDK::RandomFloat(0.f, 1.f) > tState.m_flExplorationChance;
-			
-			if (flSpeed > 25.f)
-			{
-				if (bLookExactPath)
-				{
-					vLook = vDest;
-				}
-				else
-				{
-					Vec3 vForward = vVelocity;
-					vForward.Normalize();
-					vLook = vEye + (vForward * 500.f);
-
-					float flSweep = std::sin(I::GlobalVars->curtime * 1.5f) * 20.f;
-					Vec3 vAngles = Math::CalcAngle(vEye, vLook);
-					vAngles.y += flSweep;
-					Math::AngleVectors(vAngles, &vForward);
-					vLook = vEye + (vForward * 500.f);
-				}
-			}
-			else if (vLook.IsZero())
-			{
-				Vec3 vForward;
-				Math::AngleVectors(I::EngineClient->GetViewAngles(), &vForward, nullptr, nullptr);
-				vLook = vEye + vForward * 64.f;
-			}
+			Vec3 vForward;
+			Math::AngleVectors(I::EngineClient->GetViewAngles(), &vForward, nullptr, nullptr);
+			vLook = vEye + vForward * 64.f;
 		}
 	}
 
