@@ -40,7 +40,6 @@ private:
 		Vec3 m_vLastTarget = {};
 		Vec3 m_vGlanceCurrent = {};
 		Vec3 m_vGlanceGoal = {};
-		Vec3 m_vGlanceTarget = {};
 		int m_iLastTarget = -1;
 		float m_flLastSeen = 0.f;
 		Vec3 m_vLastPos = {};
@@ -55,7 +54,7 @@ private:
 		Timer m_tGlanceCooldown = {};
 
 		float m_flNextScan = 0.f;
-		float m_flNextBackwardsLook = 0.f;
+		float flNextBackwardsLook = 0.f;
 		float m_flExplorationChance = 0.5f;
 		Timer m_tScanTimer = {};
 		Timer m_tBackwardsLookTimer = {};
