@@ -194,6 +194,20 @@ public:
 	float m_flEarliestOccupyTime[2]; // MAX_NAV_TEAMS
 	float m_flLightIntensity[4];// NUM_CORNERS
 
+	bool IsBlocked(int iTeam) const
+	{
+		if (m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || m_iTFAttributeFlags & TF_NAV_BLOCKED)
+			return true;
+
+		if (iTeam == TF_TEAM_RED && m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_BLUE)
+			return true;
+		if (iTeam == TF_TEAM_BLUE && m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED)
+			return true;
+
+		return false;
+	}
+};
+
 	// Check if the given point is overlapping the area
 	// @return True if 'pos' is within 2D extents of area.
 	bool IsOverlapping(const Vector& vPos, float flTolerance = 0.0f) const

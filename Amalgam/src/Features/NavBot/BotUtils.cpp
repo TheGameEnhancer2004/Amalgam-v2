@@ -253,15 +253,15 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			Vec3 vForward;
 			Math::AngleVectors(m_tClosestEnemy.m_pPlayer->GetEyeAngles(), &vForward);
 			Vec3 vToLocal = pLocal->GetAbsOrigin() - m_tClosestEnemy.m_pPlayer->GetAbsOrigin();
-			vToLocal.z = 0; vToLocal.NormalizeInPlace();
-			vForward.z = 0; vForward.NormalizeInPlace();
+			vToLocal.z = 0; vToLocal.Normalize();
+			vForward.z = 0; vForward.Normalize();
 			if (vForward.Dot(vToLocal) < -0.5f)
 				bIsBehind = true;
 		}
 
 		if (m_tClosestEnemy.m_flDist <= 250.f && m_tClosestEnemy.m_pPlayer)
 			m_iBestSlot = SLOT_MELEE;
-		else if (m_tClosestEnemy.m_pPlayer && (pLocal->InCond(TF_COND_CLOAKED) || bIsBehind) && m_tClosestEnemy.m_flDist <= 1000.f)
+		else if (m_tClosestEnemy.m_pPlayer && (pLocal->InCond(TF_COND_STEALTHED) || bIsBehind) && m_tClosestEnemy.m_flDist <= 1000.f)
 			m_iBestSlot = SLOT_MELEE;
 		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve)
 			m_iBestSlot = SLOT_PRIMARY;

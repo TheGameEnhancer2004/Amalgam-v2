@@ -153,13 +153,13 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 
 				if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
 				{
-					if (pLocal->InCond(TF_COND_CLOAKED))
+					if (pLocal->InCond(TF_COND_STEALTHED))
 						continue;
 
 					Vec3 vForward;
 					Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
 					Vec3 vToArea = vNavAreaPos - vOrigin;
-					vToArea.NormalizeInPlace();
+					vToArea.Normalize();
 					if (vForward.Dot(vToArea) < 0.3f)
 						continue;
 				}
