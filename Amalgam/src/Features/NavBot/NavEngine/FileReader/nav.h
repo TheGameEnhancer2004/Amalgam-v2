@@ -206,7 +206,6 @@ public:
 
 		return false;
 	}
-};
 
 	// Check if the given point is overlapping the area
 	// @return True if 'pos' is within 2D extents of area.
@@ -281,8 +280,8 @@ public:
 		float x, y, z;
 
 		assert(vPoint.x >= 0 && vPoint.y >= 0);
-		assert(m_nwCorner.x >= 0 && m_nwCorner.y >= 0);
-		assert(m_seCorner.x >= 0 && m_seCorner.y >= 0);
+		assert(m_vNwCorner.x >= 0 && m_vNwCorner.y >= 0);
+		assert(m_vSeCorner.x >= 0 && m_vSeCorner.y >= 0);
 
 		x = FloatSel(vPoint.x - m_vNwCorner.x, vPoint.x, m_vNwCorner.x);
 		x = FloatSel(x - m_vSeCorner.x, m_vSeCorner.x, x);
