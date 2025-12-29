@@ -17,6 +17,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
+		if (pNextArea->m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || pNextArea->m_iTFAttributeFlags & TF_NAV_BLOCKED)
+			continue;
+
 		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
 		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
 		{
@@ -320,6 +323,12 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 
 	if (pNextArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 		flCost += 900.f;
+
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
+		flCost += 2000.f;
+
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
+		flCost += flForwardDistance * 0.5f;
 
 	return std::max(flCost, 1.f);
 }
