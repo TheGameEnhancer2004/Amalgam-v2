@@ -61,13 +61,25 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 
 bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
+	static Vector vLastCartPos;
+	static float flLastCartTime = 0.0f;
+
 	Vector vPosition;
 	if (!F::PLController.GetClosestPayload(vLocalOrigin, iOurTeam, vPosition))
-		return false;
+	{
+		if (I::GlobalVars->curtime - flLastCartTime < 2.0f)
+			vPosition = vLastCartPos;
+		else
+			return false;
+	}
+	else
+	{
+		vLastCartPos = vPosition;
+		flLastCartTime = I::GlobalVars->curtime;
+	}
 
-	// Get number of teammates near cart to coordinate positioning
 	int iTeammatesNearCart = 0;
-	constexpr float flCartRadius = 150.0f; // Approx cart capture radius
+	constexpr float flCartRadius = 90.0f;
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
@@ -82,23 +94,16 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 			iTeammatesNearCart++;
 	}
 
-	// Adjust position based on number of teammates to avoid crowding
-	Vector vAdjustedPos = vPosition;
-	if (iTeammatesNearCart > 0)
-	{
-		// Add ourselves to the total amount
-		iTeammatesNearCart++;
-
-		// Create a ring formation around cart
-		float flAngle = PI * 2 * (float)(I::EngineClient->GetLocalPlayer() % iTeammatesNearCart) / iTeammatesNearCart;
-		Vector vOffset(cos(flAngle) * 75.0f, sin(flAngle) * 75.0f, 0.0f);
-		vAdjustedPos += vOffset;
-	}
+	const float flTargetDist = 20.0f;
+	const int iTotalUnits = iTeammatesNearCart + 1;
+	const float flAngle = PI * 2 * (float)(I::EngineClient->GetLocalPlayer() % iTotalUnits) / iTotalUnits;
+	const Vector vOffset(cos(flAngle) * flTargetDist, sin(flAngle) * flTargetDist, 0.0f);
+	Vector vAdjustedPos = vPosition + vOffset;
 
 	CNavArea* pCartArea = nullptr;
 
-	constexpr float flPlanarTolerance = 120.0f;
-	constexpr float flMaxHeightDiff = 120.0f;
+	constexpr float flPlanarTolerance = 90.0f;
+	constexpr float flMaxHeightDiff = 60.0f;
 	const Vector vCartPos = vPosition;
 
 	auto IsAreaUsable = [&](CNavArea* pArea) -> bool
@@ -157,8 +162,27 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 			vAdjustedPos.z = vPosition.z;
 	}
 
-	// If close enough, don't move (mostly due to lifts)
-	if (vAdjustedPos.DistTo(vLocalOrigin) <= 15.f)
+	if (Vars::Debug::Info.Value)
+	{
+		const float flCheckRadius = flCartRadius;
+		for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
+		{
+			if (!tArea.IsOverlapping(vPosition, flCheckRadius))
+				continue;
+
+			const float flZDiff = std::fabs(tArea.m_vCenter.z - vPosition.z);
+			if (flZDiff > flMaxHeightDiff)
+				continue;
+
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
+		}
+		G::SphereStorage.emplace_back(vPosition, flCartRadius, 20, 20, I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 10), Color_t(0, 255, 0, 100));
+	}
+
+	if (vPosition.DistTo(vLocalOrigin) <= flCartRadius || vAdjustedPos.DistTo(vLocalOrigin) <= 45.f)
 	{
 		m_bOverwriteCapture = true;
 		return false;
