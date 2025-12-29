@@ -906,7 +906,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVarEnum(RandomClassExclude, "Random class exclude", 0b0, DROPDOWN_MULTI, "None",
 				VA_LIST("Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"),
 				Scout = 1 << 0, Sniper = 1 << 1, Soldier = 1 << 2, Demoman = 1 << 3, Medic = 1 << 4, Heavy = 1 << 5, Pyro = 1 << 6, Spy = 1 << 7, Engineer = 1 << 8);
-			CVar(RandomClassInterval, "Random class interval", 3.f, SLIDER_MIN | SLIDER_PRECISION, 0.5f, 30.f, 0.5f, "%gm");
+			CVar(RandomClassInterval, "Random class interval", FloatRange_t(3.f, 5.f), SLIDER_MIN | SLIDER_PRECISION, 0.5f, 30.f, 0.5f, "%g - %gm");
 			CVar(ForceClass, "Autojoin class", 0);
 			CVar(Micspam, "Micspam", false);
 			CVar(NoiseSpam, "Noise spam", false);
