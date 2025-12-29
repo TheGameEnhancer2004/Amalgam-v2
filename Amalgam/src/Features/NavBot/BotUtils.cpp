@@ -749,7 +749,10 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 
 	Vec3 vGoal = tState.m_vAnchor + tState.m_vOffset + tState.m_vGlanceCurrent + vMicro + Vec3(tState.m_flErrorX, tState.m_flErrorY, 0.f);
 	Math::ClampAngles(vGoal);
-	vGoal.x = std::clamp(vGoal.x, -8.f, 22.f);
+	if (bEnemyLock)
+		vGoal.x = std::clamp(vGoal.x, -89.f, 89.f);
+	else
+		vGoal.x = std::clamp(vGoal.x, -15.f, 25.f);
 
 	float flSpeedVal = std::max(1.f, static_cast<float>(Vars::Misc::Movement::BotUtils::LookAtPathSpeed.Value));
 	Vec3 vWish = vGoal;
