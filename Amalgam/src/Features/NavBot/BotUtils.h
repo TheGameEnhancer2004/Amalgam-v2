@@ -52,6 +52,11 @@ private:
 		Timer m_tOffsetTimer = {};
 		Timer m_tGlanceTimer = {};
 		Timer m_tGlanceCooldown = {};
+
+		float m_flNextScan = 0.f;
+		float m_flNextBackwardsLook = 0.f;
+		Timer m_tScanTimer = {};
+		Timer m_tBackwardsLookTimer = {};
 	};
 
 	LegitLook_t m_tLLAP = {};

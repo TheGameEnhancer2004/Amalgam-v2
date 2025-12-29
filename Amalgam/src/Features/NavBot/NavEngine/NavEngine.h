@@ -51,13 +51,13 @@ private:
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 
-	bool IsSetupTime();
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath();
 	void UpdateRespawnRooms();
 public:
+	bool IsSetupTime();
 
 	// Vischeck
 	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);

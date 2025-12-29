@@ -507,6 +507,12 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			Vec3 vForward = vVelocity;
 			vForward.Normalize();
 			vLook = vEye + (vForward * 500.f);
+
+			float flSweep = std::sin(I::GlobalVars->curtime * 1.5f) * 15.f;
+			Vec3 vAngles = Math::CalcAngle(vEye, vLook);
+			vAngles.y += flSweep;
+			Math::AngleVectors(vAngles, &vForward);
+			vLook = vEye + (vForward * 500.f);
 		}
 		else if (vLook.IsZero())
 		{
@@ -552,6 +558,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tOffsetTimer.Update();
 		tState.m_tGlanceTimer.Update();
 		tState.m_tGlanceCooldown.Update();
+
+		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
+		tState.m_flNextBackwardsLook = SDK::RandomFloat(8.f, 15.f);
+		tState.m_tScanTimer.Update();
+		tState.m_tBackwardsLookTimer.Update();
 	}
 	else
 		tState.m_vLastTarget = vFocus;
@@ -576,6 +587,65 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	}
 
 	tState.m_vOffset = tState.m_vOffset.LerpAngle(tState.m_vOffsetGoal, 0.1f);
+
+	// Active Scanning for open spaces
+	if (!bEnemyLock && !tState.m_bGlancing && flVelocity2D > 50.f && tState.m_tScanTimer.Run(tState.m_flNextScan))
+	{
+		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
+
+		Vec3 vMoveDir = pLocal->m_vecVelocity();
+		vMoveDir.Normalize();
+		Vec3 vMoveAngles = Math::CalcAngle(Vec3(), vMoveDir);
+
+		float flBestTraceDist = 0.f;
+		Vec3 vBestScanDir = {};
+
+		for (float flYawOffset = -60.f; flYawOffset <= 60.f; flYawOffset += 30.f)
+		{
+			Vec3 vScanAngles = vMoveAngles;
+			vScanAngles.y += flYawOffset;
+			vScanAngles.x = SDK::RandomFloat(-5.f, 10.f);
+
+			Vec3 vForward;
+			Math::AngleVectors(vScanAngles, &vForward);
+
+			CGameTrace trace;
+			CTraceFilterHitscan filter;
+			filter.pSkip = pLocal;
+			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
+
+			if (trace.fraction * 1000.f > flBestTraceDist)
+			{
+				flBestTraceDist = trace.fraction * 1000.f;
+				vBestScanDir = vForward;
+			}
+		}
+
+		if (flBestTraceDist > 400.f)
+		{
+			tState.m_vGlanceGoal = Math::CalcAngle(vEye, vEye + vBestScanDir * 500.f);
+			tState.m_bGlancing = true;
+			tState.m_flGlanceDuration = SDK::RandomFloat(2.0f, 3.2f);
+			tState.m_tGlanceTimer.Update();
+		}
+	}
+
+	// Occasional backcheck
+	if (!bEnemyLock && !tState.m_bGlancing && tState.m_tBackwardsLookTimer.Run(tState.m_flNextBackwardsLook))
+	{
+		tState.m_flNextBackwardsLook = SDK::RandomFloat(12.f, 25.f);
+
+		Vec3 vAngles = tState.m_vAnchor;
+		vAngles.y += 180.f;
+		vAngles.x = SDK::RandomFloat(-5.f, 5.f);
+		Math::ClampAngles(vAngles);
+
+		tState.m_vGlanceGoal = vAngles;
+		tState.m_bGlancing = true;
+		tState.m_flGlanceDuration = SDK::RandomFloat(0.6f, 1.0f);
+		tState.m_tGlanceTimer.Update();
+	}
+
 	if (tState.m_bGlancing)
 	{
 		if (tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
@@ -595,7 +665,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tGlanceTimer.Update();
 	}
 
-	tState.m_vGlanceCurrent = tState.m_vGlanceCurrent.LerpAngle(tState.m_vGlanceGoal, tState.m_bGlancing ? 0.2f : 0.12f);
+	tState.m_vGlanceCurrent = tState.m_vGlanceCurrent.LerpAngle(tState.m_vGlanceGoal, tState.m_bGlancing ? 0.12f : 0.08f);
 
 	float flPhaseSpeed = std::clamp(flVelocity2D / 240.f, 0.25f, 1.0f);
 	tState.m_flPhase += I::GlobalVars->interval_per_tick * (0.9f + flPhaseSpeed);

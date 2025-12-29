@@ -307,6 +307,8 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	{
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
 	}
 
@@ -314,13 +316,26 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
+	}
 
 	if (!pWeapon)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
+	}
 
 	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
+		m_vStuckAngles = pCmd->viewangles;
 		return;
+	}
 
 	F::NavBotGroup.UpdateLocalBotPositions(pLocal);
 
@@ -331,6 +346,8 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		// In case it did then theres something wrong with nav engine
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
 	}
 
@@ -397,6 +414,17 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotRoam.Run(pLocal, pWeapon))
 	{
+		bool bIsPathing = F::NavEngine.IsPathing();
+		if (!bIsPathing)
+		{
+			// If we have a job but no path, we consider it idle (stuck or waiting for gods agreement to move lol)
+		}
+		else
+		{
+			m_tIdleTimer.Update();
+			m_tAntiStuckTimer.Update();
+		}
+
 		// Force crithack in dangerous conditions
 		// TODO:
 		// Maybe add some logic to it (more logic)
@@ -418,6 +446,45 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 			F::CritHack.m_bForce = false;
 			break;
 		}
+	}
+	else if (F::NavEngine.IsReady() && !F::NavEngine.IsSetupTime())
+	{
+		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+		if (flIdleTime > 10.f)
+		{
+			if (flIdleTime < 20.f)
+			{
+				if (flIdleTime < 15.f)
+					pCmd->forwardmove = 450.f;
+			}
+			else
+			{
+				if (flIdleTime < 35.f)
+				{
+					pCmd->forwardmove = 450.f;
+					pCmd->sidemove = SDK::RandomInt(0, 1) ? 450.f : -450.f;
+
+					if (m_tAntiStuckTimer.Run(m_flNextStuckAngleChange))
+					{
+						m_flNextStuckAngleChange = SDK::RandomFloat(0.5f, 2.0f);
+						m_vStuckAngles.y += SDK::RandomFloat(-15.f, 15.f);
+						Math::ClampAngles(m_vStuckAngles);
+					}
+					
+					SDK::FixMovement(pCmd, m_vStuckAngles);
+				}
+				else
+				{
+					m_tIdleTimer.Update();
+				}
+			}
+		}
+	}
+	else
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
+		m_vStuckAngles = pCmd->viewangles;
 	}
 }
 
@@ -543,5 +610,9 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("In spawn: {}", std::to_string(iInSpawn)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area flags: {}", std::to_string(iAreaFlags)).c_str());
+		
+		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+		bool bIsIdle = F::NavEngine.m_eCurrentPriority == PriorityListEnum::None || !F::NavEngine.IsPathing();
+		H::Draw.StringOutlined(fFont, x, y += nTall, bIsIdle ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value, Vars::Menu::Theme::Background.Value, align, std::format("Idle: {} ({:.1f}s)", bIsIdle ? "Yes" : "No", std::max(0.f, flIdleTime)).c_str());
 	}
 }
