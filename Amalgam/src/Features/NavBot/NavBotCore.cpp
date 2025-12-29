@@ -605,6 +605,19 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	}
 
 	H::Draw.StringOutlined(fFont, x, y, cColor, Vars::Menu::Theme::Background.Value, align, std::format(L"Job: {} {}", sJob, std::wstring(F::CritHack.m_bForce ? L"(Crithack on)" : L"")).data());
+	if (F::NavEngine.IsPathing())
+	{
+		auto pCrumbs = F::NavEngine.GetCrumbs();
+		float flDist = pLocal->GetAbsOrigin().DistTo(F::NavEngine.m_vLastDestination);
+		H::Draw.StringOutlined(fFont, x, y += nTall, cColor, Vars::Menu::Theme::Background.Value, align, std::format("Nodes: {} (Dist: {:.0f})", pCrumbs->size(), flDist).c_str());
+	}
+
+	float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+	if (flIdleTime > 2.0f && F::NavEngine.IsPathing())
+	{
+		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Stuck: {:.1f}s", flIdleTime).c_str());
+	}
+
 	if (Vars::Debug::Info.Value)
 	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());

@@ -508,6 +508,35 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			vForward.Normalize();
 			vLook = vEye + (vForward * 500.f);
 
+			CGameTrace trace;
+			CTraceFilterHitscan filter;
+			filter.pSkip = pLocal;
+			SDK::Trace(vEye, vLook, MASK_SHOT, &filter, &trace);
+
+			if (trace.fraction < 0.25f)
+			{
+				float flBestDist = trace.fraction * 500.f;
+				Vec3 vBestForward = vForward;
+
+				for (float flOffset : { -15.f, 15.f, -30.f, 30.f, -45.f, 45.f, -60.f, 60.f, -75.f, 75.f, -90.f, 90.f })
+				{
+					Vec3 vTestAngles = Math::CalcAngle(vEye, vLook);
+					vTestAngles.y += flOffset;
+					vTestAngles.x = SDK::RandomFloat(-5.f, 10.f);
+					Vec3 vTestForward;
+					Math::AngleVectors(vTestAngles, &vTestForward);
+
+					SDK::Trace(vEye, vEye + vTestForward * 500.f, MASK_SHOT, &filter, &trace);
+					if (trace.fraction * 500.f > flBestDist)
+					{
+						flBestDist = trace.fraction * 500.f;
+						vBestForward = vTestForward;
+					}
+				}
+				vForward = vBestForward;
+				vLook = vEye + (vForward * 500.f);
+			}
+
 			float flSweep = std::sin(I::GlobalVars->curtime * 1.5f) * 15.f;
 			Vec3 vAngles = Math::CalcAngle(vEye, vLook);
 			vAngles.y += flSweep;
@@ -600,11 +629,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		float flBestTraceDist = 0.f;
 		Vec3 vBestScanDir = {};
 
-		for (float flYawOffset = -60.f; flYawOffset <= 60.f; flYawOffset += 30.f)
+		for (float flYawOffset = -90.f; flYawOffset <= 90.f; flYawOffset += 15.f)
 		{
 			Vec3 vScanAngles = vMoveAngles;
 			vScanAngles.y += flYawOffset;
-			vScanAngles.x = SDK::RandomFloat(-5.f, 10.f);
+			vScanAngles.x = SDK::RandomFloat(-5.f, 15.f);
 
 			Vec3 vForward;
 			Math::AngleVectors(vScanAngles, &vForward);
@@ -614,11 +643,21 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			filter.pSkip = pLocal;
 			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
 
+			if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value)
+			{
+				G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, trace.endpos), I::GlobalVars->curtime + 1.f, Color_t{ 255, 255, 255, 100 }, false);
+			}
+
 			if (trace.fraction * 1000.f > flBestTraceDist)
 			{
 				flBestTraceDist = trace.fraction * 1000.f;
 				vBestScanDir = vForward;
 			}
+		}
+
+		if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value && !vBestScanDir.IsZero())
+		{
+			G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, vEye + vBestScanDir * flBestTraceDist), I::GlobalVars->curtime + 1.f, Color_t{ 0, 255, 0, 255 }, false);
 		}
 
 		if (flBestTraceDist > 400.f)
