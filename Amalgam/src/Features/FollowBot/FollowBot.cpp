@@ -355,25 +355,8 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
 		F::BotUtils.SetSlot(pLocal, Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 
-	if (!bShouldWalk)
-		return;
-
-	static Vec2 vLastLocalOrigin;
-	static float flLast2DVel;
-	float flCurrent2DVel = pLocal->m_vecVelocity().Length2D(), flDot = vLastLocalOrigin.DistTo(vLocalOrigin.Get2D()) <= 20.f && (flCurrent2DVel <= 5.f && flLast2DVel <= 5.f) ? 1.f : 0.f;
-	if (flCurrent2DVel > flLast2DVel)
-	{
-		// Check if we are currently moving in a right direction so that our jumps dont slow us down as much
-		auto vToDest = Math::CalcAngle(vLocalOrigin, vDest);
-		Vec3 vForward; Math::AngleVectors(pLocal->m_vecVelocity().ToAngle(), &vForward);
-		flDot = vToDest.Normalized().Dot(vForward.Normalized2D());
-	}
-	static Timer tOriginUpdateTimer;
-	if (tOriginUpdateTimer.Run(0.05f))
-		vLastLocalOrigin = vLocalOrigin.Get2D();
-	flLast2DVel = flCurrent2DVel;
-
-	SDK::WalkTo(pCmd, pLocal, vDest);
+	if (bShouldWalk)
+		SDK::WalkTo(pCmd, pLocal, vDest);
 }
 
 void CFollowBot::Reset(int iFlags)

@@ -328,7 +328,7 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 		flCost += 2000.f;
 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
-		flCost += flForwardDistance * 0.5f;
+		flCost += flForwardDistance * 5.f;
 
 	return std::max(flCost, 1.f);
 }
