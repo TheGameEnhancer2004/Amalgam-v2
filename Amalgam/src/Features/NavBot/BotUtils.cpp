@@ -512,15 +512,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 
 			if (!vDormantIndices.empty())
 			{
-				int iTargetIdx = vDormantIndices[SDK::RandomInt(0, vDormantIndices.size() - 1)];
+				int iTargetIdx = vDormantIndices[SDK::RandomInt(0, int(vDormantIndices.size()) - 1)];
 				Vector vDormantPos;
 				if (GetDormantOrigin(iTargetIdx, vDormantPos))
 				{
-					vDormantPos.z += PLAYER_EYE_HEIGHT;
+					vDormantPos.z += 64.f;
 					if (SDK::VisPos(pLocal, nullptr, vEye, vDormantPos))
 					{
 						tState.m_bGlancing = true;
-						tState.m_vGlanceGoal = vDormantPos;
+						tState.m_vGlanceTarget = vDormantPos;
 						tState.m_flGlanceDuration = SDK::RandomFloat(0.8f, 1.2f);
 						tState.m_tGlanceTimer.Update();
 						tState.m_flNextGlance = SDK::RandomFloat(2.f, 5.f);
@@ -535,10 +535,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			if (tState.m_tGlanceTimer.Check(tState.m_flGlanceDuration))
 			{
 				tState.m_bGlancing = false;
+				tState.m_vGlanceTarget = {};
 			}
 			else
 			{
-				vLook = tState.m_vGlanceGoal;
+				vLook = tState.m_vGlanceTarget.IsZero() ? vLook : tState.m_vGlanceTarget;
 				bEnemyLock = true;
 			}
 		}
@@ -669,7 +670,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	Vec3 vDesired = Math::CalcAngle(vEye, vFocus);
 	Math::ClampAngles(vDesired);
 
-	auto& tState = m_tLLAP;
 	const float flTargetDelta = tState.m_vLastTarget.IsZero() ? FLT_MAX : tState.m_vLastTarget.DistToSqr(vFocus);
 	if (!tState.m_bInitialized || !std::isfinite(flTargetDelta) || flTargetDelta > 4096.f)
 	{
@@ -680,6 +680,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_vLastTarget = vFocus;
 		tState.m_vGlanceCurrent = {};
 		tState.m_vGlanceGoal = {};
+		tState.m_vGlanceTarget = {};
 		tState.m_flNextOffset = SDK::RandomFloat(0.6f, 1.8f);
 		tState.m_flPhase = SDK::RandomFloat(0.f, 6.2831853f);
 		tState.m_flNextGlance = SDK::RandomFloat(1.4f, 3.0f);
@@ -717,83 +718,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	}
 
 	tState.m_vOffset = tState.m_vOffset.LerpAngle(tState.m_vOffsetGoal, 0.1f);
-
-	// Active Scanning for open spaces
-	if (!bEnemyLock && !tState.m_bGlancing && flVelocity2D > 50.f && tState.m_tScanTimer.Run(tState.m_flNextScan))
-	{
-		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
-
-		Vec3 vMoveDir = pLocal->m_vecVelocity();
-		vMoveDir.Normalize();
-		Vec3 vMoveAngles = Math::CalcAngle(Vec3(), vMoveDir);
-
-		float flBestTraceDist = 0.f;
-		Vec3 vBestScanDir = {};
-
-		for (float flYawOffset = -60.f; flYawOffset <= 60.f; flYawOffset += 30.f)
-		{
-			Vec3 vScanAngles = vMoveAngles;
-			vScanAngles.y += flYawOffset;
-			vScanAngles.x = SDK::RandomFloat(-5.f, 10.f);
-
-			Vec3 vForward;
-			Math::AngleVectors(vScanAngles, &vForward);
-
-			CGameTrace trace;
-			CTraceFilterHitscan filter;
-			filter.pSkip = pLocal;
-			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
-
-			if (trace.fraction * 1000.f > flBestTraceDist)
-			{
-				flBestTraceDist = trace.fraction * 1000.f;
-				vBestScanDir = vForward;
-			}
-		}
-
-		if (flBestTraceDist > 400.f)
-		{
-			tState.m_vGlanceGoal = Math::CalcAngle(vEye, vEye + vBestScanDir * 500.f);
-			tState.m_bGlancing = true;
-			tState.m_flGlanceDuration = SDK::RandomFloat(2.0f, 3.2f);
-			tState.m_tGlanceTimer.Update();
-		}
-	}
-
-	// Occasional backcheck
-	if (!bEnemyLock && !tState.m_bGlancing && tState.m_tBackwardsLookTimer.Run(tState.m_flNextBackwardsLook))
-	{
-		tState.m_flNextBackwardsLook = SDK::RandomFloat(12.f, 25.f);
-
-		Vec3 vAngles = tState.m_vAnchor;
-		vAngles.y += 180.f;
-		vAngles.x = SDK::RandomFloat(-5.f, 5.f);
-		Math::ClampAngles(vAngles);
-
-		tState.m_vGlanceGoal = vAngles;
-		tState.m_bGlancing = true;
-		tState.m_flGlanceDuration = SDK::RandomFloat(0.6f, 1.0f);
-		tState.m_tGlanceTimer.Update();
-	}
-
-	if (tState.m_bGlancing)
-	{
-		if (tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
-		{
-			tState.m_bGlancing = false;
-			tState.m_vGlanceGoal = {};
-			tState.m_flNextGlance = SDK::RandomFloat(1.6f, 3.4f);
-			tState.m_tGlanceCooldown.Update();
-		}
-	}
-	else if (tState.m_tGlanceCooldown.Run(tState.m_flNextGlance))
-	{
-		tState.m_bGlancing = true;
-		tState.m_flGlanceDuration = SDK::RandomFloat(0.28f, 0.52f);
-		float flYawGlance = SDK::RandomFloat(16.f, 38.f) * (SDK::RandomInt(0, 1) == 0 ? -1.f : 1.f);
-		tState.m_vGlanceGoal = { SDK::RandomFloat(-3.5f, 4.5f), flYawGlance, 0.f };
-		tState.m_tGlanceTimer.Update();
-	}
 
 	tState.m_vGlanceCurrent = tState.m_vGlanceCurrent.LerpAngle(tState.m_vGlanceGoal, tState.m_bGlancing ? 0.12f : 0.08f);
 
