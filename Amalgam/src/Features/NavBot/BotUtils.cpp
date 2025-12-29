@@ -215,10 +215,10 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			(!G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo || !G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4)) &&
 			m_tClosestEnemy.m_flDist <= 200.f)
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && m_tClosestEnemy.m_flDist <= 800.f)
-			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip && (m_tClosestEnemy.m_flDist > 750.f || !G::AmmoInSlot[SLOT_PRIMARY].m_iClip))
 			m_iBestSlot = SLOT_SECONDARY;
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_HEAVY:
@@ -227,10 +227,8 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch && 
 			(m_tClosestEnemy.m_pPlayer && !m_tClosestEnemy.m_pPlayer->IsTaunting() && m_tClosestEnemy.m_pPlayer->IsInvulnerable()) && m_tClosestEnemy.m_flDist < 400.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((!m_tClosestEnemy.m_pPlayer || m_tClosestEnemy.m_flDist <= 900.f) && G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
-			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
 	case TF_CLASS_MEDIC:
@@ -249,7 +247,21 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	}
 	case TF_CLASS_SPY:
 	{
+		bool bIsBehind = false;
+		if (m_tClosestEnemy.m_pPlayer)
+		{
+			Vec3 vForward;
+			Math::AngleVectors(m_tClosestEnemy.m_pPlayer->GetEyeAngles(), &vForward);
+			Vec3 vToLocal = pLocal->GetAbsOrigin() - m_tClosestEnemy.m_pPlayer->GetAbsOrigin();
+			vToLocal.z = 0; vToLocal.NormalizeInPlace();
+			vForward.z = 0; vForward.NormalizeInPlace();
+			if (vForward.Dot(vToLocal) < -0.5f)
+				bIsBehind = true;
+		}
+
 		if (m_tClosestEnemy.m_flDist <= 250.f && m_tClosestEnemy.m_pPlayer)
+			m_iBestSlot = SLOT_MELEE;
+		else if (m_tClosestEnemy.m_pPlayer && (pLocal->InCond(TF_COND_CLOAKED) || bIsBehind) && m_tClosestEnemy.m_flDist <= 1000.f)
 			m_iBestSlot = SLOT_MELEE;
 		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve)
 			m_iBestSlot = SLOT_PRIMARY;
@@ -275,10 +287,12 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4) &&
 			(m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 300.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_flDist <= 550.f || !m_tClosestEnemy.m_pPlayer))
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 400.f))
 			m_iBestSlot = SLOT_PRIMARY;
 		else if (G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
 			m_iBestSlot = SLOT_SECONDARY;
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_SOLDIER:
@@ -308,7 +322,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	{
 		if (G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo && !G::AmmoInSlot[SLOT_PRIMARY].m_iClip && !G::AmmoInSlot[SLOT_SECONDARY].m_iClip && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 500.f))
+		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 1000.f))
 			m_iBestSlot = SLOT_PRIMARY;
 		else if (!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve)
 			m_iBestSlot = SLOT_SECONDARY;

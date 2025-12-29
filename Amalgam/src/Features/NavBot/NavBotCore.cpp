@@ -55,7 +55,7 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 	}
 
 	// #NoFear
-	if (iSlot == SLOT_MELEE)
+	if (iSlot == SLOT_MELEE && pLocal->m_iClass() != TF_CLASS_SPY)
 		return;
 
 	// Store the danger of the individual nav areas
@@ -150,7 +150,20 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 			{
 				Vector vNavAreaPos = tArea.m_vCenter;
 				vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-				// The area is not visible by the player
+
+				if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
+				{
+					if (pLocal->InCond(TF_COND_CLOAKED))
+						continue;
+
+					Vec3 vForward;
+					Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
+					Vec3 vToArea = vNavAreaPos - vOrigin;
+					vToArea.NormalizeInPlace();
+					if (vForward.Dot(vToArea) < 0.3f)
+						continue;
+				}
+
 				if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
 					continue;
 
