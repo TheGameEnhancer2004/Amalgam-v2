@@ -418,8 +418,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	{
 		if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
 		{
-			pBestEnemy = pTarget;
-			flBestDist = -1.f;
+			if (pTarget->IsPlayer() ? pTarget->As<CTFPlayer>()->IsAlive() : (pTarget->IsBuilding() ? pTarget->As<CBaseObject>()->m_iHealth() > 0 : false))
+			{
+				Vec3 vTargetPos = pTarget->IsPlayer() ? pTarget->As<CTFPlayer>()->GetEyePosition() : pTarget->GetCenter();
+				if (SDK::VisPos(pLocal, pTarget, vEye, vTargetPos))
+				{
+					pBestEnemy = pTarget;
+					flBestDist = -1.f;
+				}
+			}
 		}
 	}
 
@@ -483,7 +490,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		vLastPos = vLook;
 		bEnemyLock = true;
 	}
-	else if ((I::GlobalVars->curtime - flLastSeen) < 1.5f && !vLastPos.IsZero())
+	else if ((I::GlobalVars->curtime - flLastSeen) < 1.2f && !vLastPos.IsZero())
 	{
 		// look at last known position for a bit
 		vLook = vLastPos;

@@ -11,15 +11,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	static CNavArea* pCurrentTargetArea = nullptr;
 	static int iConsecutiveFails = 0;
 
-	// Clear visited areas every 60 seconds to allow revisiting
-	if (tVisitedAreasClearTimer.Run(60.f))
+	// Clear visited areas if they get too large or after some time
+	if (tVisitedAreasClearTimer.Run(30.f) || vVisitedAreas.size() > 20)
 	{
 		vVisitedAreas.clear();
 		iConsecutiveFails = 0;
 	}
 
 	// Don't path constantly
-	if (!tRoamTimer.Run(2.f))
+	if (!tRoamTimer.Run(0.5f))
 		return false;
 
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Patrol)
@@ -119,7 +119,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 		// Skip areas that are too close
 		float flDist = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		if (flDist < 500.f)
+		if (flDist < 250.f)
 			continue;
 
 		vValidAreas.push_back(&tArea);
@@ -140,41 +140,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Reset fail counter since we found valid areas
 	iConsecutiveFails = 0;
 
-	// Different strategies for area selection
-	std::vector<CNavArea*> vPotentialTargets;
-
-	// Strategy 1: Try to find areas that are far from current position
-	for (auto pArea : vValidAreas)
-	{
-		float flDist = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		if (flDist > 2000.f)
-			vPotentialTargets.push_back(pArea);
-	}
-
-	// Strategy 2: If no far areas found, try areas that are at medium distance
-	if (vPotentialTargets.empty())
-	{
-		for (auto pArea : vValidAreas)
-		{
-			float flDist = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-			if (flDist > 1000.f && flDist <= 2000.f)
-				vPotentialTargets.push_back(pArea);
-		}
-	}
-
-	// Strategy 3: If still no areas found, use any valid area
-	if (vPotentialTargets.empty())
-		vPotentialTargets = vValidAreas;
-
-	// Shuffle the potential targets to add randomness
-	for (size_t i = vPotentialTargets.size() - 1; i > 0; i--)
+	// Shuffle the valid areas to add randomness
+	for (size_t i = vValidAreas.size() - 1; i > 0; i--)
 	{
 		int j = rand() % (i + 1);
-		std::swap(vPotentialTargets[i], vPotentialTargets[j]);
+		std::swap(vValidAreas[i], vValidAreas[j]);
 	}
 
-	// Try to path to potential targets
-	for (auto pArea : vPotentialTargets)
+	// Try to path to shuffled areas
+	for (auto pArea : vValidAreas)
 	{
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
