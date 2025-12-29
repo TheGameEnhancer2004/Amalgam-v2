@@ -12,7 +12,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	static int iConsecutiveFails = 0;
 
 	// Clear visited areas if they get too large or after some time
-	if (tVisitedAreasClearTimer.Run(30.f) || vVisitedAreas.size() > 20)
+	if (tVisitedAreasClearTimer.Run(60.f) || vVisitedAreas.size() > 40)
 	{
 		vVisitedAreas.clear();
 		iConsecutiveFails = 0;
@@ -93,14 +93,11 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	}
 	m_bDefending = false;
 
-	// If we have a current target and are pathing, continue
-	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
-		return true;
-
-	// Reset current target
+	// Reset current target if we are not pathing or it's invalid
 	pCurrentTargetArea = nullptr;
 
 	std::vector<CNavArea*> vValidAreas;
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
 
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
@@ -113,13 +110,22 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 			continue;
 
-		// Skip if we recently visited this area
-		if (std::find(vVisitedAreas.begin(), vVisitedAreas.end(), &tArea) != vVisitedAreas.end())
+		// Skip if we recently visited this area or something near it
+		bool bTooCloseToVisited = false;
+		for (auto pVisited : vVisitedAreas)
+		{
+			if (tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+			{
+				bTooCloseToVisited = true;
+				break;
+			}
+		}
+		if (bTooCloseToVisited)
 			continue;
 
-		// Skip areas that are too close
-		float flDist = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		if (flDist < 250.f)
+		// Skip areas that are too close to us
+		float flDist = tArea.m_vCenter.DistTo(vLocalOrigin);
+		if (flDist < 500.f)
 			continue;
 
 		vValidAreas.push_back(&tArea);
@@ -140,14 +146,14 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Reset fail counter since we found valid areas
 	iConsecutiveFails = 0;
 
-	// Shuffle the valid areas to add randomness
-	for (size_t i = vValidAreas.size() - 1; i > 0; i--)
-	{
-		int j = rand() % (i + 1);
-		std::swap(vValidAreas[i], vValidAreas[j]);
-	}
-
 	// Try to path to shuffled areas
+	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b) {
+		float flDistA = a->m_vCenter.DistTo(pLocal->GetAbsOrigin());
+		float flDistB = b->m_vCenter.DistTo(pLocal->GetAbsOrigin());
+		// Prefer further areas with some randomness
+		return (flDistA * SDK::RandomFloat(0.7f, 1.3f)) > (flDistB * SDK::RandomFloat(0.7f, 1.3f));
+	});
+
 	for (auto pArea : vValidAreas)
 	{
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
