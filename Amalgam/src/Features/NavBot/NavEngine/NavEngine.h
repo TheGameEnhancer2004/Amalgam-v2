@@ -43,6 +43,8 @@ private:
 
 	Timer m_tTimeSpentOnCrumbTimer = {};
 	Timer m_tInactivityTimer = {};
+	Timer m_tOffMeshTimer = {};
+	Vector m_vOffMeshTarget = {};
 
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;

@@ -374,6 +374,8 @@ void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
 	m_pLocalArea = nullptr;
+	m_tOffMeshTimer.Update();
+	m_vOffMeshTarget = {};
 
 	static std::string sPath = std::filesystem::current_path().string();
 	if (std::string sLevelName = I::EngineClient->GetLevelName(); !sLevelName.empty())
@@ -478,7 +480,32 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		return;
 	}
 
-	GetLocalNavArea(pLocal->GetAbsOrigin());
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+	CNavArea* pArea = GetLocalNavArea(vLocalOrigin);
+	bool bOnNavMesh = pArea && pArea->IsOverlapping(vLocalOrigin) && std::fabs(pArea->GetZ(vLocalOrigin.x, vLocalOrigin.y) - vLocalOrigin.z) < 18.f;
+
+	if (bOnNavMesh || IsPathing())
+	{
+		m_tOffMeshTimer.Update();
+	}
+	else if (pArea)
+	{
+		Vector vTarget = pArea->GetNearestPoint(Vector2D(vLocalOrigin.x, vLocalOrigin.y));
+		m_vOffMeshTarget = vTarget;
+
+		CGameTrace trace;
+		CTraceFilterNavigation filter{};
+		SDK::Trace(vLocalOrigin, vTarget, MASK_PLAYERSOLID, &filter, &trace);
+
+		if (trace.fraction > 0.01f)
+		{
+			m_vCrumbs.clear();
+			BuildIntraAreaCrumbs(vLocalOrigin, trace.endpos, pArea);
+			m_vCrumbs.push_back({ pArea, trace.endpos });
+			m_eCurrentPriority = PriorityListEnum::Patrol;
+			m_tOffMeshTimer.Update();
+		}
+	}
 
 	if (Vars::Misc::Movement::NavEngine::VischeckEnabled.Value && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 		VischeckPath();
@@ -580,6 +607,23 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	static Timer tPathRescan{};
 
 	size_t uCrumbsSize = m_vCrumbs.size();
+
+	const auto vLocalOrigin = pLocal->GetAbsOrigin();
+	if (!uCrumbsSize && m_tOffMeshTimer.Check(6000))
+	{
+		m_eCurrentPriority = PriorityListEnum::Patrol;
+		SDK::WalkTo(pCmd, pLocal, m_vOffMeshTarget);
+
+		static Timer tLastJump{};
+		if (m_tInactivityTimer.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2) && tLastJump.Check(0.2f))
+		{
+			F::BotUtils.ForceJump();
+			tLastJump.Update();
+		}
+
+		return;
+	}
+
 	auto DoLook = [&](const Vec3& vTarget, bool bTargetValid) -> void
 	{
 		if (G::Attacking == 1)
@@ -645,7 +689,6 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			bResetHeight = false;
 	}
 
-	const auto vLocalOrigin = pLocal->GetAbsOrigin();
 	if (bResetHeight && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 	{
 		bResetHeight = false;

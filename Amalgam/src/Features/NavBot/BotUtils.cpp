@@ -892,6 +892,8 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 		filter.pSkip = pLocal;
 		filter.iPlayer = PLAYER_NONE;
 		filter.iObject = OBJECT_ALL;
+		filter.bIgnoreDoors = true;
+		filter.bIgnoreCart = true;
 		SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
 		return trace;
 	};
@@ -1031,6 +1033,8 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		CGameTrace forwardTrace = {};
 		CTraceFilterHitscan filter = {};
 		filter.pSkip = pLocal;
+		filter.bIgnoreCart = true;
+		filter.bIgnoreDoors = true;
 		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;

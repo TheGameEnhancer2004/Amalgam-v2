@@ -25,6 +25,11 @@ bool CTraceFilterHitscan::ShouldHitEntity(IHandleEntity* pServerEntity, int nCon
 	case ETFClassID::CFuncAreaPortalWindow:
 	case ETFClassID::CFuncRespawnRoomVisualizer:
 	case ETFClassID::CTFReviveMarker: return false;
+	case ETFClassID::CBaseDoor:
+	case ETFClassID::CBasePropDoor: return !bIgnoreDoors;
+	case ETFClassID::CObjectCartDispenser:
+	case ETFClassID::CFuncTrackTrain:
+	case ETFClassID::CTFGenericBomb: return !bIgnoreCart;
 	case ETFClassID::CTFMedigunShield: return pEntity->m_iTeamNum() != iTeam;
 	case ETFClassID::CTFPlayer:
 	case ETFClassID::CBaseObject:
@@ -64,15 +69,17 @@ bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int 
 	{
 	case ETFClassID::CBaseEntity:
 	case ETFClassID::CBaseDoor:
+	case ETFClassID::CBasePropDoor:
+		return !bIgnoreDoors;
 	case ETFClassID::CDynamicProp:
 	case ETFClassID::CPhysicsProp:
 	case ETFClassID::CPhysicsPropMultiplayer:
 	case ETFClassID::CFunc_LOD:
+	case ETFClassID::CFuncConveyor:
+	case ETFClassID::CTFPumpkinBomb: return true;
 	case ETFClassID::CObjectCartDispenser:
 	case ETFClassID::CFuncTrackTrain:
-	case ETFClassID::CFuncConveyor:
-	case ETFClassID::CTFGenericBomb:
-	case ETFClassID::CTFPumpkinBomb: return true;
+	case ETFClassID::CTFGenericBomb: return !bIgnoreCart;
 	case ETFClassID::CFuncRespawnRoomVisualizer:
 		if (nContentsMask & CONTENTS_PLAYERCLIP)
 			return pEntity->m_iTeamNum() != iTeam;
