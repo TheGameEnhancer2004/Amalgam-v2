@@ -56,10 +56,11 @@ private:
 
 		float m_flNextScan = 0.f;
 		float m_flNextBackwardsLook = 0.f;
-		float m_flExplorationChance = 0.5f;
+		bool m_bPathFocusActive = false;
 		Timer m_tScanTimer = {};
 		Timer m_tBackwardsLookTimer = {};
 		Timer m_tExplorationChanceTimer = {};
+		Timer m_tPathFocusTimer = {};
 	};
 
 	LegitLook_t m_tLLAP = {};

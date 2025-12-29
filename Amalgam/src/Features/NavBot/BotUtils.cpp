@@ -521,9 +521,9 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 					{
 						tState.m_bGlancing = true;
 						tState.m_vGlanceTarget = vDormantPos;
-						tState.m_flGlanceDuration = SDK::RandomFloat(0.8f, 1.2f);
+						tState.m_flGlanceDuration = SDK::RandomFloat(0.5f, 1.0f);
 						tState.m_tGlanceTimer.Update();
-						tState.m_flNextGlance = SDK::RandomFloat(2.f, 5.f);
+						tState.m_flNextGlance = SDK::RandomFloat(1.5f, 3.0f);
 						tState.m_tGlanceCooldown.Update();
 					}
 				}
@@ -546,20 +546,20 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 
 		if (!bEnemyLock)
 		{
-			// 3. scanning for open spaces / corners
+			// 3. scanning for open spaces / corners / dormant enemies
 			if (tState.m_tScanTimer.Run(tState.m_flNextScan))
 			{
-				tState.m_flNextScan = SDK::RandomFloat(1.5f, 3.5f);
+				tState.m_flNextScan = SDK::RandomFloat(1.2f, 2.5f); 
 				
 				// Scan in a cone ahead
 				Vec3 vAngles = I::EngineClient->GetViewAngles();
 				float flBestDist = -1.f;
 				Vec3 vBestPos = {};
 
-				for (int i = 0; i < 5; i++)
+				for (int i = 0; i < 8; i++)
 				{
-					float flYawOffset = SDK::RandomFloat(-45.f, 45.f);
-					float flPitchOffset = SDK::RandomFloat(-10.f, 10.f);
+					float flYawOffset = SDK::RandomFloat(-55.f, 55.f);
+					float flPitchOffset = SDK::RandomFloat(-15.f, 15.f);
 					
 					Vec3 vScanAng = vAngles;
 					vScanAng.y += flYawOffset;
@@ -619,11 +619,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			const Vec3 vVelocity = pLocal->m_vecVelocity();
 			const float flSpeed = vVelocity.Length2D();
 			
-			// Decide whether to look exactly at path or slightly offset
+			// Decide whether to look exactly at path or slightly offset (30% chance for 10s every minute)
 			if (tState.m_tExplorationChanceTimer.Run(60.f))
-				tState.m_flExplorationChance = SDK::RandomFloat(0.4f, 0.6f);
+			{
+				tState.m_bPathFocusActive = SDK::RandomFloat(0.f, 1.f) < 0.3f;
+				if (tState.m_bPathFocusActive)
+					tState.m_tPathFocusTimer.Update();
+			}
 
-			bool bLookExactPath = SDK::RandomFloat(0.f, 1.f) > tState.m_flExplorationChance;
+			bool bLookExactPath = tState.m_bPathFocusActive && !tState.m_tPathFocusTimer.Check(10.f);
 			
 			if (flSpeed > 25.f)
 			{
@@ -690,10 +694,14 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tGlanceTimer.Update();
 		tState.m_tGlanceCooldown.Update();
 
-		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
-		tState.m_flNextBackwardsLook = SDK::RandomFloat(8.f, 15.f);
+		tState.m_flNextScan = SDK::RandomFloat(0.4f, 1.2f);
+		tState.m_flNextBackwardsLook = SDK::RandomFloat(12.f, 90.f);
 		tState.m_tScanTimer.Update();
 		tState.m_tBackwardsLookTimer.Update();
+		tState.m_tExplorationChanceTimer.Update();
+		tState.m_tPathFocusTimer.Update();
+		tState.m_flNextGlance = SDK::RandomFloat(0.5f, 1.5f);
+		tState.m_tGlanceCooldown.Update();
 	}
 	else
 		tState.m_vLastTarget = vFocus;
