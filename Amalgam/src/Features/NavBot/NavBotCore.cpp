@@ -239,44 +239,54 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
-bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex)
+namespace
 {
-	static std::vector<CNavArea*> vAlreadyRecursed;
-	if (iRecursionIndex == 0)
-		vAlreadyRecursed.clear();
-
-	Vector vAreaOrigin = pArea->m_vCenter;
-	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-	// Increment recursion index
-	iRecursionIndex++;
-
-	// If the area works, return it
-	if (bVischeck && !F::NavEngine.IsVectorVisibleNavigation(vAreaOrigin, vVischeckPoint))
+	bool FindClosestHidingSpotRecursive(CNavArea* pArea, const Vector& vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex, std::vector<CNavArea*>& vVisited)
 	{
-		tOut = { pArea, iRecursionIndex - 1 };
-		return true;
-	}
-	// Termination condition not hit yet
-	else if (iRecursionIndex < iRecursionCount)
-	{
-		// Store the nearest area
-		std::pair<CNavArea*, int> tBestSpot;
+		if (!pArea || iRecursionCount <= 0)
+			return false;
+
+		Vector vAreaOrigin = pArea->m_vCenter;
+		vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+
+		int iNextIndex = iRecursionIndex + 1;
+
+		if (bVischeck && !F::NavEngine.IsVectorVisibleNavigation(vAreaOrigin, vVischeckPoint))
+		{
+			tOut = { pArea, iRecursionIndex };
+			return true;
+		}
+
+		if (iNextIndex >= iRecursionCount)
+			return false;
+
+		std::pair<CNavArea*, int> tBestSpot{};
 		for (auto& tConnection : pArea->m_vConnections)
 		{
-			if (std::find(vAlreadyRecursed.begin(), vAlreadyRecursed.end(), tConnection.m_pArea) != vAlreadyRecursed.end())
+			CNavArea* pNextArea = tConnection.m_pArea;
+			if (!pNextArea)
 				continue;
 
-			vAlreadyRecursed.push_back(tConnection.m_pArea);
+			if (std::find(vVisited.begin(), vVisited.end(), pNextArea) != vVisited.end())
+				continue;
+
+			vVisited.push_back(pNextArea);
 
 			std::pair<CNavArea*, int> tSpot;
-			if (FindClosestHidingSpot(tConnection.m_pArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iRecursionIndex) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
+			if (FindClosestHidingSpotRecursive(pNextArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iNextIndex, vVisited) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
 				tBestSpot = tSpot;
 		}
+
 		tOut = tBestSpot;
-		return tBestSpot.first;
+		return tBestSpot.first != nullptr;
 	}
-	return false;
+}
+
+bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex)
+{
+	std::vector<CNavArea*> vVisited;
+	vVisited.reserve(32);
+	return FindClosestHidingSpotRecursive(pArea, vVischeckPoint, iRecursionCount, tOut, bVischeck, iRecursionIndex, vVisited);
 }
 
 static bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
