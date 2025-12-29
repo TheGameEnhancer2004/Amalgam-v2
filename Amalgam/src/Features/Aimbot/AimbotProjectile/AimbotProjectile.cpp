@@ -1619,6 +1619,7 @@ bool CAimbotProjectile::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMeth
 	case Vars::Aimbot::General::AimTypeEnum::Plain:
 	case Vars::Aimbot::General::AimTypeEnum::Silent:
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
 		vOut = vToAngle;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
@@ -1663,6 +1664,22 @@ void CAimbotProjectile::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			G::PSilentAngles = true;
 		}
 		break;
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
+	{
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal && G::AimPoint.m_iTickCount == I::GlobalVars->tickcount)
+		{
+			F::BotUtils.LookLegit(pLocal, pCmd, G::AimPoint.m_vOrigin, false);
+			vAngle = pCmd->viewangles;
+			if (G::AimbotSteering)
+				return;
+			Vec3 vOldView = I::EngineClient->GetViewAngles();
+			Vec3 vDelta = vAngle.DeltaAngle(vOldView);
+			if (std::fabs(vDelta.x) > 0.01f || std::fabs(vDelta.y) > 0.01f || std::fabs(vDelta.z) > 0.01f)
+				G::AimbotSteering = true;
+		}
+		break;
+	}
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		SDK::FixMovement(pCmd, vAngle);
 		pCmd->viewangles = vAngle;

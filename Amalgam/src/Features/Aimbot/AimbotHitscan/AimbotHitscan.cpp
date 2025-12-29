@@ -676,6 +676,7 @@ bool CAimbotHitscan::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 	case Vars::Aimbot::General::AimTypeEnum::Plain:
 	case Vars::Aimbot::General::AimTypeEnum::Silent:
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
 		vOut = vToAngle;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
@@ -731,6 +732,17 @@ void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			MarkSteering(vAngle);
 		}
 		break;
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
+	{
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal && G::AimPoint.m_iTickCount == I::GlobalVars->tickcount)
+		{
+			F::BotUtils.LookLegit(pLocal, pCmd, G::AimPoint.m_vOrigin, false);
+			vAngle = pCmd->viewangles;
+			MarkSteering(vAngle);
+		}
+		break;
+	}
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		SDK::FixMovement(pCmd, vAngle);
 		pCmd->viewangles = vAngle;

@@ -602,6 +602,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	else
 	{
 		float flAnchorBlend = std::clamp(flAnchorDelta / 90.f, 0.05f, 0.3f);
+		if (bEnemyLock)
+		{
+			float flProgressive = std::pow(std::clamp(flAnchorDelta / 30.f, 0.f, 1.f), 1.5f);
+			flAnchorBlend = std::clamp(0.08f + flProgressive * 0.42f, 0.08f, 0.5f);
+		}
 		tState.m_vAnchor = tState.m_vAnchor.LerpAngle(vDesired, flAnchorBlend);
 	}
 
@@ -610,8 +615,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	{
 		float flYawScale = std::clamp(flVelocity2D / 220.f, 0.3f, 0.95f);
 		float flPitchScale = std::clamp(flVelocity2D / 320.f, 0.18f, 0.75f);
-		tState.m_vOffsetGoal.y = SDK::RandomFloat(-28.f, 28.f) * flYawScale;
-		tState.m_vOffsetGoal.x = SDK::RandomFloat(-3.f, 4.f) * flPitchScale;
+		if (bEnemyLock)
+		{
+			tState.m_vOffsetGoal = {};
+		}
+		else
+		{
+			tState.m_vOffsetGoal.y = SDK::RandomFloat(-28.f, 28.f) * flYawScale;
+			tState.m_vOffsetGoal.x = SDK::RandomFloat(-3.f, 4.f) * flPitchScale;
+		}
 		tState.m_flNextOffset = SDK::RandomFloat(0.65f, 1.95f);
 	}
 
@@ -687,7 +699,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 
 	if (tState.m_bGlancing)
 	{
-		if (tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
+		if (bEnemyLock || tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
 		{
 			tState.m_bGlancing = false;
 			tState.m_vGlanceGoal = {};
@@ -695,7 +707,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			tState.m_tGlanceCooldown.Update();
 		}
 	}
-	else if (tState.m_tGlanceCooldown.Run(tState.m_flNextGlance))
+	else if (!bEnemyLock && tState.m_tGlanceCooldown.Run(tState.m_flNextGlance))
 	{
 		tState.m_bGlancing = true;
 		tState.m_flGlanceDuration = SDK::RandomFloat(0.28f, 0.52f);
@@ -718,7 +730,24 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		0.f
 	};
 
-	Vec3 vGoal = tState.m_vAnchor + tState.m_vOffset + tState.m_vGlanceCurrent + vMicro;
+	if (bEnemyLock)
+	{
+		float flDeltaX = SDK::RandomFloat(-1.f, 1.f) * 0.4f;
+		float flDeltaY = SDK::RandomFloat(-1.f, 1.f) * 0.4f;
+		tState.m_flErrorVelocityX += (flDeltaX - tState.m_flErrorX) * 0.12f;
+		tState.m_flErrorVelocityY += (flDeltaY - tState.m_flErrorY) * 0.12f;
+		tState.m_flErrorVelocityX *= 0.82f;
+		tState.m_flErrorVelocityY *= 0.82f;
+		tState.m_flErrorX += tState.m_flErrorVelocityX;
+		tState.m_flErrorY += tState.m_flErrorVelocityY;
+	}
+	else
+	{
+		tState.m_flErrorX = Math::Lerp(tState.m_flErrorX, 0.f, 0.1f);
+		tState.m_flErrorY = Math::Lerp(tState.m_flErrorY, 0.f, 0.1f);
+	}
+
+	Vec3 vGoal = tState.m_vAnchor + tState.m_vOffset + tState.m_vGlanceCurrent + vMicro + Vec3(tState.m_flErrorX, tState.m_flErrorY, 0.f);
 	Math::ClampAngles(vGoal);
 	vGoal.x = std::clamp(vGoal.x, -8.f, 22.f);
 
@@ -733,9 +762,8 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vLook - Vec3(0, 0, 10), vLook + Vec3(0, 0, 10)), I::GlobalVars->curtime + 0.1f, Color_t{ 0, 0, 255, 255 }, false);
 	}
 
-	if (bSilent)
-		pCmd->viewangles = vWish;
-	else
+	pCmd->viewangles = vWish;
+	if (!bSilent)
 		I::EngineClient->SetViewAngles(vWish);
 
 	m_vLastAngles = vWish;

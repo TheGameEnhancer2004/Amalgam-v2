@@ -280,8 +280,8 @@ namespace Vars
 	NAMESPACE_BEGIN(Aimbot)
 		SUBNAMESPACE_BEGIN(General, Aimbot)
 			CVarEnum(AimType, "Aim type", 0, NONE, nullptr,
-				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive"),
-				Off, Plain, Smooth, Silent, Locking, Assistive);
+				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit"),
+				Off, Plain, Smooth, Silent, Locking, Assistive, Legit);
 			CVarEnum(TargetSelection, "Target selection", 0, NONE, nullptr,
 				VA_LIST("FOV", "Distance"),
 				FOV, Distance);

@@ -57,6 +57,11 @@ private:
 		float m_flNextBackwardsLook = 0.f;
 		Timer m_tScanTimer = {};
 		Timer m_tBackwardsLookTimer = {};
+
+		float m_flErrorX = 0.f;
+		float m_flErrorY = 0.f;
+		float m_flErrorVelocityX = 0.f;
+		float m_flErrorVelocityY = 0.f;
 	};
 
 	LegitLook_t m_tLLAP = {};
