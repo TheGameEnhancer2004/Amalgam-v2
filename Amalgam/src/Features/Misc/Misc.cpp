@@ -1,4 +1,5 @@
 #include "Misc.h"
+#include "../Configs/Configs.h"
 
 #include "../Backtrack/Backtrack.h"
 #include "../Ticks/Ticks.h"
@@ -1572,7 +1573,10 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::strin
 	};
 
 	if (!sTarget.empty())
+	{
 		ReplaceAll(sMsg, "{target}", sTarget);
+		ReplaceAll(sMsg, "{triggername}", sTarget);
+	}
 
 	if (!sInitiator.empty())
 		ReplaceAll(sMsg, "{initiator}", sInitiator);

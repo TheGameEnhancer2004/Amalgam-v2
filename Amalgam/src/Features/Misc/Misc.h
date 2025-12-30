@@ -18,7 +18,6 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
-	void OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget);
 
 	void AchievementSpam(CTFPlayer* pLocal);
 	void NoiseSpam(CTFPlayer* pLocal);
@@ -98,6 +97,7 @@ public:
 	void UnlockAchievements();
 	void LockAchievements();
 	void AutoMvmReadyUp();
+	void OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget);
 	void OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg);
 	std::string ReplaceTags(std::string sMsg, std::string sTarget = "", std::string sInitiator = "");
 	ProfileDumpResult_t DumpProfiles(bool bAnnounce = true);
