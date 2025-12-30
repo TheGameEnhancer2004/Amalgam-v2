@@ -35,6 +35,7 @@ private:
 	Timer m_tIdleTimer = {};
 	Timer m_tAntiStuckTimer = {};
 	float m_flNextStuckAngleChange = 0.f;
+	float m_flNextIdleTime = 0.f;
 	Vec3 m_vStuckAngles = {};
 };
 

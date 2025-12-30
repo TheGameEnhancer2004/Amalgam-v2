@@ -473,33 +473,25 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	else if (F::NavEngine.IsReady() && !F::NavEngine.IsSetupTime())
 	{
 		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
-		if (flIdleTime > 10.f)
+		if (flIdleTime > m_flNextIdleTime)
 		{
-			if (flIdleTime < 20.f)
+			if (flIdleTime < m_flNextIdleTime + 0.5f)
 			{
-				if (flIdleTime < 15.f)
-					pCmd->forwardmove = 450.f;
+				pCmd->forwardmove = 450.f;
+
+				if (m_tAntiStuckTimer.Run(m_flNextStuckAngleChange))
+				{
+					m_flNextStuckAngleChange = SDK::RandomFloat(0.1f, 0.3f);
+					m_vStuckAngles.y += SDK::RandomFloat(-15.f, 15.f);
+					Math::ClampAngles(m_vStuckAngles);
+				}
+
+				SDK::FixMovement(pCmd, m_vStuckAngles);
 			}
 			else
 			{
-				if (flIdleTime < 35.f)
-				{
-					pCmd->forwardmove = 450.f;
-					pCmd->sidemove = SDK::RandomInt(0, 1) ? 450.f : -450.f;
-
-					if (m_tAntiStuckTimer.Run(m_flNextStuckAngleChange))
-					{
-						m_flNextStuckAngleChange = SDK::RandomFloat(0.5f, 2.0f);
-						m_vStuckAngles.y += SDK::RandomFloat(-15.f, 15.f);
-						Math::ClampAngles(m_vStuckAngles);
-					}
-					
-					SDK::FixMovement(pCmd, m_vStuckAngles);
-				}
-				else
-				{
-					m_tIdleTimer.Update();
-				}
+				m_tIdleTimer.Update();
+				m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
 			}
 		}
 	}
@@ -508,6 +500,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
 		m_vStuckAngles = pCmd->viewangles;
+		m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
 	}
 }
 
@@ -519,6 +512,7 @@ void CNavBotCore::Reset()
 	F::NavBotSupplies.ResetTemp();
 	F::NavBotEngineer.Reset();
 	F::NavBotCapture.Reset();
+	m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
 }
 
 void CNavBotCore::Draw(CTFPlayer* pLocal)
