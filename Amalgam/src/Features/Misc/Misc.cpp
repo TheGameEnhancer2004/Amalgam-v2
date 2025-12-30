@@ -1560,7 +1560,7 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 	return tResult;
 }
 
-std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget)
+std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::string sInitiator)
 {
 	auto ReplaceAll = [&](std::string& str, const std::string& from, const std::string& to) {
 		if (from.empty()) return;
@@ -1573,6 +1573,20 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget)
 
 	if (!sTarget.empty())
 		ReplaceAll(sMsg, "{target}", sTarget);
+
+	if (!sInitiator.empty())
+		ReplaceAll(sMsg, "{initiator}", sInitiator);
+
+	if (sMsg.find("{enemyteam}") != std::string::npos || sMsg.find("{friendlyteam}") != std::string::npos)
+	{
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal)
+		{
+			int iLocalTeam = pLocal->m_iTeamNum();
+			ReplaceAll(sMsg, "{enemyteam}", iLocalTeam == TF_TEAM_RED ? "BLU" : "RED");
+			ReplaceAll(sMsg, "{friendlyteam}", iLocalTeam == TF_TEAM_RED ? "RED" : "BLU");
+		}
+	}
 
 	if (sMsg.find("{lastkilled}") != std::string::npos)
 		ReplaceAll(sMsg, "{lastkilled}", m_sLastKilledName.empty() ? "unknown" : m_sLastKilledName);
@@ -1645,12 +1659,10 @@ void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, co
 
 		static const char* szDefaultContent =
 			"// Vote Kick Reply Configuration\n"
-			"// Format: F1: message (supports {target})\n"
-			"// Format: F2: message (supports {target})\n"
-			"F1: F1! Kick {target}!\n"
-			"F1: bye bye {target}\n"
-			"F2: F2! Don't kick {target}!\n"
-			"F2: {target} is innocent!\n";
+			"// Format: F1: message (supports {target}, {initiator}, {enemyteam}, {friendlyteam})\n"
+			"// Format: F2: message (supports {target}, {initiator}, {enemyteam}, {friendlyteam})\n"
+			"F1: {initiator} called a vote on {target}! Go {friendlyteam}!\n"
+			"F2: {initiator} is trying to kick {target}! Don't let {enemyteam} win!\n";
 
 		std::vector<std::string> vLines;
 		if (LoadLines("votekick.txt", vLines, szDefaultContent))
@@ -1681,6 +1693,11 @@ void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, co
 	bool bCallerIsLocal = iCaller == I::EngineClient->GetLocalPlayer();
 
 	std::string sReply = "";
+	std::string sInitiator = "";
+	auto pResource = H::Entities.GetResource();
+	if (pResource && pResource->m_bValid(iCaller))
+		sInitiator = pResource->GetName(iCaller);
+
 	if ((bTargetIsFriend || bTargetIsLocal) && !bCallerIsLocal)
 	{
 		if (!m_vF2Messages.empty())
@@ -1700,7 +1717,7 @@ void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, co
 
 	if (!sReply.empty())
 	{
-		sReply = ReplaceTags(sReply, sTarget);
+		sReply = ReplaceTags(sReply, sTarget, sInitiator);
 		I::EngineClient->ClientCmd_Unrestricted(std::format("say {}", sReply).c_str());
 	}
 }

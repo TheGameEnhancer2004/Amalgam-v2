@@ -99,7 +99,7 @@ public:
 	void LockAchievements();
 	void AutoMvmReadyUp();
 	void OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg);
-	std::string ReplaceTags(std::string sMsg, std::string sTarget = "");
+	std::string ReplaceTags(std::string sMsg, std::string sTarget = "", std::string sInitiator = "");
 	ProfileDumpResult_t DumpProfiles(bool bAnnounce = true);
 
 	int m_iWishCmdrate = -1;
