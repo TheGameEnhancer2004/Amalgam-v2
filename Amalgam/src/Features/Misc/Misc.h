@@ -18,6 +18,7 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
+	void OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget);
 
 	void AchievementSpam(CTFPlayer* pLocal);
 	void NoiseSpam(CTFPlayer* pLocal);
@@ -41,8 +42,13 @@ private:
 	std::vector<std::string> m_vChatSpamLines;
 	struct AutoReply_t { std::vector<std::string> vTriggers; std::vector<std::string> vReplies; };
 	std::vector<AutoReply_t> m_vAutoReplies;
+	std::vector<std::string> m_vF1Messages;
+	std::vector<std::string> m_vF2Messages;
 	Timer m_tChatSpamTimer;
 	int m_iCurrentChatSpamIndex = 0;
+
+	bool LoadLines(const char* szFileName, std::vector<std::string>& vLines, const char* szDefaultContent = nullptr);
+	std::vector<std::string> ParseTokens(std::string str, char delimiter);
 
 	enum class AchievementSpamState
 	{

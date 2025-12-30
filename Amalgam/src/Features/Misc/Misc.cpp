@@ -1005,71 +1005,25 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 		if (!m_vChatSpamLines.empty())
 			return true;
 
-		auto LoadLinesFrom = [&](const std::string& sPath) -> bool
+		static const char* szDefaultContent =
+			"This is a default message from cat_chatspam.txt\n"
+			"Edit this file Amalgam/cat_chatspam.txt\n"
+			"Each line will be sent as a separate message\n"
+			"[Amalgam] Chat Spam is working!\n"
+			"Put your chat spam lines in this file\n";
+
+		if (LoadLines("cat_chatspam.txt", m_vChatSpamLines, szDefaultContent))
 		{
-			std::ifstream file(sPath);
-			if (!file.is_open())
-				return false;
-
-			std::vector<std::string> vLines = {};
-			std::string sLine;
-			while (std::getline(file, sLine))
-			{
-				if (!sLine.empty())
-					vLines.push_back(sLine);
-			}
-
-			if (vLines.empty())
-				return false;
-
-			m_vChatSpamLines = std::move(vLines);
 			m_iCurrentChatSpamIndex = 0;
-			SDK::Output("ChatSpam", std::format("Loaded {} lines from {}", m_vChatSpamLines.size(), sPath).c_str(), {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			return true;
-		};
-
-		char szGamePath[MAX_PATH] = {};
-		GetModuleFileNameA(GetModuleHandleA("tf_win64.exe"), szGamePath, MAX_PATH);
-		std::string sGameDir = szGamePath;
-		if (const size_t uLastSlash = sGameDir.find_last_of("\\/"); uLastSlash != std::string::npos)
-			sGameDir.resize(uLastSlash);
-
-		SDK::Output("ChatSpam", "Loading chat lines from file", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-
-		const std::vector<std::string> vCandidatePaths = {
-			"cat_chatspam.txt",
-			sGameDir + "\\tf\\cat_chatspam.txt"
-		};
-
-		for (const auto& sPath : vCandidatePaths)
-		{
-			if (LoadLinesFrom(sPath))
-				return true;
 		}
 
-		const std::string sDefaultPath = sGameDir + "\\Amalgam\\cat_chatspam.txt";
-		std::ofstream newFile(sDefaultPath);
-		if (newFile.is_open())
-		{
-			newFile << "This is a default message from cat_chatspam.txt\n";
-			newFile << "Edit this file Amalgam/cat_chatspam.txt\n";
-			newFile << "Each line will be sent as a separate message\n";
-			newFile << "[Amalgam] Chat Spam is working!\n";
-			newFile << "Put your chat spam lines in this file\n";
-			newFile.close();
-
-			if (LoadLinesFrom(sDefaultPath))
-				return true;
-		}
-
-		SDK::Output("ChatSpam", "Failed to load or create chat spam file, using built-in messages", {}, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		m_vChatSpamLines = {
 			"Put your chat spam lines in Amalgam/cat_chatspam.txt",
 			"ChatSpam is running but couldn't find Amalgam/cat_chatspam.txt",
 			"[Amalgam] Chat Spam is working!"
 		};
 		m_iCurrentChatSpamIndex = 0;
-
 		return true;
 	};
 
@@ -1678,6 +1632,136 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget)
 	return sMsg;
 }
 
+void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget)
+{
+	if (!Vars::Misc::Automation::ChatSpam::VoteKickReply.Value || sReason.find("Kick") == std::string::npos)
+		return;
+
+	static Timer tReloadTimer{};
+	if ((m_vF1Messages.empty() && m_vF2Messages.empty()) || tReloadTimer.Run(5.0f))
+	{
+		m_vF1Messages.clear();
+		m_vF2Messages.clear();
+
+		static const char* szDefaultContent =
+			"// Vote Kick Reply Configuration\n"
+			"// Format: F1: message (supports {target})\n"
+			"// Format: F2: message (supports {target})\n"
+			"F1: F1! Kick {target}!\n"
+			"F1: bye bye {target}\n"
+			"F2: F2! Don't kick {target}!\n"
+			"F2: {target} is innocent!\n";
+
+		std::vector<std::string> vLines;
+		if (LoadLines("votekick.txt", vLines, szDefaultContent))
+		{
+			for (const auto& line : vLines)
+			{
+				if (line.find("F1:") == 0)
+				{
+					std::string msg = line.substr(3);
+					if (msg.find_first_not_of(" \t") != std::string::npos)
+						msg.erase(0, msg.find_first_not_of(" \t"));
+					if (!msg.empty()) m_vF1Messages.push_back(msg);
+				}
+				else if (line.find("F2:") == 0)
+				{
+					std::string msg = line.substr(3);
+					if (msg.find_first_not_of(" \t") != std::string::npos)
+						msg.erase(0, msg.find_first_not_of(" \t"));
+					if (!msg.empty()) m_vF2Messages.push_back(msg);
+				}
+			}
+		}
+	}
+
+	bool bTargetIsFriend = H::Entities.IsFriend(iTarget) || H::Entities.InParty(iTarget) || F::PlayerUtils.IsIgnored(iTarget);
+	bool bCallerIsFriend = H::Entities.IsFriend(iCaller) || H::Entities.InParty(iCaller) || F::PlayerUtils.IsIgnored(iCaller);
+	bool bTargetIsLocal = iTarget == I::EngineClient->GetLocalPlayer();
+	bool bCallerIsLocal = iCaller == I::EngineClient->GetLocalPlayer();
+
+	std::string sReply = "";
+	if ((bTargetIsFriend || bTargetIsLocal) && !bCallerIsLocal)
+	{
+		if (!m_vF2Messages.empty())
+		{
+			int index = SDK::RandomInt(0, static_cast<int>(m_vF2Messages.size()) - 1);
+			sReply = m_vF2Messages[index];
+		}
+	}
+	else if ((bCallerIsFriend || bCallerIsLocal) && !bTargetIsLocal)
+	{
+		if (!m_vF1Messages.empty())
+		{
+			int index = SDK::RandomInt(0, static_cast<int>(m_vF1Messages.size()) - 1);
+			sReply = m_vF1Messages[index];
+		}
+	}
+
+	if (!sReply.empty())
+	{
+		sReply = ReplaceTags(sReply, sTarget);
+		I::EngineClient->ClientCmd_Unrestricted(std::format("say {}", sReply).c_str());
+	}
+}
+
+bool CMisc::LoadLines(const char* szFileName, std::vector<std::string>& vLines, const char* szDefaultContent)
+{
+	vLines.clear();
+
+	std::string sPath = F::Configs.m_sConfigPath + szFileName;
+
+	if (!std::filesystem::exists(sPath) && szDefaultContent)
+	{
+		std::ofstream newFile(sPath);
+		if (newFile.good())
+			newFile << szDefaultContent;
+	}
+
+	std::ifstream file(sPath);
+	if (!file.good())
+		return false;
+
+	std::string line;
+	while (std::getline(file, line))
+	{
+		if (line.empty() || line.find("//") == 0)
+			continue;
+
+		vLines.push_back(line);
+	}
+
+	return !vLines.empty();
+}
+
+std::vector<std::string> CMisc::ParseTokens(std::string str, char delimiter)
+{
+	std::vector<std::string> tokens;
+	size_t pos = 0;
+	std::string token;
+	while ((pos = str.find(delimiter)) != std::string::npos)
+	{
+		token = str.substr(0, pos);
+		if (token.find_first_not_of(" \t") != std::string::npos)
+		{
+			token.erase(0, token.find_first_not_of(" \t"));
+			token.erase(token.find_last_not_of(" \t") + 1);
+			if (!token.empty())
+				tokens.push_back(token);
+		}
+		str.erase(0, pos + 1);
+	}
+	token = str;
+	if (token.find_first_not_of(" \t") != std::string::npos)
+	{
+		token.erase(0, token.find_first_not_of(" \t"));
+		token.erase(token.find_last_not_of(" \t") + 1);
+		if (!token.empty())
+			tokens.push_back(token);
+	}
+	return tokens;
+}
+
 void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg)
 {
 	if (iEntIndex == I::EngineClient->GetLocalPlayer())
@@ -1685,32 +1769,23 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 
 	if (Vars::Misc::Automation::ChatSpam::AutoReply.Value)
 	{
-		if (m_vAutoReplies.empty())
+		static Timer tReloadTimer{};
+		if (m_vAutoReplies.empty() || tReloadTimer.Run(5.0f))
 		{
-			std::string sPath = I::EngineClient->GetGameDirectory();
-			sPath += "\\Amalgam\\autoreply.txt";
+			m_vAutoReplies.clear();
 
-			if (!std::filesystem::exists(sPath))
+			static const char* szDefaultContent =
+				"// Auto Reply Configuration\n"
+				"// Format: trigger1, trigger2 : response1, response2\n"
+				"// Example:\n"
+				"hello, hi : hi there, hello!\n"
+				"bot, hacker : I am not a bot, I am just good\n";
+
+			std::vector<std::string> vLines;
+			if (LoadLines("autoreply.txt", vLines, szDefaultContent))
 			{
-				std::ofstream newFile(sPath);
-				if (newFile.good())
+				for (const auto& line : vLines)
 				{
-					newFile << "// Auto Reply Configuration\n";
-					newFile << "// Format: trigger1, trigger2 : response1, response2\n";
-					newFile << "// Example:\n";
-					newFile << "hello, hi : hi there, hello!\n";
-					newFile << "bot, hacker : I am not a bot, I am just good\n";
-				}
-			}
-
-			std::ifstream file(sPath);
-			if (file.good())
-			{
-				std::string line;
-				while (std::getline(file, line))
-				{
-					if (line.empty() || line.find("//") == 0) continue;
-
 					size_t delimiterPos = line.find(':');
 					if (delimiterPos != std::string::npos)
 					{
@@ -1718,33 +1793,8 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 						std::string repliesStr = line.substr(delimiterPos + 1);
 
 						AutoReply_t entry;
-
-						auto ParseTokens = [](std::string str) -> std::vector<std::string> {
-							std::vector<std::string> tokens;
-							size_t pos = 0;
-							std::string token;
-							while ((pos = str.find(',')) != std::string::npos) {
-								token = str.substr(0, pos);
-								if (token.find_first_not_of(" \t") != std::string::npos)
-								{
-									token.erase(0, token.find_first_not_of(" \t"));
-									token.erase(token.find_last_not_of(" \t") + 1);
-									if (!token.empty()) tokens.push_back(token);
-								}
-								str.erase(0, pos + 1);
-							}
-							token = str;
-							if (token.find_first_not_of(" \t") != std::string::npos)
-							{
-								token.erase(0, token.find_first_not_of(" \t"));
-								token.erase(token.find_last_not_of(" \t") + 1);
-								if (!token.empty()) tokens.push_back(token);
-							}
-							return tokens;
-						};
-
-						entry.vTriggers = ParseTokens(triggersStr);
-						entry.vReplies = ParseTokens(repliesStr);
+						entry.vTriggers = ParseTokens(triggersStr, ',');
+						entry.vReplies = ParseTokens(repliesStr, ',');
 
 						if (!entry.vTriggers.empty() && !entry.vReplies.empty())
 							m_vAutoReplies.push_back(entry);
@@ -1753,12 +1803,28 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 			}
 		}
 
+		auto StripColors = [](std::string str) -> std::string {
+			std::string out = "";
+			for (size_t i = 0; i < str.length(); i++)
+			{
+				if (str[i] > 0 && str[i] < 32) continue;
+				out += str[i];
+			}
+			return out;
+		};
+
+		std::string sCleanMsg = StripColors(sMsg);
+		std::transform(sCleanMsg.begin(), sCleanMsg.end(), sCleanMsg.begin(), ::tolower);
+
 		for (const auto& entry : m_vAutoReplies)
 		{
 			bool bTriggered = false;
 			for (const auto& trigger : entry.vTriggers)
 			{
-				if (sMsg.find(trigger) != std::string::npos)
+				std::string sLowTrigger = trigger;
+				std::transform(sLowTrigger.begin(), sLowTrigger.end(), sLowTrigger.begin(), ::tolower);
+
+				if (sCleanMsg.find(sLowTrigger) != std::string::npos)
 				{
 					bTriggered = true;
 					break;
@@ -1769,11 +1835,9 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 			{
 				if (!entry.vReplies.empty())
 				{
-					//static cast my ass
 					int index = SDK::RandomInt(0, static_cast<int>(entry.vReplies.size()) - 1);
 					std::string sReply = ReplaceTags(entry.vReplies[index], sName);
-					std::string cmd = "say " + sReply;
-					I::EngineClient->ClientCmd_Unrestricted(cmd.c_str());
+					I::EngineClient->ClientCmd_Unrestricted(std::format("say {}", sReply).c_str());
 					break;
 				}
 			}
@@ -1782,15 +1846,7 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 
 	if (Vars::Misc::Automation::ChatSpam::ChatRelay.Value)
 	{
-		// fucking compiler warnings :middle_finger: :middle_finger: :middle_finger: :middle_finger: 
-		char* pAppData = nullptr;
-		size_t len = 0;
-		_dupenv_s(&pAppData, &len, "APPDATA");
-		std::string sAppData = pAppData ? pAppData : "";
-		free(pAppData);
-
-		std::string sPath = sAppData + "\\Amalgam\\chat_relay.txt";
-		std::filesystem::create_directories(sAppData + "\\Amalgam");
+		std::string sPath = F::Configs.m_sConfigPath + "chat_relay.txt";
 
 		std::string sServerIP = "";
 		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
