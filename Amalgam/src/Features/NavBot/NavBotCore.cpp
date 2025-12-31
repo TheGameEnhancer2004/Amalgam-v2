@@ -62,11 +62,6 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 	std::unordered_map<CNavArea*, int> mDormantSlightDanger;
 	std::unordered_map<CNavArea*, int> mNormalSlightDanger;
 
-	// This is used to cache Dangerous areas between ents
-	std::unordered_map<CTFPlayer*, std::vector<CNavArea*>> mEntMarkedDormantSlightDanger;
-	std::unordered_map<CTFPlayer*, std::vector<CNavArea*>> mEntMarkedNormalSlightDanger;
-
-	std::vector<std::pair<CTFPlayer*, Vector>> vCheckedPlayerOrigins;
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		// Entity is generally invalid, ignore
@@ -91,97 +86,55 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 
 		vOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-		bool bShouldCheck = true;
+		float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
+		float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
 
-		// Find already dangerous marked areas by other entities
-		auto mToLoop = bDormant ? &mEntMarkedDormantSlightDanger : &mEntMarkedNormalSlightDanger;
+		// Not dangerous, Still don't bump
+		if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
+		{
+			flSlightDangerDist = PLAYER_WIDTH * 1.2f;
+			flFullDangerDist = PLAYER_WIDTH * 1.2f;
+		}
 
 		// Add new danger entries
 		auto mToMark = bDormant ? &mDormantSlightDanger : &mNormalSlightDanger;
 
-		for (auto [pCheckedPlayer, vCheckedOrigin] : vCheckedPlayerOrigins)
+		std::vector<CNavArea*> vAreas;
+		F::NavEngine.GetNavMap()->CollectAreasAround(vOrigin, flSlightDangerDist, vAreas);
+
+		for (auto& pArea : vAreas)
 		{
-			// If this origin is closer than a quarter of the min HU (or less than 100 HU) to a cached one, don't go through
-			// all nav areas again DistTo is much faster than DistTo which is why we use it here
-			float flDist = m_tSelectedConfig.m_flMinSlightDanger;
+			float flDist = pArea->m_vCenter.DistTo(vOrigin);
 
-			flDist *= 0.25f;
-			flDist = std::max(100.0f, flDist);
+			Vector vNavAreaPos = pArea->m_vCenter;
+			vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			if (vOrigin.DistTo(vCheckedOrigin) < flDist)
+			if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
 			{
-				bShouldCheck = false;
-
-				bool bIsAbsoluteDanger = flDist < m_tSelectedConfig.m_flMinFullDanger;
-				if (!bIsAbsoluteDanger && (false/*slight danger when capping*/ || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
-				{
-					// The area is not visible by the player
-					if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vCheckedOrigin, MASK_SHOT))
-						continue;
-
-					for (auto& pArea : (*mToLoop)[pCheckedPlayer])
-					{
-						(*mToMark)[pArea]++;
-						if ((*mToMark)[pArea] >= Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
-							(*F::NavEngine.GetFreeBlacklist())[pArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
-					}
-				}
-				break;
-			}
-		}
-		if (!bShouldCheck)
-			continue;
-
-		// Now check which areas they are close to
-		for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
-		{
-			float flDist = tArea.m_vCenter.DistTo(vOrigin);
-			float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
-			float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
-
-			// Not dangerous, Still don't bump
-			if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
-			{
-				flSlightDangerDist = PLAYER_WIDTH * 1.2f;
-				flFullDangerDist = PLAYER_WIDTH * 1.2f;
-			}
-
-			if (flDist < flSlightDangerDist)
-			{
-				Vector vNavAreaPos = tArea.m_vCenter;
-				vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-				if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
-				{
-					if (pLocal->InCond(TF_COND_STEALTHED))
-						continue;
-
-					Vec3 vForward;
-					Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
-					Vec3 vToArea = vNavAreaPos - vOrigin;
-					vToArea.Normalize();
-					if (vForward.Dot(vToArea) < 0.3f)
-						continue;
-				}
-
-				if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
+				if (pLocal->InCond(TF_COND_STEALTHED))
 					continue;
 
-				// Add as marked area
-				(*mToLoop)[pPlayer].push_back(&tArea);
-
-				// Just slightly dangerous, only mark as such if it's clear
-				if (flDist >= flFullDangerDist &&
-					(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
-				{
-					(*mToMark)[&tArea]++;
-					if ((*mToMark)[&tArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
-						continue;
-				}
-				(*F::NavEngine.GetFreeBlacklist())[&tArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
+				Vec3 vForward;
+				Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
+				Vec3 vToArea = vNavAreaPos - vOrigin;
+				vToArea.Normalize();
+				if (vForward.Dot(vToArea) < 0.3f)
+					continue;
 			}
+
+			if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
+				continue;
+
+			// Just slightly dangerous, only mark as such if it's clear
+			if (flDist >= flFullDangerDist &&
+				(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
+			{
+				(*mToMark)[pArea]++;
+				if ((*mToMark)[pArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
+					continue;
+			}
+			(*F::NavEngine.GetFreeBlacklist())[pArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
 		}
-		vCheckedPlayerOrigins.emplace_back(pPlayer, vOrigin);
 	}
 }
 

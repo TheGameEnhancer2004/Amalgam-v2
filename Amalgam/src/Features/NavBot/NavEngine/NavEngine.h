@@ -79,6 +79,7 @@ public:
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }
+	CMap* GetNavMap() { return m_pMap.get(); }
 
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }

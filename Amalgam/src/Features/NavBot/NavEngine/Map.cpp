@@ -335,24 +335,36 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 
 float CMap::GetBlacklistPenalty(const BlacklistReason_t& tReason) const
 {
+	if (m_bIgnoreSentryBlacklist)
+	{
+		switch (tReason.m_eValue)
+		{
+		case BlacklistReasonEnum::Sentry:
+		case BlacklistReasonEnum::SentryMedium:
+		case BlacklistReasonEnum::SentryLow:
+			return 0.f;
+		default: break;
+		}
+	}
+
 	switch (tReason.m_eValue)
 	{
 	case BlacklistReasonEnum::Sentry:
-		return std::numeric_limits<float>::infinity();
+		return 3500.f;
 	case BlacklistReasonEnum::EnemyInvuln:
-		return 600.f;
+		return 1500.f;
 	case BlacklistReasonEnum::Sticky:
-		return 350.f;
+		return 1000.f;
 	case BlacklistReasonEnum::SentryMedium:
-		return 220.f;
+		return 800.f;
 	case BlacklistReasonEnum::SentryLow:
-		return 120.f;
+		return 400.f;
 	case BlacklistReasonEnum::EnemyDormant:
-		return 90.f;
+		return 200.f;
 	case BlacklistReasonEnum::EnemyNormal:
-		return 70.f;
+		return 300.f;
 	case BlacklistReasonEnum::BadBuildSpot:
-		return 60.f;
+		return 100.f;
 	default:
 		return 0.f;
 	}

@@ -314,12 +314,16 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	// Local player is not blocking the nav area, so blacklist should not be marked as blocked
 	m_pMap->m_bFreeBlacklistBlocked = false;
 
+	// Ignore sentry blacklist if we are trying to snipe one
+	m_pMap->m_bIgnoreSentryBlacklist = m_eCurrentPriority == PriorityListEnum::SnipeSentry;
+
 	for (auto& tCrumb : m_vCrumbs)
 	{
-		// A path Node is blacklisted, abandon pathing
-		for (auto&[pArea, _] : m_pMap->m_mFreeBlacklist)
+		auto itBlacklist = m_pMap->m_mFreeBlacklist.find(tCrumb.m_pNavArea);
+		if (itBlacklist != m_pMap->m_mFreeBlacklist.end())
 		{
-			if (pArea == tCrumb.m_pNavArea)
+			float flPenalty = m_pMap->GetBlacklistPenalty(itBlacklist->second);
+			if (flPenalty >= 2500.f) // Only abandon for extreme danger, otherwise let cost-based pathing handle it
 			{
 				AbandonPath();
 				return;
