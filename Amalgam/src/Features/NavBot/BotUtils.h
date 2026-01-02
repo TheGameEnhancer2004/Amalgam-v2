@@ -2,72 +2,76 @@
 #include "../../SDK/SDK.h"
 #include "../../Utils/Timer/Timer.h"
 
+// Struct to hold data about the nearest threat
 struct ClosestEnemy_t
-{	
-	int m_iEntIdx = -1;
-	CTFPlayer* m_pPlayer = nullptr;
-	float m_flDist = FLT_MAX;
+{
+    int m_iEntIdx = -1;
+    CTFPlayer* m_pPlayer = nullptr;
+    float m_flDist = FLT_MAX;
+
+    // Helper to quickly check if a valid enemy was found
+    bool IsValid() const { return m_pPlayer != nullptr && m_iEntIdx != -1; }
 };
 
+// Enum for the ShouldTarget logic
 Enum(ShouldTarget, Invalid = -1, DontTarget, Target);
 
 class CBotUtils
 {
-private:
-	std::unordered_map<int, bool> m_mAutoScopeCache;
-	std::vector<ClosestEnemy_t> m_vCloseEnemies;
-	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-
-	bool HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-	void UpdateBestSlot(CTFPlayer* pLocal);
-
-	struct legitLookState_t
-	{
-		Vec3 m_vAnchor = {};
-		Vec3 m_vOffset = {};
-		Vec3 m_vOffsetGoal = {};
-		Vec3 m_vLastTarget = {};
-		Vec3 m_vGlanceCurrent = {};
-		Vec3 m_vGlanceGoal = {};
-		int m_iLastTarget = -1;
-		float m_flLastSeen = 0.f;
-		Vec3 m_vLastPos = {};
-		float m_flNextOffset = 1.f;
-		float m_flPhase = 0.f;
-		float m_flGlanceDuration = 0.f;
-		float m_flNextGlance = 0.f;
-		bool m_bInitialized = false;
-		bool m_bGlancing = false;
-		Timer m_tOffsetTimer = {};
-		Timer m_tGlanceTimer = {};
-		Timer m_tGlanceCooldown = {};
-	};
-
-	legitLookState_t m_tLLAP = {};
 public:
+    // --- Public State ---
+    int m_iCurrentSlot = -1;
+    int m_iBestSlot = -1;
+    ClosestEnemy_t m_tClosestEnemy = {};
+    Vec3 m_vLastAngles = {};
 
-	int m_iCurrentSlot = -1;
-	int m_iBestSlot = -1;
-	ClosestEnemy_t m_tClosestEnemy = {};
-	Vec3 m_vLastAngles = {};
+public:
+    // --- Main Interface ---
+    void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
+    void Reset();
 
-	bool ShouldAssist(CTFPlayer* pLocal, int iEntIdx);
-	ShouldTargetEnum::ShouldTargetEnum ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIdx);
-	ShouldTargetEnum::ShouldTargetEnum ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
+    // --- Targeting Logic ---
+    ShouldTargetEnum::ShouldTargetEnum ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIdx);
+    ShouldTargetEnum::ShouldTargetEnum ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
+    bool ShouldAssist(CTFPlayer* pLocal, int iEntIdx);
 
-	bool GetDormantOrigin(int iIndex, Vector& vOut);
+    // --- Movement & Aiming ---
+    void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
+    
+    // Path finding look helpers
+    void LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool bSilent);
+    void LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, bool bSilent, bool bSmooth = true);
+    
+    // Smoothing helper
+    void DoSlowAim(Vec3& vWishAngles, float flSpeed, Vec3 vPreviousAngles);
 
-	void SetSlot(CTFPlayer* pLocal, int iSlot);
+    // --- Utilities ---
+    void SetSlot(CTFPlayer* pLocal, int iSlot);
+    bool GetDormantOrigin(int iIndex, Vector& vOut);
+    void InvalidateLLAP();
 
-	void DoSlowAim(Vec3& vWishAngles, float flSpeed , Vec3 vPreviousAngles);
-	void LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool bSilent);
-	void LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, bool bSilent, bool bSmooth = true);
-	void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
-	void InvalidateLLAP();
+private:
+    // --- Internal Logic ---
+    ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
+    void UpdateBestSlot(CTFPlayer* pLocal);
+    void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
+    bool HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 
-	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
-	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
-	void Reset();
+    // --- Caching ---
+    std::unordered_map<int, bool> m_mAutoScopeCache;
+    std::vector<ClosestEnemy_t> m_vCloseEnemies;
+
+    // --- Legit Look State ---
+    // Simplified struct to match the improved, cleaner logic in .cpp
+    struct LegitLookState_t
+    {
+        bool m_bInitialized = false;
+        Vec3 m_vAnchor = {}; // The smoothed "center" point of vision
+        
+        // Note: Previous complex timer/phase variables removed 
+        // as they are replaced by cleaner realtime math in the cpp.
+    };
+    LegitLookState_t m_tLLAP = {};
 };
 
 ADD_FEATURE(CBotUtils, BotUtils);
