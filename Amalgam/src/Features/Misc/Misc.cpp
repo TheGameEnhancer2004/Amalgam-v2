@@ -555,6 +555,7 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	case FNV1A::Hash32Const("game_newmap"):
 		m_vChatSpamLines.clear();
 		m_iCurrentChatSpamIndex = 0;
+		ResetBuyBot();
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
 		m_bPeekPlaced = false;

@@ -1437,7 +1437,7 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
 					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
 					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
-					FTooltip("Automatically performs MVM upgrade station exploit (buys and refunds a fake upgrade giving you additional cash)\nHowever:\n1. You have to be playing medic with a vaccinator\n2. You still have to manually walk to the upgrade station");
+					FTooltip("WARNING: Works only on Mann Up missions with enough starting cash (600$) before the 1st wave!\nRequirements:\n1. Be a Vaccinator Medic\n2. Ping must be below 80ms\n3. Walk to the upgrade station\nPerforms MVM upgrade station exploit for extra cash.");
 					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
 					{
 						FSlider(Vars::Misc::MannVsMachine::MaxCash);
