@@ -343,7 +343,7 @@ void CAutoQueue::SearchCommunityServers()
 	m_hServerListRequest = I::SteamMatchmakingServers->RequestInternetServerList(
 		440,
 		&pFilters,
-		vFilters.size(),
+		uint32(vFilters.size()),
 		this
 	);
 

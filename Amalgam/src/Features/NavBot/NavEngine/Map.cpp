@@ -17,6 +17,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
+		if (pNextArea->m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || pNextArea->m_iTFAttributeFlags & TF_NAV_BLOCKED)
+			continue;
+
 		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
 		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
 		{
@@ -77,11 +80,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		Vector vStart = tPoints.m_vCurrent;
 		Vector vMid = tPoints.m_vCenter;
 		Vector vEnd = tPoints.m_vNext;
-		vStart.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		vMid.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		vEnd.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-		if (F::NavEngine.IsPlayerPassableNavigation(vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(vMid, vEnd))
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd))
 		{
 			bPassable = true;
 			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
@@ -323,29 +324,47 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 	if (pNextArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 		flCost += 900.f;
 
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
+		flCost += 2000.f;
+
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
+		flCost += flForwardDistance * 5.f;
+
 	return std::max(flCost, 1.f);
 }
 
 float CMap::GetBlacklistPenalty(const BlacklistReason_t& tReason) const
 {
+	if (m_bIgnoreSentryBlacklist)
+	{
+		switch (tReason.m_eValue)
+		{
+		case BlacklistReasonEnum::Sentry:
+		case BlacklistReasonEnum::SentryMedium:
+		case BlacklistReasonEnum::SentryLow:
+			return 0.f;
+		default: break;
+		}
+	}
+
 	switch (tReason.m_eValue)
 	{
 	case BlacklistReasonEnum::Sentry:
-		return std::numeric_limits<float>::infinity();
+		return 3500.f;
 	case BlacklistReasonEnum::EnemyInvuln:
-		return 600.f;
+		return 1500.f;
 	case BlacklistReasonEnum::Sticky:
-		return 350.f;
+		return 1000.f;
 	case BlacklistReasonEnum::SentryMedium:
-		return 220.f;
+		return 800.f;
 	case BlacklistReasonEnum::SentryLow:
-		return 120.f;
+		return 400.f;
 	case BlacklistReasonEnum::EnemyDormant:
-		return 90.f;
+		return 200.f;
 	case BlacklistReasonEnum::EnemyNormal:
-		return 70.f;
+		return 300.f;
 	case BlacklistReasonEnum::BadBuildSpot:
-		return 60.f;
+		return 100.f;
 	default:
 		return 0.f;
 	}

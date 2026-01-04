@@ -10,11 +10,13 @@ void CAutoJoin::Run(CTFPlayer* pLocal)
 
 	if (Vars::Misc::Automation::RandomClass.Value)
 	{
-		if (!iRandomClass || tRandomTimer.Run(Vars::Misc::Automation::RandomClassInterval.Value * 60.f))
+		static float flRandomInterval = 0.f;
+		if (!iRandomClass || tRandomTimer.Run(flRandomInterval))
 		{
 			int iExclude = Vars::Misc::Automation::RandomClassExclude.Value;
 			do { iRandomClass = SDK::RandomInt(1, 9); }
 			while (iExclude & (1 << (iRandomClass - 1)));
+			flRandomInterval = SDK::RandomFloat(Vars::Misc::Automation::RandomClassInterval.Value.Min, Vars::Misc::Automation::RandomClassInterval.Value.Max) * 60.f;
 		}
 		iDesiredClass = iRandomClass;
 	}

@@ -1,4 +1,5 @@
 #include "NavEngine.h"
+#include "../NavBotJobs/Engineer.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
@@ -52,36 +53,9 @@ bool CNavEngine::IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo,
 	return trace.fraction == 1.0f;
 }
 
-// ??????
-bool CNavEngine::IsPlayerPassableNavigation(const Vector vFrom, Vector vTo, unsigned int nMask)
+bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask)
 {
-	CGameTrace trace = {};
-	CTraceFilterNavigation filter = {};
-
-	Vector vToTarget = vTo - vFrom, vAngles;
-	Math::VectorAngles(vToTarget, vAngles);
-
-	Vector vForward, vRight;
-	Math::AngleVectors(vAngles, &vForward, &vRight, nullptr);
-	vRight.z = 0;
-
-	// We want to keep the same angle for these two bounding box traces
-	Vector vRelativeEndPos = vForward * vToTarget.Length();
-
-	Vector vLeftRayStart = vFrom - vRight * HALF_PLAYER_WIDTH;
-	Vector vLeftRayEnd = vLeftRayStart + vRelativeEndPos;
-	SDK::Trace(vLeftRayStart, vLeftRayEnd, nMask, &filter, &trace);
-
-	// Left ray hit something
-	if (trace.DidHit())
-		return false;
-
-	Vector vRightRayStart = vFrom + vRight * HALF_PLAYER_WIDTH;
-	Vector vRightRayEnd = vRightRayStart + vRelativeEndPos;
-	SDK::Trace(vRightRayStart, vRightRayEnd, nMask, &filter, &trace);
-
-	// Return if the right ray hit something
-	return !trace.DidHit();
+	return F::BotUtils.IsWalkable(pLocal, vFrom, vTo);
 }
 
 void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea)
@@ -269,6 +243,10 @@ void CNavEngine::VischeckPath()
 	if (m_vCrumbs.size() < 2 || !tVischeckTimer.Run(Vars::Misc::Movement::NavEngine::VischeckTime.Value))
 		return;
 
+	auto pLocal = H::Entities.GetLocal();
+	if (!pLocal)
+		return;
+
 	const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
 
 	// Iterate all the crumbs
@@ -279,13 +257,10 @@ void CNavEngine::VischeckPath()
 		auto tKey = std::pair<CNavArea*, CNavArea*>(tCrumb.m_pNavArea, tNextCrumb.m_pNavArea);
 
 		auto vCurrentCenter = tCrumb.m_vPos;
-		vCurrentCenter.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
 		auto vNextCenter = tNextCrumb.m_vPos;
-		vNextCenter.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 		
 		// Check if we can pass, if not, abort pathing and mark as bad
-		if (!IsPlayerPassableNavigation(vCurrentCenter, vNextCenter))
+		if (!IsPlayerPassableNavigation(pLocal, vCurrentCenter, vNextCenter))
 		{
 			// Mark as invalid for a while
 			CachedConnection_t tEntry{};
@@ -339,12 +314,16 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	// Local player is not blocking the nav area, so blacklist should not be marked as blocked
 	m_pMap->m_bFreeBlacklistBlocked = false;
 
+	// Ignore sentry blacklist if we are trying to snipe one
+	m_pMap->m_bIgnoreSentryBlacklist = m_eCurrentPriority == PriorityListEnum::SnipeSentry;
+
 	for (auto& tCrumb : m_vCrumbs)
 	{
-		// A path Node is blacklisted, abandon pathing
-		for (auto&[pArea, _] : m_pMap->m_mFreeBlacklist)
+		auto itBlacklist = m_pMap->m_mFreeBlacklist.find(tCrumb.m_pNavArea);
+		if (itBlacklist != m_pMap->m_mFreeBlacklist.end())
 		{
-			if (pArea == tCrumb.m_pNavArea)
+			float flPenalty = m_pMap->GetBlacklistPenalty(itBlacklist->second);
+			if (flPenalty >= 2500.f) // Only abandon for extreme danger, otherwise let cost-based pathing handle it
 			{
 				AbandonPath();
 				return;
@@ -399,6 +378,8 @@ void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
 	m_pLocalArea = nullptr;
+	m_tOffMeshTimer.Update();
+	m_vOffMeshTarget = {};
 
 	static std::string sPath = std::filesystem::current_path().string();
 	if (std::string sLevelName = I::EngineClient->GetLevelName(); !sLevelName.empty())
@@ -503,7 +484,32 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		return;
 	}
 
-	GetLocalNavArea(pLocal->GetAbsOrigin());
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+	CNavArea* pArea = GetLocalNavArea(vLocalOrigin);
+	bool bOnNavMesh = pArea && pArea->IsOverlapping(vLocalOrigin) && std::fabs(pArea->GetZ(vLocalOrigin.x, vLocalOrigin.y) - vLocalOrigin.z) < 18.f;
+
+	if (bOnNavMesh || IsPathing())
+	{
+		m_tOffMeshTimer.Update();
+	}
+	else if (pArea)
+	{
+		Vector vTarget = pArea->GetNearestPoint(Vector2D(vLocalOrigin.x, vLocalOrigin.y));
+		m_vOffMeshTarget = vTarget;
+
+		CGameTrace trace;
+		CTraceFilterNavigation filter{};
+		SDK::Trace(vLocalOrigin, vTarget, MASK_PLAYERSOLID, &filter, &trace);
+
+		if (trace.fraction > 0.01f)
+		{
+			m_vCrumbs.clear();
+			BuildIntraAreaCrumbs(vLocalOrigin, trace.endpos, pArea);
+			m_vCrumbs.push_back({ pArea, trace.endpos });
+			m_eCurrentPriority = PriorityListEnum::Patrol;
+			m_tOffMeshTimer.Update();
+		}
+	}
 
 	if (Vars::Misc::Movement::NavEngine::VischeckEnabled.Value && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 		VischeckPath();
@@ -602,10 +608,26 @@ bool CanJumpIfScoped(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	static Timer tLastJump{};
-	static int iTicksSinceJump = 0;
-	static bool bCrouch = false; // Used to determine if we want to jump or if we want to crouch
+	static Timer tPathRescan{};
 
 	size_t uCrumbsSize = m_vCrumbs.size();
+
+	const auto vLocalOrigin = pLocal->GetAbsOrigin();
+	if (!uCrumbsSize && m_tOffMeshTimer.Check(6000))
+	{
+		m_eCurrentPriority = PriorityListEnum::Patrol;
+		SDK::WalkTo(pCmd, pLocal, m_vOffMeshTarget);
+
+		static Timer tLastJump{};
+		if (m_tInactivityTimer.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2) && tLastJump.Check(0.2f))
+		{
+			F::BotUtils.ForceJump();
+			tLastJump.Update();
+		}
+
+		return;
+	}
+
 	auto DoLook = [&](const Vec3& vTarget, bool bTargetValid) -> void
 	{
 		if (G::Attacking == 1)
@@ -671,7 +693,6 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			bResetHeight = false;
 	}
 
-	const auto vLocalOrigin = pLocal->GetAbsOrigin();
 	if (bResetHeight && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 	{
 		bResetHeight = false;
@@ -871,26 +892,11 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 						m_tInactivityTimer.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2) &&
 						!(m_pLocalArea->m_iAttributeFlags & (NAV_MESH_NO_JUMP | NAV_MESH_STAIRS)))
 						bShouldJump = true;
+
 					if (bShouldJump && tLastJump.Check(0.2f))
 					{
-						// Make it crouch until we land, but jump the first tick
-						pCmd->buttons |= bCrouch ? IN_DUCK : IN_JUMP;
-
-						// Only flip to crouch state, not to jump state
-						if (!bCrouch)
-						{
-							bCrouch = true;
-							iTicksSinceJump = 0;
-						}
-						iTicksSinceJump++;
-
-						// Update jump timer now since we are back on ground
-						if (bCrouch && pLocal->OnSolid() && iTicksSinceJump > 3)
-						{
-							// Reset
-							bCrouch = false;
-							tLastJump.Update();
-						}
+						F::BotUtils.ForceJump();
+						tLastJump.Update();
 					}
 				}
 			}
@@ -991,5 +997,7 @@ void CNavEngine::Render()
 	{
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 			H::Draw.RenderLine(m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos, Vars::Colors::NavbotPath.Value, false);
-	}	
+	}
+
+	F::NavBotEngineer.Render();
 }

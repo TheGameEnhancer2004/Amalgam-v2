@@ -280,8 +280,8 @@ namespace Vars
 	NAMESPACE_BEGIN(Aimbot)
 		SUBNAMESPACE_BEGIN(General, Aimbot)
 			CVarEnum(AimType, "Aim type", 0, NONE, nullptr,
-				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive"),
-				Off, Plain, Smooth, Silent, Locking, Assistive);
+				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit"),
+				Off, Plain, Smooth, Silent, Locking, Assistive, Legit);
 			CVarEnum(TargetSelection, "Target selection", 0, NONE, nullptr,
 				VA_LIST("FOV", "Distance"),
 				FOV, Distance);
@@ -836,6 +836,8 @@ I dont think this is a good idea to disable simulations completely:
 				CVar(BlacklistDormantDelay, "Blacklist dormant scan delay", 1.f, SLIDER_MIN, 0.5f, 5.f, 0.5f, "%gs");
 				CVar(BlacklistSlightDangerLimit, "Blacklist slight danger limit", 2, SLIDER_MIN, 1, 10);
 
+				CVar(SmartJump, "Smart jump", false);
+
 				CVarEnum(RechargeDT, "Recharge DT", 0, NONE, nullptr,
 					VA_LIST("Off", "On", "If not fakelagging"),
 					Off, Always, WaitForFL);
@@ -904,7 +906,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVarEnum(RandomClassExclude, "Random class exclude", 0b0, DROPDOWN_MULTI, "None",
 				VA_LIST("Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"),
 				Scout = 1 << 0, Sniper = 1 << 1, Soldier = 1 << 2, Demoman = 1 << 3, Medic = 1 << 4, Heavy = 1 << 5, Pyro = 1 << 6, Spy = 1 << 7, Engineer = 1 << 8);
-			CVar(RandomClassInterval, "Random class interval", 3.f, SLIDER_MIN | SLIDER_PRECISION, 0.5f, 30.f, 0.5f, "%gm");
+			CVar(RandomClassInterval, "Random class interval", FloatRange_t(3.f, 5.f), SLIDER_MIN | SLIDER_PRECISION, 0.5f, 30.f, 0.5f, "%g - %gm");
 			CVar(ForceClass, "Autojoin class", 0);
 			CVar(Micspam, "Micspam", false);
 			CVar(NoiseSpam, "Noise spam", false);

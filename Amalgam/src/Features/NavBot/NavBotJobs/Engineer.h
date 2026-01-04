@@ -16,7 +16,9 @@ class CNavBotEngineer
 {
 private:
 	int m_iBuildAttempts = 0;
+	float m_flBuildYaw = 0.0f;
 	std::vector<BuildingSpot_t>  m_vBuildingSpots;
+	std::vector<Vector> m_vFailedSpots;
 private:
 	bool BuildingNeedsToBeSmacked(CBaseObject* pBuilding);
 	bool BlacklistedFromBuilding(CNavArea* pArea);
@@ -30,6 +32,7 @@ public:
 	void RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy, bool bForce = false);
 	void RefreshLocalBuildings(CTFPlayer* pLocal);
 	void Reset();
+	void Render();
 
 	BuildingSpot_t m_tCurrentBuildingSpot = {};
 	CObjectSentrygun* m_pMySentryGun;

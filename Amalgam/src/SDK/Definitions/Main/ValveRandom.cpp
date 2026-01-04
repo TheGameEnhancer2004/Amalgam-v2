@@ -76,10 +76,10 @@ int CValve_Random::GenerateRandomNumber()
 float CValve_Random::RandomFloat(const float flLow, const float flHigh)
 {
 	// float in [0,1)
-	float fl = AM * GenerateRandomNumber();
-	if (fl > RNMX)
+	float fl = float(AM * GenerateRandomNumber());
+	if (fl > float(RNMX))
 	{
-		fl = RNMX;
+		fl = float(RNMX);
 	}
 	return (fl * (flHigh - flLow)) + flLow; // float in [low,high)
 }
@@ -87,10 +87,10 @@ float CValve_Random::RandomFloat(const float flLow, const float flHigh)
 float CValve_Random::RandomFloatExp(const float flMinVal, const float flMaxVal, const float flExponent)
 {
 	// float in [0,1)
-	float fl = AM * GenerateRandomNumber();
-	if (fl > RNMX)
+	float fl = float(AM * GenerateRandomNumber());
+	if (fl > float(RNMX))
 	{
-		fl = RNMX;
+		fl = float(RNMX);
 	}
 	if (flExponent != 1.0f)
 	{

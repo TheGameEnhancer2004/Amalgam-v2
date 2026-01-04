@@ -43,24 +43,26 @@ private:
 
 	Timer m_tTimeSpentOnCrumbTimer = {};
 	Timer m_tInactivityTimer = {};
+	Timer m_tOffMeshTimer = {};
+	Vector m_vOffMeshTarget = {};
 
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 
-	bool IsSetupTime();
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath();
 	void UpdateRespawnRooms();
 public:
+	bool IsSetupTime();
 
 	// Vischeck
 	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);
 	// Checks if player can walk from one position to another without bumping into anything
-	bool IsPlayerPassableNavigation(const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
+	bool IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
 
 	// Are we currently pathing?
 	bool IsPathing() { return !m_vCrumbs.empty(); }
@@ -77,6 +79,7 @@ public:
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }
+	CMap* GetNavMap() { return m_pMap.get(); }
 
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }
