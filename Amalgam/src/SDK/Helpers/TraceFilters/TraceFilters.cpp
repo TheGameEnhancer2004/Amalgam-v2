@@ -157,21 +157,83 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 		return false;
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
-	if (pEntity->entindex() != 0 && pEntity->GetClassID() != ETFClassID::CBaseEntity)
+	if (pEntity->entindex() != 0)
 	{
-		if (pEntity->GetClassID() == ETFClassID::CFuncRespawnRoomVisualizer)
+		switch (pEntity->GetClassID())
+		{
+		case ETFClassID::CBaseDoor:
+		case ETFClassID::CPhysicsProp:
+		case ETFClassID::CPhysicsPropMultiplayer:
+		case ETFClassID::CFunc_LOD:
+		case ETFClassID::CObjectCartDispenser:
+		case ETFClassID::CFuncTrackTrain:
+		case ETFClassID::CFuncConveyor:
+		case ETFClassID::CObjectSentrygun:
+		case ETFClassID::CObjectDispenser:
+		case ETFClassID::CObjectTeleporter:
+				case ETFClassID::CBaseProjectile:
+		case ETFClassID::CBaseGrenade:
+		case ETFClassID::CTFWeaponBaseGrenadeProj:
+		case ETFClassID::CTFWeaponBaseMerasmusGrenade:
+		case ETFClassID::CTFGrenadePipebombProjectile:
+		case ETFClassID::CTFStunBall:
+		case ETFClassID::CTFBall_Ornament:
+		case ETFClassID::CTFProjectile_Jar:
+		case ETFClassID::CTFProjectile_Cleaver:
+		case ETFClassID::CTFProjectile_JarGas:
+		case ETFClassID::CTFProjectile_JarMilk:
+		case ETFClassID::CTFProjectile_SpellBats:
+		case ETFClassID::CTFProjectile_SpellKartBats:
+		case ETFClassID::CTFProjectile_SpellMeteorShower:
+		case ETFClassID::CTFProjectile_SpellMirv:
+		case ETFClassID::CTFProjectile_SpellPumpkin:
+		case ETFClassID::CTFProjectile_SpellSpawnBoss:
+		case ETFClassID::CTFProjectile_SpellSpawnHorde:
+		case ETFClassID::CTFProjectile_SpellSpawnZombie:
+		case ETFClassID::CTFProjectile_SpellTransposeTeleport:
+		case ETFClassID::CTFProjectile_Throwable:
+		case ETFClassID::CTFProjectile_ThrowableBreadMonster:
+		case ETFClassID::CTFProjectile_ThrowableBrick:
+		case ETFClassID::CTFProjectile_ThrowableRepel:
+		case ETFClassID::CTFBaseRocket:
+		case ETFClassID::CTFFlameRocket:
+		case ETFClassID::CTFProjectile_Arrow:
+		case ETFClassID::CTFProjectile_GrapplingHook:
+		case ETFClassID::CTFProjectile_HealingBolt:
+		case ETFClassID::CTFProjectile_Rocket:
+		case ETFClassID::CTFProjectile_BallOfFire:
+		case ETFClassID::CTFProjectile_MechanicalArmOrb:
+		case ETFClassID::CTFProjectile_SentryRocket:
+		case ETFClassID::CTFProjectile_SpellFireball:
+		case ETFClassID::CTFProjectile_SpellLightningOrb:
+		case ETFClassID::CTFProjectile_SpellKartOrb:
+		case ETFClassID::CTFProjectile_EnergyBall:
+		case ETFClassID::CTFProjectile_Flare:
+		case ETFClassID::CTFBaseProjectile:
+		case ETFClassID::CTFProjectile_EnergyRing:
+			return false;
+		case ETFClassID::CFuncRespawnRoomVisualizer:
 		{
 			auto pLocal = H::Entities.GetLocal();
 			const int iTargetTeam = pEntity->m_iTeamNum(), iLocalTeam = pLocal ? pLocal->m_iTeamNum() : iTargetTeam;
 
-			// Cant we just check for the teamnum here???
-
-			// If we can't collide, hit it
-			if (!pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iLocalTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK))
+			if (pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iLocalTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK))
 				return true;
+			break;
 		}
-		return false;
+		case ETFClassID::CTFPlayer:
+		{
+			auto pLocal = H::Entities.GetLocal();
+			if (pLocal && pEntity->m_iTeamNum() == pLocal->m_iTeamNum())
+				return false;
+			return true;
+		}
+		}
+
+		if (pEntity->GetClassID() != ETFClassID::CBaseEntity)
+			return false;
 	}
+
 	return true;
 }
 

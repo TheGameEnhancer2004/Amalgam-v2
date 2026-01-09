@@ -30,26 +30,42 @@ void CAutoQueue::Run()
 	{
 		m_sLastLevelName = sLevelName;
 		m_bNavmeshAbandonTriggered = false;
+		m_flNavmeshAbandonStartTime = 0.0f;
 		m_bAutoDumpedThisMatch = false;
 		m_flAutoDumpStartTime = 0.0f;
 	}
 
 	if (!Vars::Misc::Queueing::AutoAbandonIfNoNavmesh.Value)
+	{
 		m_bNavmeshAbandonTriggered = false;
+		m_flNavmeshAbandonStartTime = 0.0f;
+	}
 	else if (bInGameNow && !bIsLoadingMapNow && !m_bNavmeshAbandonTriggered)
 	{
 		const bool bNavMeshUnavailable = !F::NavEngine.IsNavMeshLoaded();
 		if (bNavMeshUnavailable)
 		{
-			m_bNavmeshAbandonTriggered = true;
-			SDK::Output("AutoQueue", "No navmesh available for current map, abandoning match", { 255, 100, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
-			I::TFGCClientSystem->AbandonCurrentMatch();
-			bWasInGame = false;
-			bWasDisconnected = true;
-			flLastQueueTime = 0.0f;
-			bQueuedFromRQif = false;
-			return;
+			const float flCurrentTime = I::EngineClient->Time();
+			if (m_flNavmeshAbandonStartTime <= 0.0f)
+			{
+				m_flNavmeshAbandonStartTime = flCurrentTime;
+				F::NavEngine.Reset(true);
+			}
+
+			if ((flCurrentTime - m_flNavmeshAbandonStartTime) >= 10.0f)
+			{
+				m_bNavmeshAbandonTriggered = true;
+				SDK::Output("AutoQueue", "No navmesh available for current map after 10 seconds, abandoning match", { 255, 100, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+				I::TFGCClientSystem->AbandonCurrentMatch();
+				bWasInGame = false;
+				bWasDisconnected = true;
+				flLastQueueTime = 0.0f;
+				bQueuedFromRQif = false;
+				return;
+			}
 		}
+		else
+			m_flNavmeshAbandonStartTime = 0.0f;
 	}
 
 	if (Vars::Misc::Queueing::AutoDumpProfiles.Value && Vars::Misc::Queueing::AutoCasualQueue.Value && !Vars::Misc::Queueing::AutoCommunityQueue.Value)

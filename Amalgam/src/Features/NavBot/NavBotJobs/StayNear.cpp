@@ -85,9 +85,10 @@ bool CNavBotStayNear::IsAreaValidForStayNear(Vector vEntOrigin, CNavArea* pArea,
 
 int CNavBotStayNear::IsStayNearTargetValid(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex)
 {
-	int iShouldTarget = F::BotUtils.ShouldTarget(pLocal, pWeapon, iEntIndex);
-	int iResult = iEntIndex ? iShouldTarget : 0;
-	return iResult;
+	if (!pLocal || !iEntIndex || iEntIndex == pLocal->entindex())
+		return 0;
+
+	return F::BotUtils.ShouldTarget(pLocal, pWeapon, iEntIndex);
 }
 
 bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)

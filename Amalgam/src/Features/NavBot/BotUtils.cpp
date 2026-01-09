@@ -603,9 +603,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tGlanceCooldown.Update();
 
 		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
-		tState.m_flNextBackwardsLook = SDK::RandomFloat(8.f, 15.f);
 		tState.m_tScanTimer.Update();
-		tState.m_tBackwardsLookTimer.Update();
 	}
 	else
 		tState.m_vLastTarget = vFocus;
@@ -693,22 +691,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			tState.m_flGlanceDuration = SDK::RandomFloat(2.0f, 3.2f);
 			tState.m_tGlanceTimer.Update();
 		}
-	}
-
-	// Occasional backcheck
-	if (!bEnemyLock && !tState.m_bGlancing && tState.m_tBackwardsLookTimer.Run(tState.m_flNextBackwardsLook))
-	{
-		tState.m_flNextBackwardsLook = SDK::RandomFloat(12.f, 25.f);
-
-		Vec3 vAngles = tState.m_vAnchor;
-		vAngles.y += 180.f;
-		vAngles.x = SDK::RandomFloat(-5.f, 5.f);
-		Math::ClampAngles(vAngles);
-
-		tState.m_vGlanceGoal = vAngles;
-		tState.m_bGlancing = true;
-		tState.m_flGlanceDuration = SDK::RandomFloat(0.6f, 1.0f);
-		tState.m_tGlanceTimer.Update();
 	}
 
 	if (tState.m_bGlancing)
@@ -1031,7 +1013,7 @@ bool CBotUtils::IsSurfaceWalkable(const Vector& vNormal)
 {
 	static const Vector vUp = { 0.f, 0.f, 1.f };
 	float flAngle = RAD2DEG(std::acos(vNormal.Dot(vUp)));
-	return flAngle < 45.f; // MAX_WALKABLE_ANGLE
+	return flAngle < 50.f; // MAX_WALKABLE_ANGLE
 }
 
 bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd)
@@ -1040,7 +1022,7 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 
 	m_vWalkableSegments.clear();
 	const float flStepHeight = pLocal->m_flStepSize();
-	const float flMaxFallDistance = 250.f;
+	const float flMaxFallDistance = 350.f;
 	const Vector vStepHeight = { 0.f, 0.f, flStepHeight };
 	const Vector vMaxFallDistance = { 0.f, 0.f, flMaxFallDistance };
 	const Vector vHullMin = { -20.f, -20.f, 0.f };
