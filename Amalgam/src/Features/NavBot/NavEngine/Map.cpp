@@ -68,8 +68,10 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 	else
 	{
-		tPoints = DeterminePoints(pCurrentArea, pNextArea);
-		tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+		bool bIsOneWay = IsOneWay(pCurrentArea, pNextArea);
+
+		tPoints = DeterminePoints(pCurrentArea, pNextArea, bIsOneWay);
+		tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 		tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 		const float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
@@ -180,7 +182,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 }
 
-DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos)
+DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay)
 {
 	DropdownHint_t tHint{};
 	tHint.m_vAdjustedPos = vCurrentPos;
@@ -200,30 +202,34 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 		const float flDropDistance = -flHeightDiff;
 		if (flDropDistance > kSmallDropGrace && flHorizontalLength > 1.f)
 		{
-			Vector vDirection = vHorizontal / flHorizontalLength;
-
-			// Distance to move forward before dropping. Favour wider moves for larger drops.
-			const float desiredAdvance = std::clamp(flDropDistance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
-			const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
-			float flApproach = desiredAdvance;
-			if (flMaxAdvance > 0.f)
-				flApproach = std::min(flApproach, flMaxAdvance);
-			else
-				flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
-
-			const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.6f, flHorizontalLength * 0.5f));
-			flApproach = std::max(flApproach, minAdvance);
-			flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
-			tHint.m_flApproachDistance = std::max(flApproach, 0.f);
-
-			tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
-			tHint.m_vAdjustedPos.z = vCurrentPos.z;
 			tHint.m_bRequiresDrop = true;
 			tHint.m_flDropHeight = flDropDistance;
-			tHint.m_vApproachDir = vDirection;
+			tHint.m_vApproachDir = vHorizontal / flHorizontalLength;
+
+			if (!bIsOneWay)
+			{
+				Vector vDirection = tHint.m_vApproachDir;
+
+				// Distance to move forward before dropping. Favour wider moves for larger drops.
+				const float desiredAdvance = std::clamp(flDropDistance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
+				const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
+				float flApproach = desiredAdvance;
+				if (flMaxAdvance > 0.f)
+					flApproach = std::min(flApproach, flMaxAdvance);
+				else
+					flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
+
+				const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.6f, flHorizontalLength * 0.5f));
+				flApproach = std::max(flApproach, minAdvance);
+				flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
+				tHint.m_flApproachDistance = std::max(flApproach, 0.f);
+
+				tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
+				tHint.m_vAdjustedPos.z = vCurrentPos.z;
+			}
 		}
 	}
-	else if (flHeightDiff > 0.f && flHorizontalLength > 1.f)
+	else if (!bIsOneWay && flHeightDiff > 0.f && flHorizontalLength > 1.f)
 	{
 		Vector vDirection = vHorizontal / flHorizontalLength;
 
@@ -238,7 +244,7 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 	return tHint;
 }
 
-NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
+NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay)
 {
 	auto vCurrentCenter = pCurrentArea->m_vCenter;
 	auto vNextCenter = pNextArea->m_vCenter;
@@ -260,7 +266,7 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
 	}
 
 	// If safepathing is enabled, adjust points to stay more centered and avoid corners
-	if (Vars::Misc::Movement::NavEngine::SafePathing.Value)
+	if (!bIsOneWay && Vars::Misc::Movement::NavEngine::SafePathing.Value)
 	{
 		// Move points more towards the center of the areas
 		//Vector vToNext = (vNextCenter - vCurrentCenter);
@@ -297,6 +303,20 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
 	auto vCenterNext = pNextArea->GetNearestPoint(Vector2D(vClosest.x, vClosest.y));
 
 	return NavPoints_t(vCurrentCenter, vClosest, vCenterNext, vNextCenter);
+}
+
+bool CMap::IsOneWay(CNavArea* pFrom, CNavArea* pTo) const
+{
+	if (!pFrom || !pTo)
+		return true;
+
+	for (auto& tBackConnection : pTo->m_vConnections)
+	{
+		if (tBackConnection.m_pArea == pFrom)
+			return false;
+	}
+
+	return true;
 }
 
 float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const

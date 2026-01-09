@@ -116,8 +116,9 @@ public:
 	float LeastCostEstimate(void* pStartArea, void* pEndArea) override { return reinterpret_cast<CNavArea*>(pStartArea)->m_vCenter.DistTo(reinterpret_cast<CNavArea*>(pEndArea)->m_vCenter); }
 	void AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent) override;
 	
-	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos);
-	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea);
+	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay);
+	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay);
+	bool IsOneWay(CNavArea* pFrom, CNavArea* pTo) const;
 	float GetBlacklistPenalty(const BlacklistReason_t& tReason) const;
 	void CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas);
 

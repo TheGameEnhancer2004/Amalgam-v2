@@ -173,8 +173,9 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 						if (!tConnect.m_pArea) continue;
 						bAnyExits = true;
 
-						NavPoints_t tPoints = m_pMap->DeterminePoints(m_pLocalArea, tConnect.m_pArea);
-						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+						bool bIsOneWay = m_pMap->IsOneWay(m_pLocalArea, tConnect.m_pArea);
+						NavPoints_t tPoints = m_pMap->DeterminePoints(m_pLocalArea, tConnect.m_pArea, bIsOneWay);
+						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 						tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 						if (IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCurrent, tPoints.m_vCenter) &&
@@ -244,8 +245,9 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 				}
 				else
 				{
-					tPoints = m_pMap->DeterminePoints(pArea, pNextArea);
-					tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+					bool bIsOneWay = m_pMap->IsOneWay(pArea, pNextArea);
+					tPoints = m_pMap->DeterminePoints(pArea, pNextArea, bIsOneWay);
+					tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 				}
 
@@ -428,49 +430,53 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	}
 }
 
-void CNavEngine::CheckPathValidity(CTFPlayer* pLocal)
-{
-	if (m_vCrumbs.empty())
-		return;
 
-	CNavArea* pArea = GetLocalNavArea();
-	if (!pArea)
-		return;
+// !!! BETTER WAY OF DOING THIS?! !!!
+// the idea is really good i think. but it repaths like 1 bajilion times even when we are not offpath and rapes the cpu
+// maybe timer offpath?
+// void CNavEngine::CheckPathValidity(CTFPlayer* pLocal)
+// {
+// 	if (m_vCrumbs.empty())
+// 		return;
 
-	bool bValid = false;
-	if (pArea == m_tLastCrumb.m_pNavArea)
-		bValid = true;
-	else
-	{
-		for (const auto& tCrumb : m_vCrumbs)
-		{
-			if (pArea == tCrumb.m_pNavArea)
-			{
-				bValid = true;
-				break;
-			}
-		}
-	}
+// 	CNavArea* pArea = GetLocalNavArea();
+// 	if (!pArea)
+// 		return;
 
-	if (!bValid)
-	{
-		for (const auto& tConnect : pArea->m_vConnections)
-		{
-			if (tConnect.m_pArea == m_vCrumbs[0].m_pNavArea)
-			{
-				bValid = true;
-				break;
-			}
-		}
-	}
+// 	bool bValid = false;
+// 	if (pArea == m_tLastCrumb.m_pNavArea)
+// 		bValid = true;
+// 	else
+// 	{
+// 		for (const auto& tCrumb : m_vCrumbs)
+// 		{
+// 			if (pArea == tCrumb.m_pNavArea)
+// 			{
+// 				bValid = true;
+// 				break;
+// 			}
+// 		}
+// 	}
 
-	if (!bValid)
-	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("CNavEngine", "we are off the path. repathing", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-		AbandonPath("Off track");
-	}
-}
+// 	if (!bValid)
+// 	{
+// 		for (const auto& tConnect : pArea->m_vConnections)
+// 		{
+// 			if (tConnect.m_pArea == m_vCrumbs[0].m_pNavArea)
+// 			{
+// 				bValid = true;
+// 				break;
+// 			}
+// 		}
+// 	}
+
+// 	if (!bValid)
+// 	{
+// 		if (Vars::Debug::Logging.Value)
+// 			SDK::Output("CNavEngine", "we are off the path. repathing", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+// 		AbandonPath("Off track");
+// 	}
+// }
 
 void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 {
@@ -748,7 +754,7 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	else if (!m_pMap->m_mFreeBlacklist.empty())
 		m_pMap->m_mFreeBlacklist.clear();
 
-	CheckPathValidity(pLocal);
+	// CheckPathValidity(pLocal);
 	FollowCrumbs(pLocal, pWeapon, pCmd);
 	UpdateStuckTime(pLocal);
 }

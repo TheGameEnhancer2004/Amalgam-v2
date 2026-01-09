@@ -56,7 +56,7 @@ private:
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath(const std::string& sReason);
 	void UpdateRespawnRooms();
-	void CheckPathValidity(CTFPlayer* pLocal);
+	// void CheckPathValidity(CTFPlayer* pLocal);
 public:
 	std::string m_sLastFailureReason = "";
 	bool m_bIgnoreTraces = false;
