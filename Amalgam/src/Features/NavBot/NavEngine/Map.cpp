@@ -143,8 +143,11 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 	else
 	{
-		// Minimal cost for fallback: just horizontal distance to keep it simple
 		flFinalCost = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
+		if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
+			flFinalCost += 100000.f;
+		if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
+			flFinalCost += 50.f;
 	}
 
 	if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)
@@ -339,7 +342,7 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 		flCost += 900.f;
 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
-		flCost += 2000.f;
+		flCost += 100000.f;
 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
 		flCost += flForwardDistance * 5.f;
