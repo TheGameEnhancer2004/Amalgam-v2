@@ -685,9 +685,10 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 					}
 					else
 					{
+						bool bIsOneWay = m_pMap->IsOneWay(pCurrentArea, tConnection.m_pArea);
 						// Force a check if it's not cached
-						NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea);
-						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+						NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea, bIsOneWay);
+						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 						tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 						bool bPassable = IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter) &&
@@ -728,8 +729,9 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 				for (auto& tConnection : pCurrentArea->m_vConnections)
 				{
 					if (!tConnection.m_pArea) continue;
-					NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea);
-					DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+					bool bIsOneWay = m_pMap->IsOneWay(pCurrentArea, tConnection.m_pArea);
+					NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea, bIsOneWay);
+					DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 					F::BotUtils.IsWalkable(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter);
