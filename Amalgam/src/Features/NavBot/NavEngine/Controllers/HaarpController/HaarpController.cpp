@@ -179,48 +179,12 @@ bool CHaarpController::GetCapturePos(Vector& vOut)
 	Vector vGoalPos = vCapturePos;
 	if (F::NavEngine.IsNavMeshLoaded())
 	{
-		CNavArea* pBestArea = nullptr;
-		float flBestCost = FLT_MAX;
-		const float flSearchRadius = 400.0f;
-		const Vector vLocalOrigin = pLocal->GetAbsOrigin();
-		auto pNavFile = F::NavEngine.GetNavFile();
-		if (pNavFile)
+		CNavArea* pArea = F::NavEngine.FindClosestNavArea(vCapturePos, false);
+		if (pArea)
 		{
-			for (auto& tArea : pNavFile->m_vAreas)
-			{
-				if (!tArea.IsOverlapping(vCapturePos, flSearchRadius))
-					continue;
-
-				Vector vCenter = tArea.m_vCenter;
-				vCenter.z = tArea.GetZ(vCenter.x, vCenter.y);
-
-				float flCost = F::NavEngine.GetPathCost(vLocalOrigin, vCenter);
-				if (flCost >= FLT_MAX)
-					continue;
-
-				if (flCost < flBestCost)
-				{
-					flBestCost = flCost;
-					pBestArea = &tArea;
-				}
-			}
-		}
-
-		if (pBestArea)
-		{
-			Vector vCenter = pBestArea->m_vCenter;
-			vCenter.z = pBestArea->GetZ(vCenter.x, vCenter.y);
+			Vector vCenter = pArea->m_vCenter;
+			vCenter.z = pArea->GetZ(vCenter.x, vCenter.y);
 			vGoalPos = vCenter;
-		}
-		else
-		{
-			CNavArea* pArea = F::NavEngine.FindClosestNavArea(vCapturePos, false);
-			if (pArea)
-			{
-				Vector vCenter = pArea->m_vCenter;
-				vCenter.z = pArea->GetZ(vCenter.x, vCenter.y);
-				vGoalPos = vCenter;
-			}
 		}
 	}
 
@@ -294,5 +258,4 @@ void CHaarpController::Update()
 		m_bHasCachedBluCapturePos = false;
 		sLastMap = sCurrentMap;
 	}
-
 }
