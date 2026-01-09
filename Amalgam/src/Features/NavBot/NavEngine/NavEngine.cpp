@@ -428,6 +428,50 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	}
 }
 
+void CNavEngine::CheckPathValidity(CTFPlayer* pLocal)
+{
+	if (m_vCrumbs.empty())
+		return;
+
+	CNavArea* pArea = GetLocalNavArea();
+	if (!pArea)
+		return;
+
+	bool bValid = false;
+	if (pArea == m_tLastCrumb.m_pNavArea)
+		bValid = true;
+	else
+	{
+		for (const auto& tCrumb : m_vCrumbs)
+		{
+			if (pArea == tCrumb.m_pNavArea)
+			{
+				bValid = true;
+				break;
+			}
+		}
+	}
+
+	if (!bValid)
+	{
+		for (const auto& tConnect : pArea->m_vConnections)
+		{
+			if (tConnect.m_pArea == m_vCrumbs[0].m_pNavArea)
+			{
+				bValid = true;
+				break;
+			}
+		}
+	}
+
+	if (!bValid)
+	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("CNavEngine", "we are off the path. repathing", { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+		AbandonPath("Off track");
+	}
+}
+
 void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 {
 	// No crumbs
@@ -704,7 +748,7 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	else if (!m_pMap->m_mFreeBlacklist.empty())
 		m_pMap->m_mFreeBlacklist.clear();
 
-
+	CheckPathValidity(pLocal);
 	FollowCrumbs(pLocal, pWeapon, pCmd);
 	UpdateStuckTime(pLocal);
 }

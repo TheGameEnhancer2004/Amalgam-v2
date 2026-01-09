@@ -143,7 +143,22 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 	else
 	{
-		flFinalCost = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
+		auto pLocal = H::Entities.GetLocal();
+		float flDist = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
+
+		if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter) && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext))
+		{
+			flFinalCost = flDist;
+		}
+		else if ((pNextArea->m_vSeCorner.x - pNextArea->m_vNwCorner.x) >= PLAYER_WIDTH && (pNextArea->m_vSeCorner.y - pNextArea->m_vNwCorner.y) >= PLAYER_WIDTH)
+		{
+			flFinalCost = flDist * 2.f;
+		}
+		else
+		{
+			flFinalCost = flDist * 10.f;
+		}
+
 		if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
 			flFinalCost += 100000.f;
 		if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
