@@ -42,6 +42,10 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		case TF_GAMETYPE_ESCORT:
 			bGotTarget = F::NavBotCapture.GetPayloadGoal(vLocalOrigin, iEnemyTeam, vTarget);
 			break;
+		case TF_GAMETYPE_CTF:
+			if (F::GameObjectiveController.m_bHaarp)
+				bGotTarget = F::NavBotCapture.GetCtfGoal(pLocal, pLocal->m_iTeamNum(), iEnemyTeam, vTarget);
+			break;
 		default:
 			break;
 		}

@@ -2,12 +2,14 @@
 #include "CPController/CPController.h"
 #include "FlagController/FlagController.h"
 #include "PLController/PLController.h"
+#include "HaarpController/HaarpController.h"
 
 ETFGameType GetGameType()
 {
 	// Check if we're on doomsday
 	auto sMapName = std::string(I::EngineClient->GetLevelName());
 	F::GameObjectiveController.m_bDoomsday = sMapName.find("sd_doomsday") != std::string::npos;
+	F::GameObjectiveController.m_bHaarp = sMapName.find("ctf_haarp") != std::string::npos;
 
 	int iType = TF_GAMETYPE_UNDEFINED;
 	if (auto pGameRules = I::TFGameRules())
@@ -51,6 +53,11 @@ void CGameObjectiveController::Update()
 		F::FlagController.Update();
 		if (sMapName.find("sd_doomsday") == 0)
 			F::CPController.Update();
+		if (sMapName.find("ctf_haarp") == 0)
+		{
+			F::CPController.Update();
+			F::HaarpController.Update();
+		}
 		return;
 	}
 
@@ -58,6 +65,11 @@ void CGameObjectiveController::Update()
 	{
 	case TF_GAMETYPE_CTF:
 		F::FlagController.Update();
+		if (m_bHaarp)
+		{
+			F::CPController.Update();
+			F::HaarpController.Update();
+		}
 		break;
 	case TF_GAMETYPE_CP:
 		F::CPController.Update();
@@ -72,6 +84,12 @@ void CGameObjectiveController::Update()
 			F::FlagController.Update();
 			F::CPController.Update();
 		}
+		if (m_bHaarp)
+		{
+			F::FlagController.Update();
+			F::CPController.Update();
+			F::HaarpController.Update();
+		}
 		break;
 	}
 }
@@ -79,6 +97,8 @@ void CGameObjectiveController::Update()
 void CGameObjectiveController::Reset()
 {
 	m_eGameMode = TF_GAMETYPE_UNDEFINED;
+	m_bDoomsday = false;
+	m_bHaarp = false;
 	F::FlagController.Init();
 	F::PLController.Init();
 	F::CPController.Init();

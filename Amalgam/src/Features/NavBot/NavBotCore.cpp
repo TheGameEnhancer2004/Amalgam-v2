@@ -532,6 +532,12 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		break;
 	case PriorityListEnum::Capture:
 		sJob = L"Capture";
+		if (!F::NavBotCapture.m_sCaptureStatus.empty())
+		{
+			sJob += L" (";
+			sJob += F::NavBotCapture.m_sCaptureStatus;
+			sJob += L")";
+		}
 		break;
 	case PriorityListEnum::MeleeAttack:
 		sJob = L"Melee";
@@ -596,9 +602,24 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	if (Vars::Debug::Info.Value)
 	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());
+		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Priority: {}", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("In spawn: {}", std::to_string(iInSpawn)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area flags: {}", std::to_string(iAreaFlags)).c_str());
-		
+
+		if (F::NavEngine.IsNavMeshLoaded())
+		{
+			H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Map: {}", F::NavEngine.GetNavFilePath()).c_str());
+			if (auto pLocalArea = F::NavEngine.GetLocalNavArea())
+				H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area ID: {}", pLocalArea->m_uId).c_str());
+			H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Total areas: {}", F::NavEngine.GetNavFile()->m_vAreas.size()).c_str());
+		}
+
+		if (F::NavEngine.IsPathing() || F::NavEngine.m_vLastDestination.Length() > 0.f)
+		{
+			const auto& vDest = F::NavEngine.m_vLastDestination;
+			H::Draw.StringOutlined(fFont, x, y += nTall, cColor, Vars::Menu::Theme::Background.Value, align, std::format("Dest: {:.0f}, {:.0f}, {:.0f}", vDest.x, vDest.y, vDest.z).c_str());
+		}
+
 		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
 		bool bIsIdle = F::NavEngine.m_eCurrentPriority == PriorityListEnum::None || !F::NavEngine.IsPathing();
 		H::Draw.StringOutlined(fFont, x, y += nTall, bIsIdle ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value, Vars::Menu::Theme::Background.Value, align, std::format("Idle: {} ({:.1f}s)", bIsIdle ? "Yes" : "No", std::max(0.f, flIdleTime)).c_str());

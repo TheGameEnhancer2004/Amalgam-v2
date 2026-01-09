@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugAVX2|Win32">
@@ -1133,6 +1133,7 @@
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\Controller.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\FlagController\FlagController.cpp" />
+    <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\HaarpController\HaarpController.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\PLController\PLController.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\MicroPather\micropather.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\NavEngine.cpp" />
@@ -1472,6 +1473,7 @@
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\Controller.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\CPController\CPController.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\FlagController\FlagController.h" />
+    <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\HaarpController\HaarpController.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Controllers\PLController\PLController.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\FileReader\CNavFile.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\FileReader\nav.h" />

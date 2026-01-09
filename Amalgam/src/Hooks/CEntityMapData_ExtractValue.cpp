@@ -76,7 +76,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 		while (pData->GetNextKey(szKeyName, szValue));
 		if (pModel)
 		{
-			TriggerData_t tData = TriggerData_t{ pModel, eType, vOrigin, {}, vAngles, vRotate, {} };
+			TriggerData_t tData = TriggerData_t{ pModel, eType, vOrigin, {}, vAngles, vRotate, iTeam, {} };
 #ifndef TEXTMODE
 			G::TriggerStorage.push_back(tData);
 #endif 

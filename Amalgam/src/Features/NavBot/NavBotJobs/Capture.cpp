@@ -4,6 +4,7 @@
 #include "../NavEngine/Controllers/CPController/CPController.h"
 #include "../NavEngine/Controllers/FlagController/FlagController.h"
 #include "../NavEngine/Controllers/PLController/PLController.h"
+#include "../NavEngine/Controllers/HaarpController/HaarpController.h"
 #include "../NavEngine/Controllers/Controller.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 
@@ -19,9 +20,57 @@ bool CNavBotCapture::ShouldAvoidPlayer(int iIndex)
 
 bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"";
+	if (F::GameObjectiveController.m_bHaarp)
+	{
+		if (iOurTeam == TF_TEAM_BLUE)
+		{
+			if (F::HaarpController.GetCapturePos(vOut))
+			{
+				m_sCaptureStatus = F::HaarpController.m_sHaarpStatus;
+				return true;
+			}
+			CCaptureFlag* pBestFlag = nullptr;
+			float flBestDist = FLT_MAX;
+			Vector vLocalOrigin = pLocal->GetAbsOrigin();
+			for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
+			{
+				if (pEntity->GetClassID() != ETFClassID::CCaptureFlag)
+					continue;
+				auto pFlag = pEntity->As<CCaptureFlag>();
+				Vector vPos = pFlag->GetAbsOrigin();
+				float flDist = vLocalOrigin.DistToSqr(vPos);
+				if (flDist < flBestDist)
+				{
+					flBestDist = flDist;
+					pBestFlag = pFlag;
+				}
+			}
+			if (pBestFlag)
+			{
+				m_sCaptureStatus = L"Flag";
+				vOut = pBestFlag->GetAbsOrigin();
+				return true;
+			}
+		}
+		else
+		{
+			if (F::HaarpController.GetDefensePos(vOut))
+			{
+				m_sCaptureStatus = F::HaarpController.m_sHaarpStatus;
+				return true;
+			}
+		}
+		// If HaarpController didn't provide a goal (e.g. teammate has flag), fall through to standard CTF logic for assistance
+	}
+
 	Vector vPosition;
 	if (!F::FlagController.GetPosition(iEnemyTeam, vPosition))
-		return false;
+	{
+		if (!F::FlagController.GetPosition(0, vPosition)) // Try neutral flag
+			return false;
+		iEnemyTeam = 0; // Use neutral team if found
+	}
 
 	// Get Flag related information
 	auto iStatus = F::FlagController.GetStatus(iEnemyTeam);
@@ -35,6 +84,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 			// Return our capture point location
 			if (F::FlagController.GetSpawnPosition(iOurTeam, vPosition))
 			{
+				m_sCaptureStatus = L"CP";
 				vOut = vPosition;
 				return true;
 			}
@@ -44,6 +94,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 		{
 			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
+				m_sCaptureStatus = L"Assist";
 				// Stay slightly behind and to the side to avoid blocking
 				Vector vOffset(40.0f, 40.0f, 0.0f);
 				vPosition -= vOffset;
@@ -55,12 +106,15 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 	}
 
 	// Get the flag if not taken by us already
+	m_sCaptureStatus = L"Flag";
 	vOut = vPosition;
+
 	return true;
 }
 
 bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"Payload";
 	static Vector vLastCartPos;
 	static float flLastCartTime = 0.0f;
 
@@ -194,6 +248,7 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 
 bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"CP";
 	std::pair<int, Vector> tControlPointInfo;
 	if (!F::CPController.GetClosestControlPointInfo(vLocalOrigin, iOurTeam, tControlPointInfo))
 	{
@@ -692,16 +747,12 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	if (!tCaptureTimer.Check(2.f))
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: on cooldown (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
 	}
 
 	// Priority too high, don't try
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Capture)
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: priority too high (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return false;
 	}
 
@@ -730,6 +781,8 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	default:
 		if (F::GameObjectiveController.m_bDoomsday)
 			bGotTarget = GetDoomsdayGoal(pLocal, iOurTeam, iEnemyTeam, vTarget);
+		else if (F::GameObjectiveController.m_bHaarp)
+			bGotTarget = GetCtfGoal(pLocal, iOurTeam, iEnemyTeam, vTarget);
 		break;
 	}
 
@@ -745,10 +798,13 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// No target, bail and set on cooldown
 	if (!bGotTarget)
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: no target found for gamemode {}", static_cast<int>(F::GameObjectiveController.m_eGameMode)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		tCaptureTimer.Update();
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
+	}
+
+	if (Vars::Debug::Info.Value)
+	{
+		G::SphereStorage.emplace_back(vTarget, 30.f, 20, 20, I::GlobalVars->curtime + 0.1f, Color_t(255, 255, 255, 10), Color_t(255, 255, 255, 100));
 	}
 
 	// If priority is not capturing, or we have a new target, try to path there
