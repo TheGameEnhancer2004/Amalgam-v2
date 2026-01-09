@@ -286,15 +286,23 @@ void CVisuals::DrawAntiAim(CTFPlayer* pLocal)
 #define PAIR(x) { x, #x }
 void CVisuals::DrawDebugInfo(CTFPlayer* pLocal)
 {
+#ifdef DEBUG_TEXT
+	if (!Vars::Debug::Info.Value && m_vDebugText.empty())
+		return;
+#else
+	if (!Vars::Debug::Info.Value)
+		return;
+#endif
+
+	int x = 10, y = 10;
+	const auto& fFont = H::Fonts.GetFont(FONT_INDICATORS);
+	const int nTall = fFont.m_nTall + H::Draw.Scale(1);
+	y -= nTall;
+
 	if (Vars::Debug::Info.Value)
 	{
 		auto pWeapon = H::Entities.GetWeapon();
 		auto pCmd = !I::EngineClient->IsPlayingDemo() ? G::LastUserCmd : I::Input->GetUserCmd(I::ClientState->lastoutgoingcommand);
-
-		int x = 10, y = 10;
-		const auto& fFont = H::Fonts.GetFont(FONT_INDICATORS);
-		const int nTall = fFont.m_nTall + H::Draw.Scale(1);
-		y -= nTall;
 
 		if (pCmd)
 		{
@@ -371,7 +379,8 @@ void CVisuals::DrawDebugInfo(CTFPlayer* pLocal)
 			float flSecondaryAttack = pWeapon->m_flNextSecondaryAttack();
 			float flAttack = pLocal->m_flNextAttack();
 
-			H::Draw.StringOutlined(fFont, x, y += nTall * 2, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Weapon: {}, {}", pWeapon->GetSlot(), pWeapon->GetWeaponID()).c_str());
+			y += nTall;
+			H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Weapon: {}, {}", pWeapon->GetSlot(), pWeapon->GetWeaponID()).c_str());
 			H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("Attacking: {}", G::Attacking).c_str());
 			H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("CanPrimaryAttack: {} ([{:.3f} | {:.3f}] <= {:.3f})", G::CanPrimaryAttack, flPrimaryAttack, flAttack, flTime).c_str());
 			H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, std::format("CanSecondaryAttack: {} ([{:.3f} | {:.3f}] <= {:.3f})", G::CanSecondaryAttack, flSecondaryAttack, flAttack, flTime).c_str());
@@ -381,7 +390,30 @@ void CVisuals::DrawDebugInfo(CTFPlayer* pLocal)
 		}
 		*/
 	}
+
+#ifdef DEBUG_TEXT
+	if (!m_vDebugText.empty())
+	{
+		if (Vars::Debug::Info.Value)
+			y += nTall;
+		for (auto& [sString, tColor] : m_vDebugText)
+			H::Draw.StringOutlined(fFont, x, y += nTall, tColor, Vars::Menu::Theme::Background.Value, ALIGN_TOPLEFT, sString.c_str());
+	}
+#endif
 }
+
+#ifdef DEBUG_TEXT
+void CVisuals::AddDebugText(const std::string& sString, Color_t tColor)
+{
+	m_vDebugText.emplace_back(sString, tColor);
+}
+
+void CVisuals::ClearDebugText()
+{
+	m_vDebugText.clear();
+}
+#endif
+
 #undef PAIR
 
 

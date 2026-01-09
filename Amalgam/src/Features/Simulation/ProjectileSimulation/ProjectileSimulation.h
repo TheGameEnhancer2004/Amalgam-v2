@@ -11,6 +11,8 @@ Enum(ProjSim,
 	MaxSpeed = 1 << 5 // default projectile speeds to their maximum
 )
 
+#define GRENADE_CHECK_INTERVAL 0.195f
+
 struct ProjectileInfo
 {
 	CTFPlayer* m_pOwner = nullptr;
@@ -60,6 +62,7 @@ public:
 	void RunTick(ProjectileInfo& tProjInfo, bool bPath = true);
 	Vec3 GetOrigin();
 	Vec3 GetVelocity();
+	float GetDesync();
 
 	inline std::pair<CTFWeaponBase*, CTFPlayer*> GetEntities(CBaseEntity* pProjectile)
 	{

@@ -3,6 +3,8 @@
 
 #include <map>
 
+#define DEBUG_TEXT
+
 struct Projectile_t
 {
 	std::vector<Vec3> m_vPath = {};
@@ -35,6 +37,10 @@ private:
 	std::vector<Sightline_t> m_vSightLines = {};
 	std::vector<PickupData_t> m_vPickups = {};
 
+#ifdef DEBUG_TEXT
+	std::vector<std::pair<std::string, Color_t>> m_vDebugText = {};
+#endif
+
 public:
 	void Event(IGameEvent* pEvent, uint32_t uHash);
 	void Store();
@@ -44,6 +50,11 @@ public:
 	void DrawPickupTimers();
 	void DrawAntiAim(CTFPlayer* pLocal);
 	void DrawDebugInfo(CTFPlayer* pLocal);
+
+#ifdef DEBUG_TEXT
+	void AddDebugText(const std::string& sString, Color_t tColor = Vars::Menu::Theme::Active.Value);
+	void ClearDebugText();
+#endif
 
 	std::vector<DrawBox_t> GetHitboxes(matrix3x4* aBones, CBaseAnimating* pEntity, std::vector<int> vHitboxes = {}, int iTarget = -1);
 	void DrawEffects();
