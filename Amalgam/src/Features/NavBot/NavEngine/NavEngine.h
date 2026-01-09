@@ -54,9 +54,14 @@ private:
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
-	void AbandonPath();
+	void AbandonPath(const std::string& sReason);
 	void UpdateRespawnRooms();
 public:
+	std::string m_sLastFailureReason = "";
+	bool m_bIgnoreTraces = false;
+	std::vector<std::pair<Vector, Vector>> m_vPossiblePaths = {};
+	std::vector<std::pair<Vector, Vector>> m_vDebugWalkablePaths = {};
+	std::vector<std::pair<Vector, Vector>> m_vRejectedPaths = {};
 	bool IsSetupTime();
 
 	// Vischeck
@@ -127,7 +132,7 @@ public:
 	void UpdateStuckTime(CTFPlayer* pLocal);
 
 	// Make sure to update m_pLocalArea with GetLocalNavArea before running
-	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true);
+	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIgnoreTraces = false);
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
 

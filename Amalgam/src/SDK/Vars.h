@@ -260,6 +260,8 @@ namespace Vars
 
 		CVar(SpellFootstep, "Spell footstep color", Color_t(255, 255, 255, 255), VISUAL);
 		CVar(NavbotPath, "Navbot path color", Color_t(255, 255, 0, 255), VISUAL);
+		CVar(NavbotPossiblePath, "Navbot possible path color", Color_t(255, 255, 255, 100), VISUAL);
+		CVar(NavbotWalkablePath, "Navbot walkable path color", Color_t(0, 255, 255, 200), VISUAL);
 		CVar(NavbotArea, "Navbot area color", Color_t(0, 255, 0, 255), VISUAL);
 		CVar(NavbotBlacklist, "Navbot blacklisted color", Color_t(255, 0, 0, 255), VISUAL);
 		CVar(FollowbotPathLine, "Followbot path line color", Color_t(255, 255, 0, 255), VISUAL);
@@ -793,8 +795,8 @@ I dont think this is a good idea to disable simulations completely:
 				CVar(DisableOnSpectate, "Disable on spectate", false);
 				CVar(PathInSetup, "Path in setup time", false);
 				CVarEnum(Draw, "Draw", 0b011, VISUAL | DROPDOWN_MULTI, nullptr,
-					VA_LIST("Path", "Areas", "Blacklisted zones"),
-					Path = 1 << 0, Area = 1 << 1, Blacklist = 1 << 2);
+					VA_LIST("Path", "Areas", "Blacklisted zones", "Possible paths", "Walkable (Debug)"),
+					Path = 1 << 0, Area = 1 << 1, Blacklist = 1 << 2, PossiblePaths = 1 << 3, Walkable = 1 << 4);
 				CVarEnum(LookAtPath, "Look at path", 0, NONE, nullptr,
 					VA_LIST("Off", "Plain", "Silent", "Legit", "Legit silent"),
 					Off, Plain, Silent, Legit, LegitSilent);

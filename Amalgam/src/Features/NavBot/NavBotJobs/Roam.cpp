@@ -76,7 +76,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				std::pair<CNavArea*, int> tHidingSpot;
 				if (F::NavBotCore.FindClosestHidingSpot(pClosestNav, vVischeckPoint, 5, tHidingSpot, bVischeck))
 				{
-					if (tHidingSpot.first->m_vCenter.DistTo(vLocalOrigin) <= 250.f)
+					if (tHidingSpot.first && tHidingSpot.first->m_vCenter.DistTo(vLocalOrigin) <= 250.f)
 					{
 						F::NavEngine.CancelPath();
 						m_bDefending = true;
@@ -104,6 +104,9 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
 	{
+		// Skip if area is invalid
+		if (!&tArea)
+			continue;
 		// Skip if area is blacklisted
 		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
 			continue;
@@ -116,7 +119,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		bool bTooCloseToVisited = false;
 		for (auto pVisited : vVisitedAreas)
 		{
-			if (tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+			if (pVisited && tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
 			{
 				bTooCloseToVisited = true;
 				break;
@@ -150,6 +153,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	// Sort by distance first (farthest first)
 	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b) {
+		if (!a || !b) return false;
 		return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
 	});
 
@@ -165,6 +169,8 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	for (auto pArea : vValidAreas)
 	{
+		if (!pArea)
+			continue;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
 			pCurrentTargetArea = pArea;

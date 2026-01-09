@@ -17,19 +17,25 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
-		if (pNextArea->m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || pNextArea->m_iTFAttributeFlags & TF_NAV_BLOCKED)
-			continue;
-
-		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
-		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+		if (!F::NavEngine.m_bIgnoreTraces)
 		{
-			if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
-				(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+			if (pNextArea->m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || pNextArea->m_iTFAttributeFlags & TF_NAV_BLOCKED)
 				continue;
 		}
 
+		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
+		if (!F::NavEngine.m_bIgnoreTraces)
+		{
+			if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+			{
+				if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
+					(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+					continue;
+			}
+		}
+
 		float flBlacklistPenalty = 0.f;
-		if (!m_bFreeBlacklistBlocked)
+		if (!m_bFreeBlacklistBlocked && !F::NavEngine.m_bIgnoreTraces)
 		{
 			if (auto itBlacklist = m_mFreeBlacklist.find(pNextArea); itBlacklist != m_mFreeBlacklist.end())
 			{
@@ -45,7 +51,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
 		pCachedEntry = &itCache->second;
 
-	if (pCachedEntry && !pCachedEntry->m_bPassable)
+	if (!F::NavEngine.m_bIgnoreTraces && pCachedEntry && !pCachedEntry->m_bPassable)
 		continue;
 
 	NavPoints_t tPoints{};
@@ -67,7 +73,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 		const float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
-		if (flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
+		if (!F::NavEngine.m_bIgnoreTraces && flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
 		{
 			CachedConnection_t& tEntry = m_mVischeckCache[tKey];
 			tEntry.m_iExpireTick = iCacheExpiry;
@@ -82,7 +88,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		Vector vEnd = tPoints.m_vNext;
 
 		auto pLocal = H::Entities.GetLocal();
-		if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd))
+		if (F::NavEngine.m_bIgnoreTraces || (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd)))
 		{
 			bPassable = true;
 			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
@@ -121,16 +127,24 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 
 	float flFinalCost = flBaseCost;
-	if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
-		flFinalCost += flBlacklistPenalty;
-
-	if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
+	if (!F::NavEngine.m_bIgnoreTraces)
 	{
-		if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
+		if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
+			flFinalCost += flBlacklistPenalty;
+
+		if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
 		{
-			float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
-			flFinalCost += flStuckPenalty;
+			if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
+			{
+				float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
+				flFinalCost += flStuckPenalty;
+			}
 		}
+	}
+	else
+	{
+		// Minimal cost for fallback: just horizontal distance to keep it simple
+		flFinalCost = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
 	}
 
 	if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)

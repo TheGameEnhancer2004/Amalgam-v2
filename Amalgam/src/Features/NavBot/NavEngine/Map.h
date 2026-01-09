@@ -131,14 +131,18 @@ public:
 	// Get closest nav area to target vector
 	CNavArea* FindClosestNavArea(const Vector& vPos, bool bLocalOrigin);
 
-	std::vector<void*> FindPath(CNavArea* pLocalArea, CNavArea* pDestArea)
+	std::vector<void*> FindPath(CNavArea* pLocalArea, CNavArea* pDestArea, int* pOutResult = nullptr)
 	{
 		if (m_eState != NavStateEnum::Active)
 			return {};
 
 		float flCost;
 		std::vector<void*> vPath;
-		if (m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
+		int iResult = m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost);
+		if (pOutResult)
+			*pOutResult = iResult;
+
+		if (iResult == micropather::MicroPather::START_END_SAME)
 			return { reinterpret_cast<void*>(pLocalArea) };
 
 		return vPath;

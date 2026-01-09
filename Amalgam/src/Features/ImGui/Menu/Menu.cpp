@@ -1510,6 +1510,8 @@ void CMenu::MenuMisc(int iTab)
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
 						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -30);
 						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::NavbotPossiblePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::NavbotWalkablePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 					}

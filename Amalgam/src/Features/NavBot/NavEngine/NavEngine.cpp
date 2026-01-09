@@ -95,33 +95,106 @@ void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDesti
 	}
 }
 
-bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal)
+bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal, bool bIgnoreTraces)
 {
-	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
+	if (!m_pMap)
 		return false;
 
-	if (!IsReady())
+	auto pLocalPlayer = H::Entities.GetLocal();
+	if (!pLocalPlayer)
 		return false;
+
+	m_vLastDestination = vDestination;
+	m_bCurrentNavToLocal = bNavToLocal;
+	m_bRepathOnFail = bShouldRepath;
+	m_bIgnoreTraces = bIgnoreTraces;
+
+	m_sLastFailureReason = "";
+	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
+	{
+		m_sLastFailureReason = "Warping/Doubletapping";
+		return false;
+	}
+
+	if (!IsReady())
+	{
+		m_sLastFailureReason = "Not ready";
+		return false;
+	}
 
 	// Don't path, priority is too low
 	if (ePriority < m_eCurrentPriority)
+	{
+		m_sLastFailureReason = "Priority too low";
 		return false;
+	}
 
 	if (!GetLocalNavArea())
+	{
+		m_sLastFailureReason = "No local nav area";
 		return false;
+	}
 
 	CNavArea* pDestArea = FindClosestNavArea(vDestination, false);
 	if (!pDestArea)
+	{
+		m_sLastFailureReason = "No destination nav area";
 		return false;
+	}
 
-	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea);
+	int iPathResult = -1;
+	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea, &iPathResult);
 	bool bSingleAreaPath = false;
 	if (vPath.empty())
 	{
 		if (m_pLocalArea == pDestArea)
 			bSingleAreaPath = true;
 		else
+		{
+			switch (iPathResult)
+			{
+			case micropather::MicroPather::NO_SOLUTION:
+			{
+				if (!bIgnoreTraces)
+				{
+					m_sLastFailureReason = "No solution found, attempting fallback";
+					m_pMap->m_pather.Reset();
+					return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
+				}
+
+				m_sLastFailureReason = "No solution found (disconnected)";
+				if (m_pLocalArea && pDestArea)
+				{
+					// Check if any connections from local are even possible
+					bool bAnyPossible = false;
+					bool bAnyExits = false;
+					for (auto& tConnect : m_pLocalArea->m_vConnections)
+					{
+						if (!tConnect.m_pArea) continue;
+						bAnyExits = true;
+
+						NavPoints_t tPoints = m_pMap->DeterminePoints(m_pLocalArea, tConnect.m_pArea);
+						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+						tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+
+						if (IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCurrent, tPoints.m_vCenter) &&
+							IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCenter, tPoints.m_vNext))
+						{
+							bAnyPossible = true;
+							break;
+						}
+					}
+
+					if (!bAnyExits) m_sLastFailureReason += " - Local area has no exits";
+					else if (!bAnyPossible) m_sLastFailureReason += " - All local exits blocked by traces";
+				}
+				break;
+			}
+			case micropather::MicroPather::START_END_SAME: m_sLastFailureReason = "Start and end are same"; break;
+			default: m_sLastFailureReason = "Pathing engine error"; break;
+			}
 			return false;
+		}
 	}
 
 	if (!bSingleAreaPath && !bNavToLocal && !vPath.empty())
@@ -132,7 +205,10 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			if (m_pLocalArea == pDestArea)
 				bSingleAreaPath = true;
 			else
+			{
+				m_sLastFailureReason = "Path empty after trim";
 				return false;
+			}
 		}
 	}
 
@@ -178,33 +254,50 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 				tStartCrumb.m_vPos = tPoints.m_vCurrent;
 				m_vCrumbs.push_back(tStartCrumb);
 
-				Crumb_t tCenterCrumb = {};
-				tCenterCrumb.m_pNavArea = pArea;
-				tCenterCrumb.m_vPos = tPoints.m_vCenter;
-				tCenterCrumb.m_bRequiresDrop = tDropdown.m_bRequiresDrop;
-				tCenterCrumb.m_flDropHeight = tDropdown.m_flDropHeight;
-				tCenterCrumb.m_flApproachDistance = tDropdown.m_flApproachDistance;
-				tCenterCrumb.m_vApproachDir = tDropdown.m_vApproachDir;
-				m_vCrumbs.push_back(tCenterCrumb);
+				Crumb_t tMidCrumb = {};
+				tMidCrumb.m_pNavArea = pArea;
+				tMidCrumb.m_vPos = tPoints.m_vCenter;
+				tMidCrumb.m_bRequiresDrop = tDropdown.m_bRequiresDrop;
+				tMidCrumb.m_flDropHeight = tDropdown.m_flDropHeight;
+				tMidCrumb.m_flApproachDistance = tDropdown.m_flApproachDistance;
+				tMidCrumb.m_vApproachDir = tDropdown.m_vApproachDir;
+				m_vCrumbs.push_back(tMidCrumb);
 			}
 			else
 			{
-				m_vCrumbs.push_back({ pArea, pArea->m_vCenter });
+				Crumb_t tEndCrumb = {};
+				tEndCrumb.m_pNavArea = pArea;
+				tEndCrumb.m_vPos = vDestination;
+				m_vCrumbs.push_back(tEndCrumb);
 			}
 		}
 	}
 
-	m_vCrumbs.push_back({ nullptr, vDestination });
-	m_tInactivityTimer.Update();
+	if (!bIgnoreTraces && !m_vCrumbs.empty())
+	{
+		// Check if the path we just built is even valid with traces
+		// If not, we might want to try again with traces ignored if absolutely necessary
+		bool bValid = true;
+		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
+		{
+			if (!IsPlayerPassableNavigation(pLocalPlayer, m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos))
+			{
+				bValid = false;
+				break;
+			}
+		}
+
+		if (!bValid)
+		{
+			// If the normal path is blocked, try to find a path ignoring costs and tracelines
+			// this shit is absolute fallback if everything fails
+			m_sLastFailureReason = "Path blocked by traces, attempting fallback";
+			m_vCrumbs.clear();
+			return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
+		}
+	}
 
 	m_eCurrentPriority = ePriority;
-	m_bCurrentNavToLocal = bNavToLocal;
-	m_bRepathOnFail = bShouldRepath;
-
-	// Ensure we know where to go
-	if (m_bRepathOnFail)
-		m_vLastDestination = vDestination;
-
 	return true;
 }
 
@@ -243,6 +336,9 @@ void CNavEngine::VischeckPath()
 	if (m_vCrumbs.size() < 2 || !tVischeckTimer.Run(Vars::Misc::Movement::NavEngine::VischeckTime.Value))
 		return;
 
+	if (m_bIgnoreTraces)
+		return;
+
 	auto pLocal = H::Entities.GetLocal();
 	if (!pLocal)
 		return;
@@ -269,7 +365,7 @@ void CNavEngine::VischeckPath()
 			tEntry.m_bPassable = false;
 			tEntry.m_flCachedCost = std::numeric_limits<float>::max();
 			m_pMap->m_mVischeckCache[tKey] = tEntry;
-			AbandonPath();
+			AbandonPath("Traceline blocked");
 			break;
 		}
 		// Else we can update the cache (if not marked bad before this)
@@ -288,7 +384,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 {
 	static Timer tBlacklistCheckTimer{};
 	// Only check every 500ms
-	if (!tBlacklistCheckTimer.Run(0.5f))
+	if (!tBlacklistCheckTimer.Run(0.5f) || m_bIgnoreTraces)
 		return;
 
 	// Local player is ubered and does not care about the blacklist
@@ -325,7 +421,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 			float flPenalty = m_pMap->GetBlacklistPenalty(itBlacklist->second);
 			if (flPenalty >= 2500.f) // Only abandon for extreme danger, otherwise let cost-based pathing handle it
 			{
-				AbandonPath();
+				AbandonPath("Blacklisted area");
 				return;
 			}
 		}
@@ -368,7 +464,7 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 			m_pMap->m_mVischeckCache[tKey].m_iExpireTick = iBlacklistExpireTick;
 			m_pMap->m_mVischeckCache[tKey].m_eVischeckState = VischeckStateEnum::NotChecked;
 			m_pMap->m_mVischeckCache[tKey].m_bPassable = false;
-			AbandonPath();
+			AbandonPath("Stuck");
 			return;
 		}
 	}
@@ -377,6 +473,7 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
+	m_bIgnoreTraces = false;
 	m_pLocalArea = nullptr;
 	m_tOffMeshTimer.Update();
 	m_vOffMeshTarget = {};
@@ -514,6 +611,90 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (Vars::Misc::Movement::NavEngine::VischeckEnabled.Value && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
 		VischeckPath();
 
+	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::PossiblePaths)
+	{
+		m_vPossiblePaths.clear();
+		m_vRejectedPaths.clear();
+		if (pArea)
+		{
+			std::vector<CNavArea*> vAreas;
+			m_pMap->CollectAreasAround(vLocalOrigin, 1000.f, vAreas);
+			for (auto* pCurrentArea : vAreas)
+			{
+				for (auto& tConnection : pCurrentArea->m_vConnections)
+				{
+					if (!tConnection.m_pArea) continue;
+
+					const auto tKey = std::pair<CNavArea*, CNavArea*>(pCurrentArea, tConnection.m_pArea);
+					if (auto itCache = m_pMap->m_mVischeckCache.find(tKey); itCache != m_pMap->m_mVischeckCache.end())
+					{
+						if (itCache->second.m_bPassable)
+							m_vPossiblePaths.push_back({ itCache->second.m_tPoints.m_vCurrent, itCache->second.m_tPoints.m_vNext });
+						else
+							m_vRejectedPaths.push_back({ itCache->second.m_tPoints.m_vCurrent, itCache->second.m_tPoints.m_vNext });
+					}
+					else
+					{
+						// Force a check if it's not cached
+						NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea);
+						DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+						tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+
+						bool bPassable = IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter) &&
+										 IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext);
+
+						// Cache it
+						CachedConnection_t& tEntry = m_pMap->m_mVischeckCache[tKey];
+						tEntry.m_iExpireTick = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+						tEntry.m_eVischeckState = VischeckStateEnum::Visible;
+						tEntry.m_bPassable = bPassable;
+						tEntry.m_tPoints = tPoints;
+						tEntry.m_tDropdown = tDropdown;
+
+						if (bPassable)
+							m_vPossiblePaths.push_back({ tPoints.m_vCurrent, tPoints.m_vNext });
+						else
+							m_vRejectedPaths.push_back({ tPoints.m_vCurrent, tPoints.m_vNext });
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		m_vPossiblePaths.clear();
+		m_vRejectedPaths.clear();
+	}
+
+	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable)
+	{
+		m_vDebugWalkablePaths.clear();
+		if (pArea)
+		{
+			std::vector<CNavArea*> vAreas;
+			m_pMap->CollectAreasAround(vLocalOrigin, 1000.f, vAreas);
+			for (auto* pCurrentArea : vAreas)
+			{
+				for (auto& tConnection : pCurrentArea->m_vConnections)
+				{
+					if (!tConnection.m_pArea) continue;
+					NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea);
+					DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+
+					F::BotUtils.IsWalkable(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter);
+					for (auto& segment : F::BotUtils.m_vWalkableSegments)
+						m_vDebugWalkablePaths.push_back(segment);
+					F::BotUtils.IsWalkable(pLocal, tPoints.m_vCenter, tPoints.m_vNext);
+					for (auto& segment : F::BotUtils.m_vWalkableSegments)
+						m_vDebugWalkablePaths.push_back(segment);
+				}
+			}
+		}
+	}
+	else
+		m_vDebugWalkablePaths.clear();
+
 	if (!IsBlacklistIrrelevant())
 	{
 		m_pMap->UpdateIgnores(pLocal);
@@ -528,17 +709,18 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	UpdateStuckTime(pLocal);
 }
 
-void CNavEngine::AbandonPath()
+void CNavEngine::AbandonPath(const std::string& sReason)
 {
 	if (!m_pMap)
 		return;
 
+	m_sLastFailureReason = sReason;
 	m_pMap->m_pather.Reset();
 	m_vCrumbs.clear();
 	m_tLastCrumb.m_pNavArea = nullptr;
 	// We want to repath on failure
 	if (m_bRepathOnFail)
-		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal);
+		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal, m_bIgnoreTraces);
 	else
 		m_eCurrentPriority = PriorityListEnum::None;
 }
@@ -593,6 +775,7 @@ void CNavEngine::CancelPath()
 	m_vCrumbs.clear();
 	m_tLastCrumb.m_pNavArea = nullptr;
 	m_eCurrentPriority = PriorityListEnum::None;
+	m_bIgnoreTraces = false;
 }
 
 bool CanJumpIfScoped(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -997,6 +1180,20 @@ void CNavEngine::Render()
 	{
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 			H::Draw.RenderLine(m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos, Vars::Colors::NavbotPath.Value, false);
+	}
+
+	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::PossiblePaths)
+	{
+		for (auto& tPath : m_vPossiblePaths)
+			H::Draw.RenderLine(tPath.first, tPath.second, Vars::Colors::NavbotPossiblePath.Value, false);
+		for (auto& tPath : m_vRejectedPaths)
+			H::Draw.RenderLine(tPath.first, tPath.second, Color_t(255, 0, 0, 255), false);
+	}
+
+	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable)
+	{
+		for (auto& tPath : m_vDebugWalkablePaths)
+			H::Draw.RenderLine(tPath.first, tPath.second, Vars::Colors::NavbotWalkablePath.Value, false);
 	}
 
 	F::NavBotEngineer.Render();

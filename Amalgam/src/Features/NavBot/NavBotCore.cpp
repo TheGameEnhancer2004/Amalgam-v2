@@ -588,6 +588,11 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Stuck: {:.1f}s", flIdleTime).c_str());
 	}
 
+	if (!F::NavEngine.IsPathing() && !F::NavEngine.m_sLastFailureReason.empty())
+	{
+		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Failed: {}", F::NavEngine.m_sLastFailureReason).c_str());
+	}
+
 	if (Vars::Debug::Info.Value)
 	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());
