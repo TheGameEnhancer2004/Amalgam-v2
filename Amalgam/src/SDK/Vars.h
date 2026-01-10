@@ -260,8 +260,8 @@ namespace Vars
 				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive"),
 				Off, Plain, Smooth, Silent, Locking, Assistive);
 			CVarEnum(TargetSelection, "Target selection", 0, NONE, nullptr,
-				VA_LIST("FOV", "Distance"),
-				FOV, Distance);
+				VA_LIST("FOV", "Distance", "Hybrid"),
+				FOV, Distance, Hybrid);
 			CVarEnum(Target, "Target", 0b0000001, DROPDOWN_MULTI, nullptr,
 				VA_LIST("Players", "Sentries", "Dispensers", "Teleporters", "Stickies", "NPCs", "Bombs"),
 				Players = 1 << 0, Sentry = 1 << 1, Dispenser = 1 << 2, Teleporter = 1 << 3, Stickies = 1 << 4, NPCs = 1 << 5, Bombs = 1 << 6,

@@ -46,9 +46,6 @@ struct Info_t
 class CAimbotProjectile
 {
 private:
-	std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-	std::vector<Target_t> SortTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-
 	std::unordered_map<int, Vec3> GetDirectPoints(Target_t& tTarget, CBaseEntity* pProjectile = nullptr);
 	std::vector<Point_t> GetSplashPoints(Target_t& tTarget, std::vector<std::pair<Vec3, int>>& vSpherePoints, int iSimTime);
 	void SetupSplashPoints(Target_t& tTarget, std::vector<std::pair<Vec3, int>>& vSpherePoints, std::vector<std::pair<Vec3, Vec3>>& vSimplePoints);

@@ -4,16 +4,42 @@
 #include "../../Players/PlayerUtils.h"
 #include "../../Ticks/Ticks.h"
 
-void CAimbotGlobal::SortTargets(std::vector<Target_t>& vTargets, int iMethod)
-{	// Sort by preference
-	std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+std::vector<Target_t> CAimbotGlobal::ManageTargets(std::vector<Target_t>(*GetTargets)(CTFPlayer* pLocal, CTFWeaponBase* pWeapon), CTFPlayer* pLocal, CTFWeaponBase* pWeapon,
+	int iMethod, int iMaxTargets)
 		{
+	auto vTargets = GetTargets(pLocal, pWeapon);
+	SortTargetsPre(vTargets, iMethod);
+	vTargets.resize(std::min(size_t(iMaxTargets), vTargets.size()));
+	SortTargetsPost(vTargets, iMethod);
+	return vTargets;
+}
+
+void CAimbotGlobal::SortTargetsPre(std::vector<Target_t>& vTargets, int iMethod)
+{
 			switch (iMethod)
 			{
-			case Vars::Aimbot::General::TargetSelectionEnum::FOV: return a.m_flFOVTo < b.m_flFOVTo;
-			case Vars::Aimbot::General::TargetSelectionEnum::Distance: return a.m_flDistTo < b.m_flDistTo;
-			default: return false;
+	case Vars::Aimbot::General::TargetSelectionEnum::FOV:
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+		{
+			return a.m_flFOVTo < b.m_flFOVTo;
+		});
+	case Vars::Aimbot::General::TargetSelectionEnum::Distance:
+	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+			{
+				return a.m_flDistTo < b.m_flDistTo;
+			});
 			}
+}
+
+void CAimbotGlobal::SortTargetsPost(std::vector<Target_t>& vTargets, int iMethod)
+{
+	switch (iMethod)
+	{
+	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+			{
+				return a.m_flFOVTo < b.m_flFOVTo;
 		});
 }
 
