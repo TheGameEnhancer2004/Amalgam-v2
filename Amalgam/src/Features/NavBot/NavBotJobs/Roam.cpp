@@ -49,8 +49,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		default:
 			break;
 		}
-		if (bGotTarget)
+		if (bGotTarget || F::NavBotCapture.m_bOverwriteCapture)
 		{
+			if (F::NavBotCapture.m_bOverwriteCapture)
+			{
+				F::NavEngine.CancelPath();
+				m_bDefending = true;
+				return true;
+			}
+
 			if (auto pClosestNav = F::NavEngine.FindClosestNavArea(vTarget))
 			{
 				// Get closest enemy to vicheck

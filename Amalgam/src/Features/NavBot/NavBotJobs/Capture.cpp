@@ -115,21 +115,21 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
 	m_sCaptureStatus = L"Payload";
-	static Vector vLastCartPos;
-	static float flLastCartTime = 0.0f;
 
 	Vector vPosition;
 	if (!F::PLController.GetClosestPayload(vLocalOrigin, iOurTeam, vPosition))
 	{
-		if (I::GlobalVars->curtime - flLastCartTime < 2.0f)
-			vPosition = vLastCartPos;
+		auto& tCache = m_aPayloadCache[iOurTeam - TF_TEAM_RED];
+		if (I::GlobalVars->curtime - tCache.flTime < 60.0f)
+			vPosition = tCache.vPos;
 		else
 			return false;
 	}
 	else
 	{
-		vLastCartPos = vPosition;
-		flLastCartTime = I::GlobalVars->curtime;
+		auto& tCache = m_aPayloadCache[iOurTeam - TF_TEAM_RED];
+		tCache.vPos = vPosition;
+		tCache.flTime = I::GlobalVars->curtime;
 	}
 
 	int iTeammatesNearCart = 0;
@@ -228,12 +228,12 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 			if (flZDiff > flMaxHeightDiff)
 				continue;
 
-			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
-			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
-			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
-			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
 		}
-		G::SphereStorage.emplace_back(vPosition, flCartRadius, 20, 20, I::GlobalVars->curtime + 0.1f, Color_t(0, 255, 0, 10), Color_t(0, 255, 0, 100));
+		G::SphereStorage.emplace_back(vPosition, flCartRadius, 20, 20, I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 10), Color_t(0, 255, 0, 100));
 	}
 
 	if (vPosition.DistTo(vLocalOrigin) <= flCartRadius || vAdjustedPos.DistTo(vLocalOrigin) <= 45.f)
@@ -804,7 +804,7 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	if (Vars::Debug::Info.Value)
 	{
-		G::SphereStorage.emplace_back(vTarget, 30.f, 20, 20, I::GlobalVars->curtime + 0.1f, Color_t(255, 255, 255, 10), Color_t(255, 255, 255, 100));
+		G::SphereStorage.emplace_back(vTarget, 30.f, 20, 20, I::GlobalVars->curtime + 2.1f, Color_t(255, 255, 255, 10), Color_t(255, 255, 255, 100));
 	}
 
 	// If priority is not capturing, or we have a new target, try to path there
@@ -833,4 +833,6 @@ void CNavBotCapture::Reset()
 	m_vCurrentCaptureSpot.reset();
 	m_vCurrentCaptureCenter.reset();
 	ReleaseCaptureSpotClaim();
+	for (auto& tCache : m_aPayloadCache)
+		tCache = {};
 }

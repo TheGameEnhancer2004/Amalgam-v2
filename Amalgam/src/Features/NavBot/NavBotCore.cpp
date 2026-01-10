@@ -511,6 +511,12 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	{
 	case PriorityListEnum::Patrol:
 		sJob = F::NavBotRoam.m_bDefending ? L"Defend" : L"Patrol";
+		if (F::NavBotRoam.m_bDefending && !F::NavBotCapture.m_sCaptureStatus.empty())
+		{
+			sJob += L" (";
+			sJob += F::NavBotCapture.m_sCaptureStatus;
+			sJob += L")";
+		}
 		break;
 	case PriorityListEnum::LowPrioGetHealth:
 		sJob = L"Get health (Low-Prio)";

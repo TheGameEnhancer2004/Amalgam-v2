@@ -1170,30 +1170,31 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		float flTimeToPeak = flJumpForce / flGravity;
 		float flDistTravelled = vVelocity.Length2D() * flTimeToPeak;
 		Vector vJumpDirection = vVelocity.Normalized();
-		if (F::NavEngine.IsPathing())
-		{
-			auto pCrumbs = F::NavEngine.GetCrumbs();
-			if (pCrumbs && !pCrumbs->empty())
-			{
-				Vector vPathDir = ((*pCrumbs)[0].m_vPos - pLocal->GetAbsOrigin());
-				vPathDir.z = 0.f;
-				if (vPathDir.Normalize() > 0.1f)
-				{
-					if (pCrumbs->size() > 1)
-					{
-						Vector vNextDir = ((*pCrumbs)[1].m_vPos - (*pCrumbs)[0].m_vPos);
-						vNextDir.z = 0.f;
-						if (vNextDir.Normalize() > 0.1f && vPathDir.Dot(vNextDir) < 0.707f)
-							return false;
-					}
+		// this kinda gaslights the balls if theres long path 
+		// if (F::NavEngine.IsPathing())
+		// {
+		// 	auto pCrumbs = F::NavEngine.GetCrumbs();
+		// 	if (pCrumbs && !pCrumbs->empty())
+		// 	{
+		// 		Vector vPathDir = ((*pCrumbs)[0].m_vPos - pLocal->GetAbsOrigin());
+		// 		vPathDir.z = 0.f;
+		// 		if (vPathDir.Normalize() > 0.1f)
+		// 		{
+		// 			if (pCrumbs->size() > 1)
+		// 			{
+		// 				Vector vNextDir = ((*pCrumbs)[1].m_vPos - (*pCrumbs)[0].m_vPos);
+		// 				vNextDir.z = 0.f;
+		// 				if (vNextDir.Normalize() > 0.1f && vPathDir.Dot(vNextDir) < 0.707f)
+		// 					return false;
+		// 			}
 
-					if (vJumpDirection.Dot(vPathDir) < 0.5f)
-						return false;
+		// 			if (vJumpDirection.Dot(vPathDir) < 0.5f)
+		// 				return false;
 
-					vJumpDirection = vPathDir;
-				}
-			}
-		}
+		// 			vJumpDirection = vPathDir;
+		// 		}
+		// 	}
+		// }
 		Vector vJumpPeakPos = pLocal->GetAbsOrigin() + vJumpDirection * flDistTravelled;
 		m_vJumpPeakPos = vJumpPeakPos;
 
