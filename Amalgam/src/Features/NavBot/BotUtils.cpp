@@ -1146,17 +1146,7 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 
 bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	if (!pLocal || !pLocal->IsAlive() || !Vars::Misc::Movement::NavBot::SmartJump.Value)
-		return false;
-
-	const float flJumpForce = 277.f;
-	const float flGravity = 800.f;
-
-	const Vector vHullMin = { -23.99f, -23.99f, 0.f };
-	const Vector vHullMax = { 23.99f, 23.99f, 62.f };
-	const Vector vHullMinSjump = { -16.f, -16.f, 0.f };
-	const Vector vHullMaxSjump = { 16.f, 16.f, 62.f };
-	const Vector vMaxJumpHeight = { 0.f, 0.f, 72.f };
+	if (!pLocal || !pLocal->IsAlive() || !Vars::Misc::Movement::NavBot::SmartJump.Value) return false;
 
 	if (pLocal->OnSolid())
 	{
@@ -1175,10 +1165,11 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 			vVelocity = vRotatedMoveDir.Normalized() * std::max(10.f, vVelocity.Length());
 		}
 
+		const float flJumpForce = 277.f;
+		const float flGravity = 800.f;
 		float flTimeToPeak = flJumpForce / flGravity;
 		float flDistTravelled = vVelocity.Length2D() * flTimeToPeak;
 		Vector vJumpDirection = vVelocity.Normalized();
-		bool bPathingValid = true;
 		if (F::NavEngine.IsPathing())
 		{
 			auto pCrumbs = F::NavEngine.GetCrumbs();
@@ -1193,11 +1184,11 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 						Vector vNextDir = ((*pCrumbs)[1].m_vPos - (*pCrumbs)[0].m_vPos);
 						vNextDir.z = 0.f;
 						if (vNextDir.Normalize() > 0.1f && vPathDir.Dot(vNextDir) < 0.707f)
-							bPathingValid = false;
+							return false;
 					}
 
 					if (vJumpDirection.Dot(vPathDir) < 0.5f)
-						bPathingValid = false;
+						return false;
 
 					vJumpDirection = vPathDir;
 				}
@@ -1206,17 +1197,21 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		Vector vJumpPeakPos = pLocal->GetAbsOrigin() + vJumpDirection * flDistTravelled;
 		m_vJumpPeakPos = vJumpPeakPos;
 
+		const Vector vHullMin = { -23.99f, -23.99f, 0.f };
+		const Vector vHullMax = { 23.99f, 23.99f, 62.f };
+		const Vector vHullMinSjump = { -16.f, -16.f, 0.f };
+		const Vector vHullMaxSjump = { 16.f, 16.f, 62.f };
 		const Vector vStepHeight = { 0.f, 0.f, 18.f };
+		const Vector vMaxJumpHeight = { 0.f, 0.f, 72.f };
 
 		Vector vTraceStart = pLocal->GetAbsOrigin() + vStepHeight;
 		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
 
+		CGameTrace forwardTrace = {};
 		CTraceFilterHitscan filter = {};
 		filter.pSkip = pLocal;
 		filter.bIgnoreCart = true;
 		filter.bIgnoreDoors = true;
-
-		CGameTrace forwardTrace = {};
 		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;
@@ -1232,52 +1227,15 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 			m_vPredictedJumpPos = landingTrace.endpos;
 
-			if (bPathingValid && landingTrace.fraction > 0.f && landingTrace.fraction < 0.75f) // JUMP_FRACTION
+			if (landingTrace.fraction > 0.f && landingTrace.fraction < 0.75f) // JUMP_FRACTION
 			{
 				if (IsSurfaceWalkable(landingTrace.plane.normal))
 					return true;
 			}
 		}
 	}
-	else
-	{
-		Vector vVelocity = pLocal->m_vecVelocity();
-		Vector vJumpDirection = vVelocity.Normalized();
-		if (F::NavEngine.IsPathing())
-		{
-			auto pCrumbs = F::NavEngine.GetCrumbs();
-			if (pCrumbs && !pCrumbs->empty())
-			{
-				Vector vPathDir = ((*pCrumbs)[0].m_vPos - pLocal->GetAbsOrigin());
-				vPathDir.z = 0.f;
-				if (vPathDir.Normalize() > 0.1f)
-					vJumpDirection = vPathDir;
-			}
-		}
-
-		float flTimeToPeak = std::max(vVelocity.z, 0.f) / flGravity;
-		if (vVelocity.z > 0.f)
-		{
-			m_vJumpPeakPos = pLocal->GetAbsOrigin() + vJumpDirection * (vVelocity.Length2D() * flTimeToPeak);
-		}
-		else
-		{
-			m_vJumpPeakPos = pLocal->GetAbsOrigin();
-		}
-
-		CTraceFilterHitscan filter = {};
-		filter.pSkip = pLocal;
-		filter.bIgnoreCart = true;
-		filter.bIgnoreDoors = true;
-
-		CGameTrace downwardTrace = {};
-		SDK::TraceHull(pLocal->GetAbsOrigin(), pLocal->GetAbsOrigin() - vMaxJumpHeight * 2.f, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &downwardTrace);
-
-		m_vPredictedJumpPos = downwardTrace.endpos;
-
-		if (pCmd->buttons & IN_JUMP)
-			return true;
-	}
+	else if (pCmd->buttons & IN_JUMP)
+		return true;
 
 	return false;
 }
@@ -1287,12 +1245,8 @@ void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 	if (!pLocal || !pLocal->IsAlive() || F::AutoRocketJump.IsRunning())
 	{
 		m_eJumpState = STATE_AWAITING_JUMP;
-		m_vPredictedJumpPos = {};
-		m_vJumpPeakPos = {};
 		return;
 	}
-
-	const bool bShouldJump = SmartJump(pLocal, pCmd);
 
 	bool bOnGround = pLocal->OnSolid();
 	bool bDucking = pLocal->IsDucking();
@@ -1303,7 +1257,7 @@ void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 	switch (m_eJumpState)
 	{
 	case STATE_AWAITING_JUMP:
-		if (bShouldJump)
+		if (SmartJump(pLocal, pCmd))
 			m_eJumpState = (Vars::Misc::Movement::AutoCTap.Value && bOnGround) ? STATE_CTAP : STATE_JUMP;
 		break;
 	case STATE_CTAP:
@@ -1327,7 +1281,7 @@ void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		pCmd->buttons &= ~IN_DUCK;
 		if (!bOnGround)
 		{
-			if (bShouldJump)
+			if (SmartJump(pLocal, pCmd))
 			{
 				pCmd->buttons &= ~IN_DUCK;
 				pCmd->buttons |= IN_JUMP;
