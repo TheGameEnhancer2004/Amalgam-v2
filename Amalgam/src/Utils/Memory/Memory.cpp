@@ -120,7 +120,7 @@ uintptr_t CMemory::FindSignatureAtAddress(uintptr_t uAddress, const char* szPatt
 		if (!dwImageSize)
 			return 0x0;
 
-		DWORD dwSubtract = uAddress - reinterpret_cast<uintptr_t>(hMod);
+		DWORD dwSubtract = DWORD(uAddress - reinterpret_cast<uintptr_t>(hMod));
 		dwImageSize -= dwSubtract;
 
 		// Convert IDA-Style signature to a byte sequence

@@ -105,10 +105,6 @@ void CFlagController::Update()
 		if (pFlag->IsDormant())
 			continue;
 
-		// Only CTF support for now (and sd_doomsday)
-		if (pFlag->m_nType() != TF_FLAGTYPE_CTF && pFlag->m_nType() != TF_FLAGTYPE_RESOURCE_CONTROL)
-			continue;
-
 		FlagInfo tFlag{};
 		tFlag.m_pFlag = pFlag;
 		tFlag.m_iTeam = pFlag->m_iTeamNum();
@@ -117,5 +113,10 @@ void CFlagController::Update()
 			m_mSpawnPositions[pFlag->entindex()] = pFlag->GetAbsOrigin();
 
 		m_vFlags.push_back(tFlag);
+
+		if (Vars::Debug::Info.Value)
+		{
+			G::SphereStorage.emplace_back(pFlag->GetAbsOrigin(), 50.f, 20, 20, I::GlobalVars->curtime + 0.1f, Color_t(255, 255, 255, 10), Color_t(255, 255, 255, 100));
+		}
 	}
 }

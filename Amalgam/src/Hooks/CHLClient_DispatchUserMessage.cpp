@@ -27,10 +27,21 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 	switch (type)
 	{
 	case VoteStart:
+	{
+		int iTeam = msgData.ReadByte();
+		int iVoteID = msgData.ReadLong();
+		int iCaller = msgData.ReadByte();
+		char sReason[256]; msgData.ReadString(sReason, sizeof(sReason));
+		char sTarget[256]; msgData.ReadString(sTarget, sizeof(sTarget));
+		int iTarget = msgData.ReadByte() >> 1;
+		msgData.Seek(0);
+
 		F::Output.UserMessage(msgData);
 		F::AutoVote.UserMessage(msgData);
+		F::Misc.OnVoteStart(iCaller, iTarget, sReason, sTarget);
 
 		break;
+	}
 	case VoiceSubtitle:
 	{
 		int iEntityID = msgData.ReadByte();

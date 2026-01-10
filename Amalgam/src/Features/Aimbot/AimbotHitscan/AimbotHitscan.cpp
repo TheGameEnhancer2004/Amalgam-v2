@@ -443,7 +443,8 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 				{
 					flBoneScale = std::max(flBoneScale, Vars::Aimbot::Hitscan::MultipointScale.Value / 100.f);
 					bool bTriggerbot = (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth
-						|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive)
+						|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive
+						|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Legit)
 						&& !Vars::Aimbot::General::AssistStrength.Value;
 
 					if (!bTriggerbot)
@@ -525,7 +526,8 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 			//if (Vars::Aimbot::Hitscan::MultipointScale.Value > 0.f)
 			{
 				bool bTriggerbot = (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth
-					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive)
+					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive
+					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Legit)
 					&& !Vars::Aimbot::General::AssistStrength.Value;
 
 				if (!bTriggerbot)
@@ -678,6 +680,10 @@ bool CAimbotHitscan::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		vOut = vToAngle;
 		break;
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
+		vOut = vCurAngle;
+		bReturn = true;
+		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
 		vOut = vCurAngle.LerpAngle(vToAngle, Vars::Aimbot::General::AssistStrength.Value / 100.f);
 		bReturn = true;
@@ -731,6 +737,17 @@ void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			MarkSteering(vAngle);
 		}
 		break;
+	case Vars::Aimbot::General::AimTypeEnum::Legit:
+	{
+		auto pLocal = H::Entities.GetLocal();
+		if (pLocal && G::AimPoint.m_iTickCount == I::GlobalVars->tickcount)
+		{
+			F::BotUtils.LookLegit(pLocal, pCmd, G::AimPoint.m_vOrigin, false);
+			vAngle = pCmd->viewangles;
+			MarkSteering(vAngle);
+		}
+		break;
+	}
 	case Vars::Aimbot::General::AimTypeEnum::Locking:
 		SDK::FixMovement(pCmd, vAngle);
 		pCmd->viewangles = vAngle;
@@ -846,6 +863,7 @@ void CAimbotHitscan::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pC
 		if (iResult == 2)
 		{
 			G::AimTarget = { tTarget.m_pEntity->entindex(), I::GlobalVars->tickcount, 0 };
+			G::AimPoint = { tTarget.m_vPos, I::GlobalVars->tickcount };
 			Aim(pCmd, tTarget.m_vAngleTo);
 			break;
 		}

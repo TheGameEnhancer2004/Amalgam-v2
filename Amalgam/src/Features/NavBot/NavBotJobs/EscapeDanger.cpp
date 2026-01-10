@@ -102,14 +102,13 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 		std::vector<std::pair<CNavArea*, float>> vSafeAreas;
 		std::vector<CNavArea*> vAreaPointers;
 
-		// Copy areas and calculate distances
-		for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
-		{
-			// Get all areas
-			vAreaPointers.push_back(&tArea);
+		// Find areas around current position to escape to
+		F::NavEngine.GetNavMap()->CollectAreasAround(pLocal->GetAbsOrigin(), 1500.f, vAreaPointers);
 
+		for (auto& pArea : vAreaPointers)
+		{
 			// Skip if area is blacklisted with high danger
-			auto it = pBlacklist->find(&tArea);
+			auto it = pBlacklist->find(pArea);
 			if (it != pBlacklist->end())
 			{
 				// Check danger level - allow pathing through medium or low danger if we have a target
@@ -134,15 +133,15 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 					continue;
 			}
 
-			float flDistToReference = tArea.m_vCenter.DistTo(vReferencePosition);
-			float flDistToCurrent = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
+			float flDistToReference = pArea->m_vCenter.DistTo(vReferencePosition);
+			float flDistToCurrent = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
 			
-			// Only consider areas that are not too far away and reachable
-			if (flDistToCurrent < 2000.f)
+			// Only consider areas that are reachable and not too close to the current dangerous area
+			if (flDistToCurrent > 200.f)
 			{
 				// If we have a target, prioritize staying near it
 				float flScore = bHasTarget ? flDistToReference : flDistToCurrent;
-				vSafeAreas.push_back({ &tArea, flScore });
+				vSafeAreas.push_back({ pArea, flScore });
 			}
 		}
 
@@ -154,9 +153,9 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 
 		int iCalls = 0;
 		// Try to path to safe areas
-		for (auto& pArea : vSafeAreas)
+		for (auto& tPair : vSafeAreas)
 		{
-			// Try the 10 closest areas (increased from 5 to give more options)
+			CNavArea* pArea = tPair.first;
 			iCalls++;
 			if (iCalls > 10)
 				break;
@@ -169,7 +168,7 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 					continue;
 
 				// If enemy is too close to this area, mark it as unsafe
-				float flDist = pEntity->GetAbsOrigin().DistTo(pArea.first->m_vCenter);
+				float flDist = pEntity->GetAbsOrigin().DistTo(pArea->m_vCenter);
 				if (flDist < F::NavBotCore.m_tSelectedConfig.m_flMinFullDanger * 1.2f)
 				{
 					bIsSafe = false;
@@ -181,9 +180,9 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 			if (!bIsSafe)
 				continue;
 
-			if (F::NavEngine.NavTo(pArea.first->m_vCenter, PriorityListEnum::EscapeDanger))
+			if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::EscapeDanger))
 			{
-				pTargetArea = pArea.first;
+				pTargetArea = pArea;
 				return true;
 			}
 		}
@@ -285,20 +284,24 @@ bool CNavBotDanger::EscapeProjectiles(CTFPlayer* pLocal)
 
 	// Find safe nav areas sorted by distance
 	std::vector<std::pair<CNavArea*, float>> vSafeAreas;
-	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
+	std::vector<CNavArea*> vAreaPointers;
+
+	F::NavEngine.GetNavMap()->CollectAreasAround(pLocal->GetAbsOrigin(), 1000.f, vAreaPointers);
+
+	for (auto& pArea : vAreaPointers)
 	{
 		// Skip current area
-		if (&tArea == pLocalArea)
+		if (pArea == pLocalArea)
 			continue;
 
 		// Skip if area is blacklisted
-		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
+		if (F::NavEngine.GetFreeBlacklist()->find(pArea) != F::NavEngine.GetFreeBlacklist()->end())
 			continue;
 
-		if (IsPositionSafe(tArea.m_vCenter, pLocal->m_iTeamNum()))
+		if (IsPositionSafe(pArea->m_vCenter, pLocal->m_iTeamNum()))
 		{
-			float flDist = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
-			vSafeAreas.push_back({ &tArea, flDist });
+			float flDist = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
+			vSafeAreas.push_back({ pArea, flDist });
 		}
 	}
 

@@ -43,24 +43,32 @@ private:
 
 	Timer m_tTimeSpentOnCrumbTimer = {};
 	Timer m_tInactivityTimer = {};
+	Timer m_tOffMeshTimer = {};
+	Vector m_vOffMeshTarget = {};
 
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 
-	bool IsSetupTime();
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
 	// Use when something unexpected happens, e.g. vischeck fails
-	void AbandonPath();
+	void AbandonPath(const std::string& sReason);
 	void UpdateRespawnRooms();
+	// void CheckPathValidity(CTFPlayer* pLocal);
 public:
+	std::string m_sLastFailureReason = "";
+	bool m_bIgnoreTraces = false;
+	std::vector<std::pair<Vector, Vector>> m_vPossiblePaths = {};
+	std::vector<std::pair<Vector, Vector>> m_vDebugWalkablePaths = {};
+	std::vector<std::pair<Vector, Vector>> m_vRejectedPaths = {};
+	bool IsSetupTime();
 
 	// Vischeck
 	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);
 	// Checks if player can walk from one position to another without bumping into anything
-	bool IsPlayerPassableNavigation(const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
+	bool IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
 
 	// Are we currently pathing?
 	bool IsPathing() { return !m_vCrumbs.empty(); }
@@ -77,6 +85,7 @@ public:
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }
+	CMap* GetNavMap() { return m_pMap.get(); }
 
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }
@@ -115,6 +124,7 @@ public:
 	PriorityListEnum::PriorityListEnum m_eCurrentPriority = PriorityListEnum::None;
 	Crumb_t m_tCurrentCrumb;
 	Crumb_t m_tLastCrumb;
+	Vector m_vCurrentPathDir;
 	Vector m_vLastDestination;
 
 public:
@@ -124,12 +134,13 @@ public:
 	void UpdateStuckTime(CTFPlayer* pLocal);
 
 	// Make sure to update m_pLocalArea with GetLocalNavArea before running
-	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true);
+	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIgnoreTraces = false);
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
 
 	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavArea* GetLocalNavArea(const Vector& vLocalOrigin);
+	const Vector& GetCurrentPathDir() const { return m_vCurrentPathDir; }
 
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);

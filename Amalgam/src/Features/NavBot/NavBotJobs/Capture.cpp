@@ -4,6 +4,8 @@
 #include "../NavEngine/Controllers/CPController/CPController.h"
 #include "../NavEngine/Controllers/FlagController/FlagController.h"
 #include "../NavEngine/Controllers/PLController/PLController.h"
+#include "../NavEngine/Controllers/HaarpController/HaarpController.h"
+#include "../NavEngine/Controllers/DoomsdayController/DoomsdayController.h"
 #include "../NavEngine/Controllers/Controller.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 
@@ -19,9 +21,57 @@ bool CNavBotCapture::ShouldAvoidPlayer(int iIndex)
 
 bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"";
+	if (F::GameObjectiveController.m_bHaarp)
+	{
+		if (iOurTeam == TF_TEAM_BLUE)
+		{
+			if (F::HaarpController.GetCapturePos(vOut))
+			{
+				m_sCaptureStatus = F::HaarpController.m_sHaarpStatus;
+				return true;
+			}
+			CCaptureFlag* pBestFlag = nullptr;
+			float flBestDist = FLT_MAX;
+			Vector vLocalOrigin = pLocal->GetAbsOrigin();
+			for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
+			{
+				if (pEntity->GetClassID() != ETFClassID::CCaptureFlag)
+					continue;
+				auto pFlag = pEntity->As<CCaptureFlag>();
+				Vector vPos = pFlag->GetAbsOrigin();
+				float flDist = vLocalOrigin.DistToSqr(vPos);
+				if (flDist < flBestDist)
+				{
+					flBestDist = flDist;
+					pBestFlag = pFlag;
+				}
+			}
+			if (pBestFlag)
+			{
+				m_sCaptureStatus = L"Flag";
+				vOut = pBestFlag->GetAbsOrigin();
+				return true;
+			}
+		}
+		else
+		{
+			if (F::HaarpController.GetDefensePos(vOut))
+			{
+				m_sCaptureStatus = F::HaarpController.m_sHaarpStatus;
+				return true;
+			}
+		}
+		// If HaarpController didn't provide a goal (e.g. teammate has flag), fall through to standard CTF logic for assistance
+	}
+
 	Vector vPosition;
 	if (!F::FlagController.GetPosition(iEnemyTeam, vPosition))
-		return false;
+	{
+		if (!F::FlagController.GetPosition(0, vPosition)) // Try neutral flag
+			return false;
+		iEnemyTeam = 0; // Use neutral team if found
+	}
 
 	// Get Flag related information
 	auto iStatus = F::FlagController.GetStatus(iEnemyTeam);
@@ -35,6 +85,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 			// Return our capture point location
 			if (F::FlagController.GetSpawnPosition(iOurTeam, vPosition))
 			{
+				m_sCaptureStatus = L"CP";
 				vOut = vPosition;
 				return true;
 			}
@@ -44,6 +95,7 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 		{
 			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 			{
+				m_sCaptureStatus = L"Assist";
 				// Stay slightly behind and to the side to avoid blocking
 				Vector vOffset(40.0f, 40.0f, 0.0f);
 				vPosition -= vOffset;
@@ -55,19 +107,34 @@ bool CNavBotCapture::GetCtfGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam,
 	}
 
 	// Get the flag if not taken by us already
+	m_sCaptureStatus = L"Flag";
 	vOut = vPosition;
+
 	return true;
 }
 
 bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"Payload";
+
 	Vector vPosition;
 	if (!F::PLController.GetClosestPayload(vLocalOrigin, iOurTeam, vPosition))
-		return false;
+	{
+		auto& tCache = m_aPayloadCache[iOurTeam - TF_TEAM_RED];
+		if (I::GlobalVars->curtime - tCache.flTime < 60.0f)
+			vPosition = tCache.vPos;
+		else
+			return false;
+	}
+	else
+	{
+		auto& tCache = m_aPayloadCache[iOurTeam - TF_TEAM_RED];
+		tCache.vPos = vPosition;
+		tCache.flTime = I::GlobalVars->curtime;
+	}
 
-	// Get number of teammates near cart to coordinate positioning
 	int iTeammatesNearCart = 0;
-	constexpr float flCartRadius = 150.0f; // Approx cart capture radius
+	constexpr float flCartRadius = 90.0f;
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
@@ -82,23 +149,16 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 			iTeammatesNearCart++;
 	}
 
-	// Adjust position based on number of teammates to avoid crowding
-	Vector vAdjustedPos = vPosition;
-	if (iTeammatesNearCart > 0)
-	{
-		// Add ourselves to the total amount
-		iTeammatesNearCart++;
-
-		// Create a ring formation around cart
-		float flAngle = PI * 2 * (float)(I::EngineClient->GetLocalPlayer() % iTeammatesNearCart) / iTeammatesNearCart;
-		Vector vOffset(cos(flAngle) * 75.0f, sin(flAngle) * 75.0f, 0.0f);
-		vAdjustedPos += vOffset;
-	}
+	const float flTargetDist = 20.0f;
+	const int iTotalUnits = iTeammatesNearCart + 1;
+	const float flAngle = PI * 2 * (float)(I::EngineClient->GetLocalPlayer() % iTotalUnits) / iTotalUnits;
+	const Vector vOffset(cos(flAngle) * flTargetDist, sin(flAngle) * flTargetDist, 0.0f);
+	Vector vAdjustedPos = vPosition + vOffset;
 
 	CNavArea* pCartArea = nullptr;
 
-	constexpr float flPlanarTolerance = 120.0f;
-	constexpr float flMaxHeightDiff = 120.0f;
+	constexpr float flPlanarTolerance = 90.0f;
+	constexpr float flMaxHeightDiff = 60.0f;
 	const Vector vCartPos = vPosition;
 
 	auto IsAreaUsable = [&](CNavArea* pArea) -> bool
@@ -157,8 +217,27 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 			vAdjustedPos.z = vPosition.z;
 	}
 
-	// If close enough, don't move (mostly due to lifts)
-	if (vAdjustedPos.DistTo(vLocalOrigin) <= 15.f)
+	if (Vars::Debug::Info.Value)
+	{
+		const float flCheckRadius = flCartRadius;
+		for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
+		{
+			if (!tArea.IsOverlapping(vPosition, flCheckRadius))
+				continue;
+
+			const float flZDiff = std::fabs(tArea.m_vCenter.z - vPosition.z);
+			if (flZDiff > flMaxHeightDiff)
+				continue;
+
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ), Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vSeCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+			G::LineStorage.emplace_back(std::pair<Vector, Vector>(Vector(tArea.m_vNwCorner.x, tArea.m_vSeCorner.y, tArea.m_flSwZ), Vector(tArea.m_vNwCorner.x, tArea.m_vNwCorner.y, tArea.m_flNeZ)), I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 100));
+		}
+		G::SphereStorage.emplace_back(vPosition, flCartRadius, 20, 20, I::GlobalVars->curtime + 2.1f, Color_t(0, 255, 0, 10), Color_t(0, 255, 0, 100));
+	}
+
+	if (vPosition.DistTo(vLocalOrigin) <= flCartRadius || vAdjustedPos.DistTo(vLocalOrigin) <= 45.f)
 	{
 		m_bOverwriteCapture = true;
 		return false;
@@ -170,6 +249,7 @@ bool CNavBotCapture::GetPayloadGoal(const Vector vLocalOrigin, int iOurTeam, Vec
 
 bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam, Vector& vOut)
 {
+	m_sCaptureStatus = L"CP";
 	std::pair<int, Vector> tControlPointInfo;
 	if (!F::CPController.GetClosestControlPointInfo(vLocalOrigin, iOurTeam, tControlPointInfo))
 	{
@@ -432,176 +512,59 @@ bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam
 
 bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
 {
-	int iTeam = TEAM_UNASSIGNED;
-	while (iTeam != -1)
+	if (F::DoomsdayController.GetGoal(vOut))
 	{
-		auto tFlag = F::FlagController.GetFlag(iTeam);
-		if (tFlag.m_pFlag)
-			break;
+		m_sCaptureStatus = F::DoomsdayController.m_sDoomsdayStatus;
 
-		iTeam = iTeam != iOurTeam ? iOurTeam : -1;
-	}
-
-	// No australium found
-	if (iTeam == -1)
-		return false;
-
-	Vector vPosition;
-	if (!F::FlagController.GetPosition(iTeam, vPosition))
-		return false;
-
-	// Get Australium related information
-	auto iStatus = F::FlagController.GetStatus(iTeam);
-	auto iCarrierIdx = F::FlagController.GetCarrier(iTeam);
-
-	if (iStatus == TF_FLAGINFO_STOLEN)
-	{
-		// We have the australium
-		if (iCarrierIdx == pLocal->entindex())
+		// If we are assisting, apply offset
+		if (m_sCaptureStatus == L"Assist")
 		{
-			// Get rocket position - in Doomsday it's marked as a cap point
-			Vector vRocket;
-			if (F::CPController.GetClosestControlPoint(pLocal->GetAbsOrigin(), iOurTeam, vRocket))
+			auto pFlag = F::DoomsdayController.GetFlag();
+			if (pFlag)
 			{
-				// If close enough, don't move
-				if (vRocket.DistTo(pLocal->GetAbsOrigin()) <= 50.f)
+				int iCarrierIdx = F::FlagController.GetCarrier(pFlag);
+				if (iCarrierIdx != -1 && F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 				{
-					m_bOverwriteCapture = true;
-					return false;
-				}
-
-				// Check for enemies near the capture point that might intercept
-				bool bEnemiesNearRocket = false;
-				constexpr float flThreatRadius = 500.0f; // Distance to check for enemies
-
-				for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-				{
-					if (pEntity->IsDormant())
-						continue;
-
-					auto pEnemy = pEntity->As<CTFPlayer>();
-					if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
-						continue;
-
-					if (pEnemy->GetAbsOrigin().DistTo(vRocket) <= flThreatRadius)
+					// Position to the side and slightly behind the carrier in the direction of the rocket
+					auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
+					if (pCarrier && !pCarrier->IsDormant())
 					{
-						bEnemiesNearRocket = true;
-						break;
-					}
-				}
-
-				// If enemies are near the rocket, stay back a bit until teammates can help
-				if (bEnemiesNearRocket && (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::DefendObjectives))
-				{
-					// Find a safer approach path or wait for teammates
-					auto vPathToRocket = vRocket - pLocal->GetAbsOrigin();
-					float pathLen = vPathToRocket.Length();
-					if (pathLen > 0.001f)
-					{
-						vPathToRocket.x /= pathLen;
-						vPathToRocket.y /= pathLen;
-						vPathToRocket.z /= pathLen;
-					}
-
-					// Back up a bit from the rocket
-					Vector vSaferPosition = vRocket - (vPathToRocket * 300.0f);
-					vOut = vSaferPosition;
-					return true;
-				}
-				vOut = vRocket;
-				return true;
-			}
-		}
-		// Help friendly carrier
-		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
-		{
-			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
-			{
-				// Check if carrier is navigating to the rocket
-				auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
-				if (pCarrier && !pCarrier->IsDormant())
-				{
-
-					// Try to position strategically to protect the carrier
-					Vector vRocket;
-					if (F::CPController.GetClosestControlPoint(pCarrier->GetAbsOrigin(), iOurTeam, vRocket))
-					{
-						Vector vCarrierToRocket = vRocket - pCarrier->GetAbsOrigin();
-						float len = vCarrierToRocket.Length();
-						if (len > 0.001f)
+						Vector vRocket;
+						if (F::DoomsdayController.GetCapturePos(vRocket))
 						{
-							vCarrierToRocket.x /= len;
-							vCarrierToRocket.y /= len;
-							vCarrierToRocket.z /= len;
-						}
+							Vector vCarrierToRocket = vRocket - pCarrier->GetAbsOrigin();
+							float len = vCarrierToRocket.Length();
+							if (len > 0.001f)
+							{
+								vCarrierToRocket /= len;
+							}
 
-						// Position to the side and slightly behind the carrier in the direction of the rocket
-						Vector vCrossProduct = vCarrierToRocket.Cross(Vector(0, 0, 1));
-						float crossLen = vCrossProduct.Length();
-						if (crossLen > 0.001f)
+							Vector vCrossProduct = vCarrierToRocket.Cross(Vector(0, 0, 1));
+							float crossLen = vCrossProduct.Length();
+							if (crossLen > 0.001f)
+							{
+								vCrossProduct /= crossLen;
+							}
+
+							Vector vOffset = (vCarrierToRocket * -80.0f) - (vCrossProduct * 60.0f);
+							vOut = pCarrier->GetAbsOrigin() + vOffset;
+						}
+						else
 						{
-							vCrossProduct.x /= crossLen;
-							vCrossProduct.y /= crossLen;
-							vCrossProduct.z /= crossLen;
+							Vector vOffset(40.0f, 40.0f, 0.0f);
+							vOut = pCarrier->GetAbsOrigin() - vOffset;
 						}
-
-						// Position offset from carrier toward rocket but slightly to the side
-						Vector vOffset = (vCarrierToRocket * -80.0f) + (vCrossProduct * 60.0f);
-						vOut = pCarrier->GetAbsOrigin() + vOffset;
 						return true;
 					}
-
-					// Default offset if rocket position not found
-					Vector vOffset(40.0f, 40.0f, 0.0f);
-					vPosition -= vOffset;
-					vOut = vPosition;
-					return true;
 				}
 			}
+			return false; // Don't assist if we shouldn't
 		}
+
+		return true;
 	}
 
-	// If nobody has the australium, look for it
-
-	// Check if enemies are near the australium
-	bool bEnemiesNearAustralium = false;
-	constexpr float flThreatRadius = 600.0f;
-
-	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-	{
-		if (pEntity->IsDormant())
-			continue;
-
-		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
-			continue;
-
-		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
-		{
-			bEnemiesNearAustralium = true;
-			break;
-		}
-	}
-
-	// If enemies are near and we're not close, approach carefully
-	if (bEnemiesNearAustralium && pLocal->GetAbsOrigin().DistTo(vPosition) > 300.f)
-	{
-		// Try to find a safer approach path
-		auto pClosestNav = F::NavEngine.FindClosestNavArea(vPosition);
-		if (pClosestNav)
-		{
-			std::pair<CNavArea*, int> tHidingSpot;
-			if (F::NavBotCore.FindClosestHidingSpot(pClosestNav, vPosition, 5, tHidingSpot))
-			{
-				vOut = tHidingSpot.first->m_vCenter;
-				return true;
-			}
-		}
-	}
-
-	// Get the australium if not taken
-	vOut = vPosition;
-	return true;
+	return false;
 }
 
 void CNavBotCapture::ClaimCaptureSpot(const Vector& vSpot, int iPointIdx)
@@ -657,7 +620,7 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	{
 		if (!((pGameRules->m_iRoundState() == GR_STATE_RND_RUNNING || pGameRules->m_iRoundState() == GR_STATE_STALEMATE) && !pGameRules->m_bInWaitingForPlayers())
 			|| pGameRules->m_iRoundState() == GR_STATE_TEAM_WIN
-			|| pGameRules->m_bPlayingSpecialDeliveryMode())
+			|| (pGameRules->m_bPlayingSpecialDeliveryMode() && !F::GameObjectiveController.m_bDoomsday))
 		{
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("NavBotCapture", std::format("Capture.Run: game rules prevented capture (roundState={}, waiting={}, teamwin={}, specialDelivery={})",
@@ -668,16 +631,12 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	if (!tCaptureTimer.Check(2.f))
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: on cooldown (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
 	}
 
 	// Priority too high, don't try
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Capture)
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: priority too high (currentPriority={})", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		return false;
 	}
 
@@ -706,6 +665,8 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	default:
 		if (F::GameObjectiveController.m_bDoomsday)
 			bGotTarget = GetDoomsdayGoal(pLocal, iOurTeam, iEnemyTeam, vTarget);
+		else if (F::GameObjectiveController.m_bHaarp)
+			bGotTarget = GetCtfGoal(pLocal, iOurTeam, iEnemyTeam, vTarget);
 		break;
 	}
 
@@ -721,10 +682,13 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// No target, bail and set on cooldown
 	if (!bGotTarget)
 	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavBotCapture", std::format("Capture.Run: no target found for gamemode {}", static_cast<int>(F::GameObjectiveController.m_eGameMode)).c_str(), { 255, 200, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		tCaptureTimer.Update();
 		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture;
+	}
+
+	if (Vars::Debug::Info.Value)
+	{
+		G::SphereStorage.emplace_back(vTarget, 30.f, 20, 20, I::GlobalVars->curtime + 2.1f, Color_t(255, 255, 255, 10), Color_t(255, 255, 255, 100));
 	}
 
 	// If priority is not capturing, or we have a new target, try to path there
@@ -753,4 +717,6 @@ void CNavBotCapture::Reset()
 	m_vCurrentCaptureSpot.reset();
 	m_vCurrentCaptureCenter.reset();
 	ReleaseCaptureSpotClaim();
+	for (auto& tCache : m_aPayloadCache)
+		tCache = {};
 }

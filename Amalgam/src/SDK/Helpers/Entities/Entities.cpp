@@ -110,7 +110,10 @@ void CEntities::Store()
 			break;
 		}
 		case ETFClassID::CCaptureFlag:
+		case ETFClassID::CCaptureZone:
 		case ETFClassID::CObjectCartDispenser:
+		case ETFClassID::CTeamControlPoint:
+		case ETFClassID::CFuncTrackTrain:
 			m_mGroups[EntityEnum::WorldObjective].push_back(pEntity);
 			break;
 		case ETFClassID::CTFBaseBoss:

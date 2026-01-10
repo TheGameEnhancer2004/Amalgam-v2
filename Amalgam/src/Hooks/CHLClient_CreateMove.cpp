@@ -301,6 +301,7 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 		F::FollowBot.Run(pLocal, pWeapon, pCmd);
 		F::NavBotCore.Run(pLocal, pWeapon, pCmd);
 		F::NavEngine.Run(pLocal, pWeapon, pCmd);
+		F::BotUtils.HandleSmartJump(pLocal, pCmd);
 		F::CritHack.Run(pLocal, pWeapon, pCmd);
 		F::NoSpread.Run(pLocal, pWeapon, pCmd);
 		F::Resolver.CreateMove(pLocal);

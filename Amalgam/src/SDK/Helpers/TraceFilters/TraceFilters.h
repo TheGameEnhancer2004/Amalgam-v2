@@ -38,6 +38,8 @@ public:
 	int iType = FORCE_HIT;
 	int iWeapon = WEAPON_EXCLUDE;
 	bool bWeapon = false;
+	bool bIgnoreCart = false;
+	bool bIgnoreDoors = false;
 };
 
 class CTraceFilterCollideable : public ITraceFilter
@@ -55,6 +57,8 @@ public:
 	int iPlayer = PLAYER_DEFAULT;
 	int iObject = OBJECT_ALL;
 	bool bMisc = false;
+	bool bIgnoreDoors = false;
+	bool bIgnoreCart = false;
 };
 
 class CTraceFilterWorldAndPropsOnly : public ITraceFilter
