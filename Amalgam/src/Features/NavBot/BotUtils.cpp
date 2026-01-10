@@ -1209,10 +1209,7 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
 
 		CGameTrace forwardTrace = {};
-		CTraceFilterHitscan filter = {};
-		filter.pSkip = pLocal;
-		filter.bIgnoreCart = true;
-		filter.bIgnoreDoors = true;
+		CTraceFilterNavigation filter = {};
 		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;

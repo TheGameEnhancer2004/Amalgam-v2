@@ -171,7 +171,7 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 		case ETFClassID::CObjectSentrygun:
 		case ETFClassID::CObjectDispenser:
 		case ETFClassID::CObjectTeleporter:
-				case ETFClassID::CBaseProjectile:
+		case ETFClassID::CBaseProjectile:
 		case ETFClassID::CBaseGrenade:
 		case ETFClassID::CTFWeaponBaseGrenadeProj:
 		case ETFClassID::CTFWeaponBaseMerasmusGrenade:
