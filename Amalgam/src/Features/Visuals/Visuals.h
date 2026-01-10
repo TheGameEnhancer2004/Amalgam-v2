@@ -3,7 +3,7 @@
 
 #include <map>
 
-#define DEBUG_TEXT
+//#define DEBUG_TEXT
 
 struct Projectile_t
 {

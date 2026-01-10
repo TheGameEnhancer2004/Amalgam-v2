@@ -5,7 +5,6 @@
 #include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 #include "../../EnginePrediction/EnginePrediction.h"
 #include "../../Ticks/Ticks.h"
-#include "../../Visuals/Visuals.h"
 #include "../AutoAirblast/AutoAirblast.h"
 
 //#define SPLASH_DEBUG1 // normal splash visualization
