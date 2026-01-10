@@ -35,20 +35,20 @@ bool GetDoomsdayCapturePos(int iLocalTeam, Vector& vOut)
 	};
 
 	// capture area
-	for (auto& tTrigger : G::TriggerStorage)
-	{
-		if (tTrigger.m_eType != TriggerTypeEnum::CaptureArea)
-			continue;
+	// for (auto& tTrigger : G::TriggerStorage)
+	// {
+	// 	if (tTrigger.m_eType != TriggerTypeEnum::CaptureArea)
+	// 		continue;
 
-		Vector vPos = AdjustToNav(tTrigger.m_vCenter);
-		if (!vPos.IsZero())
-		{
-			if (Vars::Debug::Logging.Value)
-				SDK::Output("DoomsdayController", "GetDoomsdayCapturePos: found rocket via trigger", { 100, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-			vOut = vPos;
-			return true;
-		}
-	}
+	// 	Vector vPos = AdjustToNav(tTrigger.m_vCenter);
+	// 	if (!vPos.IsZero())
+	// 	{
+	// 		if (Vars::Debug::Logging.Value)
+	// 			SDK::Output("DoomsdayController", "GetDoomsdayCapturePos: found rocket via trigger", { 100, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+	// 		vOut = vPos;
+	// 		return true;
+	// 	}
+	// }
 
 	// sd_ doesnt really use control points actually
 	// auto pResource = H::Entities.GetObjectiveResource();
@@ -97,35 +97,35 @@ bool GetDoomsdayCapturePos(int iLocalTeam, Vector& vOut)
 	}
 
 	// rocket lid already works but if by some reason we would not be able to find it, then this works too. just we'd have to slighly move its pos
-	for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
-	{
-		if (!pEntity || pEntity->IsDormant())
-			continue;
+	// for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
+	// {
+	// 	if (!pEntity || pEntity->IsDormant())
+	// 		continue;
 
-		bool bIsRocket = pEntity->GetClassID() == ETFClassID::CTeamControlPoint || pEntity->GetClassID() == ETFClassID::CFuncTrackTrain;
-		if (!bIsRocket)
-		{
-			if (auto pClientClass = pEntity->GetClientClass())
-			{
-				uint32_t uHash = FNV1A::Hash32(pClientClass->m_pNetworkName);
-				bIsRocket = uHash == FNV1A::Hash32Const("CTeamControlPoint") || uHash == FNV1A::Hash32Const("CFuncTrackTrain");
-			}
-		}
+	// 	bool bIsRocket = pEntity->GetClassID() == ETFClassID::CTeamControlPoint || pEntity->GetClassID() == ETFClassID::CFuncTrackTrain;
+	// 	if (!bIsRocket)
+	// 	{
+	// 		if (auto pClientClass = pEntity->GetClientClass())
+	// 		{
+	// 			uint32_t uHash = FNV1A::Hash32(pClientClass->m_pNetworkName);
+	// 			bIsRocket = uHash == FNV1A::Hash32Const("CTeamControlPoint") || uHash == FNV1A::Hash32Const("CFuncTrackTrain");
+	// 		}
+	// 	}
 
-		if (!bIsRocket)
-			continue;
+	// 	if (!bIsRocket)
+	// 		continue;
 
-		Vector vCPPos = pEntity->GetAbsOrigin();
-		if (vCPPos.IsZero())
-			vCPPos = pEntity->GetCenter();
-		if (vCPPos.IsZero())
-			continue;
+	// 	Vector vCPPos = pEntity->GetAbsOrigin();
+	// 	if (vCPPos.IsZero())
+	// 		vCPPos = pEntity->GetCenter();
+	// 	if (vCPPos.IsZero())
+	// 		continue;
 
-		vOut = AdjustToNav(vCPPos);
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("DoomsdayController", std::format("GetDoomsdayCapturePos: found rocket via WorldObjective entity ({})", pEntity->GetClientClass()->m_pNetworkName).c_str(), { 100, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-		return true;
-	}
+	// 	vOut = AdjustToNav(vCPPos);
+	// 	if (Vars::Debug::Logging.Value)
+	// 		SDK::Output("DoomsdayController", std::format("GetDoomsdayCapturePos: found rocket via WorldObjective entity ({})", pEntity->GetClientClass()->m_pNetworkName).c_str(), { 100, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+	// 	return true;
+	// }
 
 	return false;
 }
@@ -187,6 +187,37 @@ bool CDoomsdayController::GetGoal(Vector& vOut)
 		if (GetCapturePos(vOut))
 		{
 			m_sDoomsdayStatus = L"Rocket";
+
+			float flClosestDist = 1000.0f;
+			CBaseEntity* pClosestTrain = nullptr;
+			for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldObjective))
+			{
+				if (pEntity->GetClassID() != ETFClassID::CFuncTrackTrain)
+					continue;
+
+				float flDist = pLocal->GetAbsOrigin().DistTo(pEntity->GetCenter());
+				if (flDist < flClosestDist)
+				{
+					flClosestDist = flDist;
+					pClosestTrain = pEntity;
+				}
+			}
+
+			if (pClosestTrain)
+			{
+				vOut = pClosestTrain->GetCenter();
+			}
+			else
+			{
+				Vector vDir = vOut - pLocal->GetAbsOrigin();
+				float len = vDir.Length2D();
+				if (len > 0.001f)
+				{
+					vDir /= len;
+					vOut -= (vDir * 40.0f); 
+				}
+			}
+
 			return true;
 		}
 
