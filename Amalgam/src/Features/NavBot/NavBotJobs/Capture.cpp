@@ -5,6 +5,7 @@
 #include "../NavEngine/Controllers/FlagController/FlagController.h"
 #include "../NavEngine/Controllers/PLController/PLController.h"
 #include "../NavEngine/Controllers/HaarpController/HaarpController.h"
+#include "../NavEngine/Controllers/DoomsdayController/DoomsdayController.h"
 #include "../NavEngine/Controllers/Controller.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 
@@ -511,176 +512,59 @@ bool CNavBotCapture::GetControlPointGoal(const Vector vLocalOrigin, int iOurTeam
 
 bool CNavBotCapture::GetDoomsdayGoal(CTFPlayer* pLocal, int iOurTeam, int iEnemyTeam, Vector& vOut)
 {
-	int iTeam = TEAM_UNASSIGNED;
-	while (iTeam != -1)
+	if (F::DoomsdayController.GetGoal(vOut))
 	{
-		auto tFlag = F::FlagController.GetFlag(iTeam);
-		if (tFlag.m_pFlag)
-			break;
+		m_sCaptureStatus = F::DoomsdayController.m_sDoomsdayStatus;
 
-		iTeam = iTeam != iOurTeam ? iOurTeam : -1;
-	}
-
-	// No australium found
-	if (iTeam == -1)
-		return false;
-
-	Vector vPosition;
-	if (!F::FlagController.GetPosition(iTeam, vPosition))
-		return false;
-
-	// Get Australium related information
-	auto iStatus = F::FlagController.GetStatus(iTeam);
-	auto iCarrierIdx = F::FlagController.GetCarrier(iTeam);
-
-	if (iStatus == TF_FLAGINFO_STOLEN)
-	{
-		// We have the australium
-		if (iCarrierIdx == pLocal->entindex())
+		// If we are assisting, apply offset
+		if (m_sCaptureStatus == L"Assist")
 		{
-			// Get rocket position - in Doomsday it's marked as a cap point
-			Vector vRocket;
-			if (F::CPController.GetClosestControlPoint(pLocal->GetAbsOrigin(), iOurTeam, vRocket))
+			auto pFlag = F::DoomsdayController.GetFlag();
+			if (pFlag)
 			{
-				// If close enough, don't move
-				if (vRocket.DistTo(pLocal->GetAbsOrigin()) <= 50.f)
+				int iCarrierIdx = F::FlagController.GetCarrier(pFlag);
+				if (iCarrierIdx != -1 && F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
 				{
-					m_bOverwriteCapture = true;
-					return false;
-				}
-
-				// Check for enemies near the capture point that might intercept
-				bool bEnemiesNearRocket = false;
-				constexpr float flThreatRadius = 500.0f; // Distance to check for enemies
-
-				for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-				{
-					if (pEntity->IsDormant())
-						continue;
-
-					auto pEnemy = pEntity->As<CTFPlayer>();
-					if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
-						continue;
-
-					if (pEnemy->GetAbsOrigin().DistTo(vRocket) <= flThreatRadius)
+					// Position to the side and slightly behind the carrier in the direction of the rocket
+					auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
+					if (pCarrier && !pCarrier->IsDormant())
 					{
-						bEnemiesNearRocket = true;
-						break;
-					}
-				}
-
-				// If enemies are near the rocket, stay back a bit until teammates can help
-				if (bEnemiesNearRocket && (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::DefendObjectives))
-				{
-					// Find a safer approach path or wait for teammates
-					auto vPathToRocket = vRocket - pLocal->GetAbsOrigin();
-					float pathLen = vPathToRocket.Length();
-					if (pathLen > 0.001f)
-					{
-						vPathToRocket.x /= pathLen;
-						vPathToRocket.y /= pathLen;
-						vPathToRocket.z /= pathLen;
-					}
-
-					// Back up a bit from the rocket
-					Vector vSaferPosition = vRocket - (vPathToRocket * 300.0f);
-					vOut = vSaferPosition;
-					return true;
-				}
-				vOut = vRocket;
-				return true;
-			}
-		}
-		// Help friendly carrier
-		else if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::HelpCaptureObjectives)
-		{
-			if (F::BotUtils.ShouldAssist(pLocal, iCarrierIdx))
-			{
-				// Check if carrier is navigating to the rocket
-				auto pCarrier = I::ClientEntityList->GetClientEntity(iCarrierIdx);
-				if (pCarrier && !pCarrier->IsDormant())
-				{
-
-					// Try to position strategically to protect the carrier
-					Vector vRocket;
-					if (F::CPController.GetClosestControlPoint(pCarrier->GetAbsOrigin(), iOurTeam, vRocket))
-					{
-						Vector vCarrierToRocket = vRocket - pCarrier->GetAbsOrigin();
-						float len = vCarrierToRocket.Length();
-						if (len > 0.001f)
+						Vector vRocket;
+						if (F::DoomsdayController.GetCapturePos(vRocket))
 						{
-							vCarrierToRocket.x /= len;
-							vCarrierToRocket.y /= len;
-							vCarrierToRocket.z /= len;
-						}
+							Vector vCarrierToRocket = vRocket - pCarrier->GetAbsOrigin();
+							float len = vCarrierToRocket.Length();
+							if (len > 0.001f)
+							{
+								vCarrierToRocket /= len;
+							}
 
-						// Position to the side and slightly behind the carrier in the direction of the rocket
-						Vector vCrossProduct = vCarrierToRocket.Cross(Vector(0, 0, 1));
-						float crossLen = vCrossProduct.Length();
-						if (crossLen > 0.001f)
+							Vector vCrossProduct = vCarrierToRocket.Cross(Vector(0, 0, 1));
+							float crossLen = vCrossProduct.Length();
+							if (crossLen > 0.001f)
+							{
+								vCrossProduct /= crossLen;
+							}
+
+							Vector vOffset = (vCarrierToRocket * -80.0f) - (vCrossProduct * 60.0f);
+							vOut = pCarrier->GetAbsOrigin() + vOffset;
+						}
+						else
 						{
-							vCrossProduct.x /= crossLen;
-							vCrossProduct.y /= crossLen;
-							vCrossProduct.z /= crossLen;
+							Vector vOffset(40.0f, 40.0f, 0.0f);
+							vOut = pCarrier->GetAbsOrigin() - vOffset;
 						}
-
-						// Position offset from carrier toward rocket but slightly to the side
-						Vector vOffset = (vCarrierToRocket * -80.0f) + (vCrossProduct * 60.0f);
-						vOut = pCarrier->GetAbsOrigin() + vOffset;
 						return true;
 					}
-
-					// Default offset if rocket position not found
-					Vector vOffset(40.0f, 40.0f, 0.0f);
-					vPosition -= vOffset;
-					vOut = vPosition;
-					return true;
 				}
 			}
+			return false; // Don't assist if we shouldn't
 		}
+
+		return true;
 	}
 
-	// If nobody has the australium, look for it
-
-	// Check if enemies are near the australium
-	bool bEnemiesNearAustralium = false;
-	constexpr float flThreatRadius = 600.0f;
-
-	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-	{
-		if (pEntity->IsDormant())
-			continue;
-
-		auto pEnemy = pEntity->As<CTFPlayer>();
-		if (!pEnemy->IsAlive() || !ShouldAvoidPlayer(pEnemy->entindex()))
-			continue;
-
-		if (pEnemy->GetAbsOrigin().DistTo(vPosition) <= flThreatRadius)
-		{
-			bEnemiesNearAustralium = true;
-			break;
-		}
-	}
-
-	// If enemies are near and we're not close, approach carefully
-	if (bEnemiesNearAustralium && pLocal->GetAbsOrigin().DistTo(vPosition) > 300.f)
-	{
-		// Try to find a safer approach path
-		auto pClosestNav = F::NavEngine.FindClosestNavArea(vPosition);
-		if (pClosestNav)
-		{
-			std::pair<CNavArea*, int> tHidingSpot;
-			if (F::NavBotCore.FindClosestHidingSpot(pClosestNav, vPosition, 5, tHidingSpot))
-			{
-				vOut = tHidingSpot.first->m_vCenter;
-				return true;
-			}
-		}
-	}
-
-	// Get the australium if not taken
-	vOut = vPosition;
-	return true;
+	return false;
 }
 
 void CNavBotCapture::ClaimCaptureSpot(const Vector& vSpot, int iPointIdx)
@@ -736,7 +620,7 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	{
 		if (!((pGameRules->m_iRoundState() == GR_STATE_RND_RUNNING || pGameRules->m_iRoundState() == GR_STATE_STALEMATE) && !pGameRules->m_bInWaitingForPlayers())
 			|| pGameRules->m_iRoundState() == GR_STATE_TEAM_WIN
-			|| pGameRules->m_bPlayingSpecialDeliveryMode())
+			|| (pGameRules->m_bPlayingSpecialDeliveryMode() && !F::GameObjectiveController.m_bDoomsday))
 		{
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("NavBotCapture", std::format("Capture.Run: game rules prevented capture (roundState={}, waiting={}, teamwin={}, specialDelivery={})",

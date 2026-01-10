@@ -121,6 +121,7 @@ MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
 			eType = TriggerTypeEnum::Regenerate;
 			break;
 		case FNV1A::Hash32Const("trigger_capture_area"):
+		case FNV1A::Hash32Const("func_capturezone"):
 			eType = TriggerTypeEnum::CaptureArea;
 			break;
 		case FNV1A::Hash32Const("trigger_catapult"):

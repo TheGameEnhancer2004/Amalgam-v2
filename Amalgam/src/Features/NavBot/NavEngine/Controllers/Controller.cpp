@@ -3,6 +3,7 @@
 #include "FlagController/FlagController.h"
 #include "PLController/PLController.h"
 #include "HaarpController/HaarpController.h"
+#include "DoomsdayController/DoomsdayController.h"
 
 ETFGameType GetGameType()
 {
@@ -52,7 +53,10 @@ void CGameObjectiveController::Update()
 	{
 		F::FlagController.Update();
 		if (sMapName.find("sd_doomsday") == 0)
+		{
 			F::CPController.Update();
+			F::DoomsdayController.Update();
+		}
 		if (sMapName.find("ctf_haarp") == 0)
 		{
 			F::CPController.Update();
@@ -65,6 +69,11 @@ void CGameObjectiveController::Update()
 	{
 	case TF_GAMETYPE_CTF:
 		F::FlagController.Update();
+		if (m_bDoomsday)
+		{
+			F::CPController.Update();
+			F::DoomsdayController.Update();
+		}
 		if (m_bHaarp)
 		{
 			F::CPController.Update();
@@ -80,9 +89,9 @@ void CGameObjectiveController::Update()
 	default:
 		if (m_bDoomsday)
 		{
-			// This isnt even the right way to do this. But who plays that map anyway??
 			F::FlagController.Update();
 			F::CPController.Update();
+			F::DoomsdayController.Update();
 		}
 		if (m_bHaarp)
 		{

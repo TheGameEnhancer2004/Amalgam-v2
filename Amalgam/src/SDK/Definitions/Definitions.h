@@ -1412,6 +1412,7 @@ enum class ETFClassID
 	CTFProjectile_BallOfFire = 253,
 	CTFBaseProjectile = 184,
 	CTFPointManager = 250,
+	CTeamControlPoint = 130,
 	CBaseObjectUpgrade = 11,
 	CTFRobotDestructionLogic = 291,
 	CTFRobotDestruction_RobotGroup = 289,

@@ -1,6 +1,9 @@
 #pragma once
 #include "../../../../SDK/SDK.h"
 
+#include "HaarpController/HaarpController.h"
+#include "DoomsdayController/DoomsdayController.h"
+
 class CGameObjectiveController
 {
 public:
