@@ -432,8 +432,8 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 
 
 // !!! BETTER WAY OF DOING THIS?! !!!
-// the idea is really good i think. but it repaths like 1 bajilion times even when we are not offpath and rapes the cpu
-// maybe timer offpath?
+// the idea is really good i think. but it repaths like 1 bajilion times even when we are slightly offpath and rapes the cpu
+// maybe we should timer and radius that will tell if we are too far away from the path?
 // void CNavEngine::CheckPathValidity(CTFPlayer* pLocal)
 // {
 // 	if (m_vCrumbs.empty())

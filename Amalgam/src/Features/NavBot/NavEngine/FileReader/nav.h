@@ -199,9 +199,12 @@ public:
 		if (m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || m_iTFAttributeFlags & TF_NAV_BLOCKED)
 			return true;
 
-		if (iTeam == TF_TEAM_RED && m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_BLUE)
+		const bool bRedSpawn = m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED;
+		const bool bBlueSpawn = m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_BLUE;
+
+		if (iTeam == TF_TEAM_RED && bBlueSpawn && !bRedSpawn)
 			return true;
-		if (iTeam == TF_TEAM_BLUE && m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED)
+		if (iTeam == TF_TEAM_BLUE && bRedSpawn && !bBlueSpawn)
 			return true;
 
 		return false;

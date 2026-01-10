@@ -11,6 +11,8 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	const int iNow = I::GlobalVars->tickcount;
 	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
 
+	auto pLocal = H::Entities.GetLocal();
+	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
 	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
 	{
 		CNavArea* pNextArea = tConnection.m_pArea;
@@ -19,7 +21,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 		if (!F::NavEngine.m_bIgnoreTraces)
 		{
-			if (pNextArea->m_iAttributeFlags & NAV_MESH_NAV_BLOCKER || pNextArea->m_iTFAttributeFlags & TF_NAV_BLOCKED)
+			if (pNextArea->IsBlocked(iTeam))
 				continue;
 		}
 
@@ -93,7 +95,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (F::NavEngine.m_bIgnoreTraces || (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd)))
 		{
 			bPassable = true;
-			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
 
 			CachedConnection_t& tEntry = m_mVischeckCache[tKey];
 			tEntry.m_iExpireTick = iCacheExpiry;
@@ -119,7 +121,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 	if (!std::isfinite(flBaseCost) || flBaseCost <= 0.f)
 	{
-		flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+		flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
 		if (pCachedEntry)
 		{
 			pCachedEntry->m_flCachedCost = flBaseCost;
@@ -319,12 +321,11 @@ bool CMap::IsOneWay(CNavArea* pFrom, CNavArea* pTo) const
 	return true;
 }
 
-float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const
+float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown, int iTeam) const
 {
-	auto HorizontalDistance = [](const Vector& a, const Vector& b) -> float
+	auto HorizontalDistance = [](const Vector& vStart, const Vector& vEnd) -> float
 	{
-		Vector vDelta = b - a;
-		Vector vFlat = vDelta;
+		Vector vFlat = vEnd - vStart;
 		vFlat.z = 0.f;
 		float flLen = vFlat.Length();
 		return flLen > 0.f ? flLen : 0.f;
@@ -373,8 +374,20 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 	if (flAreaSize > 0.f)
 		flCost -= std::clamp(flAreaSize * 0.01f, 0.f, 12.f);
 
-	if (pNextArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
-		flCost += 900.f;
+	// that should work i guess, bot should get penalty for being inside its own spawn too
+	const bool bRedSpawn = pNextArea->m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED;
+	const bool bBlueSpawn = pNextArea->m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_BLUE;
+	if (bRedSpawn || bBlueSpawn)
+	{
+		if (iTeam == TF_TEAM_RED && bBlueSpawn && !bRedSpawn)
+			flCost += 100000.f;
+		else if (iTeam == TF_TEAM_BLUE && bRedSpawn && !bBlueSpawn)
+			flCost += 100000.f;
+		else if (bRedSpawn && bBlueSpawn)
+			flCost += 100.f;
+		else
+			flCost += 100.f;
+	}
 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
 		flCost += 100000.f;
