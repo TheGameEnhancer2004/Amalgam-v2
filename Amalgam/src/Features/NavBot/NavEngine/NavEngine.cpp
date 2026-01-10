@@ -826,6 +826,7 @@ void CNavEngine::CancelPath()
 {
 	m_vCrumbs.clear();
 	m_tLastCrumb.m_pNavArea = nullptr;
+	m_vCurrentPathDir = {};
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
 }
@@ -1000,6 +1001,8 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		}
 		else
 			vMoveDir = {};
+
+		m_vCurrentPathDir = vMoveDir;
 
 		flReachRadius = bDropCrumb ? kDropReachRadius : kDefaultReachRadius;
 		Vector vCrumbCheck = vCrumbTarget;

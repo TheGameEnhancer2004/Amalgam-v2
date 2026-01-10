@@ -124,6 +124,7 @@ public:
 	PriorityListEnum::PriorityListEnum m_eCurrentPriority = PriorityListEnum::None;
 	Crumb_t m_tCurrentCrumb;
 	Crumb_t m_tLastCrumb;
+	Vector m_vCurrentPathDir;
 	Vector m_vLastDestination;
 
 public:
@@ -139,6 +140,7 @@ public:
 
 	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavArea* GetLocalNavArea(const Vector& vLocalOrigin);
+	const Vector& GetCurrentPathDir() const { return m_vCurrentPathDir; }
 
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);
