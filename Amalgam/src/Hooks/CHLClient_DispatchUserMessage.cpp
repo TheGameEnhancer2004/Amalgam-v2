@@ -22,7 +22,7 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 
 	auto bufData = reinterpret_cast<const char*>(msgData.m_pData);
 	msgData.SetAssertOnOverflow(false);
-	msgData.Seek(0);
+	msgData.Reset();
 
 	switch (type)
 	{
@@ -34,7 +34,7 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 		char sReason[256]; msgData.ReadString(sReason, sizeof(sReason));
 		char sTarget[256]; msgData.ReadString(sTarget, sizeof(sTarget));
 		int iTarget = msgData.ReadByte() >> 1;
-		msgData.Seek(0);
+		msgData.Reset();
 
 		F::Output.UserMessage(msgData);
 		F::AutoVote.UserMessage(msgData);
@@ -66,7 +66,7 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 	case TextMsg:
 	{
 		char rawMsg[256]; msgData.ReadString(rawMsg, sizeof(rawMsg), true);
-		msgData.Seek(0);
+		msgData.Reset();
 		std::string sMsg = rawMsg;
 		if (!sMsg.empty())
 		{
@@ -148,6 +148,6 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 		return Vars::Visuals::Removals::ScreenEffects.Value ? true : CALL_ORIGINAL(rcx, type, msgData);
 	}
 
-	msgData.Seek(0);
+	msgData.Reset();
 	return CALL_ORIGINAL(rcx, type, msgData);
 }

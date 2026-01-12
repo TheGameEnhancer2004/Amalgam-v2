@@ -14,7 +14,7 @@ void CAutoVote::UserMessage(bf_read& msgData)
 	char sReason[256]; msgData.ReadString(sReason, sizeof(sReason));
 	char sTarget[256]; msgData.ReadString(sTarget, sizeof(sTarget));
 	const int iTarget = msgData.ReadByte() >> 1;
-	msgData.Seek(0);
+	msgData.Reset();
 
 #ifdef TEXTMODE
 	if (auto pResource = H::Entities.GetResource(); pResource)
