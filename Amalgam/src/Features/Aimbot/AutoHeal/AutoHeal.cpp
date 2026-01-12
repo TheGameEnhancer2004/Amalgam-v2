@@ -629,7 +629,7 @@ void CAutoHeal::AutoVaccinator(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUser
 	if (m_flSwapTime < I::GlobalVars->curtime)
 		m_iResistType = pWeapon->GetResistType();
 	m_flChargeLevel = pWeapon->m_flChargeLevel();
-}
+	}
 
 void CAutoHeal::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
@@ -645,7 +645,7 @@ void CAutoHeal::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	Activate(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
 	m_mMedicCallers.clear();
-	
+
 	AutoVaccinator(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
 }
 
@@ -673,8 +673,8 @@ void CAutoHeal::Event(IGameEvent* pEvent, uint32_t uHash)
 		int iTarget = pWeapon->m_hHealingTarget().GetEntryIndex();
 		if (iVictim == iAttacker || iVictim != I::EngineClient->GetLocalPlayer()
 			&& (iVictim != iTarget
-				|| Vars::Aimbot::Healing::HealPriority.Value == Vars::Aimbot::Healing::HealPriorityEnum::FriendsOnly
-				&& !H::Entities.IsFriend(iTarget) && !H::Entities.InParty(iTarget)))
+			|| Vars::Aimbot::Healing::HealPriority.Value == Vars::Aimbot::Healing::HealPriorityEnum::FriendsOnly
+			&& !H::Entities.IsFriend(iTarget) && !H::Entities.InParty(iTarget)))
 			return;
 
 		auto pEntity = I::ClientEntityList->GetClientEntity(iAttacker)->As<CTFPlayer>();

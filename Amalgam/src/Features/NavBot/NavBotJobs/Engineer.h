@@ -2,8 +2,8 @@
 #include "../NavBotCore.h"
 
 Enum(EngineerTaskStage, None,
-	 BuildSentry, BuildDispenser,
-	 SmackSentry, SmackDispenser
+	BuildSentry, BuildDispenser,
+	SmackSentry, SmackDispenser
 )
 
 struct BuildingSpot_t

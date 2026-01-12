@@ -42,12 +42,12 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 	}
 
 	std::sort(m_vTargets.begin(), m_vTargets.end(), [&](const FollowTarget_t& a, const FollowTarget_t& b) -> bool
-			  {
-				  if (a.m_iPriority != b.m_iPriority)
-					  return a.m_iPriority > b.m_iPriority;
+		{
+			if (a.m_iPriority != b.m_iPriority)
+				return a.m_iPriority > b.m_iPriority;
 
-				  return a.m_flDistance < b.m_flDistance;
-			  });
+			return a.m_flDistance < b.m_flDistance;
+		});
 }
 
 void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
@@ -66,7 +66,7 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 	// Actually i dont think this will ever happen in any case as i havent seen uids being reused in the same match
 	/*
 	auto pResource = H::Entities.GetResource();
-	if (pResource && pResource->m_bValid(m_tLockedTarget.m_iEntIndex) && 
+	if (pResource && pResource->m_bValid(m_tLockedTarget.m_iEntIndex) &&
 		FNV1A::Hash32(F::PlayerUtils.GetPlayerName(m_tLockedTarget.m_iEntIndex, pResource->GetName(m_tLockedTarget.m_iEntIndex))) != m_tLockedTarget.m_uNameHash)
 	{
 		Reset(FB_RESET_NAV);
@@ -158,7 +158,7 @@ void CFollowBot::LookAtPath(CTFPlayer* pLocal, CUserCmd* pCmd, std::deque<Vec3>*
 void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if (!Vars::Misc::Movement::FollowBot::Enabled.Value ||
-		!Vars::Misc::Movement::FollowBot::Targets.Value || 
+		!Vars::Misc::Movement::FollowBot::Targets.Value ||
 		!pLocal->IsAlive() || pLocal->IsTaunting())
 	{
 		Reset(FB_RESET_TARGETS | FB_RESET_NAV);
@@ -199,7 +199,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Followbot)
 	{
 		bool bClose = vLocalOrigin.DistTo(m_tLockedTarget.m_vLastKnownPos) < Vars::Misc::Movement::FollowBot::FollowDistance.Value + 150.f;
-		
+
 		// Target is too close or we require repathing, cancel pathing
 		if ((!m_tLockedTarget.m_bNew && bClose) ||
 			(!m_tLockedTarget.m_vLastKnownPos.IsZero() &&
@@ -301,7 +301,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	{
 		auto begin = m_vCurrentPath.rbegin();
 		auto eraseAt = begin;
-		
+
 		// Iterate in reverse so we can optimize the path by erasing nodes older than a close one
 		for (auto it = begin, end = m_vCurrentPath.rend(); it != end; ++it)
 		{
@@ -315,7 +315,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 			}
 
 			// We found a closest node or reached the beginning of the path
-			if (eraseAt != begin || it == end-1)
+			if (eraseAt != begin || it == end - 1)
 			{
 				vDest = it->m_vOrigin;
 				if ((vDest.z - vLocalOrigin.z) <= PLAYER_CROUCHED_JUMP_HEIGHT)
@@ -327,7 +327,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 				else m_tLockedTarget.m_bUnreachable = true;
 				break;
 			}
-		}	
+		}
 		if (m_tLockedTarget.m_bUnreachable)
 			m_vCurrentPath.clear();
 		else if (eraseAt != begin)
@@ -347,7 +347,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 			vCurrentAngles.push_back(m_tLockedTarget.m_pPlayer ? m_vLastTargetAngles = m_tLockedTarget.m_pPlayer->GetEyeAngles() : m_tLockedTarget.m_iEntIndex != -1 ? m_vLastTargetAngles : I::EngineClient->GetViewAngles());
 		else if (Vars::Misc::Movement::FollowBot::LookAtPathMode.Value == Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::Path)
 			vCurrentAngles.push_back(vDest);
-		
+
 		std::deque<Vec3>* pFinalAngles = vCurrentAngles.size() ? &vCurrentAngles : pCurrentAngles;
 		LookAtPath(pLocal, pCmd, pFinalAngles, Vars::Misc::Movement::FollowBot::LookAtPathNoSnap.Value && Math::CalcFov(pFinalAngles->front(), F::BotUtils.m_vLastAngles) > 3.f);
 	}

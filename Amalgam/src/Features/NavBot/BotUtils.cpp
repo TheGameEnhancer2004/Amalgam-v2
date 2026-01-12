@@ -179,11 +179,11 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 
 		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(vOrigin));
 	}
-	
+
 	std::sort(m_vCloseEnemies.begin(), m_vCloseEnemies.end(), [](const ClosestEnemy_t& a, const ClosestEnemy_t& b) -> bool
-			  {
-				  return a.m_flDist < b.m_flDist;
-			  });
+		{
+			return a.m_flDist < b.m_flDist;
+		});
 
 	if (m_vCloseEnemies.empty())
 		return {};
@@ -223,7 +223,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	case TF_CLASS_HEAVY:
 	{
 		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (!G::AmmoInSlot[SLOT_SECONDARY].m_iClip && G::AmmoInSlot[SLOT_SECONDARY].m_iReserve == 0) ||
-			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch && 
+			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch &&
 			(m_tClosestEnemy.m_pPlayer && !m_tClosestEnemy.m_pPlayer->IsTaunting() && m_tClosestEnemy.m_pPlayer->IsInvulnerable()) && m_tClosestEnemy.m_flDist < 400.f))
 			m_iBestSlot = SLOT_MELEE;
 		else if ((!m_tClosestEnemy.m_pPlayer || m_tClosestEnemy.m_flDist <= 900.f) && G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
@@ -322,7 +322,7 @@ void CBotUtils::SetSlot(CTFPlayer* pLocal, int iSlot)
 {
 	if (iSlot > -1)
 	{
-		auto sCommand = "slot" + std::to_string(iSlot+1);
+		auto sCommand = "slot" + std::to_string(iSlot + 1);
 		if (m_iCurrentSlot != iSlot)
 			I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
 	}
@@ -408,7 +408,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	static int iLastTarget = -1;
 	static float flLastSeen = 0.f;
 	static Vec3 vLastPos = {};
-	
+
 	CBaseEntity* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
 	auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();

@@ -2,18 +2,18 @@
 #include "Map.h"
 
 Enum(PriorityList, None,
-	 Patrol = 5,
-	 LowPrioGetHealth,
-	 StayNear,
-	 RunReload, RunSafeReload,
-	 SnipeSentry,
-	 Capture,
-	 GetAmmo,
-	 MeleeAttack,
-	 Engineer,
-	 GetHealth,
-	 EscapeSpawn, EscapeDanger,
-	 Followbot
+	Patrol = 5,
+	LowPrioGetHealth,
+	StayNear,
+	RunReload, RunSafeReload,
+	SnipeSentry,
+	Capture,
+	GetAmmo,
+	MeleeAttack,
+	Engineer,
+	GetHealth,
+	EscapeSpawn, EscapeDanger,
+	Followbot
 )
 
 struct Crumb_t
@@ -27,7 +27,7 @@ struct Crumb_t
 };
 
 struct RespawnRoom_t
-{	
+{
 	int m_iTeam = 0;
 	TriggerData_t tData = {};
 };
@@ -86,7 +86,7 @@ public:
 	std::unordered_map<CNavArea*, BlacklistReason_t> GetFreeBlacklist(BlacklistReason_t tReason)
 	{
 		std::unordered_map<CNavArea*, BlacklistReason_t> mReturnMap;
-		for (auto&[pNav, tBlacklist] : m_pMap->m_mFreeBlacklist)
+		for (auto& [pNav, tBlacklist] : m_pMap->m_mFreeBlacklist)
 		{
 			// Category matches
 			if (tBlacklist.m_eValue == tReason.m_eValue)
@@ -100,9 +100,9 @@ public:
 	void ClearFreeBlacklist(BlacklistReason_t tReason)
 	{
 		std::erase_if(m_pMap->m_mFreeBlacklist, [&tReason](const auto& entry)
-					  {
-						  return entry.second.m_eValue == tReason.m_eValue;
-					  });
+			{
+				return entry.second.m_eValue == tReason.m_eValue;
+			});
 	}
 
 	// Is the Nav engine ready to run?

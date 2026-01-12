@@ -56,7 +56,7 @@ private:
 	//float m_flLastDamageTime = 0.f;
 
 public:
-	float GetCost( CTFWeaponBase* pWeapon );
+	float GetCost(CTFWeaponBase* pWeapon);
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal);
 	void Store();

@@ -5,7 +5,7 @@
 
 bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 {
-    if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::EscapeDanger))
+	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::EscapeDanger))
 		return false;
 
 	// Don't escape while we have the intel
@@ -22,7 +22,7 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 		F::NavEngine.m_eCurrentPriority == PriorityListEnum::RunSafeReload)
 		return false;
 
-	
+
 	// Check if we're in spawn - if so, ignore danger and focus on getting out
 	auto pLocalArea = F::NavEngine.GetLocalNavArea();
 	if (pLocalArea->m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED ||
@@ -30,18 +30,18 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 		return false;
 
 	auto pBlacklist = F::NavEngine.GetFreeBlacklist();
-	
+
 	// Check if we're in any danger
 	bool bInHighDanger = false;
 	bool bInMediumDanger = false;
 	bool bInLowDanger = false;
-	
+
 	if (pBlacklist && pBlacklist->contains(pLocalArea))
 	{
 		// Check building spot - don't run away from that
 		if ((*pBlacklist)[pLocalArea].m_eValue == BlacklistReasonEnum::BadBuildSpot)
 			return false;
-			
+
 		// Determine danger level
 		switch ((*pBlacklist)[pLocalArea].m_eValue)
 		{
@@ -59,20 +59,20 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 			bInLowDanger = true;
 			break;
 		}
-		
+
 		// Only escape from high danger by default
 		// Also escape from medium danger if health is low
-		bool bShouldEscape = bInHighDanger || 
-		                    (bInMediumDanger && pLocal->m_iHealth() < pLocal->GetMaxHealth() * 0.5f);
-		
+		bool bShouldEscape = bInHighDanger ||
+			(bInMediumDanger && pLocal->m_iHealth() < pLocal->GetMaxHealth() * 0.5f);
+
 		// If we're not in high danger and on an important task, we might not need to escape
-		bool bImportantTask = (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture || 
-		                      F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetHealth ||
-		                      F::NavEngine.m_eCurrentPriority == PriorityListEnum::Engineer);
-		
+		bool bImportantTask = (F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture ||
+			F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetHealth ||
+			F::NavEngine.m_eCurrentPriority == PriorityListEnum::Engineer);
+
 		if (!bShouldEscape && bImportantTask)
 			return false;
-		
+
 		// If we're in low danger only and on any task, don't escape
 		if (bInLowDanger && !bInMediumDanger && !bInHighDanger && F::NavEngine.m_eCurrentPriority != 0)
 			return false;
@@ -136,7 +136,7 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 
 			float flDistToReference = tArea.m_vCenter.DistTo(vReferencePosition);
 			float flDistToCurrent = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
-			
+
 			// Only consider areas that are not too far away and reachable
 			if (flDistToCurrent < 2000.f)
 			{
@@ -148,9 +148,9 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 
 		// Sort by score (closer to reference position is better)
 		std::sort(vSafeAreas.begin(), vSafeAreas.end(), [](const std::pair<CNavArea*, float>& a, const std::pair<CNavArea*, float>& b) -> bool
-		{
-			return a.second < b.second;
-		});
+			{
+				return a.second < b.second;
+			});
 
 		int iCalls = 0;
 		// Try to path to safe areas
@@ -193,16 +193,16 @@ bool CNavBotDanger::EscapeDanger(CTFPlayer* pLocal)
 		{
 			// Sort by distance to player
 			std::sort(vAreaPointers.begin(), vAreaPointers.end(), [&](CNavArea* a, CNavArea* b) -> bool
-			{
-				return a->m_vCenter.DistTo(pLocal->GetAbsOrigin()) < b->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-			});
+				{
+					return a->m_vCenter.DistTo(pLocal->GetAbsOrigin()) < b->m_vCenter.DistTo(pLocal->GetAbsOrigin());
+				});
 
 			// Try to path to any non-blacklisted area
 			for (auto& pArea : vAreaPointers)
 			{
 				auto it = pBlacklist->find(pArea);
-				if (it == pBlacklist->end() || 
-				   (bInHighDanger && (it->second.m_eValue == BlacklistReasonEnum::SentryLow || it->second.m_eValue == BlacklistReasonEnum::EnemyDormant)))
+				if (it == pBlacklist->end() ||
+					(bInHighDanger && (it->second.m_eValue == BlacklistReasonEnum::SentryLow || it->second.m_eValue == BlacklistReasonEnum::EnemyDormant)))
 				{
 					iCalls++;
 					if (iCalls > 5)
@@ -304,10 +304,10 @@ bool CNavBotDanger::EscapeProjectiles(CTFPlayer* pLocal)
 
 	// Sort by distance
 	std::sort(vSafeAreas.begin(), vSafeAreas.end(),
-			  [](const std::pair<CNavArea*, float>& a, const std::pair<CNavArea*, float>& b)
-			  {
-				  return a.second < b.second;
-			  });
+		[](const std::pair<CNavArea*, float>& a, const std::pair<CNavArea*, float>& b)
+		{
+			return a.second < b.second;
+		});
 
 	// Try to path to closest safe area
 	for (auto& pArea : vSafeAreas)

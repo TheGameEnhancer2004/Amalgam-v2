@@ -82,7 +82,7 @@ public:
 	};
 
 	void RunPre(CTFPlayer* pLocal, CUserCmd* pCmd);
-	void RunPost(CTFPlayer* pLocal, CUserCmd* pCmd, bool pSendPacket);
+	void RunPost(CTFPlayer* pLocal, CUserCmd* pCmd);
 
 	void Event(IGameEvent* pEvent, uint32_t uNameHash);
 	int AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket);

@@ -4,22 +4,63 @@
 #include "../../Players/PlayerUtils.h"
 #include "../../Misc/NamedPipe/NamedPipe.h"
 #include "../../Ticks/Ticks.h"
+#include "../../EnginePrediction/EnginePrediction.h"
+#include "../../NavBot/NavBotJobs/StayNear.h"
+#include "../../Followbot/Followbot.h"
 
-void CAimbotGlobal::SortTargets(std::vector<Target_t>& vTargets, int iMethod)
-{	// Sort by preference
-	std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
-		{
-			switch (iMethod)
+std::vector<Target_t> CAimbotGlobal::ManageTargets(std::vector<Target_t>(*GetTargets)(CTFPlayer* pLocal, CTFWeaponBase* pWeapon), CTFPlayer* pLocal, CTFWeaponBase* pWeapon,
+	int iMethod, int iMaxTargets)
+{
+	auto vTargets = GetTargets(pLocal, pWeapon);
+	SortTargetsPre(vTargets, iMethod);
+
+	// Prioritize navbot/followbot target
+	int iPriorityIdx = pWeapon->GetSlot() != SLOT_MELEE ? (pWeapon->GetWeaponID() == TF_WEAPON_MEDIGUN ?
+		(Vars::Aimbot::General::PrioritizeFollowbot.Value ? F::FollowBot.m_tLockedTarget.m_iEntIndex : -1) :
+		(Vars::Aimbot::General::PrioritizeNavbot.Value ? F::NavBotStayNear.m_iStayNearTargetIdx : -1)) : -1;
+	if (iPriorityIdx > 0)
+	{
+		std::sort((vTargets).begin(), (vTargets).end(), [&](const Target_t& a, const Target_t& b) -> bool
 			{
-			case Vars::Aimbot::General::TargetSelectionEnum::FOV: return a.m_flFOVTo < b.m_flFOVTo;
-			case Vars::Aimbot::General::TargetSelectionEnum::Distance: return a.m_flDistTo < b.m_flDistTo;
-			default: return false;
-			}
-		});
+				return a.m_pEntity->entindex() == iPriorityIdx;
+			});
+	}
+	vTargets.resize(std::min(size_t(iMaxTargets), vTargets.size()));
+	if (iPriorityIdx <= 0)
+		SortTargetsPost(vTargets, iMethod);
+	return vTargets;
 }
 
-void CAimbotGlobal::SortPriority(std::vector<Target_t>& vTargets)
-{	// Sort by priority
+void CAimbotGlobal::SortTargetsPre(std::vector<Target_t>& vTargets, int iMethod)
+{
+	switch (iMethod)
+	{
+	case Vars::Aimbot::General::TargetSelectionEnum::FOV:
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+			{
+				return a.m_flFOVTo < b.m_flFOVTo;
+			});
+	case Vars::Aimbot::General::TargetSelectionEnum::Distance:
+	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+			{
+				return a.m_flDistTo < b.m_flDistTo;
+			});
+	}
+}
+
+void CAimbotGlobal::SortTargetsPost(std::vector<Target_t>& vTargets, int iMethod)
+{
+	switch (iMethod)
+	{
+	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
+		// Ignores priority?
+		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+			{
+				return a.m_flFOVTo < b.m_flFOVTo;
+			});
+	}
+
 	std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
 		{
 			return a.m_nPriority > b.m_nPriority;
@@ -29,23 +70,38 @@ void CAimbotGlobal::SortPriority(std::vector<Target_t>& vTargets)
 // this won't prevent shooting bones outside of fov
 bool CAimbotGlobal::PlayerBoneInFOV(CTFPlayer* pTarget, Vec3 vLocalPos, Vec3 vLocalAngles, float& flFOVTo, Vec3& vPos, Vec3& vAngleTo, int iHitboxes)
 {
-	matrix3x4 aBones[MAXSTUDIOBONES];
-	if (!pTarget->SetupBones(aBones, MAXSTUDIOBONES, BONE_USED_BY_ANYTHING, I::GlobalVars->curtime))
+	std::vector<HitboxInfo_t>* vHitboxInfos = F::Backtrack.GetHitboxInfos(pTarget);
+	if (!Vars::Visuals::Removals::Interpolation.Value)
+	{
+		std::vector<TickRecord*> vRecords = {};
+		if (F::Backtrack.GetRecords(pTarget, vRecords) && !vRecords.empty())
+		{
+			float flLerp = Vars::Visuals::Removals::Lerp.Value ? 0.f : G::Lerp;
+			for (auto pRecord : vRecords)
+			{
+				if (F::EnginePrediction.m_flOldCurrentTime - pRecord->m_flSimTime > flLerp)
+				{
+					vHitboxInfos = &pRecord->m_vHitboxInfos;
+					break;
+				}
+			}
+		}
+	}
+	if (!vHitboxInfos || vHitboxInfos->empty())
 		return false;
 
 	float flMinFOV = 180.f;
-	for (int nHitbox = 0; nHitbox < pTarget->GetNumOfHitboxes(); nHitbox++)
+	for (auto& tHitboxInfo : *vHitboxInfos)
 	{
-		if (!IsHitboxValid(pTarget, nHitbox, iHitboxes))
+		if (!IsHitboxValid(pTarget, tHitboxInfo.m_nHitbox, iHitboxes))
 			continue;
 
-		Vec3 vCurPos = pTarget->GetHitboxCenter(aBones, nHitbox);
-		Vec3 vCurAngleTo = Math::CalcAngle(vLocalPos, vCurPos);
+		Vec3 vCurAngleTo = Math::CalcAngle(vLocalPos, tHitboxInfo.m_vCenter);
 		float flCurFOVTo = Math::CalcFov(vLocalAngles, vCurAngleTo);
 
 		if (flCurFOVTo < flMinFOV)
 		{
-			vPos = vCurPos;
+			vPos = tHitboxInfo.m_vCenter;
 			vAngleTo = vCurAngleTo;
 			flFOVTo = flMinFOV = flCurFOVTo;
 		}
@@ -174,6 +230,7 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 			|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Taunting && pPlayer->IsTaunting()
 			|| Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Disguised && pPlayer->InCond(TF_COND_DISGUISED))
 			return true;
+
 		if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Vaccinator)
 		{
 			switch (G::PrimaryWeaponType)
@@ -283,21 +340,19 @@ bool CAimbotGlobal::ShouldIgnore(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWea
 
 int CAimbotGlobal::GetPriority(int iIndex)
 {
-    int iPriority = F::PlayerUtils.GetPriority(iIndex);
+	int iPriority = F::PlayerUtils.GetPriority(iIndex);
 
-    if (Vars::Aimbot::Hitscan::Modifiers.Value & Vars::Aimbot::Hitscan::ModifiersEnum::PreferMedics)
-    {
-        auto pPlayer = I::ClientEntityList->GetClientEntity(iIndex)->As<CTFPlayer>();
-        auto pLocal = H::Entities.GetLocal();
-        if (pPlayer && pLocal && pPlayer->IsPlayer() && pPlayer->IsAlive()
-            && pPlayer->m_iTeamNum() != pLocal->m_iTeamNum()
-            && pPlayer->m_iClass() == TF_CLASS_MEDIC)
-        {
-            iPriority += 10;
-        }
-    }
+	if (Vars::Aimbot::Hitscan::Modifiers.Value & Vars::Aimbot::Hitscan::ModifiersEnum::PreferMedics)
+	{
+		auto pPlayer = I::ClientEntityList->GetClientEntity(iIndex)->As<CTFPlayer>();
+		auto pLocal = H::Entities.GetLocal();
+		if (pPlayer && pLocal && pPlayer->IsPlayer() && pPlayer->IsAlive()
+			&& pPlayer->m_iTeamNum() != pLocal->m_iTeamNum()
+			&& pPlayer->m_iClass() == TF_CLASS_MEDIC)
+			iPriority += 10;
+	}
 
-    return iPriority;
+	return iPriority;
 }
 
 bool CAimbotGlobal::FriendlyFire()

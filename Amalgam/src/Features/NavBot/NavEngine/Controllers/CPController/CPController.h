@@ -10,7 +10,7 @@ struct CPInfo
 	int m_iIdx = -1;
 	Vector m_vPos = {};
 	bool m_bGotPos = false;
-	std::array<bool, 2> m_bCanCap = {false, false};	// For BLU and RED to show who can and cannot cap
+	std::array<bool, 2> m_bCanCap = { false, false };	// For BLU and RED to show who can and cannot cap
 	CPInfo() = default;
 };
 

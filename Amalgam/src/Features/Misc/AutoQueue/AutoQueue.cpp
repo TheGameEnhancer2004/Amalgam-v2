@@ -517,16 +517,16 @@ void CAutoQueue::RefreshComplete(HServerListRequest hRequest, EMatchMakingServer
 	if (!m_vCommunityServers.empty())
 	{
 		std::sort(m_vCommunityServers.begin(), m_vCommunityServers.end(),
-				  [this](const gameserveritem_t* a, const gameserveritem_t* b) -> bool
-				  {
-					  bool aIsNickServer = IsServerNameMatch(a->GetName());
-					  bool bIsNickServer = IsServerNameMatch(b->GetName());
+			[this](const gameserveritem_t* a, const gameserveritem_t* b) -> bool
+			{
+				bool aIsNickServer = IsServerNameMatch(a->GetName());
+				bool bIsNickServer = IsServerNameMatch(b->GetName());
 
-					  if (aIsNickServer != bIsNickServer)
-						  return aIsNickServer;
+				if (aIsNickServer != bIsNickServer)
+					return aIsNickServer;
 
-					  return (a->m_nPlayers - a->m_nBotPlayers) > (b->m_nPlayers - b->m_nBotPlayers);
-				  });
+				return (a->m_nPlayers - a->m_nBotPlayers) > (b->m_nPlayers - b->m_nBotPlayers);
+			});
 
 		ConnectToServer(m_vCommunityServers[0]);
 	}

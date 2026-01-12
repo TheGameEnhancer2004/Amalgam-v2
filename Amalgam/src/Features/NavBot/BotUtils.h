@@ -3,7 +3,7 @@
 #include "../../Utils/Timer/Timer.h"
 
 struct ClosestEnemy_t
-{	
+{
 	int m_iEntIdx = -1;
 	CTFPlayer* m_pPlayer = nullptr;
 	float m_flDist = FLT_MAX;
@@ -59,7 +59,7 @@ public:
 
 	void SetSlot(CTFPlayer* pLocal, int iSlot);
 
-	void DoSlowAim(Vec3& vWishAngles, float flSpeed , Vec3 vPreviousAngles);
+	void DoSlowAim(Vec3& vWishAngles, float flSpeed, Vec3 vPreviousAngles);
 	void LookAtPath(CUserCmd* pCmd, Vec2 vDest, Vec3 vLocalEyePos, bool bSilent);
 	void LookAtPath(CUserCmd* pCmd, Vec3 vWishAngles, Vec3 vLocalEyePos, bool bSilent, bool bSmooth = true);
 	void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);

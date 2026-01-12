@@ -187,12 +187,12 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 		int iSwitch = 0;
 		switch (F::NavBotEngineer.m_eTaskStage)
 		{
-		// We are currently building something (we dont really need to hold the melee weapon)
+			// We are currently building something (we dont really need to hold the melee weapon)
 		case EngineerTaskStageEnum::BuildSentry:
 		case EngineerTaskStageEnum::BuildDispenser:
 			iSwitch = 2 * (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f);
 			break;
-		// We are currently upgrading/repairing something
+			// We are currently upgrading/repairing something
 		case EngineerTaskStageEnum::SmackSentry:
 			iSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
 			break;

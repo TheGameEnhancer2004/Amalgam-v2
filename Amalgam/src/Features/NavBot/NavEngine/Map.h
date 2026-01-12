@@ -18,10 +18,10 @@ Enum(VischeckState, NotVisible = -1, NotChecked, Visible)
 
 // Basic Blacklist reasons, you can add your own externally and use them
 Enum(BlacklistReason, Init = -1,
-	 Sentry, SentryMedium, SentryLow,
-	 Sticky,
-	 EnemyNormal, EnemyDormant, EnemyInvuln,
-	 BadBuildSpot
+	Sentry, SentryMedium, SentryLow,
+	Sticky,
+	EnemyNormal, EnemyDormant, EnemyInvuln,
+	BadBuildSpot
 )
 
 struct BlacklistReason_t
@@ -114,7 +114,7 @@ public:
 
 	float LeastCostEstimate(void* pStartArea, void* pEndArea) override { return reinterpret_cast<CNavArea*>(pStartArea)->m_vCenter.DistTo(reinterpret_cast<CNavArea*>(pEndArea)->m_vCenter); }
 	void AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent) override;
-	
+
 	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos);
 	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea);
 

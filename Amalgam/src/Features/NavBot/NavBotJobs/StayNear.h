@@ -9,7 +9,7 @@ private:
 	int IsStayNearTargetValid(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex);
 public:
 	bool Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
-	
+
 	int m_iStayNearTargetIdx = -1;
 	std::wstring m_sFollowTargetName = {};
 };

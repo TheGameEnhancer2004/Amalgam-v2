@@ -92,8 +92,6 @@ static Vec3 s_vVelocity = {};
 static int s_iMaxTicks = 0;
 void CTicks::AntiWarp(CTFPlayer* pLocal, float flYaw, float& flForwardMove, float& flSideMove, int iTicks)
 {
-	if (iTicks == -1)
-		iTicks = GetTicks();
 	s_iMaxTicks = std::max(iTicks + 1, s_iMaxTicks);
 
 	Vec3 vAngles; Math::VectorAngles(s_vVelocity, vAngles);
@@ -107,6 +105,10 @@ void CTicks::AntiWarp(CTFPlayer* pLocal, float flYaw, float& flForwardMove, floa
 		flForwardMove = flSideMove = 0.f;
 	else
 		flForwardMove = vForward.x, flSideMove = vForward.y;
+}
+void CTicks::AntiWarp(CTFPlayer* pLocal, float flYaw, float& flForwardMove, float& flSideMove)
+{
+	AntiWarp(pLocal, flYaw, flForwardMove, flSideMove, GetTicks());
 }
 void CTicks::AntiWarp(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
@@ -158,7 +160,7 @@ void CTicks::MoveFunc(float accumulated_extra_samples, bool bFinalTick)
 	int iTicks = std::min(m_iShiftedTicks + 1, 22);
 	auto pWeapon = H::Entities.GetWeapon();
 	if (!(iTicks >= Vars::Doubletap::TickLimit.Value || pWeapon && GetShotsWithinPacket(pWeapon, iTicks) > 1))
-		m_iWait = 1;
+		m_iWait = -1;
 
 	m_bGoalReached = bFinalTick && m_iShiftedTicks == m_iShiftedGoal;
 
@@ -169,32 +171,6 @@ void CTicks::MoveFunc(float accumulated_extra_samples, bool bFinalTick)
 void CTicks::Move(float accumulated_extra_samples, bool bFinalTick)
 {
 	MoveManage();
-
-	if (auto pWeapon = H::Entities.GetWeapon())
-	{
-		switch (pWeapon->GetWeaponID())
-		{
-		case TF_WEAPON_PIPEBOMBLAUNCHER:
-		case TF_WEAPON_CANNON:
-			if (!G::CanSecondaryAttack)
-				m_iWait = Vars::Doubletap::TickLimit.Value;
-			break;
-		default:
-			if (!ValidWeapon(pWeapon))
-				m_iWait = 2;
-			else if (G::Attacking || !G::CanPrimaryAttack && !G::Reloading)
-				m_iWait = Vars::Doubletap::TickLimit.Value;
-		}
-	}
-	else
-		m_iWait = 2;
-
-	static auto sv_maxusrcmdprocessticks = H::ConVars.FindVar("sv_maxusrcmdprocessticks");
-	m_iMaxShift = sv_maxusrcmdprocessticks->GetInt();
-	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
-		m_iMaxShift = std::min(m_iMaxShift, 8);
-	m_iMaxShift -= std::max(m_iMaxShift - Vars::Doubletap::RechargeLimit.Value, 0) + (F::AntiAim.YawOn() ? F::AntiAim.AntiAimTicks() : 0);
-	m_iMaxShift = std::max(m_iMaxShift, 1);
 
 	while (m_iShiftedTicks > m_iMaxShift)
 		MoveFunc(accumulated_extra_samples, false);
@@ -240,6 +216,34 @@ void CTicks::MoveManage()
 	Recharge(pLocal);
 	Warp();
 	Speedhack();
+
+	if (!m_bRecharge)
+		m_iWait = std::max(m_iWait, 0);
+	if (auto pWeapon = H::Entities.GetWeapon())
+	{
+		switch (pWeapon->GetWeaponID())
+		{
+		case TF_WEAPON_PIPEBOMBLAUNCHER:
+		case TF_WEAPON_CANNON:
+			if (!G::CanSecondaryAttack)
+				m_iWait = Vars::Doubletap::TickLimit.Value;
+			break;
+		default:
+			if (!ValidWeapon(pWeapon))
+				m_iWait = -1;
+			else if (G::Attacking || !G::CanPrimaryAttack && !G::Reloading)
+				m_iWait = Vars::Doubletap::TickLimit.Value;
+		}
+	}
+	else
+		m_iWait = -1;
+
+	static auto sv_maxusrcmdprocessticks = H::ConVars.FindVar("sv_maxusrcmdprocessticks");
+	m_iMaxUsrCmdProcessTicks = sv_maxusrcmdprocessticks->GetInt();
+	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
+		m_iMaxUsrCmdProcessTicks = std::min(m_iMaxUsrCmdProcessTicks, 8);
+	m_iMaxShift = m_iMaxUsrCmdProcessTicks - std::max(m_iMaxUsrCmdProcessTicks - Vars::Doubletap::RechargeLimit.Value, 0) - (F::AntiAim.YawOn() ? F::AntiAim.AntiAimTicks() : 0);
+	m_iMaxShift = std::max(m_iMaxShift, 1);
 }
 
 void CTicks::CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool* pSendPacket)
@@ -260,11 +264,15 @@ void CTicks::ManagePacket(CUserCmd* pCmd, bool* pSendPacket)
 	if (!m_bDoubletap && !m_bWarp && !m_bSpeedhack)
 	{
 		static bool bWasSet = false;
-		const bool bCanChoke = F::Ticks.CanChoke(); // failsafe
+		bool bCanChoke = CanChoke(true); // failsafe
 		if (G::PSilentAngles && bCanChoke)
 			*pSendPacket = false, bWasSet = true;
 		else if (bWasSet || !bCanChoke)
 			*pSendPacket = true, bWasSet = false;
+
+		bool bShouldShift = m_iShiftedTicks && m_iShiftedTicks + I::ClientState->chokedcommands >= m_iMaxUsrCmdProcessTicks;
+		if (!*pSendPacket && bShouldShift)
+			m_iShiftedGoal = std::max(m_iShiftedGoal - 1, 0);
 	}
 	else
 	{
@@ -309,14 +317,16 @@ void CTicks::End(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 }
 
-bool CTicks::CanChoke()
+bool CTicks::CanChoke(bool bCanShift, int iMaxTicks)
 {
-	static auto sv_maxusrcmdprocessticks = H::ConVars.FindVar("sv_maxusrcmdprocessticks");
-	int iMaxTicks = sv_maxusrcmdprocessticks->GetInt();
-	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
-		iMaxTicks = std::min(iMaxTicks, 8);
-
-	return I::ClientState->chokedcommands < 21 && m_iShiftedTicks + I::ClientState->chokedcommands < iMaxTicks;
+	bool bCanChoke = I::ClientState->chokedcommands < 21;
+	if (bCanChoke && !bCanShift)
+		bCanChoke = m_iShiftedTicks + I::ClientState->chokedcommands < iMaxTicks;
+	return bCanChoke;
+}
+bool CTicks::CanChoke(bool bCanShift)
+{
+	return CanChoke(bCanShift, m_iMaxUsrCmdProcessTicks);
 }
 
 int CTicks::GetTicks(CTFWeaponBase* pWeapon)
@@ -406,8 +416,9 @@ void CTicks::Draw(CTFPlayer* pLocal)
 
 	if (!m_bSpeedhack)
 	{
-		int iChoke = std::max(I::ClientState->chokedcommands - (F::AntiAim.YawOn() ? F::AntiAim.AntiAimTicks() : 0), 0);
-		int iTicks = std::clamp(m_iShiftedTicks + iChoke, 0, m_iMaxShift);
+		int iAntiAimTicks = F::AntiAim.YawOn() ? F::AntiAim.AntiAimTicks() : 0;
+		int iTicks = std::clamp(m_iShiftedTicks + std::max(I::ClientState->chokedcommands - iAntiAimTicks, 0), 0, m_iMaxUsrCmdProcessTicks);
+		int iMax = std::max(m_iMaxUsrCmdProcessTicks - iAntiAimTicks, 0);
 
 		int boxWidth = 180;
 		int boxHeight = 29;
@@ -422,7 +433,7 @@ void CTicks::Draw(CTFPlayer* pLocal)
 		H::Draw.GradientRect(x, y + textBoxHeight, boxWidth, barHeight, bgColor, bgColor, true);
 
 		static float currentProgress = 0.0f;
-		float targetProgress = float(iTicks) / m_iMaxShift;
+		float targetProgress = float(iTicks) / iMax;
 		currentProgress = std::lerp(currentProgress, targetProgress, I::GlobalVars->frametime * 10.0f);
 
 		int barWidth = static_cast<int>(boxWidth * currentProgress);
@@ -433,7 +444,7 @@ void CTicks::Draw(CTFPlayer* pLocal)
 		}
 
 		std::string leftText = "Ticks";
-		std::string rightText = std::format("{} / {}", iTicks, m_iMaxShift);
+		std::string rightText = std::format("{} / {}", iTicks, iMax);
 		Color_t textColor = Vars::Menu::Theme::Active.Value;
 
 		H::Draw.String(fFont, x + 5, y + (textBoxHeight / 2), textColor, ALIGN_LEFT, leftText.c_str());

@@ -235,7 +235,7 @@ bool CAutoDetonate::SkipTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseE
 			return !(Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Stickies) ||
 				pWeapon->m_iItemDefinitionIndex() != Pyro_s_TheDetonator &&
 				(!(pWeapon->m_iItemDefinitionIndex() == Demoman_s_TheQuickiebombLauncher || pWeapon->m_iItemDefinitionIndex() == Demoman_s_TheScottishResistance) ||
-				 !pTarget->As<CTFGrenadePipebombProjectile>()->HasStickyEffects());
+					!pTarget->As<CTFGrenadePipebombProjectile>()->HasStickyEffects());
 		case ETFClassID::CEyeballBoss:
 		case ETFClassID::CHeadlessHatman:
 		case ETFClassID::CMerasmus:
@@ -273,8 +273,8 @@ bool CAutoDetonate::FlareCheck(CTFPlayer* pLocal)
 
 		CBaseEntity* pEntity;
 		for (CEntitySphereQuery sphere(vOrigin, flRadius);
-			 (pEntity = sphere.GetCurrentEntity()) != nullptr;
-			 sphere.NextEntity())
+			(pEntity = sphere.GetCurrentEntity()) != nullptr;
+			sphere.NextEntity())
 		{
 			if (pEntity == pLocal || pEntity->IsPlayer() && (!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost()) || pEntity->m_iTeamNum() == pLocal->m_iTeamNum())
 				continue;
@@ -343,8 +343,8 @@ bool CAutoDetonate::StickyCheck(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 			CBaseEntity* pEntity;
 			for (CEntitySphereQuery sphere(vPredictedStickyOrigins[pSticky->entindex()], vRadiuses[pSticky->entindex()]);
-				 (pEntity = sphere.GetCurrentEntity()) != nullptr;
-				 sphere.NextEntity())
+				(pEntity = sphere.GetCurrentEntity()) != nullptr;
+				sphere.NextEntity())
 			{
 
 				if (pEntity->m_iTeamNum() == pLocal->m_iTeamNum() || pEntity->IsPlayer() && (!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost()))
@@ -384,8 +384,8 @@ bool CAutoDetonate::StickyCheck(CTFPlayer* pLocal, CUserCmd* pCmd)
 			bool bHitLocal = false;
 			CBaseEntity* pEntity;
 			for (CEntitySphereQuery sphere(vPredictedStickyOrigins[pSticky->entindex()], (vRadiuses[pSticky->entindex()] * 2.f) - 45.f);
-				 (pEntity = sphere.GetCurrentEntity()) != nullptr;
-				 sphere.NextEntity())
+				(pEntity = sphere.GetCurrentEntity()) != nullptr;
+				sphere.NextEntity())
 			{
 				const auto iClassId = pEntity->GetClassID();
 				if (iClassId != ETFClassID::CTFGrenadePipebombProjectile)

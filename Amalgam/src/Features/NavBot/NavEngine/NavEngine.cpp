@@ -283,7 +283,7 @@ void CNavEngine::VischeckPath()
 
 		auto vNextCenter = tNextCrumb.m_vPos;
 		vNextCenter.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-		
+
 		// Check if we can pass, if not, abort pathing and mark as bad
 		if (!IsPlayerPassableNavigation(vCurrentCenter, vNextCenter))
 		{
@@ -325,7 +325,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 		return;
 	}
 
-	for (auto&[pArea, _] : m_pMap->m_mFreeBlacklist)
+	for (auto& [pArea, _] : m_pMap->m_mFreeBlacklist)
 	{
 		// Local player is in a blocked area, so temporarily remove the blacklist as else we would be stuck
 		if (pArea == m_pLocalArea)
@@ -342,7 +342,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	for (auto& tCrumb : m_vCrumbs)
 	{
 		// A path Node is blacklisted, abandon pathing
-		for (auto&[pArea, _] : m_pMap->m_mFreeBlacklist)
+		for (auto& [pArea, _] : m_pMap->m_mFreeBlacklist)
 		{
 			if (pArea == tCrumb.m_pNavArea)
 			{
@@ -607,43 +607,43 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 	size_t uCrumbsSize = m_vCrumbs.size();
 	auto DoLook = [&](const Vec3& vTarget, bool bTargetValid) -> void
-	{
-		if (G::Attacking == 1)
 		{
-			F::BotUtils.InvalidateLLAP();
-			return;
-		}
+			if (G::Attacking == 1)
+			{
+				F::BotUtils.InvalidateLLAP();
+				return;
+			}
 
-		auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
-		bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
-		bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
+			auto eLook = Vars::Misc::Movement::NavEngine::LookAtPath.Value;
+			bool bSilent = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Silent || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
+			bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
 
-		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
-		{
-			F::BotUtils.InvalidateLLAP();
-			return;
-		}
+			if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
+			{
+				F::BotUtils.InvalidateLLAP();
+				return;
+			}
 
-		if (bSilent && G::AntiAim)
-		{
-			F::BotUtils.InvalidateLLAP();
-			return;
-		}
+			if (bSilent && G::AntiAim)
+			{
+				F::BotUtils.InvalidateLLAP();
+				return;
+			}
 
-		if (bLegit)
-		{
-			F::BotUtils.LookLegit(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
-		}
-		else if (bTargetValid)
-		{
-			F::BotUtils.InvalidateLLAP();
-			F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
-		}
-		else
-		{
-			F::BotUtils.InvalidateLLAP();
-		}
-	};
+			if (bLegit)
+			{
+				F::BotUtils.LookLegit(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
+			}
+			else if (bTargetValid)
+			{
+				F::BotUtils.InvalidateLLAP();
+				F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
+			}
+			else
+			{
+				F::BotUtils.InvalidateLLAP();
+			}
+		};
 	// No more crumbs, reset status
 	if (!uCrumbsSize)
 	{
@@ -991,5 +991,5 @@ void CNavEngine::Render()
 	{
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 			H::Draw.RenderLine(m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos, Vars::Colors::NavbotPath.Value, false);
-	}	
+	}
 }

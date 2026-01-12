@@ -101,7 +101,7 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	int iRequiredMetal = (bDispenser || G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger) ? 100 : 130;
 	if (pLocal->m_iMetalCount() < iRequiredMetal)
 		return F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo | GetSupplyEnum::Forced);
-	
+
 	static float flPrevYaw = 0.0f;
 	// Try to build! we are close enough
 	if (m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
@@ -198,29 +198,29 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 			// Sort by distance to nearest, lower is better
 			// TODO: This isn't really optimal, need a dif way to where it is a good distance from enemies but also bots dont build in the same spot
 			std::sort(m_vBuildingSpots.begin(), m_vBuildingSpots.end(),
-					  [&](BuildingSpot_t& a, BuildingSpot_t& b) -> bool
-					  {
-						  if (bHasGunslinger)
-						  {
-							  auto flADist = a.m_flDistanceToTarget;
-							  auto flBDist = b.m_flDistanceToTarget;
+				[&](BuildingSpot_t& a, BuildingSpot_t& b) -> bool
+				{
+					if (bHasGunslinger)
+					{
+						auto flADist = a.m_flDistanceToTarget;
+						auto flBDist = b.m_flDistanceToTarget;
 
-							  // Penalty for being in danger ranges
-							  if (flADist + 100.0f < 300.0f)
-								  flADist += 4000.0f;
-							  if (flBDist + 100.0f < 300.0f)
-								  flBDist += 4000.0f;
+						// Penalty for being in danger ranges
+						if (flADist + 100.0f < 300.0f)
+							flADist += 4000.0f;
+						if (flBDist + 100.0f < 300.0f)
+							flBDist += 4000.0f;
 
-							  if (flADist + 1000.0f < 500.0f)
-								  flADist += 1500.0f;
-							  if (flBDist + 1000.0f < 500.0f)
-								  flBDist += 1500.0f;
+						if (flADist + 1000.0f < 500.0f)
+							flADist += 1500.0f;
+						if (flBDist + 1000.0f < 500.0f)
+							flBDist += 1500.0f;
 
-							  return flADist < flBDist;
-						  }
-						  else
-							  return a.m_flDistanceToTarget < b.m_flDistanceToTarget;
-					  });
+						return flADist < flBDist;
+					}
+					else
+						return a.m_flDistanceToTarget < b.m_flDistanceToTarget;
+				});
 		}
 	}
 }
