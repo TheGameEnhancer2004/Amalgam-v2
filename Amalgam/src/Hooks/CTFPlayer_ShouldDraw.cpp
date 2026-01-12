@@ -11,12 +11,10 @@ MAKE_SIGNATURE(CViewRender_DrawViewModels, "client.dll", "48 89 5C 24 ? 55 56 57
 MAKE_SIGNATURE(CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThisPlayer_Call, "client.dll", "84 C0 0F 84 ? ? ? ? 48 8B 94 24 ? ? ? ? 48 8B CE", 0x0);
 //MAKE_SIGNATURE(CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call, "client.dll", "84 C0 75 ? B8 ? ? ? ? 48 8B 5C 24", 0x0);
 
+#ifndef TEXTMODE
 MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 	void* rcx)
 {
-#ifdef TEXTMODE
-	return false;
-#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -33,15 +31,11 @@ MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 	}
 
 	return CALL_ORIGINAL(rcx);
-#endif
 }
 
 MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(), bool,
 	void* rcx)
 {
-#ifdef TEXTMODE
-	return false;
-#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CBasePlayer_ShouldDrawThisPlayer[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -68,15 +62,11 @@ MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(
 	}
 
 	return CALL_ORIGINAL(rcx);
-#endif
 }
 
 MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlayer(), bool,
 	/*void* rcx*/)
 {
-#ifdef TEXTMODE
-	return false;
-#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CBasePlayer_ShouldDrawLocalPlayer[DEFAULT_BIND])
 		return CALL_ORIGINAL(/*rcx*/);
@@ -96,15 +86,13 @@ MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlaye
 	}
 
 	return CALL_ORIGINAL(/*rcx*/);
-#endif
 }
+#endif
 
+#ifndef TEXTMODE
 MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 	void* rcx)
 {
-#ifdef TEXTMODE
-	return false;
-#else
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CBaseCombatWeapon_ShouldDraw[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx);
@@ -118,18 +106,16 @@ MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 	}
 
 	return CALL_ORIGINAL(rcx);
-#endif
 }
 
 MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 	void* rcx, const CViewSetup& viewRender, bool drawViewmodel)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CViewRender_DrawViewModels[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, viewRender, drawViewmodel);
 #endif
 
 	CALL_ORIGINAL(rcx, viewRender, F::Spectate.m_iTarget != -1 ? false : drawViewmodel);
-#endif
 }
+#endif

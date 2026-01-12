@@ -1,9 +1,9 @@
 #include "../SDK/SDK.h"
 
+#ifndef TEXTMODE
 MAKE_HOOK(IPanel_PaintTraverse, U::Memory.GetVirtual(I::Panel, 41), void,
 	void* rcx, VPANEL vguiPanel, bool forceRepaint, bool allowForce)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::IPanel_PaintTraverse[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, vguiPanel, forceRepaint, allowForce);
@@ -23,5 +23,5 @@ MAKE_HOOK(IPanel_PaintTraverse, U::Memory.GetVirtual(I::Panel, 41), void,
 	}
 
 	CALL_ORIGINAL(rcx, vguiPanel, forceRepaint, allowForce);
-#endif
 }
+#endif

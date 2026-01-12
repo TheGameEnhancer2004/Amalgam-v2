@@ -14,6 +14,7 @@
 #include "../Features/Killstreak/Killstreak.h"
 #include "../Features/FollowBot/FollowBot.h"
 
+#ifndef TEXTMODE
 MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	void* rcx)
 {
@@ -22,12 +23,10 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 		return CALL_ORIGINAL(rcx);
 #endif
 
-#ifndef TEXTMODE
 	F::Materials.ReloadMaterials();
 	F::Visuals.OverrideWorldTextures();
 	F::Killstreak.Reset();
 	F::Spectate.m_iIntendedTarget = -1;
-#endif
 
 	F::Backtrack.Reset();
 	F::Ticks.Reset();
@@ -42,3 +41,4 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 
 	CALL_ORIGINAL(rcx);
 }
+#endif

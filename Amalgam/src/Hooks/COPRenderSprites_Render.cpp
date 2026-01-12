@@ -70,10 +70,10 @@ struct ParticleRenderData_t
     uint8 m_nAlphaPad[3];
 };
 
+#ifndef TEXTMODE
 MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
 		  void* rcx, IMatRenderContext* pRenderContext, CParticleCollection* pParticles, void* pContext)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::COPRenderSprites_Render[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
@@ -162,13 +162,11 @@ MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
 	pRenderContext->DepthRange(0.f, 0.2f);
 	CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
 	pRenderContext->DepthRange(0.f, 1.f);
-#endif
 }
 
 MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, ParticleRenderData_t* pSortList, void* pCamera)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
     if (!Vars::Hooks::COPRenderSprites_RenderSpriteCard[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
@@ -183,13 +181,11 @@ MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCar
     if (Vars::Colors::ParticleModulation.Value.a != 255)
         pSortList->m_nAlpha = Vars::Colors::ParticleModulation.Value.a;
     CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
-#endif
 }
 
 MAKE_HOOK(COPRenderSprites_RenderTwoSequenceSpriteCard, S::COPRenderSprites_RenderTwoSequenceSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, ParticleRenderData_t* pSortList, void* pCamera)
 {
-#ifndef TEXTMODE
 #ifdef DEBUG_HOOKS
     if (!Vars::Hooks::COPRenderSprites_RenderTwoSequenceSpriteCard[DEFAULT_BIND])
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
@@ -204,5 +200,5 @@ MAKE_HOOK(COPRenderSprites_RenderTwoSequenceSpriteCard, S::COPRenderSprites_Rend
     if (Vars::Colors::ParticleModulation.Value.a != 255)
         pSortList->m_nAlpha = Vars::Colors::ParticleModulation.Value.a;
     CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
-#endif
 }
+#endif

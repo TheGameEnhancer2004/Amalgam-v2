@@ -1,7 +1,6 @@
 #include "../SDK/SDK.h"
-
-MAKE_SIGNATURE(S_StartSound, "engine.dll", "40 53 48 83 EC ? 48 83 79 ? ? 48 8B D9 75 ? 33 C0", 0x0);
 #ifndef TEXTMODE
+MAKE_SIGNATURE(S_StartSound, "engine.dll", "40 53 48 83 EC ? 48 83 79 ? ? 48 8B D9 75 ? 33 C0", 0x0);
 MAKE_SIGNATURE(CSoundEmitterSystem_EmitSound, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 41 56 48 81 EC ? ? ? ? 49 8B D9", 0x0);
 //MAKE_SIGNATURE(S_StartDynamicSound, "engine.dll", "4C 8B DC 57 48 81 EC", 0x0);
 
@@ -160,7 +159,6 @@ MAKE_HOOK(S_StartDynamicSound, S::S_StartDynamicSound(), int,
 	return CALL_ORIGINAL(params);
 }
 */
-#endif
 MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 	StartSoundParams_t& params)
 {
@@ -180,3 +178,5 @@ MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 	return CALL_ORIGINAL(params);
 #endif
 }
+#endif
+
