@@ -102,46 +102,56 @@ MAKE_HOOK(CParticleProperty_Create_Point, S::CParticleProperty_Create_Point(), v
         return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
 #endif
 
-	if (FNV1A::Hash32(Vars::Visuals::Effects::ProjectileTrail.Value.c_str()) != FNV1A::Hash32Const("Default"))
-	{
-		switch (FNV1A::Hash32(pszParticleName))
-		{
-			// any trails we want to replace
-		case FNV1A::Hash32Const("peejar_trail_blu"):
-		case FNV1A::Hash32Const("peejar_trail_red"):
-		case FNV1A::Hash32Const("peejar_trail_blu_glow"):
-		case FNV1A::Hash32Const("peejar_trail_red_glow"):
-		case FNV1A::Hash32Const("stunballtrail_blue"):
-		case FNV1A::Hash32Const("stunballtrail_red"):
-		case FNV1A::Hash32Const("rockettrail"):
-		case FNV1A::Hash32Const("rockettrail_airstrike"):
-		case FNV1A::Hash32Const("drg_cow_rockettrail_normal_blue"):
-		case FNV1A::Hash32Const("drg_cow_rockettrail_normal"):
-		case FNV1A::Hash32Const("drg_cow_rockettrail_charged_blue"):
-		case FNV1A::Hash32Const("drg_cow_rockettrail_charged"):
-		case FNV1A::Hash32Const("rockettrail_RocketJumper"):
-		case FNV1A::Hash32Const("rockettrail_underwater"):
-		case FNV1A::Hash32Const("halloween_rockettrail"):
-		case FNV1A::Hash32Const("eyeboss_projectile"):
-		case FNV1A::Hash32Const("drg_bison_projectile"):
-		case FNV1A::Hash32Const("flaregun_trail_blue"):
-		case FNV1A::Hash32Const("flaregun_trail_red"):
-		case FNV1A::Hash32Const("scorchshot_trail_blue"):
-		case FNV1A::Hash32Const("scorchshot_trail_red"):
-		case FNV1A::Hash32Const("drg_manmelter_projectile"):
-		case FNV1A::Hash32Const("pipebombtrail_blue"):
-		case FNV1A::Hash32Const("pipebombtrail_red"):
-		case FNV1A::Hash32Const("stickybombtrail_blue"):
-		case FNV1A::Hash32Const("stickybombtrail_red"):
-		case FNV1A::Hash32Const("healshot_trail_blue"):
-		case FNV1A::Hash32Const("healshot_trail_red"):
-		case FNV1A::Hash32Const("flaming_arrow"):
-		case FNV1A::Hash32Const("spell_fireball_small_trail_blue"):
-		case FNV1A::Hash32Const("spell_fireball_small_trail_red"):
-		{
-			auto pLocal = H::Entities.GetLocal();
-			if (!pLocal)
-				return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
+    if (pszParticleName)
+    {
+        switch (FNV1A::Hash32(pszParticleName))
+        {
+        case FNV1A::Hash32Const("kart_impact_sparks"):
+            if (I::Prediction->InPrediction() && !I::Prediction->m_bFirstTimePredicted)
+                return nullptr;
+        }
+    }
+
+    if (FNV1A::Hash32(Vars::Visuals::Effects::ProjectileTrail.Value.c_str()) != FNV1A::Hash32Const("Default") && pszParticleName)
+    {
+        switch (FNV1A::Hash32(pszParticleName))
+        {
+        // any trails we want to replace
+        case FNV1A::Hash32Const("peejar_trail_blu"):
+        case FNV1A::Hash32Const("peejar_trail_red"):
+        case FNV1A::Hash32Const("peejar_trail_blu_glow"):
+        case FNV1A::Hash32Const("peejar_trail_red_glow"):
+        case FNV1A::Hash32Const("stunballtrail_blue"):
+        case FNV1A::Hash32Const("stunballtrail_red"):
+        case FNV1A::Hash32Const("rockettrail"):
+        case FNV1A::Hash32Const("rockettrail_airstrike"):
+        case FNV1A::Hash32Const("drg_cow_rockettrail_normal_blue"):
+        case FNV1A::Hash32Const("drg_cow_rockettrail_normal"):
+        case FNV1A::Hash32Const("drg_cow_rockettrail_charged_blue"):
+        case FNV1A::Hash32Const("drg_cow_rockettrail_charged"):
+        case FNV1A::Hash32Const("rockettrail_RocketJumper"):
+        case FNV1A::Hash32Const("rockettrail_underwater"):
+        case FNV1A::Hash32Const("halloween_rockettrail"):
+        case FNV1A::Hash32Const("eyeboss_projectile"):
+        case FNV1A::Hash32Const("drg_bison_projectile"):
+        case FNV1A::Hash32Const("flaregun_trail_blue"):
+        case FNV1A::Hash32Const("flaregun_trail_red"):
+        case FNV1A::Hash32Const("scorchshot_trail_blue"):
+        case FNV1A::Hash32Const("scorchshot_trail_red"):
+        case FNV1A::Hash32Const("drg_manmelter_projectile"):
+        case FNV1A::Hash32Const("pipebombtrail_blue"):
+        case FNV1A::Hash32Const("pipebombtrail_red"):
+        case FNV1A::Hash32Const("stickybombtrail_blue"):
+        case FNV1A::Hash32Const("stickybombtrail_red"):
+        case FNV1A::Hash32Const("healshot_trail_blue"):
+        case FNV1A::Hash32Const("healshot_trail_red"):
+        case FNV1A::Hash32Const("flaming_arrow"):
+        case FNV1A::Hash32Const("spell_fireball_small_trail_blue"):
+        case FNV1A::Hash32Const("spell_fireball_small_trail_red"):
+        {
+            auto pLocal = H::Entities.GetLocal();
+            if (!pLocal)
+                return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, iAttachmentPoint, vecOriginOffset);
 
             bool bValid = false;
             for (auto pEntity : H::Entities.GetGroup(EntityEnum::WorldProjectile))

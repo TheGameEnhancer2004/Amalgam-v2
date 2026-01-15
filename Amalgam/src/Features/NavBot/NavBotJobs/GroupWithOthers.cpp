@@ -4,9 +4,9 @@
 
 bool CNavBotGroup::GetFormationOffset(CTFPlayer* pLocal, int iPositionIndex, Vector& vOut)
 {
-    if (iPositionIndex <= 0)
+	if (iPositionIndex <= 0)
 		return false; // Leader has no offset
-	
+
 	// Calculate the movement direction of the leader
 	Vector vLeaderVelocity(0, 0, 0);
 
@@ -17,7 +17,7 @@ bool CNavBotGroup::GetFormationOffset(CTFPlayer* pLocal, int iPositionIndex, Vec
 		// No leader found, use our own direction
 		vLeaderVelocity = pLocal->m_vecVelocity();
 	}
-	
+
 	// Normalize leader velocity for direction
 	Vector vDirection = vLeaderVelocity;
 	if (vDirection.Length() < 10.0f) // If leader is barely moving, use view direction
@@ -26,25 +26,27 @@ bool CNavBotGroup::GetFormationOffset(CTFPlayer* pLocal, int iPositionIndex, Vec
 		I::EngineClient->GetViewAngles(viewAngles);
 		Math::AngleVectors(viewAngles, &vDirection);
 	}
-	
+
 	vDirection.z = 0; // Ignore vertical component
 	float length = vDirection.Length();
-	if (length > 0.001f) {
+	if (length > 0.001f)
+	{
 		vDirection.x /= length;
 		vDirection.y /= length;
 		vDirection.z /= length;
 	}
-	
+
 	// Calculate cross product for perpendicular direction (for side-by-side formations)
 	Vector vRight = vDirection.Cross(Vector(0, 0, 1));
 	// Normalize right vector
 	length = vRight.Length();
-	if (length > 0.001f) {
+	if (length > 0.001f)
+	{
 		vRight.x /= length;
 		vRight.y /= length;
 		vRight.z /= length;
 	}
-	
+
 	// Different formation styles:
 	// 1. Line formation (bots following one after another)
 	vOut = (vDirection * -m_flFormationDistance * iPositionIndex);
@@ -93,10 +95,10 @@ void CNavBotGroup::UpdateLocalBotPositions(CTFPlayer* pLocal)
 
 	// Sort by friendsID to ensure consistent ordering across all bots
 	std::sort(m_vLocalBotPositions.begin(), m_vLocalBotPositions.end(),
-			  [](const std::pair<uint32_t, Vector>& a, const std::pair<uint32_t, Vector>& b)
-			  {
-				  return a.first < b.first;
-			  });
+		[](const std::pair<uint32_t, Vector>& a, const std::pair<uint32_t, Vector>& b)
+		{
+			return a.first < b.first;
+		});
 
 	// Determine our position in the formatin
 	m_iPositionInFormation = -1;

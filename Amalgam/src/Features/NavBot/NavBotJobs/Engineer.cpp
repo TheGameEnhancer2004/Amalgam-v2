@@ -73,7 +73,7 @@ bool CNavBotEngineer::NavToSentrySpot(Vector vLocalOrigin)
 		else
 			tRandomSpot = m_vBuildingSpots[iAttempts - iRandomOffset];
 
-	// Try to nav there
+		// Try to nav there
 		bool bFailed = false;
 		for (auto& vFailed : m_vFailedSpots)
 		{
@@ -114,7 +114,7 @@ bool CNavBotEngineer::BuildBuilding(CUserCmd* pCmd, CTFPlayer* pLocal, ClosestEn
 	int iRequiredMetal = (bDispenser || G::SavedDefIndexes[SLOT_MELEE] == Engi_t_TheGunslinger) ? 100 : 130;
 	if (pLocal->m_iMetalCount() < iRequiredMetal)
 		return F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo | GetSupplyEnum::Forced);
-	
+
 	// Try to build! we are close enough
 	if (m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= (bDispenser ? 500.f : 200.f))
 	{
@@ -241,52 +241,52 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 				continue;
 
 			auto AddSpot = [&](const Vector& vPos)
-			{
-				for (auto& vFailed : m_vFailedSpots)
 				{
-					if (vFailed.DistTo(vPos) < 1.f)
-						return;
-				}
-
-				// Check if we can actually build here, sentry size is roughly 40x40x66.
-				CGameTrace trace;
-				CTraceFilterNavigation filter;
-				Vector vMins(-30.f, -30.f, 0.f);
-				Vector vMaxs(30.f, 30.f, 66.f);
-				SDK::TraceHull(vPos + Vector(0, 0, 5), vPos + Vector(0, 0, 5), vMins, vMaxs, MASK_PLAYERSOLID, &filter, &trace);
-				if (trace.DidHit())
-					return;
-
-				SDK::Trace(vPos + Vector(0, 0, 10), vPos - Vector(0, 0, 10), MASK_PLAYERSOLID, &filter, &trace);
-				if (!trace.DidHit())
-					return;
-
-				float flDistToEnemy = vPos.DistTo(vEnemyOrigin);
-				float flScore = flDistToEnemy;
-
-				// too close to enemy
-				float flMinDist = bHasGunslinger ? 400.f : 800.f;
-				if (flDistToEnemy < flMinDist)
-					flScore += (flMinDist - flDistToEnemy) * 10.f;
-
-				// too far
-				if (flDistToEnemy > 2500.f)
-					flScore += (flDistToEnemy - 2500.f) * 2.f;
-
-				for (auto pEnemy : vEnemies)
-				{
-					if (pEnemy->GetAbsOrigin().DistTo(vPos) < 600.f)
+					for (auto& vFailed : m_vFailedSpots)
 					{
-						flScore += 2000.f;
-						break;
+						if (vFailed.DistTo(vPos) < 1.f)
+							return;
 					}
-				}
 
-				if (tArea.m_iTFAttributeFlags & TF_NAV_SENTRY_SPOT)
-					flScore -= 200.f;
+					// Check if we can actually build here, sentry size is roughly 40x40x66.
+					CGameTrace trace;
+					CTraceFilterNavigation filter;
+					Vector vMins(-30.f, -30.f, 0.f);
+					Vector vMaxs(30.f, 30.f, 66.f);
+					SDK::TraceHull(vPos + Vector(0, 0, 5), vPos + Vector(0, 0, 5), vMins, vMaxs, MASK_PLAYERSOLID, &filter, &trace);
+					if (trace.DidHit())
+						return;
 
-				m_vBuildingSpots.emplace_back(flScore, vPos);
-			};
+					SDK::Trace(vPos + Vector(0, 0, 10), vPos - Vector(0, 0, 10), MASK_PLAYERSOLID, &filter, &trace);
+					if (!trace.DidHit())
+						return;
+
+					float flDistToEnemy = vPos.DistTo(vEnemyOrigin);
+					float flScore = flDistToEnemy;
+
+					// too close to enemy
+					float flMinDist = bHasGunslinger ? 400.f : 800.f;
+					if (flDistToEnemy < flMinDist)
+						flScore += (flMinDist - flDistToEnemy) * 10.f;
+
+					// too far
+					if (flDistToEnemy > 2500.f)
+						flScore += (flDistToEnemy - 2500.f) * 2.f;
+
+					for (auto pEnemy : vEnemies)
+					{
+						if (pEnemy->GetAbsOrigin().DistTo(vPos) < 600.f)
+						{
+							flScore += 2000.f;
+							break;
+						}
+					}
+
+					if (tArea.m_iTFAttributeFlags & TF_NAV_SENTRY_SPOT)
+						flScore -= 200.f;
+
+					m_vBuildingSpots.emplace_back(flScore, vPos);
+				};
 
 			if (tArea.m_iTFAttributeFlags & TF_NAV_SENTRY_SPOT)
 				AddSpot(tArea.m_vCenter);
@@ -301,10 +301,10 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 		}
 
 		std::sort(m_vBuildingSpots.begin(), m_vBuildingSpots.end(),
-				  [](const BuildingSpot_t& a, const BuildingSpot_t& b) -> bool
-				  {
-					  return a.m_flDistanceToTarget < b.m_flDistanceToTarget;
-				  });
+			[](const BuildingSpot_t& a, const BuildingSpot_t& b) -> bool
+			{
+				return a.m_flDistanceToTarget < b.m_flDistanceToTarget;
+			});
 	}
 }
 
@@ -321,7 +321,7 @@ void CNavBotEngineer::Render()
 	{
 		bool bIsCurrent = (tSpot.m_vPos == m_tCurrentBuildingSpot.m_vPos);
 		Color_t color = bIsCurrent ? Color_t(0, 255, 0, 255) : Color_t(255, 255, 255, 100);
-		
+
 		H::Draw.RenderWireframeBox(tSpot.m_vPos, Vector(-30, -30, 0), Vector(30, 30, 66), Vector(0, 0, 0), color, false);
 		if (bIsCurrent)
 			H::Draw.RenderBox(tSpot.m_vPos, Vector(-30, -30, 0), Vector(30, 30, 66), Vector(0, 0, 0), Color_t(0, 255, 0, 50), false);

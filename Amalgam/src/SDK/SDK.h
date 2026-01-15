@@ -76,8 +76,8 @@ template <typename T> int sign(T val)
 namespace SDK
 {
 	void Output(const char* sFunction, const char* sLog = nullptr, Color_t tColor = { 255, 255, 255, 255 },
-				int iTo = OUTPUT_CONSOLE, int iMessageBox = -1,
-				const char* sLeft = "[", const char* sRight = "]");
+		int iTo = OUTPUT_CONSOLE, int iMessageBox = -1,
+		const char* sLeft = "[", const char* sRight = "]");
 
 	void SetClipboard(const std::string& sString);
 	std::string GetClipboard();

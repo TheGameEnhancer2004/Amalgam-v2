@@ -180,7 +180,7 @@ void CCritHack::UpdateWeaponInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 			if (!bRapidFire)
 				iTestShots++;
-			else 
+			else
 			{
 				flTickBase += std::ceilf(flFireRate / TICK_INTERVAL) * TICK_INTERVAL;
 				if (flTickBase >= flLastRapidFireCritCheckTime + 1.f || !i && flTestBucket == flBucketCap)
@@ -308,7 +308,7 @@ int CCritHack::GetCritRequest(CUserCmd* pCmd, CTFWeaponBase* pWeapon)
 		if (pEntity && pEntity->IsPlayer())
 			bPressed = true;
 	}
-	
+
 	bool bSkip = Vars::CritHack::AvoidRandomCrits.Value;
 	bool bDesync = CommandToSeed(pCmd->command_number) == pWeapon->m_iCurrentSeed();
 
@@ -677,7 +677,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 					int damageNeeded = static_cast<int>(std::ceil(m_flCost - currentBucket));
 					rightText = std::format("DMG: {}", std::max(0, damageNeeded));
 					rightColor = m_iAvailableCrits > 0 ? Color_t{ 40, 200, 40, 255 } : Color_t{ 200, 40, 40, 255 };
-					
+
 					static auto bucketCap = H::ConVars.FindVar("tf_weapon_criticals_bucket_cap");
 					targetProgress = currentBucket / bucketCap->GetFloat();
 				}
@@ -703,7 +703,7 @@ void CCritHack::Draw(CTFPlayer* pLocal)
 	if (barWidth > 0)
 	{
 		Color_t accentColor = Vars::Menu::Theme::Accent.Value;
-		
+
 		for (int i = 0; i < barWidth; i++)
 		{
 			float t = static_cast<float>(i) / static_cast<float>(barWidth);

@@ -7,6 +7,7 @@
 #include "../Features/Misc/AutoQueue/AutoQueue.h"
 #include "../Features/Backtrack/Backtrack.h"
 #include "../Features/Misc/Misc.h"
+#include "../Features/Visuals/Visuals.h"
 #ifdef TEXTMODE
 #include "../Features/Misc/NamedPipe/NamedPipe.h"
 #endif 
@@ -40,10 +41,5 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 	F::NamedPipe.Store();
 #endif
 	F::Ticks.Move(accumulated_extra_samples, bFinalTick);
-
-	for (auto& Line : G::PathStorage)
-	{
-		if (Line.m_flTime < 0.f)
-			Line.m_flTime = std::min(Line.m_flTime + 1.f, 0.f);
-	}
+	F::Visuals.Tick();
 }

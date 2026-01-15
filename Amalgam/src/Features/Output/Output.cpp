@@ -4,7 +4,7 @@
 #include "../Players/PlayerUtils.h"
 
 static std::string s_sRed =		Color_t(255, 100, 100).ToHex();
-static std::string s_sGreen =		Color_t(100, 255, 100).ToHex();
+static std::string s_sGreen =	Color_t(100, 255, 100).ToHex();
 static std::string s_sYellow =	Color_t(200, 169, 0).ToHex();
 
 static inline void OutputInfo(int iFlags, const char* sName, const char* sOutput, const char* sChat)

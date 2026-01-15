@@ -34,18 +34,21 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	ExecBuyBot(pLocal);
 
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
-		|| pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART) || pLocal->InCond(TF_COND_SHIELD_CHARGE))
+		|| pLocal->IsTaunting() || pLocal->InCond(TF_COND_SHIELD_CHARGE))
 		return;
 
 	AutoJump(pLocal, pCmd);
 	EdgeJump(pLocal, pCmd);
+	if (pLocal->InCond(TF_COND_HALLOWEEN_KART))
+		return;
+
 	AutoJumpbug(pLocal, pCmd);
 	AutoStrafe(pLocal, pCmd);
 	AutoPeek(pLocal, pCmd);
 	BreakJump(pLocal, pCmd);
 }
 
-void CMisc::RunPost(CTFPlayer* pLocal, CUserCmd* pCmd, bool pSendPacket)
+void CMisc::RunPost(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
 		|| pLocal->InCond(TF_COND_SHIELD_CHARGE))
@@ -149,7 +152,6 @@ void CMisc::AutoStrafe(CTFPlayer* pLocal, CUserCmd* pCmd)
 			break;
 
 		float flForward = pCmd->forwardmove, flSide = pCmd->sidemove;
-
 		Vec3 vForward, vRight; Math::AngleVectors(pCmd->viewangles, &vForward, &vRight, nullptr);
 		vForward.Normalize2D(), vRight.Normalize2D();
 
@@ -273,10 +275,10 @@ void CMisc::AntiAFK(CTFPlayer* pLocal, CUserCmd* pCmd)
 	// Just in case there's a connection problem
 	auto pNetChan = I::EngineClient->GetNetChannelInfo();
 	bool bTimingOut = pNetChan && pNetChan->IsTimingOut();
-	if (bTimingOut) 
+	if (bTimingOut)
 		bForce = true;
 
-	if (pCmd->buttons & (IN_MOVELEFT | IN_MOVERIGHT | IN_FORWARD | IN_BACK) || !pLocal->IsAlive())
+	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT) || !pLocal->IsAlive())
 	{
 		tTimer.Update();
 		bForce = false;
@@ -408,39 +410,34 @@ void CMisc::TauntKartControl(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 	else if (Vars::Misc::Automation::KartControl.Value && pLocal->InCond(TF_COND_HALLOWEEN_KART))
 	{
-		const bool bForward = pCmd->buttons & IN_FORWARD;
-		const bool bBack = pCmd->buttons & IN_BACK;
-		const bool bLeft = pCmd->buttons & IN_MOVELEFT;
-		const bool bRight = pCmd->buttons & IN_MOVERIGHT;
+		bool bChoke = I::ClientState->chokedcommands < 3 && F::Ticks.CanChoke(true);
+		float flForward = fabsf(pCmd->forwardmove), flSide = pCmd->sidemove * (!bChoke ? 0.f : pCmd->forwardmove < 0.f ? -1 : 1);
 
-		const bool flipVar = I::GlobalVars->tickcount % 2;
-		if (bForward && (!bLeft && !bRight || !flipVar))
-		{
-			pCmd->forwardmove = 450.f;
-			pCmd->viewangles.x = 0.f;
-		}
-		else if (bBack && (!bLeft && !bRight || !flipVar))
-		{
-			pCmd->forwardmove = 450.f;
-			pCmd->viewangles.x = 91.f;
-		}
-		else if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT))
-		{
-			if (flipVar || !F::Ticks.CanChoke())
-			{	// you could just do this if you didn't care about viewangles
-				Vec3 vMove = { pCmd->forwardmove, pCmd->sidemove, 0.f };
-				Vec3 vAngMoveReverse = Math::VectorAngles(vMove * -1.f);
-				pCmd->forwardmove = -vMove.Length();
-				pCmd->sidemove = 0.f;
-				pCmd->viewangles.y = fmodf(pCmd->viewangles.y - vAngMoveReverse.y, 360.f);
-				pCmd->viewangles.z = 270.f;
-				G::PSilentAngles = true;
-			}
-		}
-		else
-			pCmd->viewangles.x = 90.f;
+		Vec3 vForward, vRight; Math::AngleVectors(pCmd->viewangles, &vForward, &vRight, nullptr);
+		vForward.Normalize2D(), vRight.Normalize2D();
 
+		pCmd->viewangles.x = 90.f;
 		G::SilentAngles = true;
+
+		if (!(pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT)))
+			return;
+
+		if (pCmd->forwardmove < 0.f)
+			pCmd->viewangles.x = 91.f;
+		else if (pCmd->forwardmove > 0.f || flSide)
+			pCmd->viewangles.x = 10.f;
+		pCmd->forwardmove = 0.f;
+
+		if (!flForward && !flSide)
+			return;
+
+		pCmd->forwardmove = 450.f;
+		if (flSide)
+		{
+			Vec3 vWishDir = Math::VectorAngles({ vForward.x * flForward + vRight.x * flSide, vForward.y * flForward + vRight.y * flSide, 0.f });
+			pCmd->viewangles.y = vWishDir.y;
+			G::PSilentAngles = true;
+		}
 	}
 }
 
@@ -472,10 +469,14 @@ void CMisc::FastMovement(CTFPlayer* pLocal, CUserCmd* pCmd)
 	{
 		if ((pLocal->IsDucking() ? !Vars::Misc::Movement::DuckSpeed.Value : !Vars::Misc::Movement::FastAccelerate.Value)
 			|| Vars::Misc::Game::AntiCheatCompatibility.Value
-			|| G::Attacking == 1 || F::Ticks.m_bDoubletap || F::Ticks.m_bSpeedhack || F::Ticks.m_bRecharge || G::AntiAim || I::GlobalVars->tickcount % 2)
+			|| G::Attacking == 1 || F::Ticks.m_bDoubletap || F::Ticks.m_bSpeedhack || F::Ticks.m_bRecharge || G::AntiAim)
 			return;
 
 		if (!(pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT)))
+			return;
+
+		bool bChoke = !I::ClientState->chokedcommands && F::Ticks.CanChoke(true);
+		if (!bChoke)
 			return;
 
 		Vec3 vMove = { pCmd->forwardmove, pCmd->sidemove, 0.f };
@@ -652,7 +653,7 @@ int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
 		vAngleTo.x = pCmd->viewangles.x;
 		SDK::FixMovement(pCmd, vAngleTo);
 		pCmd->viewangles = vAngleTo;
-		
+
 		return 1;
 	}
 	case Vars::Misc::Automation::AntiBackstabEnum::Pitch:
@@ -757,7 +758,7 @@ void CMisc::AchievementSpam(CTFPlayer* pLocal)
 		return;
 	}
 
-	const auto pAchievementMgr = reinterpret_cast<IAchievementMgr* (*)()>(U::Memory.GetVirtual(I::EngineClient, 114))();
+	const auto pAchievementMgr = reinterpret_cast<IAchievementMgr * (*)()>(U::Memory.GetVirtual(I::EngineClient, 114))();
 	if (!pAchievementMgr)
 	{
 		m_eAchievementSpamState = AchievementSpamState::IDLE;
@@ -838,13 +839,13 @@ void CMisc::VoiceCommandSpam(CTFPlayer* pLocal)
 		switch (Vars::Misc::Automation::VoiceCommandSpam.Value)
 		{
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Random:
-			{
-				int iMenu = SDK::RandomInt(0, 2);
-				int iCommand = SDK::RandomInt(0, 8);
-				std::string sCmd = "voicemenu " + std::to_string(iMenu) + " " + std::to_string(iCommand);
-				I::EngineClient->ClientCmd_Unrestricted(sCmd.c_str());
-			}
-			break;
+		{
+			int iMenu = SDK::RandomInt(0, 2);
+			int iCommand = SDK::RandomInt(0, 8);
+			std::string sCmd = "voicemenu " + std::to_string(iMenu) + " " + std::to_string(iCommand);
+			I::EngineClient->ClientCmd_Unrestricted(sCmd.c_str());
+		}
+		break;
 		case Vars::Misc::Automation::VoiceCommandSpamEnum::Medic:
 			I::EngineClient->ClientCmd_Unrestricted("voicemenu 0 0");
 			break;
@@ -946,7 +947,7 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 
 	if (!m_tAutoVotekickTimer.Run(1.0f))
 		return;
-	
+
 	auto pResource = H::Entities.GetResource();
 	if (!pResource)
 		return;
@@ -964,7 +965,7 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 		if (Vars::Misc::Automation::AutoVotekick.Value == Vars::Misc::Automation::AutoVotekickEnum::Prio && !F::PlayerUtils.IsPrioritized(i))
 			continue;
 
-		if (H::Entities.IsFriend(i) || 
+		if (H::Entities.IsFriend(i) ||
 			H::Entities.InParty(i) ||
 			F::PlayerUtils.IsIgnored(i) ||
 			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
@@ -986,9 +987,9 @@ void CMisc::RandomVotekick(CTFPlayer* pLocal)
 void CMisc::ChatSpam(CTFPlayer* pLocal)
 {
 	auto ResetChatTimer = [&]()
-	{
-		m_tChatSpamTimer.Update();
-	};
+		{
+			m_tChatSpamTimer.Update();
+		};
 
 	if (!Vars::Misc::Automation::ChatSpam::Enable.Value)
 	{
@@ -1003,31 +1004,31 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 	}
 
 	auto EnsureChatLinesLoaded = [&]() -> bool
-	{
-		if (!m_vChatSpamLines.empty())
-			return true;
-
-		static const char* szDefaultContent =
-			"This is a default message from cat_chatspam.txt\n"
-			"Edit this file Amalgam/cat_chatspam.txt\n"
-			"Each line will be sent as a separate message\n"
-			"[Amalgam] Chat Spam is working!\n"
-			"Put your chat spam lines in this file\n";
-
-		if (LoadLines("cat_chatspam.txt", m_vChatSpamLines, szDefaultContent))
 		{
+			if (!m_vChatSpamLines.empty())
+				return true;
+
+			static const char* szDefaultContent =
+				"This is a default message from cat_chatspam.txt\n"
+				"Edit this file Amalgam/cat_chatspam.txt\n"
+				"Each line will be sent as a separate message\n"
+				"[Amalgam] Chat Spam is working!\n"
+				"Put your chat spam lines in this file\n";
+
+			if (LoadLines("cat_chatspam.txt", m_vChatSpamLines, szDefaultContent))
+			{
+				m_iCurrentChatSpamIndex = 0;
+				return true;
+			}
+
+			m_vChatSpamLines = {
+				"Put your chat spam lines in Amalgam/cat_chatspam.txt",
+				"ChatSpam is running but couldn't find Amalgam/cat_chatspam.txt",
+				"[Amalgam] Chat Spam is working!"
+			};
 			m_iCurrentChatSpamIndex = 0;
 			return true;
-		}
-
-		m_vChatSpamLines = {
-			"Put your chat spam lines in Amalgam/cat_chatspam.txt",
-			"ChatSpam is running but couldn't find Amalgam/cat_chatspam.txt",
-			"[Amalgam] Chat Spam is working!"
 		};
-		m_iCurrentChatSpamIndex = 0;
-		return true;
-	};
 
 	if (!EnsureChatLinesLoaded() || m_vChatSpamLines.empty())
 		return;
@@ -1040,29 +1041,29 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 		return;
 
 	auto FetchNextChatLine = [&]() -> std::string
-	{
-		const size_t uLineCount = m_vChatSpamLines.size();
-		if (!uLineCount)
-			return {};
-
-		if (Vars::Misc::Automation::ChatSpam::Randomize.Value)
 		{
-			int iMax = static_cast<int>(uLineCount) - 1;
-			if (iMax < 0)
-				iMax = 0;
-			const int iRandomIndex = SDK::RandomInt(0, iMax);
-			if (iRandomIndex >= 0 && iRandomIndex < static_cast<int>(uLineCount))
-				return m_vChatSpamLines[iRandomIndex];
-			return "[ChatSpam]";
-		}
+			const size_t uLineCount = m_vChatSpamLines.size();
+			if (!uLineCount)
+				return {};
 
-		if (m_iCurrentChatSpamIndex < 0 || m_iCurrentChatSpamIndex >= static_cast<int>(uLineCount))
-			m_iCurrentChatSpamIndex = 0;
+			if (Vars::Misc::Automation::ChatSpam::Randomize.Value)
+			{
+				int iMax = static_cast<int>(uLineCount) - 1;
+				if (iMax < 0)
+					iMax = 0;
+				const int iRandomIndex = SDK::RandomInt(0, iMax);
+				if (iRandomIndex >= 0 && iRandomIndex < static_cast<int>(uLineCount))
+					return m_vChatSpamLines[iRandomIndex];
+				return "[ChatSpam]";
+			}
 
-		const std::string& sLine = m_vChatSpamLines[m_iCurrentChatSpamIndex];
-		m_iCurrentChatSpamIndex = (m_iCurrentChatSpamIndex + 1) % static_cast<int>(uLineCount);
-		return sLine;
-	};
+			if (m_iCurrentChatSpamIndex < 0 || m_iCurrentChatSpamIndex >= static_cast<int>(uLineCount))
+				m_iCurrentChatSpamIndex = 0;
+
+			const std::string& sLine = m_vChatSpamLines[m_iCurrentChatSpamIndex];
+			m_iCurrentChatSpamIndex = (m_iCurrentChatSpamIndex + 1) % static_cast<int>(uLineCount);
+			return sLine;
+		};
 
 	std::string sChatLine = FetchNextChatLine();
 	if (sChatLine.empty())
@@ -1096,8 +1097,8 @@ void CMisc::AutoMvmReadyUp()
 	if (!pGameRules)
 		return;
 
-	if (!pGameRules->m_bPlayingMannVsMachine() || 
-		!pGameRules->m_bInWaitingForPlayers() || 
+	if (!pGameRules->m_bPlayingMannVsMachine() ||
+		!pGameRules->m_bInWaitingForPlayers() ||
 		pGameRules->m_iRoundState() != GR_STATE_BETWEEN_RNDS)
 		return;
 
@@ -1135,95 +1136,95 @@ void CMisc::ExecBuyBot(CTFPlayer* pLocal)
 
 	switch (m_iBuybotStep)
 	{
-		case 1:
-			I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", 1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", 1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MvM_UpgradesDone");
-				kv->SetInt("num_upgrades", 2);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			break;
-		case 2:
-			I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", -1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", 1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			I::EngineClient->ServerCmdKeyValues(new KeyValues("MVM_Respec"));
-			{
-				KeyValues* kv = new KeyValues("MvM_UpgradesDone");
-				kv->SetInt("num_upgrades", -1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			break;
-		case 3:
-			I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", 1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", 1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", -1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MVM_Upgrade");
-				KeyValues* sub = kv->FindKey("Upgrade", true);
-				sub->SetInt("itemslot", 1);
-				sub->SetInt("Upgrade", 19);
-				sub->SetInt("count", -1);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			{
-				KeyValues* kv = new KeyValues("MvM_UpgradesDone");
-				kv->SetInt("num_upgrades", 0);
-				I::EngineClient->ServerCmdKeyValues(kv);
-			}
-			break;
+	case 1:
+		I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", 1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", 1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MvM_UpgradesDone");
+			kv->SetInt("num_upgrades", 2);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		break;
+	case 2:
+		I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", -1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", 1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		I::EngineClient->ServerCmdKeyValues(new KeyValues("MVM_Respec"));
+		{
+			KeyValues* kv = new KeyValues("MvM_UpgradesDone");
+			kv->SetInt("num_upgrades", -1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		break;
+	case 3:
+		I::EngineClient->ServerCmdKeyValues(new KeyValues("MvM_UpgradesBegin"));
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", 1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", 1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", -1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MVM_Upgrade");
+			KeyValues* sub = kv->FindKey("Upgrade", true);
+			sub->SetInt("itemslot", 1);
+			sub->SetInt("Upgrade", 19);
+			sub->SetInt("count", -1);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		{
+			KeyValues* kv = new KeyValues("MvM_UpgradesDone");
+			kv->SetInt("num_upgrades", 0);
+			I::EngineClient->ServerCmdKeyValues(kv);
+		}
+		break;
 	}
 	m_iBuybotStep = m_iBuybotStep % 3 + 1;
 	m_flBuybotClock = flCurTime + 0.2f;
@@ -1284,22 +1285,22 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 	tResult.m_bResourceAvailable = true;
 
 	auto SanitizeName = [](const char* sRaw) -> std::string
-	{
-		if (!sRaw)
-			return {};
-
-		std::string sClean;
-		sClean.reserve(std::strlen(sRaw));
-		for (unsigned char c : std::string_view{sRaw})
 		{
-			if (c < 32 || c > 126)
-				continue;
-			if (c == ',')
+			if (!sRaw)
 				return {};
-			sClean.push_back(static_cast<char>(c));
-		}
-		return sClean;
-	};
+
+			std::string sClean;
+			sClean.reserve(std::strlen(sRaw));
+			for (unsigned char c : std::string_view{ sRaw })
+			{
+				if (c < 32 || c > 126)
+					continue;
+				if (c == ',')
+					return {};
+				sClean.push_back(static_cast<char>(c));
+			}
+			return sClean;
+		};
 
 	struct ProfileEntry_t
 	{
@@ -1480,37 +1481,37 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 	}
 
 	auto CaptureAvatar = [](uint32_t uAccountID, std::vector<uint8_t>& vBgra, uint32_t& uWidth, uint32_t& uHeight) -> bool
-	{
-		if (!I::SteamFriends || !I::SteamUtils)
-			return false;
-
-		const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
-		I::SteamFriends->RequestUserInformation(steamID, true);
-		const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
-		if (nAvatar <= 0)
-			return false;
-
-		if (!I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) || !uWidth || !uHeight)
-			return false;
-
-		std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
-		if (!I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
-			return false;
-
-		vBgra.resize(vRgba.size());
-		for (uint32_t y = 0; y < uHeight; y++)
 		{
-			for (uint32_t x = 0; x < uWidth; x++)
+			if (!I::SteamFriends || !I::SteamUtils)
+				return false;
+
+			const CSteamID steamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual);
+			I::SteamFriends->RequestUserInformation(steamID, true);
+			const int nAvatar = I::SteamFriends->GetMediumFriendAvatar(steamID);
+			if (nAvatar <= 0)
+				return false;
+
+			if (!I::SteamUtils->GetImageSize(nAvatar, &uWidth, &uHeight) || !uWidth || !uHeight)
+				return false;
+
+			std::vector<uint8_t> vRgba(static_cast<size_t>(uWidth) * static_cast<size_t>(uHeight) * 4);
+			if (!I::SteamUtils->GetImageRGBA(nAvatar, vRgba.data(), static_cast<int>(vRgba.size())))
+				return false;
+
+			vBgra.resize(vRgba.size());
+			for (uint32_t y = 0; y < uHeight; y++)
 			{
-				const size_t idx = (static_cast<size_t>(y) * uWidth + x) * 4;
-				vBgra[idx + 0] = vRgba[idx + 2];
-				vBgra[idx + 1] = vRgba[idx + 1];
-				vBgra[idx + 2] = vRgba[idx + 0];
-				vBgra[idx + 3] = vRgba[idx + 3];
+				for (uint32_t x = 0; x < uWidth; x++)
+				{
+					const size_t idx = (static_cast<size_t>(y) * uWidth + x) * 4;
+					vBgra[idx + 0] = vRgba[idx + 2];
+					vBgra[idx + 1] = vRgba[idx + 1];
+					vBgra[idx + 2] = vRgba[idx + 0];
+					vBgra[idx + 3] = vRgba[idx + 3];
+				}
 			}
-		}
-		return true;
-	};
+			return true;
+		};
 
 	if (I::SteamFriends && I::SteamUtils)
 	{
@@ -1564,14 +1565,16 @@ CMisc::ProfileDumpResult_t CMisc::DumpProfiles(bool bAnnounce)
 
 std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::string sInitiator)
 {
-	auto ReplaceAll = [&](std::string& str, const std::string& from, const std::string& to) {
-		if (from.empty()) return;
-		size_t start_pos = 0;
-		while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-			str.replace(start_pos, from.length(), to);
-			start_pos += to.length();
-		}
-	};
+	auto ReplaceAll = [&](std::string& str, const std::string& from, const std::string& to)
+		{
+			if (from.empty()) return;
+			size_t start_pos = 0;
+			while ((start_pos = str.find(from, start_pos)) != std::string::npos)
+			{
+				str.replace(start_pos, from.length(), to);
+				start_pos += to.length();
+			}
+		};
 
 	if (!sTarget.empty())
 	{
@@ -1617,31 +1620,32 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::strin
 		ReplaceAll(sMsg, "{highestscore}", sHighestScoreName);
 	}
 
-	auto GetRandomPlayer = [&](bool bFriend, bool bIgnored) -> std::string {
-		std::vector<std::string> vCandidates;
-		auto pResource = H::Entities.GetResource();
-		if (pResource)
+	auto GetRandomPlayer = [&](bool bFriend, bool bIgnored) -> std::string
 		{
-			for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+			std::vector<std::string> vCandidates;
+			auto pResource = H::Entities.GetResource();
+			if (pResource)
 			{
-				if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i)) continue;
-				
-				bool isFriend = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG));
-				bool isIgnored = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG));
+				for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
+				{
+					if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i)) continue;
 
-				if (bFriend && !isFriend) continue;
-				if (bIgnored && !isIgnored) continue;
+					bool isFriend = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG));
+					bool isIgnored = F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG));
 
-				vCandidates.push_back(pResource->GetName(i));
+					if (bFriend && !isFriend) continue;
+					if (bIgnored && !isIgnored) continue;
+
+					vCandidates.push_back(pResource->GetName(i));
+				}
 			}
-		}
-		if (vCandidates.empty()) return "unknown";
-		return vCandidates[SDK::RandomInt(0, static_cast<int>(vCandidates.size()) - 1)];
-	};
+			if (vCandidates.empty()) return "unknown";
+			return vCandidates[SDK::RandomInt(0, static_cast<int>(vCandidates.size()) - 1)];
+		};
 
 	if (sMsg.find("{random}") != std::string::npos)
 		ReplaceAll(sMsg, "{random}", GetRandomPlayer(false, false));
-	
+
 	if (sMsg.find("{friend}") != std::string::npos)
 		ReplaceAll(sMsg, "{friend}", GetRandomPlayer(true, false));
 
@@ -1825,15 +1829,16 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 			}
 		}
 
-		auto StripColors = [](std::string str) -> std::string {
-			std::string out = "";
-			for (size_t i = 0; i < str.length(); i++)
+		auto StripColors = [](std::string str) -> std::string
 			{
-				if (str[i] > 0 && str[i] < 32) continue;
-				out += str[i];
-			}
-			return out;
-		};
+				std::string out = "";
+				for (size_t i = 0; i < str.length(); i++)
+				{
+					if (str[i] > 0 && str[i] < 32) continue;
+					out += str[i];
+				}
+				return out;
+			};
 
 		std::string sCleanMsg = StripColors(sMsg);
 		std::transform(sCleanMsg.begin(), sCleanMsg.end(), sCleanMsg.begin(), ::tolower);
@@ -1899,8 +1904,6 @@ void CMisc::OnChatMessage(int iEntIndex, const std::string& sName, const std::st
 
 		std::ofstream outfile(sPath, std::ios::app);
 		if (outfile.good())
-		{
 			outfile << sLogLine << std::endl;
-		}
 	}
 }

@@ -237,6 +237,7 @@
     <ClCompile Include="src\Hooks\CEntityMapData_ExtractValue.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CEntityMapData.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
+    <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />

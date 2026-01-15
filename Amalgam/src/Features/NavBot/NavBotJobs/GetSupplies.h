@@ -2,10 +2,10 @@
 #include "../NavBotCore.h"
 
 Enum(GetSupply,
-	 Health = 1 << 0,
-	 Ammo = 1 << 1,
-	 Forced = 1 << 2,
-	 LowPrio = 1 << 3
+	Health = 1 << 0,
+	Ammo = 1 << 1,
+	Forced = 1 << 2,
+	LowPrio = 1 << 3
 );
 
 struct SupplyData_t
@@ -15,7 +15,7 @@ struct SupplyData_t
 	Vector m_vOrigin = {};
 
 	// The lazy way
-	SupplyData_t* m_pOriginalSelfPtr = nullptr; 
+	SupplyData_t* m_pOriginalSelfPtr = nullptr;
 };
 
 class CNavBotSupplies

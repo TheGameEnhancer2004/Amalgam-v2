@@ -147,92 +147,89 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 	// Prioritize reloading
 	int iReloadSlot = F::NavBotReload.m_iLastReloadSlot = F::NavBotReload.GetReloadWeaponSlot(pLocal, tClosestEnemy);
 
-		if (F::NavBotEngineer.IsEngieMode(pLocal))
+	if (F::NavBotEngineer.IsEngieMode(pLocal))
+	{
+		int iSwitch = 0;
+		switch (F::NavBotEngineer.m_eTaskStage)
 		{
-			int iSwitch = 0;
-			switch (F::NavBotEngineer.m_eTaskStage)
-			{
 			// We are currently building something
-			case EngineerTaskStageEnum::BuildSentry:
-			case EngineerTaskStageEnum::BuildDispenser:
-				if (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f)
-				{
-					if (pLocal->m_bCarryingObject())
-					{
-						auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
-						if (pWeapon && pWeapon->GetSlot() != 3) 
-							F::BotUtils.SetSlot(pLocal, SLOT_PRIMARY); 
-					}
-					return;
-				}
-				break;
-			// We are currently upgrading/repairing something
-			case EngineerTaskStageEnum::SmackSentry:
-				iSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
-				break;
-			case EngineerTaskStageEnum::SmackDispenser:
-				iSwitch = F::NavBotEngineer.m_flDistToDispenser <= 500.f;
-				break;
-			default:
-				break;
-			}
-
-			if (iSwitch)
+		case EngineerTaskStageEnum::BuildSentry:
+		case EngineerTaskStageEnum::BuildDispenser:
+			if (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f)
 			{
-				if (iSwitch == 1)
+				if (pLocal->m_bCarryingObject())
 				{
-					if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
-						F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
+					auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
+					if (pWeapon && pWeapon->GetSlot() != 3)
+						F::BotUtils.SetSlot(pLocal, SLOT_PRIMARY);
 				}
 				return;
 			}
+			break;
+			// We are currently upgrading/repairing something
+		case EngineerTaskStageEnum::SmackSentry:
+			iSwitch = F::NavBotEngineer.m_flDistToSentry <= 300.f;
+			break;
+		case EngineerTaskStageEnum::SmackDispenser:
+			iSwitch = F::NavBotEngineer.m_flDistToDispenser <= 500.f;
+			break;
+		default:
+			break;
 		}
+
+		if (iSwitch)
+		{
+			if (iSwitch == 1)
+			{
+				if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
+					F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
+			}
+			return;
+		}
+	}
 
 	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
 		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
-namespace
+static bool FindClosestHidingSpotRecursive(CNavArea* pArea, const Vector& vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex, std::vector<CNavArea*>& vVisited)
 {
-	bool FindClosestHidingSpotRecursive(CNavArea* pArea, const Vector& vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex, std::vector<CNavArea*>& vVisited)
+	if (!pArea || iRecursionCount <= 0)
+		return false;
+
+	Vector vAreaOrigin = pArea->m_vCenter;
+	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+
+	int iNextIndex = iRecursionIndex + 1;
+
+	if (bVischeck && !F::NavEngine.IsVectorVisibleNavigation(vAreaOrigin, vVischeckPoint))
 	{
-		if (!pArea || iRecursionCount <= 0)
-			return false;
-
-		Vector vAreaOrigin = pArea->m_vCenter;
-		vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-		int iNextIndex = iRecursionIndex + 1;
-
-		if (bVischeck && !F::NavEngine.IsVectorVisibleNavigation(vAreaOrigin, vVischeckPoint))
-		{
-			tOut = { pArea, iRecursionIndex };
-			return true;
-		}
-
-		if (iNextIndex >= iRecursionCount)
-			return false;
-
-		std::pair<CNavArea*, int> tBestSpot{};
-		for (auto& tConnection : pArea->m_vConnections)
-		{
-			CNavArea* pNextArea = tConnection.m_pArea;
-			if (!pNextArea)
-				continue;
-
-			if (std::find(vVisited.begin(), vVisited.end(), pNextArea) != vVisited.end())
-				continue;
-
-			vVisited.push_back(pNextArea);
-
-			std::pair<CNavArea*, int> tSpot;
-			if (FindClosestHidingSpotRecursive(pNextArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iNextIndex, vVisited) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
-				tBestSpot = tSpot;
-		}
-
-		tOut = tBestSpot;
-		return tBestSpot.first != nullptr;
+		tOut = { pArea, iRecursionIndex };
+		return true;
 	}
+
+	if (iNextIndex >= iRecursionCount)
+		return false;
+
+	std::pair<CNavArea*, int> tBestSpot{};
+	for (auto& tConnection : pArea->m_vConnections)
+	{
+		CNavArea* pNextArea = tConnection.m_pArea;
+		if (!pNextArea)
+			continue;
+
+		if (std::find(vVisited.begin(), vVisited.end(), pNextArea) != vVisited.end())
+			continue;
+
+		vVisited.push_back(pNextArea);
+
+		std::pair<CNavArea*, int> tSpot;
+		if (FindClosestHidingSpotRecursive(pNextArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iNextIndex, vVisited) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
+			tBestSpot = tSpot;
+	}
+
+	tOut = tBestSpot;
+	return tBestSpot.first != nullptr;
 }
 
 bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex)

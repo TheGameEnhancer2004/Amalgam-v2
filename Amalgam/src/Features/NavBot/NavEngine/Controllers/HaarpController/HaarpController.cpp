@@ -35,18 +35,18 @@ bool GetHaarpCapturePos(int iLocalTeam, Vector& vOut)
 		return false;
 
 	auto AdjustToNav = [](Vector vPos) -> Vector
-	{
-		if (!F::NavEngine.IsNavMeshLoaded())
-			return vPos;
+		{
+			if (!F::NavEngine.IsNavMeshLoaded())
+				return vPos;
 
-		CNavArea* pArea = F::NavEngine.FindClosestNavArea(vPos, false);
-		if (!pArea)
-			return vPos;
+			CNavArea* pArea = F::NavEngine.FindClosestNavArea(vPos, false);
+			if (!pArea)
+				return vPos;
 
-		Vector vCorrected = pArea->GetNearestPoint(vPos.Get2D());
-		vCorrected.z = pArea->GetZ(vCorrected.x, vCorrected.y);
-		return vCorrected;
-	};
+			Vector vCorrected = pArea->GetNearestPoint(vPos.Get2D());
+			vCorrected.z = pArea->GetZ(vCorrected.x, vCorrected.y);
+			return vCorrected;
+		};
 
 	for (auto& tTrigger : G::TriggerStorage)
 	{
@@ -55,9 +55,9 @@ bool GetHaarpCapturePos(int iLocalTeam, Vector& vOut)
 
 		if (tTrigger.m_iTeam != 0 && tTrigger.m_iTeam != TF_TEAM_RED)
 			continue;
-		
+
 		vOut = AdjustToNav(tTrigger.m_vCenter);
-		
+
 		if (Vars::Debug::Info.Value)
 			G::SphereStorage.emplace_back(vOut, 40.f, 10, 10, I::GlobalVars->curtime + 2.2f, Color_t(255, 0, 255, 10), Color_t(255, 0, 255, 100));
 
@@ -76,9 +76,9 @@ bool GetHaarpCapturePos(int iLocalTeam, Vector& vOut)
 		int iTeam = pEntity->m_iTeamNum();
 		if (iTeam != 0 && iTeam != iLocalTeam)
 			continue;
-		
+
 		vOut = AdjustToNav(pEntity->GetAbsOrigin());
-		
+
 		if (Vars::Debug::Info.Value)
 			G::SphereStorage.emplace_back(vOut, 40.f, 10, 10, I::GlobalVars->curtime + 2.2f, Color_t(255, 128, 0, 10), Color_t(255, 128, 0, 100));
 
@@ -147,9 +147,7 @@ bool CHaarpController::GetCapturePos(Vector& vOut)
 		m_bHasCachedCapturePos = true;
 	}
 	else if (m_bHasCachedCapturePos)
-	{
 		vCapturePos = m_vCachedCapturePos;
-	}
 
 	if (vCapturePos.IsZero())
 		return false;
@@ -172,9 +170,7 @@ bool CHaarpController::GetCapturePos(Vector& vOut)
 	}
 
 	if (!bIsCarryingFlag)
-	{
 		return false;
-	}
 
 	Vector vGoalPos = vCapturePos;
 	if (F::NavEngine.IsNavMeshLoaded())
@@ -191,9 +187,8 @@ bool CHaarpController::GetCapturePos(Vector& vOut)
 	m_sHaarpStatus = L"CP";
 	vOut = vGoalPos;
 	if (Vars::Debug::Info.Value)
-	{
 		G::SphereStorage.emplace_back(vGoalPos, 30.f, 20, 20, I::GlobalVars->curtime + 2.2f, Color_t(0, 255, 0, 10), Color_t(0, 255, 0, 100));
-	}
+
 	return true;
 }
 
@@ -215,9 +210,7 @@ bool CHaarpController::GetDefensePos(Vector& vOut)
 		m_bHasCachedBluCapturePos = true;
 	}
 	else if (m_bHasCachedBluCapturePos)
-	{
 		vCapturePos = m_vCachedBluCapturePos;
-	}
 
 	if (vCapturePos.IsZero())
 		return false;
@@ -228,9 +221,7 @@ bool CHaarpController::GetDefensePos(Vector& vOut)
 		return false;
 
 	if (Vars::Debug::Info.Value)
-	{
 		G::SphereStorage.emplace_back(vCapturePos, 30.f, 20, 20, I::GlobalVars->curtime + 2.2f, Color_t(0, 255, 255, 10), Color_t(0, 255, 255, 100));
-	}
 
 	int iStatus = F::FlagController.GetStatus(pFlag);
 	if (iStatus == TF_FLAGINFO_STOLEN)

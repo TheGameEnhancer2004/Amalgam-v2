@@ -26,9 +26,9 @@ bool CNavBotSupplies::GetSuppliesData(CTFPlayer* pLocal, bool& bClosestTaken, bo
 		// Sort by distance, closer is better
 		auto vLocalOrigin = pLocal->GetAbsOrigin();
 		std::sort(m_vTempMain.begin(), m_vTempMain.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
-				  {
-					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
-				  });
+			{
+				return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+			});
 
 
 		bClosestTaken = m_vTempMain.front().m_flRespawnTime;
@@ -73,9 +73,9 @@ bool CNavBotSupplies::GetDispensersData(CTFPlayer* pLocal)
 		// Sort by distance, closer is better
 		auto vLocalOrigin = pLocal->GetAbsOrigin();
 		std::sort(m_vTempDispensers.begin(), m_vTempDispensers.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
-				  {
-					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
-				  });
+			{
+				return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+			});
 		return true;
 	}
 	return false;
@@ -129,11 +129,11 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 		// If clip and reserve are both very low, definitely get ammo
 		if (iMaxClip > 0 && iClip <= iMaxClip * 0.25f && iReserveAmmo <= iMaxReserveAmmo * 0.25f)
 			return true;
-			
+
 		// Don't search for ammo if we have more than 60% of max reserve
 		if (iReserveAmmo >= iMaxReserveAmmo * 0.6f)
 			continue;
-			
+
 		// Search for ammo if we're below 33% of capacity
 		if (iReserveAmmo <= iMaxReserveAmmo / 3)
 			return true;
@@ -143,7 +143,7 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 }
 
 bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocalOrigin, SupplyData_t* pSupplyData, const int iPriority)
-{	
+{
 	float flDist = pSupplyData->m_vOrigin.DistTo(vLocalOrigin);
 	if (!pSupplyData->m_bDispenser)
 	{
@@ -233,9 +233,9 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 		m_vTempMain.reserve(m_vTempMain.size() + m_vTempDispensers.size());
 		m_vTempMain.insert(m_vTempMain.end(), m_vTempDispensers.begin(), m_vTempDispensers.end());
 		std::sort(m_vTempMain.begin(), m_vTempMain.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
-				  {
-					  return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
-				  });
+			{
+				return a.m_vOrigin.DistTo(vLocalOrigin) < b.m_vOrigin.DistTo(vLocalOrigin);
+			});
 	}
 
 	bool bWaitForRespawn = false;

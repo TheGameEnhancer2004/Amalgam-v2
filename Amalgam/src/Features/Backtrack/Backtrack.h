@@ -9,11 +9,11 @@ struct Sequence_t
 	float m_flTime;
 };
 
-struct HitboxInfo
+struct HitboxInfo_t
 {
 	int m_iBone = -1, m_nHitbox = -1;
 	Vec3 m_vCenter = {};
-	Vec3 m_iMin = {}, m_iMax = {};
+	Vec3 m_vMin = {}, m_vMax = {};
 };
 
 struct TickRecord
@@ -22,7 +22,7 @@ struct TickRecord
 	Vec3 m_vOrigin = {};
 	Vec3 m_vMins = {};
 	Vec3 m_vMaxs = {};
-	std::vector<HitboxInfo> m_vHitboxInfos = {};
+	std::vector<HitboxInfo_t> m_vHitboxInfos = {};
 	bool m_bOnShot = false;
 	bool m_bInvalid = false;
 	matrix3x4 m_aBones[MAXSTUDIOBONES];
@@ -71,6 +71,7 @@ public:
 	bool GetRecords(CBaseEntity* pEntity, std::vector<TickRecord*>& vReturn);
 	std::vector<TickRecord*> GetValidRecords(std::vector<TickRecord*>& vRecords, CTFPlayer* pLocal = nullptr, bool bDistance = false, float flTimeMod = 0.f);
 	matrix3x4* GetBones(CBaseEntity* pEntity);
+	std::vector<HitboxInfo_t>* GetHitboxInfos(CBaseEntity* pEntity);
 
 	float GetReal(int iFlow = MAX_FLOWS, bool bNoFake = true);
 	float GetWishFake();

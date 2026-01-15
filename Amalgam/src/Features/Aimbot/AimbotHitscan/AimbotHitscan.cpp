@@ -5,10 +5,9 @@
 #include "../../Ticks/Ticks.h"
 #include "../../Visuals/Visuals.h"
 #include "../../Simulation/MovementSimulation/MovementSimulation.h"
-#include "../../NavBot/NavBotJobs/StayNear.h"
-#include "../../Followbot/Followbot.h"
+#include "../../NavBot/BotUtils.h"
 
-std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
+static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	std::vector<Target_t> vTargets;
 	const auto iSort = Vars::Aimbot::General::TargetSelection.Value;
@@ -55,6 +54,7 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 			if (!F::AimbotGlobal.PlayerBoneInFOV(pEntity->As<CTFPlayer>(), vLocalPos, vLocalAngles, flFOVTo, vPos, vAngleTo, Vars::Aimbot::Hitscan::Hitboxes.Value))
 				continue;
 
+			float flDistTo = vLocalPos.DistTo(vPos);
 			int iPriority = F::AimbotGlobal.GetPriority(pEntity->entindex());
 			if (bTeam && bHeal)
 			{
@@ -69,8 +69,6 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 					iPriority = std::numeric_limits<int>::max();
 				}
 			}
-
-			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;
 			vTargets.emplace_back(pEntity, TargetEnum::Player, vPos, vAngleTo, flFOVTo, flDistTo, iPriority);
 		}
 
@@ -91,7 +89,7 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
 				continue;
 
-			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;
+			float flDistTo = vLocalPos.DistTo(vPos);
 			vTargets.emplace_back(pEntity, pEntity->IsSentrygun() ? TargetEnum::Sentry : pEntity->IsDispenser() ? TargetEnum::Dispenser : TargetEnum::Teleporter, vPos, vAngleTo, flFOVTo, flDistTo);
 		}
 	}
@@ -109,7 +107,7 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
 				continue;
 
-			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;
+			float flDistTo = vLocalPos.DistTo(vPos);
 			vTargets.emplace_back(pEntity, TargetEnum::Sticky, vPos, vAngleTo, flFOVTo, flDistTo);
 		}
 	}
@@ -127,7 +125,7 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
 				continue;
 
-			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;
+			float flDistTo = vLocalPos.DistTo(vPos);
 			vTargets.emplace_back(pEntity, TargetEnum::NPC, vPos, vAngleTo, flFOVTo, flDistTo);
 		}
 	}
@@ -145,39 +143,13 @@ std::vector<Target_t> CAimbotHitscan::GetTargets(CTFPlayer* pLocal, CTFWeaponBas
 			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
 				continue;
 
-			float flDistTo = iSort == Vars::Aimbot::General::TargetSelectionEnum::Distance ? vLocalPos.DistTo(vPos) : 0.f;
+			float flDistTo = vLocalPos.DistTo(vPos);
 			vTargets.emplace_back(pEntity, TargetEnum::Bomb, vPos, vAngleTo, flFOVTo, flDistTo);
 		}
 	}
 
 	return vTargets;
 }
-
-std::vector<Target_t> CAimbotHitscan::SortTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
-{
-	auto vTargets = GetTargets(pLocal, pWeapon);
-
-	F::AimbotGlobal.SortTargets(vTargets, Vars::Aimbot::General::TargetSelection.Value);
-
-	// Prioritize navbot/followbot target
-	int iPriorityIdx = pWeapon->GetWeaponID() == TF_WEAPON_MEDIGUN ?
-		(Vars::Aimbot::General::PrioritizeFollowbot.Value ? F::FollowBot.m_tLockedTarget.m_iEntIndex : -1) :
-		(Vars::Aimbot::General::PrioritizeNavbot.Value ? F::NavBotStayNear.m_iStayNearTargetIdx : -1);
-
-	if (iPriorityIdx)
-	{
-		std::sort((vTargets).begin(), (vTargets).end(), [&](const Target_t& a, const Target_t& b) -> bool
-				  {
-					  return a.m_pEntity->entindex() == iPriorityIdx && b.m_pEntity->entindex() != iPriorityIdx;
-				  });
-	}
-
-	vTargets.resize(std::min(size_t(Vars::Aimbot::General::MaxTargets.Value), vTargets.size()));
-	if (!iPriorityIdx)
-		F::AimbotGlobal.SortPriority(vTargets);
-	return vTargets;
-}
-
 
 
 int CAimbotHitscan::GetHitboxPriority(int nHitbox, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pTarget)
@@ -240,7 +212,7 @@ int CAimbotHitscan::GetHitboxPriority(int nHitbox, CTFPlayer* pLocal, CTFWeaponB
 			}
 		}
 	}
-	
+
 	bool bHeadOnly = bHeadshot && Vars::Aimbot::Hitscan::Hitboxes.Value & Vars::Aimbot::Hitscan::HitboxesEnum::HeadshotOnly;
 
 	int iHeadPriority = bHeadOnly || bHeadshot ? 0 : 1;
@@ -284,12 +256,12 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 		if (!pHDR) return false;
 		auto pSet = pHDR->pHitboxSet(tTarget.m_pEntity->As<CBaseAnimating>()->m_nHitboxSet());
 		if (!pSet) return false;
-		
+
 		matrix3x4 aBones[MAXSTUDIOBONES];
 		if (!tTarget.m_pEntity->SetupBones(aBones, MAXSTUDIOBONES, BONE_USED_BY_ANYTHING, tTarget.m_pEntity->m_flSimulationTime()))
 			return false;
-		
-		std::vector<HitboxInfo> vHitboxInfos{};
+
+		std::vector<HitboxInfo_t> vHitboxInfos{};
 		for (int nHitbox = 0; nHitbox < pSet->numhitboxes; nHitbox++)
 		{
 			auto pBox = pSet->pHitbox(nHitbox);
@@ -337,7 +309,7 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 	for (auto pRecord : vRecords)
 	{
 		bool bRunPeekCheck = bPeekCheck;
-		
+
 		if (pWeapon->GetWeaponID() == TF_WEAPON_LASER_POINTER)
 		{
 			tTarget.m_vPos = tTarget.m_pEntity->m_vecOrigin();
@@ -395,7 +367,7 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 			if (!aBones)
 				continue;
 
-			std::vector<std::tuple<HitboxInfo, int, int>> vHitboxes;
+			std::vector<std::tuple<HitboxInfo_t, int, int>> vHitboxes;
 			for (int i = 0; i < pRecord->m_vHitboxInfos.size(); i++)
 			{
 				auto HitboxInfo = pRecord->m_vHitboxInfos[i];
@@ -404,13 +376,13 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 				int iPriority = GetHitboxPriority(nHitbox, pLocal, pWeapon, tTarget.m_pEntity);
 				if (iPriority == -1)
 					continue;
-				
+
 				vHitboxes.emplace_back(HitboxInfo, nHitbox, iPriority);
 			}
 			std::sort(vHitboxes.begin(), vHitboxes.end(), [&](const auto& a, const auto& b) -> bool
-					  {
-						  return std::get<2>(a) < std::get<2>(b);
-					  });
+				{
+					return std::get<2>(a) < std::get<2>(b);
+				});
 
 			float flModelScale = tTarget.m_pEntity->As<CBaseAnimating>()->m_flModelScale();
 			float flBoneScale = Vars::Aimbot::Hitscan::BoneSizeMinimumScale.Value;
@@ -425,8 +397,8 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 
 			for (auto& [tHitboxInfo, nHitbox, _] : vHitboxes)
 			{
-				Vec3 vMins = tHitboxInfo.m_iMin;
-				Vec3 vMaxs = tHitboxInfo.m_iMax;
+				Vec3 vMins = tHitboxInfo.m_vMin;
+				Vec3 vMaxs = tHitboxInfo.m_vMax;
 				Vec3 vCheckMins = (vMins + flBoneSubtract / flModelScale) * flBoneScale;
 				Vec3 vCheckMaxs = (vMaxs - flBoneSubtract / flModelScale) * flBoneScale;
 				Vec3 vAngle; Math::MatrixAngles(aBones[tHitboxInfo.m_iBone], vAngle);
@@ -580,7 +552,7 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 			}
 		}
 
-		nextTick:
+nextTick:
 		continue;
 	}
 
@@ -651,7 +623,7 @@ bool CAimbotHitscan::ShouldFire(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 			}
 			else
 				break;
-			
+
 			return false;
 		}
 		}
@@ -707,13 +679,13 @@ void CAimbotHitscan::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 {
 	Vec3 vOldView = pCmd->viewangles;
 	auto MarkSteering = [&](const Vec3& vNew)
-	{
-		if (G::AimbotSteering)
-			return;
-		Vec3 vDelta = vNew.DeltaAngle(vOldView);
-		if (std::fabs(vDelta.x) > 0.01f || std::fabs(vDelta.y) > 0.01f || std::fabs(vDelta.z) > 0.01f)
-			G::AimbotSteering = true;
-	};
+		{
+			if (G::AimbotSteering)
+				return;
+			Vec3 vDelta = vNew.DeltaAngle(vOldView);
+			if (std::fabs(vDelta.x) > 0.01f || std::fabs(vDelta.y) > 0.01f || std::fabs(vDelta.z) > 0.01f)
+				G::AimbotSteering = true;
+		};
 
 	bool bUnsure = F::Ticks.IsTimingUnsure();
 	switch (iMethod)
@@ -820,7 +792,7 @@ void CAimbotHitscan::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pC
 		break;
 	}
 
-	auto vTargets = SortTargets(pLocal, pWeapon);
+	auto vTargets = F::AimbotGlobal.ManageTargets(GetTargets, pLocal, pWeapon);
 	if (vTargets.empty())
 		return;
 
@@ -917,7 +889,7 @@ void CAimbotHitscan::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pC
 			switch (nWeaponID)
 			{
 			case TF_WEAPON_MEDIGUN:
-			//case TF_WEAPON_LASER_POINTER: // we can psilent with the wrangler though probably with some hacks
+				//case TF_WEAPON_LASER_POINTER: // we can psilent with the wrangler though probably with some hacks
 				G::SilentAngles = false, G::PSilentAngles = true;
 			}
 		}

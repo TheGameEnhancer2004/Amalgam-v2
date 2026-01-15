@@ -5,8 +5,8 @@
 
 struct AchivementItem_t
 {
-    int m_iAchievementId;
-    std::string m_sName;
+	int m_iAchievementId;
+	std::string m_sName;
 };
 
 class CAutoItem
@@ -84,15 +84,15 @@ public:
 	CAutoItem()
 	{
 		std::time_t theTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::tm aTime;
-        localtime_s(&aTime, &theTime);
+		std::tm aTime;
+		localtime_s(&aTime, &theTime);
 
-        int day   = aTime.tm_mday;
-        int month = aTime.tm_mon;
+		int day = aTime.tm_mday;
+		int month = aTime.tm_mon;
 
-        // We only want to use the Christmas noisemaker around Christmas time, let's use the 1st of December till 12th of January
-        if ((month == 11 && day >= 1) || (!month && day <= 12))
-            m_iNoisemakerDefIndex = 673;
+		// We only want to use the Christmas noisemaker around Christmas time, let's use the 1st of December till 12th of January
+		if ((month == 11 && day >= 1) || (!month && day <= 12))
+			m_iNoisemakerDefIndex = 673;
 
 		m_iFallbackNoisemakerDefIndex = m_iNoisemakerDefIndex;
 	}

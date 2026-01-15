@@ -156,7 +156,9 @@ public:
 	int GetNameType(uint32_t uAccountID);
 	const char* GetPlayerName(int iIndex, const char* sDefault, int* pType = nullptr);
 	const char* GetPlayerName(uint32_t uAccountID, const char* sDefault, int* pType = nullptr);
-	
+	const char* GetPlayerName(int iIndex);
+	const char* GetPlayerName(uint32_t uAccountID);
+
 	// bool ContainsSpecialChars(const std::string& sName);
 	// void ProcessSpecialCharsInName(uint32_t uAccountID, const std::string& sName);
 	void IncrementBotIgnoreKillCount(uint32_t uAccountID);

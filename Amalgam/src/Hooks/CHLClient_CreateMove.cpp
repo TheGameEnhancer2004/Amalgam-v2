@@ -91,7 +91,7 @@ __declspec(noinline) static void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pW
 		int iNewItemDefinitionIndex = iStaticItemDefinitionIndex = pWeapon->m_iItemDefinitionIndex();
 
 		if (iNewItemDefinitionIndex != iOldItemDefinitionIndex || !bCanAttack || !pWeapon->m_iClip1())
-			F::Ticks.m_iWait = 1;
+			F::Ticks.m_iWait = -1;
 	}
 	if (bCanAttack)
 	{
@@ -305,7 +305,7 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 		F::CritHack.Run(pLocal, pWeapon, pCmd);
 		F::NoSpread.Run(pLocal, pWeapon, pCmd);
 		F::Resolver.CreateMove(pLocal);
-		F::Misc.RunPost(pLocal, pCmd, *pSendPacket);
+		F::Misc.RunPost(pLocal, pCmd);
 		F::PacketManip.Run(pLocal, pWeapon, pCmd, pSendPacket);
 #ifndef TEXTMODE
 		F::Visuals.CreateMove(pLocal, pWeapon);

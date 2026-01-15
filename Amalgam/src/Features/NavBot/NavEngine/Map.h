@@ -18,10 +18,10 @@ Enum(VischeckState, NotVisible = -1, NotChecked, Visible)
 
 // Basic Blacklist reasons, you can add your own externally and use them
 Enum(BlacklistReason, Init = -1,
-	 Sentry, SentryMedium, SentryLow,
-	 Sticky,
-	 EnemyNormal, EnemyDormant, EnemyInvuln,
-	 BadBuildSpot
+	Sentry, SentryMedium, SentryLow,
+	Sticky,
+	EnemyNormal, EnemyDormant, EnemyInvuln,
+	BadBuildSpot
 )
 
 struct BlacklistReason_t

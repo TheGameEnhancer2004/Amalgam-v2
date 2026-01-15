@@ -7,7 +7,73 @@
 #include "../../Visuals/Visuals.h"
 #include "../../NavBot/BotUtils.h"
 
-std::vector<Target_t> CAimbotMelee::GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
+static inline bool AimFriendlyBuilding(CTFPlayer* pLocal, CBaseObject* pBuilding)
+{
+	int iCurrMetal = pLocal->m_iMetalCount();
+
+	bool bShouldRepair = false;
+	switch (pBuilding->GetClassID())
+	{
+	case ETFClassID::CObjectSentrygun:
+		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Sentry)
+		{
+			int iShells, iMaxShells, iRockets, iMaxRockets; pBuilding->As<CObjectSentrygun>()->GetAmmoCount(iShells, iMaxShells, iRockets, iMaxRockets);
+			if (iCurrMetal && (iShells < iMaxShells || iRockets < iMaxRockets))
+				return true;
+			bShouldRepair = true;
+		}
+		break;
+	case ETFClassID::CObjectDispenser:
+		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Dispenser)
+			bShouldRepair = true;
+		break;
+	case ETFClassID::CObjectTeleporter:
+		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Teleporter)
+			bShouldRepair = true;
+		break;
+	default:
+		break;
+	}
+
+	// Buildings needs to be repaired
+	if (bShouldRepair && ((iCurrMetal && pBuilding->m_iHealth() != pBuilding->m_iMaxHealth()) || pBuilding->m_bHasSapper()))
+		return true;
+
+	// Autoupgrade is on
+	if (iCurrMetal && Vars::Aimbot::AutoEngie::AutoUpgrade.Value && !pBuilding->m_bMiniBuilding())
+	{
+		int iUpgradeLevel = pBuilding->m_iUpgradeLevel();
+
+		int iMaxLevel = 0;
+		switch (pBuilding->GetClassID())
+		{
+		case ETFClassID::CObjectSentrygun:
+			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Sentry))
+				return false;
+			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeSentryLVL.Value;
+			break;
+		case ETFClassID::CObjectDispenser:
+			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Dispenser))
+				return false;
+			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeDispenserLVL.Value;
+			break;
+		case ETFClassID::CObjectTeleporter:
+			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Teleporter))
+				return false;
+			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeTeleporterLVL.Value;
+			break;
+		default:
+			break;
+		}
+
+		// Can be upgraded
+		if (iUpgradeLevel < iMaxLevel)
+			return true;
+	}
+	return false;
+}
+
+static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	std::vector<Target_t> vTargets;
 
@@ -30,12 +96,11 @@ std::vector<Target_t> CAimbotMelee::GetTargets(CTFPlayer* pLocal, CTFWeaponBase*
 			if (!F::AimbotGlobal.PlayerBoneInFOV(pEntity->As<CTFPlayer>(), vLocalPos, vLocalAngles, flFOVTo, vPos, vAngleTo))
 				continue;
 
+			float flDistTo = vLocalPos.DistTo(vPos);
 			bool bTeam = pEntity->m_iTeamNum() == pLocal->m_iTeamNum();
 			int iPriority = F::AimbotGlobal.GetPriority(pEntity->entindex());
 			if (bTeam && !F::AimbotGlobal.FriendlyFire())
 				iPriority = 0;
-
-			float flDistTo = vLocalPos.DistTo(vPos);
 			vTargets.emplace_back(pEntity, TargetEnum::Player, vPos, vAngleTo, flFOVTo, flDistTo, iPriority);
 		}
 	}
@@ -102,17 +167,6 @@ std::vector<Target_t> CAimbotMelee::GetTargets(CTFPlayer* pLocal, CTFWeaponBase*
 
 	return vTargets;
 }
-
-std::vector<Target_t> CAimbotMelee::SortTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
-{
-	auto vTargets = GetTargets(pLocal, pWeapon);
-
-	F::AimbotGlobal.SortTargets(vTargets, Vars::Aimbot::General::TargetSelectionEnum::Distance);
-	vTargets.resize(std::min(size_t(Vars::Aimbot::General::MaxTargets.Value), vTargets.size()));
-	F::AimbotGlobal.SortPriority(vTargets);
-	return vTargets;
-}
-
 
 
 int CAimbotMelee::GetSwingTime(CTFWeaponBase* pWeapon, bool bVar)
@@ -381,7 +435,7 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 
 		if (bReturn && Vars::Aimbot::Melee::AutoBackstab.Value && pWeapon->GetWeaponID() == TF_WEAPON_KNIFE)
 			bReturn = CanBackstab(tTarget.m_pEntity, pLocal, tTarget.m_vAngleTo);
-		
+
 		tTarget.m_pEntity->SetAbsOrigin(vRestoreOrigin);
 		tTarget.m_pEntity->m_vecMins() = vRestoreMins;
 		tTarget.m_pEntity->m_vecMaxs() = vRestoreMaxs;
@@ -578,7 +632,7 @@ void CAimbotMelee::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd
 	if (RunSapper(pLocal, pWeapon, pCmd))
 		return;
 
-	auto vTargets = SortTargets(pLocal, pWeapon);
+	auto vTargets = F::AimbotGlobal.ManageTargets(GetTargets, pLocal, pWeapon, Vars::Aimbot::General::TargetSelectionEnum::Distance);
 	if (vTargets.empty())
 		return;
 
@@ -677,6 +731,9 @@ bool CAimbotMelee::RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 	std::vector<Target_t> vTargets;
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
+		if (F::AimbotGlobal.ShouldIgnore(pEntity, pLocal, pWeapon))
+			continue;
+
 		auto pBuilding = pEntity->As<CBaseObject>();
 		if (pBuilding->m_bHasSapper() || !pBuilding->IsInValidTeam())
 			continue;
@@ -694,7 +751,7 @@ bool CAimbotMelee::RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 
 		vTargets.emplace_back(pBuilding, TargetEnum::Unknown, vPoint, vAngleTo, flFOVTo, flDistTo);
 	}
-	F::AimbotGlobal.SortTargets(vTargets, Vars::Aimbot::General::TargetSelectionEnum::Distance);
+	F::AimbotGlobal.SortTargetsPre(vTargets, Vars::Aimbot::General::TargetSelectionEnum::Distance);
 	if (vTargets.empty())
 		return true;
 
@@ -706,8 +763,8 @@ bool CAimbotMelee::RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 	else
 		bShouldAim = pCmd->buttons & IN_ATTACK;
 	if (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Silent)
-		bShouldAim = bShouldAim && (!I::ClientState->chokedcommands || !F::Ticks.CanChoke());
-		
+		bShouldAim = bShouldAim && !I::ClientState->chokedcommands && F::Ticks.CanChoke(true);
+
 	if (bShouldAim)
 	{
 		G::AimTarget = { tTarget.m_pEntity->entindex(), I::GlobalVars->tickcount };
@@ -721,70 +778,4 @@ bool CAimbotMelee::RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 	}
 
 	return true;
-}
-
-bool CAimbotMelee::AimFriendlyBuilding(CTFPlayer* pLocal, CBaseObject* pBuilding)
-{
-	int iCurrMetal = pLocal->m_iMetalCount();
-
-	bool bShouldRepair = false;
-	switch (pBuilding->GetClassID())
-	{
-	case ETFClassID::CObjectSentrygun:
-		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Sentry)
-		{
-			int iShells, iMaxShells, iRockets, iMaxRockets; pBuilding->As<CObjectSentrygun>()->GetAmmoCount(iShells, iMaxShells, iRockets, iMaxRockets);
-			if (iCurrMetal && (iShells < iMaxShells || iRockets < iMaxRockets))
-				return true;
-			bShouldRepair = true;
-		}
-		break;
-	case ETFClassID::CObjectDispenser:
-		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Dispenser)
-			bShouldRepair = true;
-		break;
-	case ETFClassID::CObjectTeleporter:
-		if (Vars::Aimbot::AutoEngie::AutoRepair.Value & Vars::Aimbot::AutoEngie::AutoRepairEnum::Teleporter)
-			bShouldRepair = true;
-		break;
-	default:
-		break;
-	}
-
-	// Buildings needs to be repaired
-	if (bShouldRepair && ((iCurrMetal && pBuilding->m_iHealth() != pBuilding->m_iMaxHealth()) || pBuilding->m_bHasSapper()))
-		return true;
-
-	// Autoupgrade is on
-	if (iCurrMetal && Vars::Aimbot::AutoEngie::AutoUpgrade.Value && !pBuilding->m_bMiniBuilding())
-	{
-		int iUpgradeLevel = pBuilding->m_iUpgradeLevel();
-
-		int iMaxLevel = 0;
-		switch (pBuilding->GetClassID())
-		{
-		case ETFClassID::CObjectSentrygun:
-			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Sentry))
-				return false;
-			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeSentryLVL.Value;
-			break;
-		case ETFClassID::CObjectDispenser:
-			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Dispenser))
-				return false;
-			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeDispenserLVL.Value;
-			break;
-		case ETFClassID::CObjectTeleporter:
-			if (!(Vars::Aimbot::AutoEngie::AutoUpgrade.Value & Vars::Aimbot::AutoEngie::AutoUpgradeEnum::Teleporter))
-				return false;
-			iMaxLevel = Vars::Aimbot::AutoEngie::AutoUpgradeTeleporterLVL.Value;
-			break;
-		default:
-			break;
-		}
-
-		// Can be upgraded
-		if (iUpgradeLevel < iMaxLevel)
-			return true;
-	}
-	return false;
 }

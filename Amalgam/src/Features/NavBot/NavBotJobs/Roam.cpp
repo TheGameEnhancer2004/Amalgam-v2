@@ -163,14 +163,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	iConsecutiveFails = 0;
 
 	// Sort by distance first (farthest first)
-	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b) {
-		if (!a || !b) return false;
-		return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
-	});
+	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b)
+		{
+			if (!a || !b) return false;
+			return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
+		});
 
 	for (size_t i = 0; i < vValidAreas.size(); ++i)
 	{
-		if (SDK::RandomFloat(0.f, 1.f) < 0.2f) 
+		if (SDK::RandomFloat(0.f, 1.f) < 0.2f)
 		{
 			size_t j = (i + 1 < vValidAreas.size()) ? i + 1 : (i > 0 ? i - 1 : i);
 			if (i != j)

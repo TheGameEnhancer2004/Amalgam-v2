@@ -25,9 +25,10 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	Vec3 vShootPos = F::Ticks.GetShootPos();
 	float flRange = pWeapon->GetRange();
+	int iLocalIdx = pLocal->entindex();
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
-		if (pEntity->entindex() == pLocal->entindex() || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
+		if (pEntity->entindex() == iLocalIdx || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
 			continue;
 
 		if (pEntity->As<CTFPlayer>()->InCond(TF_COND_STEALTHED) ||
@@ -180,11 +181,11 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 
 		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(vOrigin));
 	}
-	
+
 	std::sort(m_vCloseEnemies.begin(), m_vCloseEnemies.end(), [](const ClosestEnemy_t& a, const ClosestEnemy_t& b) -> bool
-			  {
-				  return a.m_flDist < b.m_flDist;
-			  });
+		{
+			return a.m_flDist < b.m_flDist;
+		});
 
 	if (m_vCloseEnemies.empty())
 		return {};
@@ -224,7 +225,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	case TF_CLASS_HEAVY:
 	{
 		if (!G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (!G::AmmoInSlot[SLOT_SECONDARY].m_iClip && G::AmmoInSlot[SLOT_SECONDARY].m_iReserve == 0) ||
-			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch && 
+			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch &&
 			(m_tClosestEnemy.m_pPlayer && !m_tClosestEnemy.m_pPlayer->IsTaunting() && m_tClosestEnemy.m_pPlayer->IsInvulnerable()) && m_tClosestEnemy.m_flDist < 400.f))
 			m_iBestSlot = SLOT_MELEE;
 		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
@@ -337,7 +338,7 @@ void CBotUtils::SetSlot(CTFPlayer* pLocal, int iSlot)
 {
 	if (iSlot > -1)
 	{
-		auto sCommand = "slot" + std::to_string(iSlot+1);
+		auto sCommand = "slot" + std::to_string(iSlot + 1);
 		if (m_iCurrentSlot != iSlot)
 			I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
 	}
@@ -423,7 +424,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	static int iLastTarget = -1;
 	static float flLastSeen = 0.f;
 	static Vec3 vLastPos = {};
-	
+
 	CBaseEntity* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
 	auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
@@ -1032,28 +1033,28 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	const Vector vHullMax = { 20.f, 20.f, 72.f };
 
 	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
-	{
-		CGameTrace trace = {};
-		CTraceFilterCollideable filter = {};
-		filter.pSkip = pLocal;
-		filter.iPlayer = PLAYER_NONE;
-		filter.iObject = OBJECT_ALL;
-		filter.bIgnoreDoors = true;
-		filter.bIgnoreCart = true;
-		SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
-		return trace;
-	};
+		{
+			CGameTrace trace = {};
+			CTraceFilterCollideable filter = {};
+			filter.pSkip = pLocal;
+			filter.iPlayer = PLAYER_NONE;
+			filter.iObject = OBJECT_ALL;
+			filter.bIgnoreDoors = true;
+			filter.bIgnoreCart = true;
+			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
+			return trace;
+		};
 
 	auto AdjustDirectionToSurface = [&](Vector vDir, const Vector& vNormal) -> Vector
-	{
-		vDir.Normalize();
-		if (!IsSurfaceWalkable(vNormal)) return vDir;
+		{
+			vDir.Normalize();
+			if (!IsSurfaceWalkable(vNormal)) return vDir;
 
-		float flDot = vDir.Dot(vNormal);
-		vDir.z -= vNormal.z * flDot;
-		vDir.Normalize();
-		return vDir;
-	};
+			float flDot = vDir.Dot(vNormal);
+			vDir.z -= vNormal.z * flDot;
+			vDir.Normalize();
+			return vDir;
+		};
 
 	CGameTrace groundTrace = PerformTraceHull(vStart + vStepHeight, vStart - vMaxFallDistance);
 	if (groundTrace.fraction == 1.0f)
@@ -1070,7 +1071,7 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	float flMaxDist = vEnd.DistTo2D(vStart);
 	float flMinStepSize = 10.f;
 
-	for (int i = 0; i < 64; i++) 
+	for (int i = 0; i < 64; i++)
 	{
 		Vector vIterStartPos = vCurrentPos;
 		float flDistToGoal = (vEnd - vCurrentPos).Length();

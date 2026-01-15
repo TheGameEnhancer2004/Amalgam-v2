@@ -142,11 +142,11 @@ void CGlow::Store(CTFPlayer* pLocal)
 				m_mEntities[pGroup->m_tGlow].emplace_back(pEntity, tColor, 0);
 		}
 
-		if (pEntity->IsPlayer() && pEntity != pLocal && pGroup->m_bBacktrack && pGroup->m_tBacktrackGlow()
+		if (pEntity->IsPlayer() && pEntity != pLocal && pGroup->m_iBacktrack & BacktrackEnum::Enabled && pGroup->m_tBacktrackGlow()
 			&& (F::Backtrack.GetFakeLatency() || F::Backtrack.GetFakeInterp() > G::Lerp || F::Backtrack.GetWindow()))
 		{
 			auto pWeapon = H::Entities.GetWeapon();
-			if (pWeapon && (pGroup->m_iBacktrackDraw & BacktrackEnum::Always || G::PrimaryWeaponType != EWeaponType::PROJECTILE))
+			if (pWeapon && (pGroup->m_iBacktrack & BacktrackEnum::Always || G::PrimaryWeaponType != EWeaponType::PROJECTILE))
 			{
 				bool bShowFriendly = false, bShowEnemy = true;
 				if (G::PrimaryWeaponType == EWeaponType::MELEE && SDK::AttribHookValue(0, "speed_buff_ally", pWeapon) > 0)
@@ -155,7 +155,7 @@ void CGlow::Store(CTFPlayer* pLocal)
 					bShowFriendly = true, bShowEnemy = false;
 
 				if (bShowEnemy && pEntity->m_iTeamNum() != pLocal->m_iTeamNum() || bShowFriendly && pEntity->m_iTeamNum() == pLocal->m_iTeamNum())
-					m_mEntities[pGroup->m_tBacktrackGlow].emplace_back(pEntity, tColor, 1 | (pGroup->m_iBacktrackDraw << 1));
+					m_mEntities[pGroup->m_tBacktrackGlow].emplace_back(pEntity, tColor, pGroup->m_iBacktrack);
 			}
 		}
 	}
@@ -164,7 +164,7 @@ void CGlow::Store(CTFPlayer* pLocal)
 	if (F::FakeAngle.bDrawChams && F::FakeAngle.bBonesSetup
 		&& F::Groups.GetGroup(TargetsEnum::FakeAngle, pGroup) && pGroup->m_tGlow())
 	{	// fakeangle
-		m_mEntities[pGroup->m_tGlow].emplace_back(pLocal, pGroup->m_tColor, 1 | (true << 1));
+		m_mEntities[pGroup->m_tGlow].emplace_back(pLocal, pGroup->m_tColor, 1);
 	}
 }
 
@@ -216,11 +216,8 @@ void CGlow::RenderBacktrack(const DrawModelState_t& pState, const ModelRenderInf
 	if (!vRecords.size())
 		return;
 
-	int iFlags = (~1 & m_iFlags) >> 1;
-	bool bDrawLast = iFlags & BacktrackEnum::Last;
-	bool bDrawFirst = iFlags & BacktrackEnum::First;
-	
-
+	bool bDrawLast = m_iFlags & BacktrackEnum::Last;
+	bool bDrawFirst = m_iFlags & BacktrackEnum::First;
 	
 	float flBlend = I::RenderView->GetBlend();
 	if (flBlend)

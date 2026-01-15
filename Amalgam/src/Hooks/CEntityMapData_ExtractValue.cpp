@@ -26,7 +26,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 	char szValue[MAPKEY_MAXLENGTH];
 
 	if (pData->GetFirstKey(szKeyName, szValue))
-	{	
+	{
 		model_t* pModel = nullptr;
 		Vector vOrigin = {}, vAngles = {}, vRotate = {};
 		int iTeam = 0;
@@ -89,7 +89,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 }
 
 MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
-		  CEntityMapData* rcx,  const char* keyName, char* Value)
+	CEntityMapData* rcx, const char* keyName, char* Value)
 {
 	static const auto dwParseEnt = S::C_PhysPropClientside_ParseEntity_ExtractValue_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
