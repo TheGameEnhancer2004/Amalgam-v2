@@ -109,6 +109,13 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 	{
 		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
 		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
+		tInfo.m_iCurrentFPS = (int)(1 / I::GlobalVars->absoluteframetime);
+		if (auto pResource = H::Entities.GetResource())
+		{
+			int iLocalIdx = pLocal->entindex();
+			tInfo.m_iCurrentKills = pResource->m_iScore(iLocalIdx);
+			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
+		}
 
 		UpdateLocalBotIgnoreStatus();
 		return;
@@ -151,7 +158,7 @@ void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
 void CNamedPipe::Reset()
 {
 	std::lock_guard lock(m_infoMutex);
-	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, "N/A", "N/A", tInfo.m_uAccountID, false);
+	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_uAccountID, false);
 	m_bSetServerName = false;
 	m_bSetMapName = false;
 	ClearCaptureReservations();

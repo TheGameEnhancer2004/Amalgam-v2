@@ -49,6 +49,10 @@ private:
 	{
 		int m_iCurrentHealth = -1;
 		int m_iCurrentClass = TF_CLASS_UNDEFINED;
+		int m_iCurrentFPS = -1;
+		int m_iCurrentKills = -1;
+		int m_iCurrentDeaths = -1;
+
 		std::string m_sCurrentServer = "N/A";
 		std::string m_sCurrentMapName = "N/A";
 		uint32_t m_uAccountID = 0;
