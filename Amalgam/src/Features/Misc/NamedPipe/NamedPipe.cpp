@@ -331,6 +331,9 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				F::NamedPipe.QueueMessage("Server", F::NamedPipe.tInfo.m_sCurrentServer, false);
 				F::NamedPipe.QueueMessage("PlayerClass", F::NamedPipe.GetPlayerClassName(F::NamedPipe.tInfo.m_iCurrentClass), false);
 				F::NamedPipe.QueueMessage("Health", std::to_string(F::NamedPipe.tInfo.m_iCurrentHealth), false);
+				F::NamedPipe.QueueMessage("FPS", std::to_string(F::NamedPipe.tInfo.m_iCurrentFPS), false);
+				F::NamedPipe.QueueMessage("Kills", std::to_string(F::NamedPipe.tInfo.m_iCurrentKills), false);
+				F::NamedPipe.QueueMessage("Deaths", std::to_string(F::NamedPipe.tInfo.m_iCurrentDeaths), false);
 				F::NamedPipe.ProcessMessageQueue();
 
 				if (!F::NamedPipe.tInfo.m_bInGame)
