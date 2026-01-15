@@ -26,7 +26,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 	char szValue[MAPKEY_MAXLENGTH];
 
 	if (pData->GetFirstKey(szKeyName, szValue))
-	{	
+	{
 		model_t* pModel = nullptr;
 		Vector vOrigin = {}, vAngles = {}, vRotate = {};
 		int iTeam = 0;
@@ -76,7 +76,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 		while (pData->GetNextKey(szKeyName, szValue));
 		if (pModel)
 		{
-			TriggerData_t tData = TriggerData_t{ pModel, eType, vOrigin, {}, vAngles, vRotate, {} };
+			TriggerData_t tData = TriggerData_t{ pModel, eType, vOrigin, {}, vAngles, vRotate, iTeam, {} };
 #ifndef TEXTMODE
 			G::TriggerStorage.push_back(tData);
 #endif 
@@ -89,7 +89,7 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 }
 
 MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
-		  CEntityMapData* rcx,  const char* keyName, char* Value)
+	CEntityMapData* rcx, const char* keyName, char* Value)
 {
 	static const auto dwParseEnt = S::C_PhysPropClientside_ParseEntity_ExtractValue_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
@@ -121,6 +121,7 @@ MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
 			eType = TriggerTypeEnum::Regenerate;
 			break;
 		case FNV1A::Hash32Const("trigger_capture_area"):
+		case FNV1A::Hash32Const("func_capturezone"):
 			eType = TriggerTypeEnum::CaptureArea;
 			break;
 		case FNV1A::Hash32Const("trigger_catapult"):

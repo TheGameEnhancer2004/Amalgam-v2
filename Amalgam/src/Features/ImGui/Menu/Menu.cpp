@@ -1453,7 +1453,7 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
 					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
 					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
-					FTooltip("Automatically performs MVM upgrade station exploit (buys and refunds a fake upgrade giving you additional cash)\nHowever:\n1. You have to be playing medic with a vaccinator\n2. You still have to manually walk to the upgrade station");
+					FTooltip("WARNING: Works only on Mann Up missions with enough starting cash (600$) before the 1st wave!\nRequirements:\n1. Be a Vaccinator Medic\n2. Ping must be below 80ms\n3. Walk to the upgrade station\nPerforms MVM upgrade station exploit for extra cash.");
 					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
 					{
 						FSlider(Vars::Misc::MannVsMachine::MaxCash);
@@ -1519,12 +1519,16 @@ void CMenu::MenuMisc(int iTab)
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
-						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -30);
+						FDropdown(Vars::Misc::Movement::NavEngine::Draw, FDropdownEnum::Multi, -60);
 						FColorPicker(Vars::Colors::NavbotPath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						FColorPicker(Vars::Colors::NavbotPossiblePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+						// debug only and it crashes
+						// FColorPicker(Vars::Colors::NavbotWalkablePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 					}
@@ -1729,6 +1733,10 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);
 					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::CallVoteSpam, FToggleEnum::Right);
+					// if (FButton("HELP", FButtonEnum::Left, { 0, 24 }))
+					// 	ShellExecuteA(NULL, "open", (F::Configs.m_sConfigPath + "chathelp.txt").c_str(), NULL, NULL, SW_SHOWNORMAL);
+					// if (FButton("OPEN FOLDER", FButtonEnum::Right, { 0, 24 }, 0, nullptr, nullptr))
+					// 	ShellExecuteA(NULL, "open", F::Configs.m_sConfigPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
 				} EndSection();
 			}
 			EndTable();

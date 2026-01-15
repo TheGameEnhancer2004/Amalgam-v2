@@ -570,21 +570,21 @@ public:
 		return flLength;
 	}
 
-	inline Vec3 Normalized()
+	inline Vec3 Normalized() const
 	{
 		float flLengthNormal = 1.f / (FLT_EPSILON + Length());
 		return Vec3(x * flLengthNormal, y * flLengthNormal, z * flLengthNormal);
 	}
 
-	inline Vec3 Normalized2D()
+	inline Vec3 Normalized2D() const
 	{
 		float flLengthNormal = 1.f / (FLT_EPSILON + Length2D());
 		return Vec3(x * flLengthNormal, y * flLengthNormal);
 	}
 
-	inline Vec2 Get2D()
+	inline Vec2 Get2D() const
 	{
-		return {x, y};
+		return { x, y };
 	}
 
 	inline float Length2D(void) const

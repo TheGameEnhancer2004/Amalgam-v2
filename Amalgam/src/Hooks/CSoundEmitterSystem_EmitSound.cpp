@@ -1,7 +1,7 @@
 #include "../SDK/SDK.h"
+#ifndef TEXTMODE
 
 MAKE_SIGNATURE(S_StartSound, "engine.dll", "40 53 48 83 EC ? 48 83 79 ? ? 48 8B D9 75 ? 33 C0", 0x0);
-#ifndef TEXTMODE
 MAKE_SIGNATURE(CSoundEmitterSystem_EmitSound, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 41 56 48 81 EC ? ? ? ? 49 8B D9", 0x0);
 //MAKE_SIGNATURE(S_StartDynamicSound, "engine.dll", "4C 8B DC 57 48 81 EC", 0x0);
 MAKE_SIGNATURE(CBaseEntity_EmitSound, "client.dll", "48 89 5C 24 ? 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 3D", 0x0);
@@ -161,7 +161,6 @@ MAKE_HOOK(S_StartDynamicSound, S::S_StartDynamicSound(), int,
 	return CALL_ORIGINAL(params);
 }
 */
-#endif
 MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 	StartSoundParams_t& params)
 {
@@ -172,14 +171,10 @@ MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 
 	if (!params.staticsound)
 		H::Entities.ManualNetwork(params);
-#ifdef TEXTMODE
-	return 0;
-#else
 	if (params.pSfx && ShouldBlockSound(params.pSfx->getname()))
 		return 0;
 
 	return CALL_ORIGINAL(params);
-#endif
 }
 
 MAKE_HOOK(CBaseEntity_EmitSound, S::CBaseEntity_EmitSound(), void,
@@ -200,3 +195,4 @@ MAKE_HOOK(CBaseEntity_EmitSound, S::CBaseEntity_EmitSound(), void,
 
 	CALL_ORIGINAL(rcx, soundname, soundtime, duration);
 }
+#endif

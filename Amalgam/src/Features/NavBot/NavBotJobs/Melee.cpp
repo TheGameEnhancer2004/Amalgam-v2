@@ -39,6 +39,39 @@ bool CNavBotMelee::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestEnem
 
 	Vector vTargetOrigin = pPlayer->GetAbsOrigin();
 	Vector vLocalOrigin = pLocal->GetAbsOrigin();
+
+	if (pLocal->m_iClass() == TF_CLASS_SPY)
+	{
+		Vec3 vForward;
+		Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
+		Vector vBackstabSpot = vTargetOrigin - (vForward * 60.f);
+
+		CNavArea* pBackstabArea = F::NavEngine.FindClosestNavArea(vBackstabSpot);
+		if (!pBackstabArea || pBackstabArea->IsBlocked(pLocal->m_iTeamNum()))
+			vBackstabSpot = vTargetOrigin;
+
+		if (vLocalOrigin.DistTo(vBackstabSpot) < 100.0f && bIsVisible)
+		{
+			if (pLocal->m_hGroundEntity().Get() && pLocal->m_hGroundEntity().Get()->IsPlayer())
+				pCmd->buttons |= IN_DUCK;
+
+			SDK::WalkTo(pCmd, pLocal, vBackstabSpot);
+			F::NavEngine.CancelPath();
+			F::NavEngine.m_eCurrentPriority = PriorityListEnum::MeleeAttack;
+			return true;
+		}
+
+		static Timer tSpyMeleeCooldown{};
+		float flDistToSpot = vLocalOrigin.DistTo(vBackstabSpot);
+		if (!tSpyMeleeCooldown.Run(flDistToSpot < 200.f ? 0.1f : flDistToSpot < 1000.f ? 0.3f : 1.f) && F::NavEngine.IsPathing())
+			return F::NavEngine.m_eCurrentPriority == PriorityListEnum::MeleeAttack;
+
+		if (F::NavEngine.NavTo(vBackstabSpot, PriorityListEnum::MeleeAttack, true, !F::NavEngine.IsPathing()))
+			return true;
+
+		return false;
+	}
+
 	// If we are close enough, don't even bother with using the navparser to get there
 	if (tClosestEnemy.m_flDist < 100.0f && bIsVisible)
 	{

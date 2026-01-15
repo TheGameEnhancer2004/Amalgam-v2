@@ -7,8 +7,16 @@ bool CNavBotSnipe::IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bo
 		vEntOrigin.z += 40.0f;
 	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
+	auto pLocal = H::Entities.GetLocal();
+	if (!pLocal)
+		return false;
+
 	// Too close to be valid
-	if (vEntOrigin.DistTo(vAreaOrigin) <= 1100.f + HALF_PLAYER_WIDTH)
+	bool bLowRange = Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::TargetSentriesLowRange;
+	bool bShortRangeClass = pLocal->m_iClass() == TF_CLASS_SCOUT || pLocal->m_iClass() == TF_CLASS_PYRO;
+	float flMinDist = (bLowRange && bShortRangeClass) ? 0.f : 1100.f + HALF_PLAYER_WIDTH;
+
+	if (vEntOrigin.DistTo(vAreaOrigin) <= flMinDist)
 		return false;
 
 	// Fails vischeck, bad
@@ -27,8 +35,12 @@ bool CNavBotSnipe::TryToSnipe(int iEntIdx)
 	//if (ent->IsDormant())
 	vOrigin.z += 40.0f;
 
+	auto pNavFile = F::NavEngine.GetNavFile();
+	if (!pNavFile)
+		return false;
+
 	std::vector<std::pair<CNavArea*, float>> vGoodAreas;
-	for (auto& area : F::NavEngine.GetNavFile()->m_vAreas)
+	for (auto& area : pNavFile->m_vAreas)
 	{
 		// Not usable
 		if (!IsAreaValidForSnipe(vOrigin, area.m_vCenter, false))

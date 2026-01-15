@@ -11,15 +11,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	static CNavArea* pCurrentTargetArea = nullptr;
 	static int iConsecutiveFails = 0;
 
-	// Clear visited areas every 60 seconds to allow revisiting
-	if (tVisitedAreasClearTimer.Run(60.f))
+	// Clear visited areas if they get too large or after some time
+	if (tVisitedAreasClearTimer.Run(60.f) || vVisitedAreas.size() > 40)
 	{
 		vVisitedAreas.clear();
 		iConsecutiveFails = 0;
 	}
 
 	// Don't path constantly
-	if (!tRoamTimer.Run(2.f))
+	if (!tRoamTimer.Run(0.5f))
 		return false;
 
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Patrol)
@@ -42,11 +42,22 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		case TF_GAMETYPE_ESCORT:
 			bGotTarget = F::NavBotCapture.GetPayloadGoal(vLocalOrigin, iEnemyTeam, vTarget);
 			break;
+		case TF_GAMETYPE_CTF:
+			if (F::GameObjectiveController.m_bHaarp)
+				bGotTarget = F::NavBotCapture.GetCtfGoal(pLocal, pLocal->m_iTeamNum(), iEnemyTeam, vTarget);
+			break;
 		default:
 			break;
 		}
-		if (bGotTarget)
+		if (bGotTarget || F::NavBotCapture.m_bOverwriteCapture)
 		{
+			if (F::NavBotCapture.m_bOverwriteCapture)
+			{
+				F::NavEngine.CancelPath();
+				m_bDefending = true;
+				return true;
+			}
+
 			if (auto pClosestNav = F::NavEngine.FindClosestNavArea(vTarget))
 			{
 				// Get closest enemy to vicheck
@@ -76,7 +87,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				std::pair<CNavArea*, int> tHidingSpot;
 				if (F::NavBotCore.FindClosestHidingSpot(pClosestNav, vVischeckPoint, 5, tHidingSpot, bVischeck))
 				{
-					if (tHidingSpot.first->m_vCenter.DistTo(vLocalOrigin) <= 250.f)
+					if (tHidingSpot.first && tHidingSpot.first->m_vCenter.DistTo(vLocalOrigin) <= 250.f)
 					{
 						F::NavEngine.CancelPath();
 						m_bDefending = true;
@@ -92,19 +103,21 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 	m_bDefending = false;
-
-	// If we have a current target and are pathing, continue
 	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
 		return true;
 
-	// Reset current target
+	// Reset current target if we are not pathing or it's invalid
 	pCurrentTargetArea = nullptr;
 
 	std::vector<CNavArea*> vValidAreas;
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
 
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
 	{
+		// Skip if area is invalid
+		if (!&tArea)
+			continue;
 		// Skip if area is blacklisted
 		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
 			continue;
@@ -113,12 +126,21 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 			continue;
 
-		// Skip if we recently visited this area
-		if (std::find(vVisitedAreas.begin(), vVisitedAreas.end(), &tArea) != vVisitedAreas.end())
+		// Skip if we recently visited this area or something near it
+		bool bTooCloseToVisited = false;
+		for (auto pVisited : vVisitedAreas)
+		{
+			if (pVisited && tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+			{
+				bTooCloseToVisited = true;
+				break;
+			}
+		}
+		if (bTooCloseToVisited)
 			continue;
 
-		// Skip areas that are too close
-		float flDist = tArea.m_vCenter.DistTo(pLocal->GetAbsOrigin());
+		// Skip areas that are too close to us
+		float flDist = tArea.m_vCenter.DistTo(vLocalOrigin);
 		if (flDist < 500.f)
 			continue;
 
@@ -140,42 +162,27 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Reset fail counter since we found valid areas
 	iConsecutiveFails = 0;
 
-	// Different strategies for area selection
-	std::vector<CNavArea*> vPotentialTargets;
-
-	// Strategy 1: Try to find areas that are far from current position
-	for (auto pArea : vValidAreas)
-	{
-		float flDist = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-		if (flDist > 2000.f)
-			vPotentialTargets.push_back(pArea);
-	}
-
-	// Strategy 2: If no far areas found, try areas that are at medium distance
-	if (vPotentialTargets.empty())
-	{
-		for (auto pArea : vValidAreas)
+	// Sort by distance first (farthest first)
+	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b)
 		{
-			float flDist = pArea->m_vCenter.DistTo(pLocal->GetAbsOrigin());
-			if (flDist > 1000.f && flDist <= 2000.f)
-				vPotentialTargets.push_back(pArea);
+			if (!a || !b) return false;
+			return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
+		});
+
+	for (size_t i = 0; i < vValidAreas.size(); ++i)
+	{
+		if (SDK::RandomFloat(0.f, 1.f) < 0.2f)
+		{
+			size_t j = (i + 1 < vValidAreas.size()) ? i + 1 : (i > 0 ? i - 1 : i);
+			if (i != j)
+				std::swap(vValidAreas[i], vValidAreas[j]);
 		}
 	}
 
-	// Strategy 3: If still no areas found, use any valid area
-	if (vPotentialTargets.empty())
-		vPotentialTargets = vValidAreas;
-
-	// Shuffle the potential targets to add randomness
-	for (size_t i = vPotentialTargets.size() - 1; i > 0; i--)
+	for (auto pArea : vValidAreas)
 	{
-		int j = rand() % (i + 1);
-		std::swap(vPotentialTargets[i], vPotentialTargets[j]);
-	}
-
-	// Try to path to potential targets
-	for (auto pArea : vPotentialTargets)
-	{
+		if (!pArea)
+			continue;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
 			pCurrentTargetArea = pArea;

@@ -40,10 +40,10 @@ private:
 	int GetPreviousPointForPoint(int iIndex, int iTeam, int iPrevIdx);
 	int GetFarthestOwnedControlPoint(int iTeam);
 
+public:
 	// Can we cap this point?
 	bool IsPointUseable(int iIndex, int iTeam);
 
-public:
 	// Get the closest Control Point we can cap
 	bool GetClosestControlPoint(Vector vPos, int iTeam, Vector& vOut);
 	bool GetClosestControlPointInfo(Vector vPos, int iTeam, std::pair<int, Vector>& tOut);

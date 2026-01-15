@@ -11,22 +11,33 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	const int iNow = I::GlobalVars->tickcount;
 	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
 
+	auto pLocal = H::Entities.GetLocal();
+	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
 	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
 	{
 		CNavArea* pNextArea = tConnection.m_pArea;
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
-		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
-		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+		if (!F::NavEngine.m_bIgnoreTraces)
 		{
-			if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
-				(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+			if (pNextArea->IsBlocked(iTeam))
 				continue;
 		}
 
+		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
+		if (!F::NavEngine.m_bIgnoreTraces)
+		{
+			if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+			{
+				if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
+					(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+					continue;
+			}
+		}
+
 		float flBlacklistPenalty = 0.f;
-		if (!m_bFreeBlacklistBlocked)
+		if (!m_bFreeBlacklistBlocked && !F::NavEngine.m_bIgnoreTraces)
 		{
 			if (auto itBlacklist = m_mFreeBlacklist.find(pNextArea); itBlacklist != m_mFreeBlacklist.end())
 			{
@@ -42,7 +53,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
 			pCachedEntry = &itCache->second;
 
-		if (pCachedEntry && !pCachedEntry->m_bPassable)
+		if (!F::NavEngine.m_bIgnoreTraces && pCachedEntry && !pCachedEntry->m_bPassable)
 			continue;
 
 		NavPoints_t tPoints{};
@@ -59,12 +70,14 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		}
 		else
 		{
-			tPoints = DeterminePoints(pCurrentArea, pNextArea);
-			tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext);
+			bool bIsOneWay = IsOneWay(pCurrentArea, pNextArea);
+
+			tPoints = DeterminePoints(pCurrentArea, pNextArea, bIsOneWay);
+			tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 			tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 			const float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
-			if (flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
+			if (!F::NavEngine.m_bIgnoreTraces && flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
 			{
 				CachedConnection_t& tEntry = m_mVischeckCache[tKey];
 				tEntry.m_iExpireTick = iCacheExpiry;
@@ -77,14 +90,12 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			Vector vStart = tPoints.m_vCurrent;
 			Vector vMid = tPoints.m_vCenter;
 			Vector vEnd = tPoints.m_vNext;
-			vStart.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-			vMid.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-			vEnd.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			if (F::NavEngine.IsPlayerPassableNavigation(vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(vMid, vEnd))
+			auto pLocal = H::Entities.GetLocal();
+			if (F::NavEngine.m_bIgnoreTraces || (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd)))
 			{
 				bPassable = true;
-				flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+				flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
 
 				CachedConnection_t& tEntry = m_mVischeckCache[tKey];
 				tEntry.m_iExpireTick = iCacheExpiry;
@@ -110,7 +121,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 		if (!std::isfinite(flBaseCost) || flBaseCost <= 0.f)
 		{
-			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown);
+			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
 			if (pCachedEntry)
 			{
 				pCachedEntry->m_flCachedCost = flBaseCost;
@@ -120,16 +131,42 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		}
 
 		float flFinalCost = flBaseCost;
-		if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
-			flFinalCost += flBlacklistPenalty;
-
-		if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
+		if (!F::NavEngine.m_bIgnoreTraces)
 		{
-			if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
+			if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
+				flFinalCost += flBlacklistPenalty;
+
+			if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
 			{
-				float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
-				flFinalCost += flStuckPenalty;
+				if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
+				{
+					float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
+					flFinalCost += flStuckPenalty;
+				}
 			}
+		}
+		else
+		{
+			auto pLocal = H::Entities.GetLocal();
+			float flDist = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
+
+			if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter) && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext))
+			{
+				flFinalCost = flDist;
+			}
+			else if ((pNextArea->m_vSeCorner.x - pNextArea->m_vNwCorner.x) >= PLAYER_WIDTH && (pNextArea->m_vSeCorner.y - pNextArea->m_vNwCorner.y) >= PLAYER_WIDTH)
+			{
+				flFinalCost = flDist * 2.f;
+			}
+			else
+			{
+				flFinalCost = flDist * 10.f;
+			}
+
+			if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
+				flFinalCost += 100000.f;
+			if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
+				flFinalCost += 50.f;
 		}
 
 		if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)
@@ -147,7 +184,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	}
 }
 
-DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos)
+DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay)
 {
 	DropdownHint_t tHint{};
 	tHint.m_vAdjustedPos = vCurrentPos;
@@ -167,30 +204,34 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 		const float flDropDistance = -flHeightDiff;
 		if (flDropDistance > kSmallDropGrace && flHorizontalLength > 1.f)
 		{
-			Vector vDirection = vHorizontal / flHorizontalLength;
-
-			// Distance to move forward before dropping. Favour wider moves for larger drops.
-			const float desiredAdvance = std::clamp(flDropDistance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
-			const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
-			float flApproach = desiredAdvance;
-			if (flMaxAdvance > 0.f)
-				flApproach = std::min(flApproach, flMaxAdvance);
-			else
-				flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
-
-			const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.6f, flHorizontalLength * 0.5f));
-			flApproach = std::max(flApproach, minAdvance);
-			flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
-			tHint.m_flApproachDistance = std::max(flApproach, 0.f);
-
-			tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
-			tHint.m_vAdjustedPos.z = vCurrentPos.z;
 			tHint.m_bRequiresDrop = true;
 			tHint.m_flDropHeight = flDropDistance;
-			tHint.m_vApproachDir = vDirection;
+			tHint.m_vApproachDir = vHorizontal / flHorizontalLength;
+
+			if (!bIsOneWay)
+			{
+				Vector vDirection = tHint.m_vApproachDir;
+
+				// Distance to move forward before dropping. Favour wider moves for larger drops.
+				const float desiredAdvance = std::clamp(flDropDistance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
+				const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
+				float flApproach = desiredAdvance;
+				if (flMaxAdvance > 0.f)
+					flApproach = std::min(flApproach, flMaxAdvance);
+				else
+					flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
+
+				const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.6f, flHorizontalLength * 0.5f));
+				flApproach = std::max(flApproach, minAdvance);
+				flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
+				tHint.m_flApproachDistance = std::max(flApproach, 0.f);
+
+				tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
+				tHint.m_vAdjustedPos.z = vCurrentPos.z;
+			}
 		}
 	}
-	else if (flHeightDiff > 0.f && flHorizontalLength > 1.f)
+	else if (!bIsOneWay && flHeightDiff > 0.f && flHorizontalLength > 1.f)
 	{
 		Vector vDirection = vHorizontal / flHorizontalLength;
 
@@ -205,7 +246,7 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 	return tHint;
 }
 
-NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
+NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay)
 {
 	auto vCurrentCenter = pCurrentArea->m_vCenter;
 	auto vNextCenter = pNextArea->m_vCenter;
@@ -227,7 +268,7 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
 	}
 
 	// If safepathing is enabled, adjust points to stay more centered and avoid corners
-	if (Vars::Misc::Movement::NavEngine::SafePathing.Value)
+	if (!bIsOneWay && Vars::Misc::Movement::NavEngine::SafePathing.Value)
 	{
 		// Move points more towards the center of the areas
 		//Vector vToNext = (vNextCenter - vCurrentCenter);
@@ -266,12 +307,25 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea)
 	return NavPoints_t(vCurrentCenter, vClosest, vCenterNext, vNextCenter);
 }
 
-float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const
+bool CMap::IsOneWay(CNavArea* pFrom, CNavArea* pTo) const
 {
-	auto HorizontalDistance = [](const Vector& a, const Vector& b) -> float
+	if (!pFrom || !pTo)
+		return true;
+
+	for (auto& tBackConnection : pTo->m_vConnections)
+	{
+		if (tBackConnection.m_pArea == pFrom)
+			return false;
+	}
+
+	return true;
+}
+
+float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown, int iTeam) const
+{
+	auto HorizontalDistance = [](const Vector& vStart, const Vector& vEnd) -> float
 		{
-			Vector vDelta = b - a;
-			Vector vFlat = vDelta;
+			Vector vFlat = vEnd - vStart;
 			vFlat.z = 0.f;
 			float flLen = vFlat.Length();
 			return flLen > 0.f ? flLen : 0.f;
@@ -320,32 +374,62 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 	if (flAreaSize > 0.f)
 		flCost -= std::clamp(flAreaSize * 0.01f, 0.f, 12.f);
 
-	if (pNextArea->m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
-		flCost += 900.f;
+	// that should work i guess, bot should get penalty for being inside its own spawn too
+	const bool bRedSpawn = pNextArea->m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_RED;
+	const bool bBlueSpawn = pNextArea->m_iTFAttributeFlags & TF_NAV_SPAWN_ROOM_BLUE;
+	if (bRedSpawn || bBlueSpawn)
+	{
+		if (iTeam == TF_TEAM_RED && bBlueSpawn && !bRedSpawn)
+			flCost += 100000.f;
+		else if (iTeam == TF_TEAM_BLUE && bRedSpawn && !bBlueSpawn)
+			flCost += 100000.f;
+		else if (bRedSpawn && bBlueSpawn)
+			flCost += 100.f;
+		else
+			flCost += 100.f;
+	}
+
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
+		flCost += 100000.f;
+
+	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
+		flCost += flForwardDistance * 5.f;
 
 	return std::max(flCost, 1.f);
 }
 
 float CMap::GetBlacklistPenalty(const BlacklistReason_t& tReason) const
 {
+	if (m_bIgnoreSentryBlacklist)
+	{
+		switch (tReason.m_eValue)
+		{
+		case BlacklistReasonEnum::Sentry:
+		case BlacklistReasonEnum::SentryMedium:
+		case BlacklistReasonEnum::SentryLow:
+			return 0.f;
+		default: break;
+		}
+	}
+
 	switch (tReason.m_eValue)
 	{
 	case BlacklistReasonEnum::Sentry:
-		return std::numeric_limits<float>::infinity();
+		return 3500.f;
 	case BlacklistReasonEnum::EnemyInvuln:
-		return 600.f;
+		return 1500.f;
 	case BlacklistReasonEnum::Sticky:
-		return 350.f;
+		return 1000.f;
 	case BlacklistReasonEnum::SentryMedium:
-		return 220.f;
+		return 800.f;
 	case BlacklistReasonEnum::SentryLow:
-		return 120.f;
+		return 400.f;
 	case BlacklistReasonEnum::EnemyDormant:
-		return 90.f;
+		return 200.f;
 	case BlacklistReasonEnum::EnemyNormal:
-		return 70.f;
+		return 300.f;
 	case BlacklistReasonEnum::BadBuildSpot:
-		return 60.f;
+		return 100.f;
 	default:
 		return 0.f;
 	}

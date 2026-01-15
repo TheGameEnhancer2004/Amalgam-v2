@@ -55,18 +55,13 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 	}
 
 	// #NoFear
-	if (iSlot == SLOT_MELEE)
+	if (iSlot == SLOT_MELEE && pLocal->m_iClass() != TF_CLASS_SPY)
 		return;
 
 	// Store the danger of the individual nav areas
 	std::unordered_map<CNavArea*, int> mDormantSlightDanger;
 	std::unordered_map<CNavArea*, int> mNormalSlightDanger;
 
-	// This is used to cache Dangerous areas between ents
-	std::unordered_map<CTFPlayer*, std::vector<CNavArea*>> mEntMarkedDormantSlightDanger;
-	std::unordered_map<CTFPlayer*, std::vector<CNavArea*>> mEntMarkedNormalSlightDanger;
-
-	std::vector<std::pair<CTFPlayer*, Vector>> vCheckedPlayerOrigins;
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
 		// Entity is generally invalid, ignore
@@ -91,84 +86,55 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 
 		vOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-		bool bShouldCheck = true;
+		float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
+		float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
 
-		// Find already dangerous marked areas by other entities
-		auto mToLoop = bDormant ? &mEntMarkedDormantSlightDanger : &mEntMarkedNormalSlightDanger;
+		// Not dangerous, Still don't bump
+		if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
+		{
+			flSlightDangerDist = PLAYER_WIDTH * 1.2f;
+			flFullDangerDist = PLAYER_WIDTH * 1.2f;
+		}
 
 		// Add new danger entries
 		auto mToMark = bDormant ? &mDormantSlightDanger : &mNormalSlightDanger;
 
-		for (auto [pCheckedPlayer, vCheckedOrigin] : vCheckedPlayerOrigins)
+		std::vector<CNavArea*> vAreas;
+		F::NavEngine.GetNavMap()->CollectAreasAround(vOrigin, flSlightDangerDist, vAreas);
+
+		for (auto& pArea : vAreas)
 		{
-			// If this origin is closer than a quarter of the min HU (or less than 100 HU) to a cached one, don't go through
-			// all nav areas again DistTo is much faster than DistTo which is why we use it here
-			float flDist = m_tSelectedConfig.m_flMinSlightDanger;
+			float flDist = pArea->m_vCenter.DistTo(vOrigin);
 
-			flDist *= 0.25f;
-			flDist = std::max(100.0f, flDist);
+			Vector vNavAreaPos = pArea->m_vCenter;
+			vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			if (vOrigin.DistTo(vCheckedOrigin) < flDist)
+			if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
 			{
-				bShouldCheck = false;
-
-				bool bIsAbsoluteDanger = flDist < m_tSelectedConfig.m_flMinFullDanger;
-				if (!bIsAbsoluteDanger && (false/*slight danger when capping*/ || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
-				{
-					// The area is not visible by the player
-					if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vCheckedOrigin, MASK_SHOT))
-						continue;
-
-					for (auto& pArea : (*mToLoop)[pCheckedPlayer])
-					{
-						(*mToMark)[pArea]++;
-						if ((*mToMark)[pArea] >= Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
-							(*F::NavEngine.GetFreeBlacklist())[pArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
-					}
-				}
-				break;
-			}
-		}
-		if (!bShouldCheck)
-			continue;
-
-		// Now check which areas they are close to
-		for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
-		{
-			float flDist = tArea.m_vCenter.DistTo(vOrigin);
-			float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
-			float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
-
-			// Not dangerous, Still don't bump
-			if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
-			{
-				flSlightDangerDist = PLAYER_WIDTH * 1.2f;
-				flFullDangerDist = PLAYER_WIDTH * 1.2f;
-			}
-
-			if (flDist < flSlightDangerDist)
-			{
-				Vector vNavAreaPos = tArea.m_vCenter;
-				vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-				// The area is not visible by the player
-				if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
+				if (pLocal->InCond(TF_COND_STEALTHED))
 					continue;
 
-				// Add as marked area
-				(*mToLoop)[pPlayer].push_back(&tArea);
-
-				// Just slightly dangerous, only mark as such if it's clear
-				if (flDist >= flFullDangerDist &&
-					(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
-				{
-					(*mToMark)[&tArea]++;
-					if ((*mToMark)[&tArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
-						continue;
-				}
-				(*F::NavEngine.GetFreeBlacklist())[&tArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
+				Vec3 vForward;
+				Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
+				Vec3 vToArea = vNavAreaPos - vOrigin;
+				vToArea.Normalize();
+				if (vForward.Dot(vToArea) < 0.3f)
+					continue;
 			}
+
+			if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
+				continue;
+
+			// Just slightly dangerous, only mark as such if it's clear
+			if (flDist >= flFullDangerDist &&
+				(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
+			{
+				(*mToMark)[pArea]++;
+				if ((*mToMark)[pArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
+					continue;
+			}
+			(*F::NavEngine.GetFreeBlacklist())[pArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
 		}
-		vCheckedPlayerOrigins.emplace_back(pPlayer, vOrigin);
 	}
 }
 
@@ -181,16 +147,24 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 	// Prioritize reloading
 	int iReloadSlot = F::NavBotReload.m_iLastReloadSlot = F::NavBotReload.GetReloadWeaponSlot(pLocal, tClosestEnemy);
 
-	// Special case for engineer bots
 	if (F::NavBotEngineer.IsEngieMode(pLocal))
 	{
 		int iSwitch = 0;
 		switch (F::NavBotEngineer.m_eTaskStage)
 		{
-			// We are currently building something (we dont really need to hold the melee weapon)
+			// We are currently building something
 		case EngineerTaskStageEnum::BuildSentry:
 		case EngineerTaskStageEnum::BuildDispenser:
-			iSwitch = 2 * (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f);
+			if (F::NavBotEngineer.m_tCurrentBuildingSpot.m_flDistanceToTarget != FLT_MAX && F::NavBotEngineer.m_tCurrentBuildingSpot.m_vPos.DistTo(pLocal->GetAbsOrigin()) <= 500.f)
+			{
+				if (pLocal->m_bCarryingObject())
+				{
+					auto pWeapon = pLocal->m_hActiveWeapon().Get()->As<CTFWeaponBase>();
+					if (pWeapon && pWeapon->GetSlot() != 3)
+						F::BotUtils.SetSlot(pLocal, SLOT_PRIMARY);
+				}
+				return;
+			}
 			break;
 			// We are currently upgrading/repairing something
 		case EngineerTaskStageEnum::SmackSentry:
@@ -210,7 +184,6 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 				if (F::BotUtils.m_iCurrentSlot < SLOT_MELEE)
 					F::BotUtils.SetSlot(pLocal, SLOT_MELEE);
 			}
-			// Dont interrupt building process
 			return;
 		}
 	}
@@ -219,44 +192,51 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
 }
 
-bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex)
+static bool FindClosestHidingSpotRecursive(CNavArea* pArea, const Vector& vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex, std::vector<CNavArea*>& vVisited)
 {
-	static std::vector<CNavArea*> vAlreadyRecursed;
-	if (iRecursionIndex == 0)
-		vAlreadyRecursed.clear();
+	if (!pArea || iRecursionCount <= 0)
+		return false;
 
 	Vector vAreaOrigin = pArea->m_vCenter;
 	vAreaOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-	// Increment recursion index
-	iRecursionIndex++;
+	int iNextIndex = iRecursionIndex + 1;
 
-	// If the area works, return it
 	if (bVischeck && !F::NavEngine.IsVectorVisibleNavigation(vAreaOrigin, vVischeckPoint))
 	{
-		tOut = { pArea, iRecursionIndex - 1 };
+		tOut = { pArea, iRecursionIndex };
 		return true;
 	}
-	// Termination condition not hit yet
-	else if (iRecursionIndex < iRecursionCount)
+
+	if (iNextIndex >= iRecursionCount)
+		return false;
+
+	std::pair<CNavArea*, int> tBestSpot{};
+	for (auto& tConnection : pArea->m_vConnections)
 	{
-		// Store the nearest area
-		std::pair<CNavArea*, int> tBestSpot;
-		for (auto& tConnection : pArea->m_vConnections)
-		{
-			if (std::find(vAlreadyRecursed.begin(), vAlreadyRecursed.end(), tConnection.m_pArea) != vAlreadyRecursed.end())
-				continue;
+		CNavArea* pNextArea = tConnection.m_pArea;
+		if (!pNextArea)
+			continue;
 
-			vAlreadyRecursed.push_back(tConnection.m_pArea);
+		if (std::find(vVisited.begin(), vVisited.end(), pNextArea) != vVisited.end())
+			continue;
 
-			std::pair<CNavArea*, int> tSpot;
-			if (FindClosestHidingSpot(tConnection.m_pArea, vVischeckPoint, iRecursionCount, tSpot, iRecursionIndex, bVischeck) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
-				tBestSpot = tSpot;
-		}
-		tOut = tBestSpot;
-		return tBestSpot.first;
+		vVisited.push_back(pNextArea);
+
+		std::pair<CNavArea*, int> tSpot;
+		if (FindClosestHidingSpotRecursive(pNextArea, vVischeckPoint, iRecursionCount, tSpot, bVischeck, iNextIndex, vVisited) && (!tBestSpot.first || tSpot.second < tBestSpot.second))
+			tBestSpot = tSpot;
 	}
-	return false;
+
+	tOut = tBestSpot;
+	return tBestSpot.first != nullptr;
+}
+
+bool CNavBotCore::FindClosestHidingSpot(CNavArea* pArea, Vector vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex)
+{
+	std::vector<CNavArea*> vVisited;
+	vVisited.reserve(32);
+	return FindClosestHidingSpotRecursive(pArea, vVischeckPoint, iRecursionCount, tOut, bVischeck, iRecursionIndex, vVisited);
 }
 
 static bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
@@ -281,10 +261,27 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		return;
 	}
 
+	if (Vars::Debug::Info.Value)
+	{
+		for (const auto& segment : F::BotUtils.m_vWalkableSegments)
+		{
+			G::LineStorage.push_back({ { segment.first, segment.second }, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 0, 255, 0, 255 } });
+		}
+
+		if (F::BotUtils.m_vPredictedJumpPos.Length() > 0.f)
+		{
+			G::LineStorage.push_back({ { pLocal->GetAbsOrigin(), F::BotUtils.m_vPredictedJumpPos }, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 255, 255, 0, 255 } });
+			G::SphereStorage.push_back({ F::BotUtils.m_vJumpPeakPos, 5.f, 10, 10, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 255, 0, 0, 255 }, { 0, 0, 0, 0 } });
+			G::SphereStorage.push_back({ F::BotUtils.m_vPredictedJumpPos, 5.f, 10, 10, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, { 0, 0, 255, 255 }, { 0, 0, 0, 0 } });
+		}
+	}
+
 	if (Vars::Misc::Movement::NavBot::DisableOnSpectate.Value && H::Entities.IsSpectated())
 	{
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
 	}
 
@@ -292,13 +289,26 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
+	}
 
 	if (!pWeapon)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
+	}
 
 	if (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK)
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
+		m_vStuckAngles = pCmd->viewangles;
 		return;
+	}
 
 	F::NavBotGroup.UpdateLocalBotPositions(pLocal);
 
@@ -309,6 +319,8 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		// In case it did then theres something wrong with nav engine
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
 		return;
 	}
 
@@ -361,20 +373,31 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	if (F::NavBotDanger.EscapeSpawn(pLocal)
 		|| F::NavBotDanger.EscapeProjectiles(pLocal)
-		|| F::NavBotMelee.Run(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotDanger.EscapeDanger(pLocal)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health)
+		|| F::NavBotEngineer.Run(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
+		|| F::NavBotMelee.Run(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo)
 		//|| F::NavBotReload.Run(pLocal, pWeapon)
-		|| F::NavBotReload.RunSafe(pLocal, pWeapon)
-		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotCapture.Run(pLocal, pWeapon)
-		|| F::NavBotEngineer.Run(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotSnipe.Run(pLocal)
+		|| F::NavBotReload.RunSafe(pLocal, pWeapon)
 		|| F::NavBotStayNear.Run(pLocal, pWeapon)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health | GetSupplyEnum::LowPrio)
+		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotRoam.Run(pLocal, pWeapon))
 	{
+		bool bIsPathing = F::NavEngine.IsPathing();
+		if (!bIsPathing)
+		{
+			// If we have a job but no path, we consider it idle (stuck or waiting for gods agreement to move lol)
+		}
+		else
+		{
+			m_tIdleTimer.Update();
+			m_tAntiStuckTimer.Update();
+		}
+
 		// Force crithack in dangerous conditions
 		// TODO:
 		// Maybe add some logic to it (more logic)
@@ -397,6 +420,38 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 			break;
 		}
 	}
+	else if (F::NavEngine.IsReady() && !F::NavEngine.IsSetupTime())
+	{
+		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+		if (flIdleTime > m_flNextIdleTime)
+		{
+			if (flIdleTime < m_flNextIdleTime + 0.5f)
+			{
+				pCmd->forwardmove = 450.f;
+
+				if (m_tAntiStuckTimer.Run(m_flNextStuckAngleChange))
+				{
+					m_flNextStuckAngleChange = SDK::RandomFloat(0.1f, 0.3f);
+					m_vStuckAngles.y += SDK::RandomFloat(-15.f, 15.f);
+					Math::ClampAngles(m_vStuckAngles);
+				}
+
+				SDK::FixMovement(pCmd, m_vStuckAngles);
+			}
+			else
+			{
+				m_tIdleTimer.Update();
+				m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
+			}
+		}
+	}
+	else
+	{
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
+		m_vStuckAngles = pCmd->viewangles;
+		m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
+	}
 }
 
 void CNavBotCore::Reset()
@@ -407,6 +462,7 @@ void CNavBotCore::Reset()
 	F::NavBotSupplies.ResetTemp();
 	F::NavBotEngineer.Reset();
 	F::NavBotCapture.Reset();
+	m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
 }
 
 void CNavBotCore::Draw(CTFPlayer* pLocal)
@@ -452,6 +508,12 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	{
 	case PriorityListEnum::Patrol:
 		sJob = F::NavBotRoam.m_bDefending ? L"Defend" : L"Patrol";
+		if (F::NavBotRoam.m_bDefending && !F::NavBotCapture.m_sCaptureStatus.empty())
+		{
+			sJob += L" (";
+			sJob += F::NavBotCapture.m_sCaptureStatus;
+			sJob += L")";
+		}
 		break;
 	case PriorityListEnum::LowPrioGetHealth:
 		sJob = L"Get health (Low-Prio)";
@@ -473,6 +535,12 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		break;
 	case PriorityListEnum::Capture:
 		sJob = L"Capture";
+		if (!F::NavBotCapture.m_sCaptureStatus.empty())
+		{
+			sJob += L" (";
+			sJob += F::NavBotCapture.m_sCaptureStatus;
+			sJob += L")";
+		}
 		break;
 	case PriorityListEnum::MeleeAttack:
 		sJob = L"Melee";
@@ -516,10 +584,47 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 	}
 
 	H::Draw.StringOutlined(fFont, x, y, cColor, Vars::Menu::Theme::Background.Value, align, std::format(L"Job: {} {}", sJob, std::wstring(F::CritHack.m_bForce ? L"(Crithack on)" : L"")).data());
+	if (F::NavEngine.IsPathing())
+	{
+		auto pCrumbs = F::NavEngine.GetCrumbs();
+		float flDist = pLocal->GetAbsOrigin().DistTo(F::NavEngine.m_vLastDestination);
+		H::Draw.StringOutlined(fFont, x, y += nTall, cColor, Vars::Menu::Theme::Background.Value, align, std::format("Nodes: {} (Dist: {:.0f})", pCrumbs->size(), flDist).c_str());
+	}
+
+	float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+	if (flIdleTime > 2.0f && F::NavEngine.IsPathing())
+	{
+		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Stuck: {:.1f}s", flIdleTime).c_str());
+	}
+
+	if (!F::NavEngine.IsPathing() && !F::NavEngine.m_sLastFailureReason.empty())
+	{
+		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Failed: {}", F::NavEngine.m_sLastFailureReason).c_str());
+	}
+
 	if (Vars::Debug::Info.Value)
 	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Is ready: {}", std::to_string(bIsReady)).c_str());
+		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Priority: {}", static_cast<int>(F::NavEngine.m_eCurrentPriority)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("In spawn: {}", std::to_string(iInSpawn)).c_str());
 		H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area flags: {}", std::to_string(iAreaFlags)).c_str());
+
+		if (F::NavEngine.IsNavMeshLoaded())
+		{
+			H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Map: {}", F::NavEngine.GetNavFilePath()).c_str());
+			if (auto pLocalArea = F::NavEngine.GetLocalNavArea())
+				H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Area ID: {}", pLocalArea->m_uId).c_str());
+			H::Draw.StringOutlined(fFont, x, y += nTall, cReadyColor, Vars::Menu::Theme::Background.Value, align, std::format("Total areas: {}", F::NavEngine.GetNavFile()->m_vAreas.size()).c_str());
+		}
+
+		if (F::NavEngine.IsPathing() || F::NavEngine.m_vLastDestination.Length() > 0.f)
+		{
+			const auto& vDest = F::NavEngine.m_vLastDestination;
+			H::Draw.StringOutlined(fFont, x, y += nTall, cColor, Vars::Menu::Theme::Background.Value, align, std::format("Dest: {:.0f}, {:.0f}, {:.0f}", vDest.x, vDest.y, vDest.z).c_str());
+		}
+
+		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
+		bool bIsIdle = F::NavEngine.m_eCurrentPriority == PriorityListEnum::None || !F::NavEngine.IsPathing();
+		H::Draw.StringOutlined(fFont, x, y += nTall, bIsIdle ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value, Vars::Menu::Theme::Background.Value, align, std::format("Idle: {} ({:.1f}s)", bIsIdle ? "Yes" : "No", std::max(0.f, flIdleTime)).c_str());
 	}
 }

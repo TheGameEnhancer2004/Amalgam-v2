@@ -4,7 +4,7 @@
 #include "../Players/PlayerUtils.h"
 
 static std::string s_sRed =		Color_t(255, 100, 100).ToHex();
-static std::string s_sGreen =		Color_t(100, 255, 100).ToHex();
+static std::string s_sGreen =	Color_t(100, 255, 100).ToHex();
 static std::string s_sYellow =	Color_t(200, 169, 0).ToHex();
 
 static inline void OutputInfo(int iFlags, const char* sName, const char* sOutput, const char* sChat)
@@ -189,7 +189,7 @@ void COutput::UserMessage(bf_read& msgData)
 	char sReason[256]; msgData.ReadString(sReason, sizeof(sReason));
 	char sTarget[256]; msgData.ReadString(sTarget, sizeof(sTarget));
 	int iTarget = msgData.ReadByte() >> 1;
-	msgData.Seek(0);
+	msgData.Reset();
 	if (!iCaller || !iTarget)
 		return;
 

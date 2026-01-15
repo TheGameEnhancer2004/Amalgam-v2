@@ -4,6 +4,7 @@
 #include "../Players/PlayerUtils.h"
 #include "../Misc/Misc.h"
 #include "../Aimbot/AimbotGlobal/AimbotGlobal.h"
+#include "../Aimbot/AutoRocketJump/AutoRocketJump.h"
 #include "../Misc/NamedPipe/NamedPipe.h"
 #include "../Ticks/Ticks.h"
 
@@ -24,9 +25,10 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	Vec3 vShootPos = F::Ticks.GetShootPos();
 	float flRange = pWeapon->GetRange();
+	int iLocalIdx = pLocal->entindex();
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
-		if (pEntity->entindex() == pLocal->entindex() || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
+		if (pEntity->entindex() == iLocalIdx || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
 			continue;
 
 		if (pEntity->As<CTFPlayer>()->InCond(TF_COND_STEALTHED) ||
@@ -214,10 +216,10 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			(!G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo || !G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4)) &&
 			m_tClosestEnemy.m_flDist <= 200.f)
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && m_tClosestEnemy.m_flDist <= 800.f)
-			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
+		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip && (m_tClosestEnemy.m_flDist > 750.f || !G::AmmoInSlot[SLOT_PRIMARY].m_iClip))
 			m_iBestSlot = SLOT_SECONDARY;
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_HEAVY:
@@ -226,10 +228,8 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			(G::SavedDefIndexes[SLOT_MELEE] == Heavy_t_TheHolidayPunch &&
 			(m_tClosestEnemy.m_pPlayer && !m_tClosestEnemy.m_pPlayer->IsTaunting() && m_tClosestEnemy.m_pPlayer->IsInvulnerable()) && m_tClosestEnemy.m_flDist < 400.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((!m_tClosestEnemy.m_pPlayer || m_tClosestEnemy.m_flDist <= 900.f) && G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
 			m_iBestSlot = SLOT_PRIMARY;
-		else if (G::AmmoInSlot[SLOT_SECONDARY].m_bUsesAmmo && G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
-			m_iBestSlot = SLOT_SECONDARY;
 		break;
 	}
 	case TF_CLASS_MEDIC:
@@ -248,7 +248,21 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	}
 	case TF_CLASS_SPY:
 	{
+		bool bIsBehind = false;
+		if (m_tClosestEnemy.m_pPlayer)
+		{
+			Vec3 vForward;
+			Math::AngleVectors(m_tClosestEnemy.m_pPlayer->GetEyeAngles(), &vForward);
+			Vec3 vToLocal = pLocal->GetAbsOrigin() - m_tClosestEnemy.m_pPlayer->GetAbsOrigin();
+			vToLocal.z = 0; vToLocal.Normalize();
+			vForward.z = 0; vForward.Normalize();
+			if (vForward.Dot(vToLocal) < -0.5f)
+				bIsBehind = true;
+		}
+
 		if (m_tClosestEnemy.m_flDist <= 250.f && m_tClosestEnemy.m_pPlayer)
+			m_iBestSlot = SLOT_MELEE;
+		else if (m_tClosestEnemy.m_pPlayer && (pLocal->InCond(TF_COND_STEALTHED) || bIsBehind) && m_tClosestEnemy.m_flDist <= 1000.f)
 			m_iBestSlot = SLOT_MELEE;
 		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve)
 			m_iBestSlot = SLOT_PRIMARY;
@@ -274,10 +288,12 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 			G::AmmoInSlot[SLOT_SECONDARY].m_iReserve <= G::AmmoInSlot[SLOT_SECONDARY].m_iMaxReserve / 4) &&
 			(m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 300.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_flDist <= 550.f || !m_tClosestEnemy.m_pPlayer))
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 400.f))
 			m_iBestSlot = SLOT_PRIMARY;
 		else if (G::AmmoInSlot[SLOT_SECONDARY].m_iClip)
 			m_iBestSlot = SLOT_SECONDARY;
+		else if (G::AmmoInSlot[SLOT_PRIMARY].m_iClip)
+			m_iBestSlot = SLOT_PRIMARY;
 		break;
 	}
 	case TF_CLASS_SOLDIER:
@@ -307,7 +323,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	{
 		if (G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo && !G::AmmoInSlot[SLOT_PRIMARY].m_iClip && !G::AmmoInSlot[SLOT_SECONDARY].m_iClip && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 200.f))
 			m_iBestSlot = SLOT_MELEE;
-		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 500.f))
+		else if ((!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_PRIMARY].m_iClip || G::AmmoInSlot[SLOT_PRIMARY].m_iReserve) && (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_flDist <= 1000.f))
 			m_iBestSlot = SLOT_PRIMARY;
 		else if (!G::AmmoInSlot[SLOT_PRIMARY].m_bUsesAmmo || G::AmmoInSlot[SLOT_SECONDARY].m_iClip || G::AmmoInSlot[SLOT_SECONDARY].m_iReserve)
 			m_iBestSlot = SLOT_SECONDARY;
@@ -417,8 +433,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	{
 		if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
 		{
-			pBestEnemy = pTarget;
-			flBestDist = -1.f;
+			if (pTarget->IsPlayer() ? pTarget->As<CTFPlayer>()->IsAlive() : (pTarget->IsBuilding() ? pTarget->As<CBaseObject>()->m_iHealth() > 0 : false))
+			{
+				Vec3 vTargetPos = pTarget->IsPlayer() ? pTarget->As<CTFPlayer>()->GetEyePosition() : pTarget->GetCenter();
+				if (SDK::VisPos(pLocal, pTarget, vEye, vTargetPos))
+				{
+					pBestEnemy = pTarget;
+					flBestDist = -1.f;
+				}
+			}
 		}
 	}
 
@@ -482,7 +505,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		vLastPos = vLook;
 		bEnemyLock = true;
 	}
-	else if ((I::GlobalVars->curtime - flLastSeen) < 1.5f && !vLastPos.IsZero())
+	else if ((I::GlobalVars->curtime - flLastSeen) < 1.2f && !vLastPos.IsZero())
 	{
 		// look at last known position for a bit
 		vLook = vLastPos;
@@ -498,6 +521,41 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		{
 			Vec3 vForward = vVelocity;
 			vForward.Normalize();
+			vLook = vEye + (vForward * 500.f);
+
+			CGameTrace trace;
+			CTraceFilterHitscan filter;
+			filter.pSkip = pLocal;
+			SDK::Trace(vEye, vLook, MASK_SHOT, &filter, &trace);
+
+			if (trace.fraction < 0.25f)
+			{
+				float flBestDist = trace.fraction * 500.f;
+				Vec3 vBestForward = vForward;
+
+				for (float flOffset : { -15.f, 15.f, -30.f, 30.f, -45.f, 45.f, -60.f, 60.f, -75.f, 75.f, -90.f, 90.f })
+				{
+					Vec3 vTestAngles = Math::CalcAngle(vEye, vLook);
+					vTestAngles.y += flOffset;
+					vTestAngles.x = SDK::RandomFloat(-5.f, 10.f);
+					Vec3 vTestForward;
+					Math::AngleVectors(vTestAngles, &vTestForward);
+
+					SDK::Trace(vEye, vEye + vTestForward * 500.f, MASK_SHOT, &filter, &trace);
+					if (trace.fraction * 500.f > flBestDist)
+					{
+						flBestDist = trace.fraction * 500.f;
+						vBestForward = vTestForward;
+					}
+				}
+				vForward = vBestForward;
+				vLook = vEye + (vForward * 500.f);
+			}
+
+			float flSweep = std::sin(I::GlobalVars->curtime * 1.5f) * 15.f;
+			Vec3 vAngles = Math::CalcAngle(vEye, vLook);
+			vAngles.y += flSweep;
+			Math::AngleVectors(vAngles, &vForward);
 			vLook = vEye + (vForward * 500.f);
 		}
 		else if (vLook.IsZero())
@@ -544,6 +602,9 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tOffsetTimer.Update();
 		tState.m_tGlanceTimer.Update();
 		tState.m_tGlanceCooldown.Update();
+
+		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
+		tState.m_tScanTimer.Update();
 	}
 	else
 		tState.m_vLastTarget = vFocus;
@@ -554,6 +615,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	else
 	{
 		float flAnchorBlend = std::clamp(flAnchorDelta / 90.f, 0.05f, 0.3f);
+		if (bEnemyLock)
+		{
+			float flProgressive = std::pow(std::clamp(flAnchorDelta / 30.f, 0.f, 1.f), 1.5f);
+			flAnchorBlend = std::clamp(0.08f + flProgressive * 0.42f, 0.08f, 0.5f);
+		}
 		tState.m_vAnchor = tState.m_vAnchor.LerpAngle(vDesired, flAnchorBlend);
 	}
 
@@ -562,15 +628,75 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	{
 		float flYawScale = std::clamp(flVelocity2D / 220.f, 0.3f, 0.95f);
 		float flPitchScale = std::clamp(flVelocity2D / 320.f, 0.18f, 0.75f);
-		tState.m_vOffsetGoal.y = SDK::RandomFloat(-28.f, 28.f) * flYawScale;
-		tState.m_vOffsetGoal.x = SDK::RandomFloat(-3.f, 4.f) * flPitchScale;
+		if (bEnemyLock)
+		{
+			tState.m_vOffsetGoal = {};
+		}
+		else
+		{
+			tState.m_vOffsetGoal.y = SDK::RandomFloat(-28.f, 28.f) * flYawScale;
+			tState.m_vOffsetGoal.x = SDK::RandomFloat(-3.f, 4.f) * flPitchScale;
+		}
 		tState.m_flNextOffset = SDK::RandomFloat(0.65f, 1.95f);
 	}
 
 	tState.m_vOffset = tState.m_vOffset.LerpAngle(tState.m_vOffsetGoal, 0.1f);
+
+	// Active Scanning for open spaces
+	if (!bEnemyLock && !tState.m_bGlancing && flVelocity2D > 50.f && tState.m_tScanTimer.Run(tState.m_flNextScan))
+	{
+		tState.m_flNextScan = SDK::RandomFloat(0.5f, 1.5f);
+
+		Vec3 vMoveDir = pLocal->m_vecVelocity();
+		vMoveDir.Normalize();
+		Vec3 vMoveAngles = Math::CalcAngle(Vec3(), vMoveDir);
+
+		float flBestTraceDist = 0.f;
+		Vec3 vBestScanDir = {};
+
+		for (float flYawOffset = -90.f; flYawOffset <= 90.f; flYawOffset += 15.f)
+		{
+			Vec3 vScanAngles = vMoveAngles;
+			vScanAngles.y += flYawOffset;
+			vScanAngles.x = SDK::RandomFloat(-5.f, 15.f);
+
+			Vec3 vForward;
+			Math::AngleVectors(vScanAngles, &vForward);
+
+			CGameTrace trace;
+			CTraceFilterHitscan filter;
+			filter.pSkip = pLocal;
+			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
+
+			if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value)
+			{
+				G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, trace.endpos), I::GlobalVars->curtime + 1.f, Color_t{ 255, 255, 255, 100 }, false);
+			}
+
+			if (trace.fraction * 1000.f > flBestTraceDist)
+			{
+				flBestTraceDist = trace.fraction * 1000.f;
+				vBestScanDir = vForward;
+			}
+		}
+
+		if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value && !vBestScanDir.IsZero())
+		{
+			G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, vEye + vBestScanDir * flBestTraceDist), I::GlobalVars->curtime + 1.f, Color_t{ 0, 255, 0, 255 }, false);
+		}
+
+		if (flBestTraceDist > 400.f)
+		{
+			tState.m_vGlanceGoal = Math::CalcAngle(vEye, vEye + vBestScanDir * 500.f);
+			tState.m_bGlancing = true;
+			tState.m_flGlanceDuration = SDK::RandomFloat(2.0f, 3.2f);
+			tState.m_tGlanceTimer.Update();
+		}
+	}
+
 	if (tState.m_bGlancing)
 	{
-		if (tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
+		if (bEnemyLock || tState.m_tGlanceTimer.Run(tState.m_flGlanceDuration))
 		{
 			tState.m_bGlancing = false;
 			tState.m_vGlanceGoal = {};
@@ -578,7 +704,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			tState.m_tGlanceCooldown.Update();
 		}
 	}
-	else if (tState.m_tGlanceCooldown.Run(tState.m_flNextGlance))
+	else if (!bEnemyLock && tState.m_tGlanceCooldown.Run(tState.m_flNextGlance))
 	{
 		tState.m_bGlancing = true;
 		tState.m_flGlanceDuration = SDK::RandomFloat(0.28f, 0.52f);
@@ -587,7 +713,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		tState.m_tGlanceTimer.Update();
 	}
 
-	tState.m_vGlanceCurrent = tState.m_vGlanceCurrent.LerpAngle(tState.m_vGlanceGoal, tState.m_bGlancing ? 0.2f : 0.12f);
+	tState.m_vGlanceCurrent = tState.m_vGlanceCurrent.LerpAngle(tState.m_vGlanceGoal, tState.m_bGlancing ? 0.12f : 0.08f);
 
 	float flPhaseSpeed = std::clamp(flVelocity2D / 240.f, 0.25f, 1.0f);
 	tState.m_flPhase += I::GlobalVars->interval_per_tick * (0.9f + flPhaseSpeed);
@@ -601,9 +727,29 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		0.f
 	};
 
-	Vec3 vGoal = tState.m_vAnchor + tState.m_vOffset + tState.m_vGlanceCurrent + vMicro;
+	if (bEnemyLock)
+	{
+		float flDeltaX = SDK::RandomFloat(-1.f, 1.f) * 0.4f;
+		float flDeltaY = SDK::RandomFloat(-1.f, 1.f) * 0.4f;
+		tState.m_flErrorVelocityX += (flDeltaX - tState.m_flErrorX) * 0.12f;
+		tState.m_flErrorVelocityY += (flDeltaY - tState.m_flErrorY) * 0.12f;
+		tState.m_flErrorVelocityX *= 0.82f;
+		tState.m_flErrorVelocityY *= 0.82f;
+		tState.m_flErrorX += tState.m_flErrorVelocityX;
+		tState.m_flErrorY += tState.m_flErrorVelocityY;
+	}
+	else
+	{
+		tState.m_flErrorX = Math::Lerp(tState.m_flErrorX, 0.f, 0.1f);
+		tState.m_flErrorY = Math::Lerp(tState.m_flErrorY, 0.f, 0.1f);
+	}
+
+	Vec3 vGoal = tState.m_vAnchor + tState.m_vOffset + tState.m_vGlanceCurrent + vMicro + Vec3(tState.m_flErrorX, tState.m_flErrorY, 0.f);
 	Math::ClampAngles(vGoal);
-	vGoal.x = std::clamp(vGoal.x, -8.f, 22.f);
+	if (bEnemyLock)
+		vGoal.x = std::clamp(vGoal.x, -89.f, 89.f);
+	else
+		vGoal.x = std::clamp(vGoal.x, -15.f, 25.f);
 
 	float flSpeedVal = std::max(1.f, static_cast<float>(Vars::Misc::Movement::BotUtils::LookAtPathSpeed.Value));
 	Vec3 vWish = vGoal;
@@ -616,9 +762,8 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vLook - Vec3(0, 0, 10), vLook + Vec3(0, 0, 10)), I::GlobalVars->curtime + 0.1f, Color_t{ 0, 0, 255, 255 }, false);
 	}
 
-	if (bSilent)
-		pCmd->viewangles = vWish;
-	else
+	pCmd->viewangles = vWish;
+	if (!bSilent)
 		I::EngineClient->SetViewAngles(vWish);
 
 	m_vLastAngles = vWish;
@@ -859,5 +1004,292 @@ void CBotUtils::Reset()
 	m_tClosestEnemy = {};
 	m_iBestSlot = -1;
 	m_iCurrentSlot = -1;
+	m_eJumpState = STATE_AWAITING_JUMP;
+	m_vPredictedJumpPos = {};
+	m_vJumpPeakPos = {};
 	InvalidateLLAP();
+}
+
+bool CBotUtils::IsSurfaceWalkable(const Vector& vNormal)
+{
+	static const Vector vUp = { 0.f, 0.f, 1.f };
+	float flAngle = RAD2DEG(std::acos(vNormal.Dot(vUp)));
+	return flAngle < 50.f; // MAX_WALKABLE_ANGLE
+}
+
+bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd)
+{
+	if (!pLocal) return false;
+
+	const bool bDebug = Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable;
+	if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 255, 255 }, "[IsWalkable] Testing path from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)\n", vStart.x, vStart.y, vStart.z, vEnd.x, vEnd.y, vEnd.z);
+
+	m_vWalkableSegments.clear();
+	const float flStepHeight = pLocal->m_flStepSize();
+	const float flMaxFallDistance = 350.f;
+	const Vector vStepHeight = { 0.f, 0.f, flStepHeight };
+	const Vector vMaxFallDistance = { 0.f, 0.f, flMaxFallDistance };
+	const Vector vHullMin = { -20.f, -20.f, 0.f };
+	const Vector vHullMax = { 20.f, 20.f, 72.f };
+
+	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
+		{
+			CGameTrace trace = {};
+			CTraceFilterCollideable filter = {};
+			filter.pSkip = pLocal;
+			filter.iPlayer = PLAYER_NONE;
+			filter.iObject = OBJECT_ALL;
+			filter.bIgnoreDoors = true;
+			filter.bIgnoreCart = true;
+			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
+			return trace;
+		};
+
+	auto AdjustDirectionToSurface = [&](Vector vDir, const Vector& vNormal) -> Vector
+		{
+			vDir.Normalize();
+			if (!IsSurfaceWalkable(vNormal)) return vDir;
+
+			float flDot = vDir.Dot(vNormal);
+			vDir.z -= vNormal.z * flDot;
+			vDir.Normalize();
+			return vDir;
+		};
+
+	CGameTrace groundTrace = PerformTraceHull(vStart + vStepHeight, vStart - vMaxFallDistance);
+	if (groundTrace.fraction == 1.0f)
+	{
+		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] No ground at start\n");
+		return false;
+	}
+
+	Vector vCurrentPos = groundTrace.endpos;
+	Vector vLastPos = vCurrentPos;
+	Vector vGoalDir = vEnd - vCurrentPos;
+	Vector vLastDir = AdjustDirectionToSurface(vGoalDir, groundTrace.plane.normal);
+
+	float flMaxDist = vEnd.DistTo2D(vStart);
+	float flMinStepSize = 10.f;
+
+	for (int i = 0; i < 64; i++)
+	{
+		Vector vIterStartPos = vCurrentPos;
+		float flDistToGoal = (vEnd - vCurrentPos).Length();
+		Vector vNextPos = vCurrentPos + vLastDir * std::min(flDistToGoal, 32.f);
+
+		CGameTrace wallTrace = PerformTraceHull(vCurrentPos + vStepHeight, vNextPos + vStepHeight);
+		Vector vPreGroundPos = wallTrace.endpos;
+
+		if (wallTrace.startsolid)
+		{
+			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Stuck in wall at iteration %d\n", i);
+			return false;
+		}
+
+		float flTotalDist = (vPreGroundPos - vIterStartPos).Length();
+		int iNumSegments = std::max(1, static_cast<int>(std::floor(flTotalDist / flMinStepSize)));
+
+		bool bFoundGround = false;
+		for (int s = 1; s <= iNumSegments; s++)
+		{
+			float t = static_cast<float>(s) / iNumSegments;
+			Vector vSegmentPos = vIterStartPos + (vPreGroundPos - vIterStartPos) * t;
+			CGameTrace segGroundTrace = PerformTraceHull(vSegmentPos + vStepHeight, vSegmentPos - vMaxFallDistance);
+
+			m_vWalkableSegments.push_back({ vCurrentPos, segGroundTrace.endpos });
+
+			if (segGroundTrace.fraction == 1.0f)
+			{
+				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Pit/Ledge too high at iteration %d, segment %d\n", i, s);
+				return false;
+			}
+
+			if (IsSurfaceWalkable(segGroundTrace.plane.normal))
+			{
+				vLastDir = AdjustDirectionToSurface(vLastDir, segGroundTrace.plane.normal);
+				vCurrentPos = segGroundTrace.endpos;
+				bFoundGround = true;
+			}
+			else
+			{
+				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Surface too steep (normal.z: %.3f) at iteration %d, segment %d\n", segGroundTrace.plane.normal.z, i, s);
+				return false;
+			}
+		}
+
+		if (!bFoundGround)
+		{
+			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Ground lost at iteration %d\n", i);
+			return false;
+		}
+
+		float flCurrentDist = vCurrentPos.DistTo2D(vEnd);
+		if (flCurrentDist < 16.f)
+		{
+			if (std::abs(vEnd.z - vCurrentPos.z) < flStepHeight + 2.f)
+			{
+				if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 0, 255 }, "  [SUCCESS] Goal reached at iteration %d\n", i);
+				return true;
+			}
+			else if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 255, 0, 255 }, "  [INFO] Near goal but height mismatch (diff: %.1f) at iteration %d\n", std::abs(vEnd.z - vCurrentPos.z), i);
+		}
+
+		if (vCurrentPos.DistTo(vIterStartPos) < 1.f)
+		{
+			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Infinite loop detected at iteration %d\n", i);
+			return false;
+		}
+	}
+
+	if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Max iterations reached\n");
+	return false;
+}
+
+bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
+{
+	if (!pLocal || !pLocal->IsAlive() || !Vars::Misc::Movement::NavBot::SmartJump.Value) return false;
+
+	if (pLocal->OnSolid())
+	{
+		Vector vVelocity = pLocal->m_vecVelocity();
+		Vector vMoveInput = { pCmd->forwardmove, -pCmd->sidemove, 0.f };
+		if (vMoveInput.Length() > 0.f)
+		{
+			Vector vViewAngles = I::EngineClient->GetViewAngles();
+			Vector vForward, vRight;
+			Math::AngleVectors(vViewAngles, &vForward, &vRight, nullptr);
+			vForward.z = vRight.z = 0.f;
+			vForward.Normalize();
+			vRight.Normalize();
+
+			Vector vRotatedMoveDir = vForward * vMoveInput.x + vRight * vMoveInput.y;
+			vVelocity = vRotatedMoveDir.Normalized() * std::max(10.f, vVelocity.Length());
+		}
+
+		const float flJumpForce = 277.f;
+		const float flGravity = 800.f;
+		float flTimeToPeak = flJumpForce / flGravity;
+		float flDistTravelled = vVelocity.Length2D() * flTimeToPeak;
+		Vector vJumpDirection = vVelocity.Normalized();
+		if (F::NavEngine.IsPathing())
+		{
+			Vector vPathDir = F::NavEngine.GetCurrentPathDir();
+			if (!vPathDir.IsZero())
+			{
+				if (vJumpDirection.Dot(vPathDir) < 0.5f)
+					return false;
+
+				auto pCrumbs = F::NavEngine.GetCrumbs();
+				if (pCrumbs->size() > 1)
+				{
+					Vector vNextDir = ((*pCrumbs)[1].m_vPos - (*pCrumbs)[0].m_vPos);
+					vNextDir.z = 0.f;
+					if (vNextDir.Normalize() > 0.1f && vPathDir.Dot(vNextDir) < 0.707f)
+					{
+						if (pLocal->GetAbsOrigin().DistTo((*pCrumbs)[0].m_vPos) < 100.f)
+							return false;
+					}
+				}
+
+				vJumpDirection = vPathDir;
+			}
+		}
+		Vector vJumpPeakPos = pLocal->GetAbsOrigin() + vJumpDirection * flDistTravelled;
+		m_vJumpPeakPos = vJumpPeakPos;
+
+		const Vector vHullMin = { -23.99f, -23.99f, 0.f };
+		const Vector vHullMax = { 23.99f, 23.99f, 62.f };
+		const Vector vHullMinSjump = { -16.f, -16.f, 0.f };
+		const Vector vHullMaxSjump = { 16.f, 16.f, 62.f };
+		const Vector vStepHeight = { 0.f, 0.f, 18.f };
+		const Vector vMaxJumpHeight = { 0.f, 0.f, 72.f };
+
+		Vector vTraceStart = pLocal->GetAbsOrigin() + vStepHeight;
+		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
+
+		CGameTrace forwardTrace = {};
+		CTraceFilterNavigation filter = {};
+		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
+
+		m_vPredictedJumpPos = forwardTrace.endpos;
+
+		if (forwardTrace.fraction < 1.0f && !IsSurfaceWalkable(forwardTrace.plane.normal))
+		{
+			CGameTrace downwardTrace = {};
+			SDK::TraceHull(forwardTrace.endpos, forwardTrace.endpos - vMaxJumpHeight, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &downwardTrace);
+
+			Vector vLandingPos = downwardTrace.endpos + vJumpDirection * 10.f;
+			CGameTrace landingTrace = {};
+			SDK::TraceHull(vLandingPos + vMaxJumpHeight, vLandingPos, vHullMin, vHullMax, MASK_PLAYERSOLID_BRUSHONLY, &filter, &landingTrace);
+
+			m_vPredictedJumpPos = landingTrace.endpos;
+
+			if (landingTrace.fraction > 0.f && landingTrace.fraction < 0.75f) // JUMP_FRACTION
+			{
+				if (IsSurfaceWalkable(landingTrace.plane.normal))
+					return true;
+			}
+		}
+	}
+	else if (pCmd->buttons & IN_JUMP)
+		return true;
+
+	return false;
+}
+
+void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
+{
+	if (!pLocal || !pLocal->IsAlive() || F::AutoRocketJump.IsRunning())
+	{
+		m_eJumpState = STATE_AWAITING_JUMP;
+		return;
+	}
+
+	bool bOnGround = pLocal->OnSolid();
+	bool bDucking = pLocal->IsDucking();
+
+	if (bOnGround && bDucking)
+		m_eJumpState = STATE_AWAITING_JUMP;
+
+	switch (m_eJumpState)
+	{
+	case STATE_AWAITING_JUMP:
+		if (SmartJump(pLocal, pCmd))
+			m_eJumpState = (Vars::Misc::Movement::AutoCTap.Value && bOnGround) ? STATE_CTAP : STATE_JUMP;
+		break;
+	case STATE_CTAP:
+		pCmd->buttons |= IN_DUCK;
+		pCmd->buttons &= ~IN_JUMP;
+		m_eJumpState = STATE_JUMP;
+		break;
+	case STATE_JUMP:
+		pCmd->buttons &= ~IN_DUCK;
+		pCmd->buttons |= IN_JUMP;
+		m_eJumpState = STATE_ASCENDING;
+		break;
+	case STATE_ASCENDING:
+		pCmd->buttons |= IN_DUCK;
+		if (pLocal->m_vecVelocity().z <= 0.f)
+			m_eJumpState = STATE_DESCENDING;
+		else if (bOnGround)
+			m_eJumpState = STATE_AWAITING_JUMP;
+		break;
+	case STATE_DESCENDING:
+		pCmd->buttons &= ~IN_DUCK;
+		if (!bOnGround)
+		{
+			if (SmartJump(pLocal, pCmd))
+			{
+				pCmd->buttons &= ~IN_DUCK;
+				pCmd->buttons |= IN_JUMP;
+				m_eJumpState = (Vars::Misc::Movement::AutoCTap.Value && bOnGround) ? STATE_CTAP : STATE_JUMP;
+			}
+		}
+		else
+		{
+			pCmd->buttons |= IN_DUCK;
+			m_eJumpState = STATE_AWAITING_JUMP;
+		}
+		break;
+	}
 }

@@ -105,11 +105,7 @@ static bool ModulesLoaded()
 	}
 	else 
 		return false;
-#ifdef TEXTMODE
-	return GetModuleHandleA("TextmodeTF2x64Release.dll") && GetModuleHandleA("engine.dll") &&
-#else
 	return GetModuleHandleA("engine.dll") &&
-#endif
 		GetModuleHandleA("server.dll") &&
 		GetModuleHandleA("tier0.dll") &&
 		GetModuleHandleA("vstdlib.dll") &&

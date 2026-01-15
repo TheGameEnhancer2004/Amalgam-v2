@@ -111,33 +111,39 @@ public:
 
 	// When the local player stands on one of the nav squares the free blacklist should NOT run
 	bool m_bFreeBlacklistBlocked = false;
+	bool m_bIgnoreSentryBlacklist = false;
 
 	float LeastCostEstimate(void* pStartArea, void* pEndArea) override { return reinterpret_cast<CNavArea*>(pStartArea)->m_vCenter.DistTo(reinterpret_cast<CNavArea*>(pEndArea)->m_vCenter); }
 	void AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent) override;
-
-	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos);
-	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea);
+	
+	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay);
+	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay);
+	bool IsOneWay(CNavArea* pFrom, CNavArea* pTo) const;
+	float GetBlacklistPenalty(const BlacklistReason_t& tReason) const;
+	void CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas);
 
 private:
-	float EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown) const;
-	float GetBlacklistPenalty(const BlacklistReason_t& tReason) const;
+	float EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, const NavPoints_t& tPoints, const DropdownHint_t& tDropdown, int iTeam) const;
 	bool ShouldOverrideBlacklist(const BlacklistReason_t& tCurrent, const BlacklistReason_t& tIncoming) const;
 	void ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const BlacklistReason_t& tReason, unsigned int nMask, bool bRequireLOS);
-	void CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas);
 
 public:
 
 	// Get closest nav area to target vector
 	CNavArea* FindClosestNavArea(const Vector& vPos, bool bLocalOrigin);
 
-	std::vector<void*> FindPath(CNavArea* pLocalArea, CNavArea* pDestArea)
+	std::vector<void*> FindPath(CNavArea* pLocalArea, CNavArea* pDestArea, int* pOutResult = nullptr)
 	{
 		if (m_eState != NavStateEnum::Active)
 			return {};
 
 		float flCost;
 		std::vector<void*> vPath;
-		if (m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
+		int iResult = m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost);
+		if (pOutResult)
+			*pOutResult = iResult;
+
+		if (iResult == micropather::MicroPather::START_END_SAME)
 			return { reinterpret_cast<void*>(pLocalArea) };
 
 		return vPath;

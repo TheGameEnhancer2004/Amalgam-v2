@@ -30,6 +30,13 @@ public:
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset();
 	void Draw(CTFPlayer* pLocal);
+
+private:
+	Timer m_tIdleTimer = {};
+	Timer m_tAntiStuckTimer = {};
+	float m_flNextStuckAngleChange = 0.f;
+	float m_flNextIdleTime = 0.f;
+	Vec3 m_vStuckAngles = {};
 };
 
 ADD_FEATURE(CNavBotCore, NavBotCore);

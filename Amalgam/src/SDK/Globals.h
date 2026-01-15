@@ -106,6 +106,7 @@ struct TriggerData_t
 	Vec3 m_vCenter = {};
 	Vec3 m_vAngles = {};
 	Vec3 m_vRotate = {};
+	int m_iTeam = 0;
 
 	std::vector<BrushSurface_t> m_vBrushSurfaces = {};
 
