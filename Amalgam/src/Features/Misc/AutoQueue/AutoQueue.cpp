@@ -328,7 +328,7 @@ void CAutoQueue::RunCommunityQueue()
 	if (!bInGame && !m_bSearchingServers)
 	{
 		float flSearchDelay = Vars::Misc::Queueing::ServerSearchDelay.Value;
-		if (flCurrentTime - m_flLastServerSearch >= flSearchDelay)
+		if (I::GlobalVars->realtime - m_flLastServerSearch >= flSearchDelay)
 			SearchCommunityServers();
 	}
 }
