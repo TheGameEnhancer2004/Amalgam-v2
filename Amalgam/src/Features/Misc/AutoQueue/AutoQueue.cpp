@@ -16,6 +16,8 @@ void CAutoQueue::Run()
 
 	const bool bInGameNow = I::EngineClient->IsInGame();
 	const bool bIsLoadingMapNow = I::EngineClient->IsDrawingLoadingImage();
+	const bool bIsConnectedNow = I::EngineClient->IsConnected();
+	const float flCurrentTime = I::GlobalVars->realtime;
 	const char* pszLevelName = I::EngineClient->GetLevelName();
 	const std::string sLevelName = pszLevelName ? pszLevelName : "";
 
@@ -45,7 +47,6 @@ void CAutoQueue::Run()
 		const bool bNavMeshUnavailable = !F::NavEngine.IsNavMeshLoaded();
 		if (bNavMeshUnavailable)
 		{
-			const float flCurrentTime = I::EngineClient->Time();
 			if (m_flNavmeshAbandonStartTime <= 0.0f)
 			{
 				m_flNavmeshAbandonStartTime = flCurrentTime;
@@ -73,7 +74,6 @@ void CAutoQueue::Run()
 		if (bInGameNow && !bIsLoadingMapNow && !m_bAutoDumpedThisMatch)
 		{
 			const float flDelay = std::max(0, Vars::Misc::Queueing::AutoDumpDelay.Value);
-			const float flCurrentTime = I::EngineClient->Time();
 			if (m_flAutoDumpStartTime <= 0.0f)
 				m_flAutoDumpStartTime = flCurrentTime;
 
@@ -130,14 +130,16 @@ void CAutoQueue::Run()
 			if (bIsLoadingMap && Vars::Misc::Queueing::RQLTM.Value)
 				return;
 
-			float flCurrentTime = I::EngineClient->Time();
 			float flQueueDelay = Vars::Misc::Queueing::QueueDelay.Value == 0 ? 20.0f : Vars::Misc::Queueing::QueueDelay.Value * 60.0f;
 
 			static float flLastQueueTimeMannUp = 0.0f;
 			static bool bQueuedOnceMannUp = false;
 
 			bool bShouldQueue = !bQueuedOnceMannUp || (flCurrentTime - flLastQueueTimeMannUp >= flQueueDelay);
-			if (bShouldQueue && !bInGame && !bIsLoadingMap)
+			if (!bIsConnectedNow && !bIsLoadingMap)
+				bShouldQueue = true;
+
+			if (bShouldQueue && (!bIsLoadingMap || !Vars::Misc::Queueing::RQLTM.Value) && !bInGame)
 			{
 				I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_MvM_MannUp);
 				flLastQueueTimeMannUp = flCurrentTime;
@@ -148,14 +150,13 @@ void CAutoQueue::Run()
 
 	if (Vars::Misc::Queueing::AutoCasualQueue.Value)
 	{
-		float flCurrentTime = I::EngineClient->Time();
 		bool bInGame = I::EngineClient->IsInGame();
 		bool bIsLoadingMap = I::EngineClient->IsDrawingLoadingImage();
 		bool bIsConnected = I::EngineClient->IsConnected();
 		bool bHasNetChannel = I::ClientState && I::ClientState->m_NetChannel;
 		bool bIsQueued = I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default);
 
-		if (bIsLoadingMap && bIsQueued)
+		if (bIsLoadingMap && bIsQueued && Vars::Misc::Queueing::RQLTM.Value)
 		{
 			I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
 			SDK::Output("AutoQueue", "Loading screen active, canceling casual queue", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
@@ -263,9 +264,12 @@ void CAutoQueue::Run()
 		}
 
 		bool bShouldQueue = !bQueuedOnce || (flCurrentTime - flLastQueueTime >= flQueueDelay);
+		if (!bIsConnectedNow && !bIsLoadingMap)
+			bShouldQueue = true;
+
 		bool bStillAttachedToServer = bInGame || bIsConnected || bHasNetChannel;
 
-		if (bShouldQueue && !bIsLoadingMap && !bStillAttachedToServer)
+		if (bShouldQueue && (!bIsLoadingMap || !Vars::Misc::Queueing::RQLTM.Value) && !bStillAttachedToServer)
 		{
 			static bool bHasLoaded = false;
 			if (!bHasLoaded)
@@ -307,8 +311,6 @@ void CAutoQueue::RunCommunityQueue()
 	bool bIsLoadingMap = I::EngineClient->IsDrawingLoadingImage();
 	if (bIsLoadingMap)
 		return;
-
-	float flCurrentTime = I::EngineClient->Time();
 
 	static bool bWasInGameCommunity = false;
 	if (bWasInGameCommunity && !bInGame && m_bConnectedToCommunityServer)
@@ -366,7 +368,7 @@ void CAutoQueue::SearchCommunityServers()
 	if (m_hServerListRequest)
 	{
 		m_bSearchingServers = true;
-		m_flLastServerSearch = I::EngineClient->Time();
+		m_flLastServerSearch = I::GlobalVars->realtime;
 	}
 }
 
@@ -385,7 +387,7 @@ void CAutoQueue::ConnectToServer(const gameserveritem_t* pServer)
 	I::EngineClient->ClientCmd_Unrestricted(sConnectCmd.c_str());
 
 	m_sCurrentServerIP = sServerAddress;
-	m_flServerJoinTime = I::EngineClient->Time();
+	m_flServerJoinTime = I::GlobalVars->realtime;
 	m_bConnectedToCommunityServer = true;
 }
 
@@ -489,15 +491,14 @@ void CAutoQueue::HandleDisconnect()
 	m_sCurrentServerIP.clear();
 	m_flServerJoinTime = 0.0f;
 
-	m_flLastServerSearch = I::EngineClient->Time() - Vars::Misc::Queueing::ServerSearchDelay.Value + 5.0f;
+	m_flLastServerSearch = I::GlobalVars->realtime - Vars::Misc::Queueing::ServerSearchDelay.Value + 5.0f;
 }
 
 void CAutoQueue::CheckServerTimeout()
 {
-	float flCurrentTime = I::EngineClient->Time();
 	float flMaxTime = Vars::Misc::Queueing::MaxTimeOnServer.Value;
 
-	if (flCurrentTime - m_flServerJoinTime >= flMaxTime)
+	if (I::GlobalVars->realtime - m_flServerJoinTime >= flMaxTime)
 	{
 		SDK::Output("AutoQueue", "Max time on server reached, disconnecting...", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
 		I::EngineClient->ClientCmd_Unrestricted("disconnect");

@@ -14,6 +14,7 @@
 #include "../Features/Visuals/Notifications/Notifications.h"
 #include "../Features/NavBot/NavBotCore.h"
 #include "../Features/Aimbot/AutoHeal/AutoHeal.h"
+#include "../Features/Misc/AutoQueue/AutoQueue.h"
 
 MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 	void* rcx, int iMode)
@@ -26,6 +27,8 @@ MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 
 	if (G::Unload)
 		return CALL_ORIGINAL(rcx, iMode);
+
+	F::AutoQueue.Run();
 
 	if (iMode & PAINT_INGAMEPANELS && !SDK::CleanScreenshot())
 	{
