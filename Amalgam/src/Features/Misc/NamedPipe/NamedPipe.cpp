@@ -15,55 +15,6 @@
 #include <sstream>
 #include <iomanip>
 
-// Dont use base64 encoding its just a waste of resources since you have to decode it every time
-// 
-// TIP: Optimize your messages instead. Use numberical codes for msg types
-
-static const std::string base64_chars =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-"abcdefghijklmnopqrstuvwxyz"
-"0123456789+/";
-
-static std::string base64_encode(const std::string& in)
-{
-	std::string out;
-	int val = 0, valb = -6;
-	for (unsigned char c : in)
-	{
-		val = (val << 8) + c;
-		valb += 8;
-		while (valb >= 0)
-		{
-			out.push_back(base64_chars[(val >> valb) & 0x3F]);
-			valb -= 6;
-		}
-	}
-	if (valb > -6) out.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
-	while (out.size() % 4) out.push_back('=');
-	return out;
-}
-
-static std::string base64_decode(const std::string& in)
-{
-	std::string out;
-	std::vector<int> T(256, -1);
-	for (int i = 0; i < 64; i++) T[base64_chars[i]] = i;
-
-	int val = 0, valb = -8;
-	for (unsigned char c : in)
-	{
-		if (T[c] == -1) break;
-		val = (val << 6) + T[c];
-		valb += 6;
-		if (valb >= 0)
-		{
-			out.push_back(char((val >> valb) & 0xFF));
-			valb -= 8;
-		}
-	}
-	return out;
-}
-
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
 const int MAX_RECONNECT_DELAY_MS = 10000;
@@ -274,7 +225,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					DWORD dwPipeMode = PIPE_READMODE_MESSAGE;
 					SetNamedPipeHandleState(F::NamedPipe.m_hPipe, &dwPipeMode, NULL, NULL);
 
-					F::NamedPipe.QueueMessage("Status", "Connected", true);
+					F::NamedPipe.QueueMessage(EPipeMessageType::Status, "Connected", true);
 					F::NamedPipe.ProcessMessageQueue();
 
 					if (F::NamedPipe.m_iBotId != -1)
@@ -313,9 +264,9 @@ void CNamedPipe::ConnectAndMaintainPipe()
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
-			if (dwNow - dwLastHeartbeat >= 1000)
+			if (dwBytesAvail == 0 && dwNow - dwLastHeartbeat >= 5000)
 			{
-				F::NamedPipe.QueueMessage("Status", "Heartbeat", true);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Status, "Heartbeat", true);
 				F::NamedPipe.ProcessMessageQueue();
 				dwLastHeartbeat = dwNow;
 			}
@@ -327,19 +278,19 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				std::unique_lock lock(F::NamedPipe.m_infoMutex);
 
 				// Client info
-				F::NamedPipe.QueueMessage("Map", F::NamedPipe.tInfo.m_sCurrentMapName, false);
-				F::NamedPipe.QueueMessage("Server", F::NamedPipe.tInfo.m_sCurrentServer, false);
-				F::NamedPipe.QueueMessage("PlayerClass", F::NamedPipe.GetPlayerClassName(F::NamedPipe.tInfo.m_iCurrentClass), false);
-				F::NamedPipe.QueueMessage("Health", std::to_string(F::NamedPipe.tInfo.m_iCurrentHealth), false);
-				F::NamedPipe.QueueMessage("FPS", std::to_string(F::NamedPipe.tInfo.m_iCurrentFPS), false);
-				F::NamedPipe.QueueMessage("Kills", std::to_string(F::NamedPipe.tInfo.m_iCurrentKills), false);
-				F::NamedPipe.QueueMessage("Deaths", std::to_string(F::NamedPipe.tInfo.m_iCurrentDeaths), false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Map, F::NamedPipe.tInfo.m_sCurrentMapName, false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Server, F::NamedPipe.tInfo.m_sCurrentServer, false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::PlayerClass, F::NamedPipe.GetPlayerClassName(F::NamedPipe.tInfo.m_iCurrentClass), false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Health, std::to_string(F::NamedPipe.tInfo.m_iCurrentHealth), false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::FPS, std::to_string(F::NamedPipe.tInfo.m_iCurrentFPS), false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Kills, std::to_string(F::NamedPipe.tInfo.m_iCurrentKills), false);
+				F::NamedPipe.QueueMessage(EPipeMessageType::Deaths, std::to_string(F::NamedPipe.tInfo.m_iCurrentDeaths), false);
 				F::NamedPipe.ProcessMessageQueue();
 
 				if (!F::NamedPipe.tInfo.m_bInGame)
 				{
 					// Not in game: ensure panel receives disconnect-ish state
-					F::NamedPipe.QueueMessage("Status", "NotInGame", true);
+					F::NamedPipe.QueueMessage(EPipeMessageType::Status, "NotInGame", true);
 					F::NamedPipe.ProcessMessageQueue();
 				}
 				else
@@ -347,7 +298,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					uint32_t uAccountID = F::NamedPipe.tInfo.m_uAccountID;
 					if (F::NamedPipe.tInfo.m_uAccountID != 0)
 					{
-						F::NamedPipe.QueueMessage("LocalBot", std::to_string(F::NamedPipe.tInfo.m_uAccountID), true);
+						F::NamedPipe.QueueMessage(EPipeMessageType::LocalBot, std::to_string(F::NamedPipe.tInfo.m_uAccountID), true);
 						F::NamedPipe.Log("Queued local bot ID broadcast: " + std::to_string(F::NamedPipe.tInfo.m_uAccountID));
 
 						if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
@@ -421,24 +372,29 @@ void CNamedPipe::ConnectAndMaintainPipe()
 								continue;
 
 							// F::NamedPipe.Log("Processing line: " + sLine);
-							std::string sDecoded = base64_decode(sLine);
-							std::istringstream iss(sDecoded);
+							std::istringstream iss(sLine);
 							std::string sBotNumber, sMessageType, sContent;
 							std::getline(iss, sBotNumber, ':');
 							std::getline(iss, sMessageType, ':');
 							std::getline(iss, sContent);
 
-							if (sMessageType == "Command")
+							int nType = std::stoi(sMessageType);
+							switch (static_cast<EPipeMessageType>(nType))
 							{
+							case EPipeMessageType::Command:
 								F::NamedPipe.Log("Executing command: " + sContent);
 								F::NamedPipe.ExecuteCommand(sContent);
-							}
-							else if (sMessageType == "LocalBot")
+								break;
+							case EPipeMessageType::LocalBot:
 								F::NamedPipe.ProcessLocalBotMessage(sContent);
-							else if (sMessageType == "CPCapture")
+								break;
+							case EPipeMessageType::CPCapture:
 								F::NamedPipe.ProcessCaptureReservationMessage(sContent);
-							else
+								break;
+							default:
 								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
+								break;
+							}
 						}
 						sReadBuffer.erase(0, pos);
 					}
@@ -464,8 +420,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 		{
 			if (F::NamedPipe.m_iBotId != -1)
 			{
-				std::string sContent = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting";
-				std::string sMessage = base64_encode(sContent) + "\n";
+				std::string sMessage = std::to_string(F::NamedPipe.m_iBotId) + ":" + std::to_string(static_cast<int>(EPipeMessageType::Status)) + ":Disconnecting\n";
 				DWORD dwBytesWritten = 0;
 				WriteFile(F::NamedPipe.m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 			}
@@ -483,7 +438,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 
 void CNamedPipe::SendStatusUpdate(std::string sStatus)
 {
-	QueueMessage("Status", sStatus, true);
+	QueueMessage(EPipeMessageType::Status, sStatus, true);
 	if (m_hPipe != INVALID_HANDLE_VALUE)
 		ProcessMessageQueue();
 }
@@ -498,12 +453,12 @@ void CNamedPipe::ExecuteCommand(std::string sCommand)
 	SendStatusUpdate("CommandExecuted:" + sCommand);
 }
 
-void CNamedPipe::QueueMessage(std::string sType, std::string sContent, bool bIsPriority)
+void CNamedPipe::QueueMessage(EPipeMessageType nType, std::string sContent, bool bIsPriority)
 {
 	std::lock_guard lock(m_messageQueueMutex);
 
 	if (bIsPriority || m_vMessageQueue.size() < 100)
-		m_vMessageQueue.push_back({ sType, sContent, bIsPriority });
+		m_vMessageQueue.push_back({ nType, sContent, bIsPriority });
 	else
 	{
 		for (auto it = m_vMessageQueue.begin(); it != m_vMessageQueue.end(); ++it)
@@ -511,7 +466,7 @@ void CNamedPipe::QueueMessage(std::string sType, std::string sContent, bool bIsP
 			if (!it->m_bIsPriority)
 			{
 				m_vMessageQueue.erase(it);
-				m_vMessageQueue.push_back({ sType, sContent, bIsPriority });
+				m_vMessageQueue.push_back({ nType, sContent, bIsPriority });
 				break;
 			}
 		}
@@ -531,13 +486,11 @@ void CNamedPipe::ProcessMessageQueue()
 	auto it = m_vMessageQueue.begin();
 	while (it != m_vMessageQueue.end() && processCount < 10)
 	{
-		std::string sContent;
+		std::string sMessage;
 		if (m_iBotId != -1)
-			sContent = std::to_string(m_iBotId) + ":" + it->m_sType + ":" + it->m_sContent;
+			sMessage = std::to_string(m_iBotId) + ":" + std::to_string(static_cast<int>(it->m_nType)) + ":" + it->m_sContent + "\n";
 		else
-			sContent = "0:" + it->m_sType + ":" + it->m_sContent;
-
-		std::string sMessage = base64_encode(sContent) + "\n";
+			sMessage = "0:" + std::to_string(static_cast<int>(it->m_nType)) + ":" + it->m_sContent + "\n";
 
 		DWORD dwBytesWritten = 0;
 		OVERLAPPED tOverlapped = { 0 };
@@ -625,7 +578,7 @@ void CNamedPipe::AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(2) << "Claim|" << sMap << '|' << iPointIdx << '|' << vSpot.x << '|' << vSpot.y << '|' << vSpot.z
 		<< '|' << tInfo.m_uAccountID << '|' << flDurationSeconds << '|' << m_iBotId;
-	QueueMessage("CPCapture", oss.str(), true);
+	QueueMessage(EPipeMessageType::CPCapture, oss.str(), true);
 	if (m_hPipe != INVALID_HANDLE_VALUE)
 		ProcessMessageQueue();
 }
@@ -646,7 +599,7 @@ void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointI
 
 	std::ostringstream oss;
 	oss << "Release|" << sMap << '|' << iPointIdx << '|' << tInfo.m_uAccountID;
-	QueueMessage("CPCapture", oss.str(), true);
+	QueueMessage(EPipeMessageType::CPCapture, oss.str(), true);
 	if (m_hPipe != INVALID_HANDLE_VALUE)
 		ProcessMessageQueue();
 }

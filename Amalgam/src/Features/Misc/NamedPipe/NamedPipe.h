@@ -8,6 +8,22 @@
 #include <fstream>
 #include <shared_mutex>
 
+enum class EPipeMessageType : int
+{
+	Invalid = 0,
+	Status = 1,
+	Map = 2,
+	Server = 3,
+	PlayerClass = 4,
+	Health = 5,
+	FPS = 6,
+	Kills = 7,
+	Deaths = 8,
+	LocalBot = 9,
+	CPCapture = 10,
+	Command = 11
+};
+
 class CNamedPipe
 {
 private:
@@ -23,7 +39,7 @@ private:
 	std::mutex m_messageQueueMutex;
 	struct PendingMessage
 	{
-		std::string m_sType;
+		EPipeMessageType m_nType;
 		std::string m_sContent;
 		bool m_bIsPriority;
 	};
@@ -73,7 +89,7 @@ private:
 
 	void SendStatusUpdate(std::string sStatus);
 	void ExecuteCommand(std::string sCommand);
-	void QueueMessage(std::string sType, std::string sContent, bool bIsPriority);
+	void QueueMessage(EPipeMessageType nType, std::string sContent, bool bIsPriority);
 	void ProcessMessageQueue();
 
 	void ProcessLocalBotMessage(std::string sAccountID);
