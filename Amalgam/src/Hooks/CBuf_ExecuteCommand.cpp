@@ -228,7 +228,6 @@ MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
 
         if (F::Commands.Run(sCommand, vArgs))
             return;
-#ifndef TEXTMODE
 		switch (FNV1A::Hash32(sCommand))
 		{
 		case FNV1A::Hash32Const("say"):
@@ -283,7 +282,6 @@ MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
             return;
         }
 		}
-#endif
 	}
 
     CALL_ORIGINAL(args, source);
