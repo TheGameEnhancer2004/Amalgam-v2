@@ -131,17 +131,29 @@ std::string SDK::GetTime()
 
 std::wstring SDK::ConvertUtf8ToWide(const std::string& source)
 {
-	int size = MultiByteToWideChar(CP_UTF8, 0, source.data(), -1, nullptr, 0);
+	if (source.empty())
+		return L"";
+
+	int size = MultiByteToWideChar(CP_UTF8, 0, source.data(), static_cast<int>(source.size()), nullptr, 0);
+	if (size <= 0)
+		return L"";
+
 	std::wstring result(size, 0);
-	MultiByteToWideChar(CP_UTF8, 0, source.data(), -1, result.data(), size);
+	MultiByteToWideChar(CP_UTF8, 0, source.data(), static_cast<int>(source.size()), result.data(), size);
 	return result;
 }
 
 std::string SDK::ConvertWideToUTF8(const std::wstring& source)
 {
-	int size = WideCharToMultiByte(CP_UTF8, 0, source.data(), -1, nullptr, 0, nullptr, nullptr);
+	if (source.empty())
+		return "";
+
+	int size = WideCharToMultiByte(CP_UTF8, 0, source.data(), static_cast<int>(source.size()), nullptr, 0, nullptr, nullptr);
+	if (size <= 0)
+		return "";
+
 	std::string result(size, 0);
-	WideCharToMultiByte(CP_UTF8, 0, source.data(), -1, result.data(), size, nullptr, nullptr);
+	WideCharToMultiByte(CP_UTF8, 0, source.data(), static_cast<int>(source.size()), result.data(), size, nullptr, nullptr);
 	return result;
 }
 
@@ -1024,7 +1036,13 @@ int SDK::GetWeaponMaxReserveAmmo(int WeaponID, int DefIdx)
 
 std::string SDK::GetLevelName()
 {
+	if (!I::EngineClient)
+		return "None";
+
 	const std::string name = I::EngineClient->GetLevelName();
+	if (name.empty())
+		return "None";
+
 	const char* data = name.data();
 	const size_t length = name.length();
 	size_t slash = 0;

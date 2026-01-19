@@ -55,6 +55,7 @@ private:
 
 		std::string m_sCurrentServer = "N/A";
 		std::string m_sCurrentMapName = "N/A";
+		std::string m_sBotName = "Unknown";
 		uint32_t m_uAccountID = 0;
 
 		bool m_bInGame = false;
