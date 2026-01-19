@@ -6,7 +6,7 @@
 #define ValidateNonLethal(x) if (!x) { const char* sMessage = "CNullInterfaces::Initialize() failed to initialize "#x; MessageBox(nullptr, sMessage, "Warning", MB_OK | MB_ICONERROR); U::Core.AppendFailText(sMessage); }
 
 #ifdef TEXTMODE
-#define ValidateSteam(x) if (!x) { F::NamedPipe.Log("Warning: Steam interface "#x" failed to initialize in Textmode"); }
+#define ValidateSteam(x) if (!x) { U::Core.AppendFailText("CNullInterfaces::Initialize() failed to initialize "#x" in Textmode"); }
 #else
 #define ValidateSteam(x) Validate(x)
 #endif
