@@ -32,7 +32,7 @@ bool CNavBotMelee::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iSlot, ClosestEnem
 	if (tVischeckCooldown.Run(0.2f))
 	{
 		CGameTrace trace;
-		CTraceFilterHitscan filter{}; filter.pSkip = pLocal;
+		CTraceFilterHitscan filter(pLocal);
 		SDK::TraceHull(pLocal->GetShootPos(), pPlayer->GetAbsOrigin(), pLocal->m_vecMins() * 0.3f, pLocal->m_vecMaxs() * 0.3f, MASK_PLAYERSOLID, &filter, &trace);
 		bIsVisible = trace.DidHit() ? trace.m_pEnt && trace.m_pEnt == pPlayer : true;
 	}

@@ -72,8 +72,7 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 		return;
 
 	CGameTrace trace = {};
-	CTraceFilterCollideable filter = {};
-	filter.pSkip = pPlayer;
+	CTraceFilterCollideable filter(pPlayer);
 	int nMask = MASK_SOLID;
 	F::ProjSim.SetupTrace(filter, nMask, pWeapon, 0, bQuick);
 	Vec3* pNormal = nullptr;
@@ -1123,8 +1122,7 @@ void CVisuals::Store()
 					continue;
 
 				CGameTrace trace = {};
-				CTraceFilterCollideable filter = {};
-				filter.pSkip = tProjInfo.m_pOwner;
+				CTraceFilterCollideable filter(tProjInfo.m_pOwner);
 				int nMask = MASK_SOLID;
 				F::ProjSim.SetupTrace(filter, nMask, pEntity);
 
@@ -1183,8 +1181,7 @@ void CVisuals::Store()
 			Vec3 vShootEnd = mDots.contains(pPlayer) ? mDots[pPlayer] : vShootPos + (vForward * 8192.f);
 
 			CGameTrace trace = {};
-			CTraceFilterHitscan filter = {};
-			filter.pSkip = pPlayer;
+			CTraceFilterHitscan filter(pPlayer);
 			SDK::Trace(vShootPos, vShootEnd, MASK_SHOT, &filter, &trace);
 
 			m_vSightLines.emplace_back(vShootPos, trace.endpos, F::Groups.GetColor(pPlayer, pGroup), !(pGroup->m_iSightlines & SightlinesEnum::IgnoreZ));

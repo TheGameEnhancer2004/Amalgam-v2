@@ -937,8 +937,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		vEnd.z -= 100.0f;
 
 		CGameTrace trace;
-		CTraceFilterHitscan filter{};
-		filter.pSkip = pLocal;
+		CTraceFilterHitscan filter(pLocal);
 		SDK::TraceHull(vLocalOrigin, vEnd, pLocal->m_vecMins(), pLocal->m_vecMaxs(), MASK_PLAYERSOLID, &filter, &trace);
 
 		// Only reset if we are standing on a building

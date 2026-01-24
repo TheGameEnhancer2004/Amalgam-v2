@@ -298,8 +298,7 @@ bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, 
 		return bReturn;
 
 	CGameTrace trace = {};
-	CTraceFilterWorldAndPropsOnly filter = {};
-	filter.pSkip = pPlayer;
+	CTraceFilterWorldAndPropsOnly filter(pPlayer);
 
 	Vec3 vStart = bQuick ? pPlayer->GetEyePosition() : pPlayer->GetShootPos();
 	Vec3 vEnd = tProjInfo.m_vPos;
@@ -636,7 +635,7 @@ void CProjectileSimulation::SetupTrace(CTraceFilterCollideable& filter, int& nMa
 		switch (pWeapon->GetWeaponID())
 		{
 		case TF_WEAPON_RAYGUN:
-			filter.iObject = OBJECT_DEFAULT;
+			filter.m_iObject = OBJECT_DEFAULT;
 			break;
 		case TF_WEAPON_FLAMETHROWER:
 		case TF_WEAPON_FLAME_BALL:
@@ -646,7 +645,7 @@ void CProjectileSimulation::SetupTrace(CTraceFilterCollideable& filter, int& nMa
 		case TF_WEAPON_SYRINGEGUN_MEDIC:
 		case TF_WEAPON_BAT_GIFTWRAP:
 			if (bQuick)
-				filter.iPlayer = PLAYER_ALL;
+				filter.m_iPlayer = PLAYER_ALL;
 		}
 		break;
 	case 16:
@@ -658,7 +657,7 @@ void CProjectileSimulation::SetupTrace(CTraceFilterCollideable& filter, int& nMa
 			case TF_WEAPON_GRAPPLINGHOOK:
 				break;
 			default:
-				filter.iPlayer = PLAYER_ALL;
+				filter.m_iPlayer = PLAYER_ALL;
 			}
 		}
 	}
@@ -669,7 +668,7 @@ void CProjectileSimulation::SetupTrace(CTraceFilterCollideable& filter, int& nMa
 	switch (pProjectile->GetClassID())
 	{
 	case ETFClassID::CTFProjectile_EnergyRing:
-		filter.iObject = OBJECT_DEFAULT;
+		filter.m_iObject = OBJECT_DEFAULT;
 		break;
 	case ETFClassID::CTFProjectile_BallOfFire:
 		nMask |= CONTENTS_WATER;

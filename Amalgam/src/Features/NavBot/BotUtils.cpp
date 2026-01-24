@@ -524,8 +524,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			vLook = vEye + (vForward * 500.f);
 
 			CGameTrace trace;
-			CTraceFilterHitscan filter;
-			filter.pSkip = pLocal;
+			CTraceFilterHitscan filter(pLocal);
 			SDK::Trace(vEye, vLook, MASK_SHOT, &filter, &trace);
 
 			if (trace.fraction < 0.25f)
@@ -664,8 +663,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			Math::AngleVectors(vScanAngles, &vForward);
 
 			CGameTrace trace;
-			CTraceFilterHitscan filter;
-			filter.pSkip = pLocal;
+			CTraceFilterHitscan filter(pLocal);
 			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
 
 			if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value)
@@ -1035,12 +1033,11 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
 		{
 			CGameTrace trace = {};
-			CTraceFilterCollideable filter = {};
-			filter.pSkip = pLocal;
-			filter.iPlayer = PLAYER_NONE;
-			filter.iObject = OBJECT_ALL;
-			filter.bIgnoreDoors = true;
-			filter.bIgnoreCart = true;
+			CTraceFilterCollideable filter(pLocal);
+			filter.m_iPlayer = PLAYER_NONE;
+			filter.m_iObject = OBJECT_ALL;
+			filter.m_bIgnoreDoors = true;
+			filter.m_bIgnoreCart = true;
 			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
 			return trace;
 		};

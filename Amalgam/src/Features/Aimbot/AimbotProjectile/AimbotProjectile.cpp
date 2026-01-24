@@ -494,9 +494,9 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 					goto breakOutExtra;
 			}
 
-			filter.pSkip = trace.m_pEnt->GetClassID() != ETFClassID::CWorld || trace.hitbox ? trace.m_pEnt : nullptr; // make sure we get past entity or prop
+			filter.m_pSkip = trace.m_pEnt->GetClassID() != ETFClassID::CWorld || trace.hitbox ? trace.m_pEnt : nullptr; // make sure we get past entity or prop
 			SDK::Trace(trace.endpos - (vTargetEye - vPoint).Normalized(), vPoint, MASK_SOLID | CONTENTS_NOSTARTSOLID, &filter, &trace);
-			filter.pSkip = nullptr;
+			filter.m_pSkip = nullptr;
 #ifdef SPLASH_DEBUG6
 			s_mTraceCount["Splash rocket (2, 2)"]++;
 #endif
@@ -1139,10 +1139,9 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 		return false;
 
 	CGameTrace trace = {};
-	CTraceFilterCollideable filter = {};
-	filter.pSkip = bSplash ? tTarget.m_pEntity : pLocal;
-	filter.iPlayer = bSplash ? PLAYER_NONE : PLAYER_DEFAULT;
-	filter.bMisc = !bSplash;
+	CTraceFilterCollideable filter(bSplash ? tTarget.m_pEntity : pLocal);
+	filter.m_iPlayer = bSplash ? PLAYER_NONE : PLAYER_DEFAULT;
+	filter.m_bMisc = !bSplash;
 	int nMask = MASK_SOLID;
 	if (!bSplash && F::AimbotGlobal.FriendlyFire())
 	{
@@ -1154,7 +1153,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 		case TF_WEAPON_DRG_POMSON:
 		case TF_WEAPON_FLAREGUN:
 		case TF_WEAPON_SYRINGEGUN_MEDIC:
-			filter.iPlayer = PLAYER_ALL;
+			filter.m_iPlayer = PLAYER_ALL;
 		}
 	}
 	F::ProjSim.SetupTrace(filter, nMask, pWeapon);
@@ -1972,9 +1971,8 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBa
 	if (!F::ProjSim.Initialize(tProjInfo, false, true))
 		return false;
 
-	CTraceFilterCollideable filter = {};
-	filter.pSkip = bSplash ? tTarget.m_pEntity : pLocal;
-	filter.iPlayer = bSplash ? PLAYER_NONE : PLAYER_DEFAULT;
+	CTraceFilterCollideable filter(bSplash ? tTarget.m_pEntity : pLocal);
+	filter.m_iPlayer = bSplash ? PLAYER_NONE : PLAYER_DEFAULT;
 	int nMask = MASK_SOLID;
 	F::ProjSim.SetupTrace(filter, nMask, pProjectile);
 

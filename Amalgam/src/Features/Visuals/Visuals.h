@@ -27,7 +27,7 @@ struct PickupData_t
 {
 	int m_iType = 0;
 	float m_flTime = 0.f;
-	Vec3 m_vLocation;
+	Vec3 m_vLocation = {};
 };
 
 class CVisuals
