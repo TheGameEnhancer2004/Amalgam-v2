@@ -4,8 +4,8 @@
 class CNavBotSnipe
 {
 private:
-	bool IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bool bFixSentryZ = true);
-	bool TryToSnipe(int iEntIdx);
+	bool IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bool bShortRangeClass, bool bFixSentryZ = true);
+	bool TryToSnipe(int iEntIdx, bool bShortRangeClass);
 public:
 	bool Run(CTFPlayer* pLocal);
 

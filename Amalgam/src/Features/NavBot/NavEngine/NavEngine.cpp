@@ -48,7 +48,7 @@ bool CNavEngine::IsSetupTime()
 bool CNavEngine::IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask)
 {
 	CGameTrace trace = {};
-	CTraceFilterNavigation filter = {};
+	CTraceFilterNavigation filter;
 	SDK::Trace(vFrom, vTo, nMask, &filter, &trace);
 	return trace.fraction == 1.0f;
 }
@@ -645,7 +645,7 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_vOffMeshTarget = vTarget;
 
 		CGameTrace trace;
-		CTraceFilterNavigation filter{};
+		CTraceFilterNavigation filter(pLocal);
 		SDK::Trace(vLocalOrigin, vTarget, MASK_PLAYERSOLID, &filter, &trace);
 
 		if (trace.fraction > 0.01f)
@@ -889,18 +889,14 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			}
 
 			if (bLegit)
-			{
 				F::BotUtils.LookLegit(pLocal, pCmd, bTargetValid ? vTarget : Vec3{}, bSilent);
-			}
 			else if (bTargetValid)
 			{
 				F::BotUtils.InvalidateLLAP();
 				F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
 			}
 			else
-			{
 				F::BotUtils.InvalidateLLAP();
-			}
 		};
 	// No more crumbs, reset status
 	if (!uCrumbsSize)
@@ -937,7 +933,8 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		vEnd.z -= 100.0f;
 
 		CGameTrace trace;
-		CTraceFilterHitscan filter(pLocal);
+		CTraceFilterNavigation filter(pLocal);
+		filter.m_iObject = OBJECT_DEFAULT;
 		SDK::TraceHull(vLocalOrigin, vEnd, pLocal->m_vecMins(), pLocal->m_vecMaxs(), MASK_PLAYERSOLID, &filter, &trace);
 
 		// Only reset if we are standing on a building
@@ -1147,13 +1144,9 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
 
 		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
-		{
 			F::BotUtils.InvalidateLLAP();
-		}
 		else if (bSilent && G::AntiAim)
-		{
 			F::BotUtils.InvalidateLLAP();
-		}
 		else if (bLegit)
 		{
 			Vec3 vLookTarget{ vMoveTarget.x, vMoveTarget.y, vMoveTarget.z };
@@ -1166,9 +1159,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		}
 	}
 	else
-	{
 		F::BotUtils.InvalidateLLAP();
-	}
 
 	SDK::WalkTo(pCmd, pLocal, vMoveTarget);
 }

@@ -508,7 +508,7 @@ void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const Bla
 
 	const float flRadiusSqr = flRadius * flRadius;
 
-	for (auto* pArea : vCandidates)
+	for (auto pArea : vCandidates)
 	{
 		if (!pArea)
 			continue;
@@ -569,7 +569,7 @@ CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 		vCenterCorrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		// Check if we are within x and y bounds of an area
-		if (!tArea.IsOverlapping(vPos) || !F::NavEngine.IsVectorVisibleNavigation(vCorrected, vCenterCorrected))
+		if (!tArea.IsOverlapping(vPos) || !F::NavEngine.IsVectorVisibleNavigation(vCorrected, vCenterCorrected, MASK_SHOT | CONTENTS_GRATE))
 			continue;
 
 		flOverallBestDist = flDist;
@@ -655,10 +655,10 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 
 			vSentryOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			ApplyBlacklistAround(vSentryOrigin, flHighDangerRange, BlacklistReason_t(BlacklistReasonEnum::Sentry), MASK_SHOT, true);
-			ApplyBlacklistAround(vSentryOrigin, flMediumDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryMedium), MASK_SHOT, true);
+			ApplyBlacklistAround(vSentryOrigin, flHighDangerRange, BlacklistReason_t(BlacklistReasonEnum::Sentry), MASK_SHOT | CONTENTS_GRATE, true);
+			ApplyBlacklistAround(vSentryOrigin, flMediumDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryMedium), MASK_SHOT | CONTENTS_GRATE, true);
 			if (!bStrongClass)
-				ApplyBlacklistAround(vSentryOrigin, flLowDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryLow), MASK_SHOT, true);
+				ApplyBlacklistAround(vSentryOrigin, flLowDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryLow), MASK_SHOT | CONTENTS_GRATE, true);
 		}
 	}
 

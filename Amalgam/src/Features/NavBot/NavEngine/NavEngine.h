@@ -66,7 +66,7 @@ public:
 	bool IsSetupTime();
 
 	// Vischeck
-	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT_HULL);
+	bool IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo, unsigned int nMask = MASK_SHOT);
 	// Checks if player can walk from one position to another without bumping into anything
 	bool IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask = MASK_PLAYERSOLID);
 

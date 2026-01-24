@@ -1033,11 +1033,7 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
 		{
 			CGameTrace trace = {};
-			CTraceFilterCollideable filter(pLocal);
-			filter.m_iPlayer = PLAYER_NONE;
-			filter.m_iObject = OBJECT_ALL;
-			filter.m_bIgnoreDoors = true;
-			filter.m_bIgnoreCart = true;
+			CTraceFilterNavigation filter(pLocal);
 			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
 			return trace;
 		};
@@ -1205,8 +1201,9 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
 
 		CGameTrace forwardTrace = {};
-		CTraceFilterNavigation filter = {};
-		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
+		CTraceFilterNavigation filter(pLocal);
+		filter.m_iPlayer = PLAYER_DEFAULT;
+		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;
 

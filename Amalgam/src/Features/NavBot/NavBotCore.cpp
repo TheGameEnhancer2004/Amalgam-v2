@@ -122,7 +122,7 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 					continue;
 			}
 
-			if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos, MASK_SHOT))
+			if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos))
 				continue;
 
 			// Just slightly dangerous, only mark as such if it's clear

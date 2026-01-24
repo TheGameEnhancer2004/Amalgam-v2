@@ -250,7 +250,7 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 
 					// Check if we can actually build here, sentry size is roughly 40x40x66.
 					CGameTrace trace;
-					CTraceFilterNavigation filter;
+					CTraceFilterNavigation filter(pLocal);
 					Vector vMins(-30.f, -30.f, 0.f);
 					Vector vMaxs(30.f, 30.f, 66.f);
 					SDK::TraceHull(vPos + Vector(0, 0, 5), vPos + Vector(0, 0, 5), vMins, vMaxs, MASK_PLAYERSOLID, &filter, &trace);
