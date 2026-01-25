@@ -175,8 +175,14 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 
+	int iAttempts = 0;
 	for (auto pArea : vValidAreas)
 	{
+		if (!pArea)
+			continue;
+
+		if (iAttempts++ > 10)
+			break;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
 			pCurrentTargetArea = pArea;

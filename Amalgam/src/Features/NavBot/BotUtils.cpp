@@ -1055,80 +1055,64 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	Vector vLastDir = AdjustDirectionToSurface(vGoalDir, groundTrace.plane.normal);
 
 	float flMaxDist = vEnd.DistTo2D(vStart);
-	float flMinStepSize = 10.f;
+	if (flMaxDist < 1.f) return true;
 
-	for (int i = 0; i < 64; i++)
+	CGameTrace wallTrace = PerformTraceHull(vCurrentPos + vStepHeight, vEnd + vStepHeight);
+	if (wallTrace.startsolid)
 	{
-		Vector vIterStartPos = vCurrentPos;
-		float flDistToGoal = (vEnd - vCurrentPos).Length();
-		Vector vNextPos = vCurrentPos + vLastDir * std::min(flDistToGoal, 32.f);
-
-		CGameTrace wallTrace = PerformTraceHull(vCurrentPos + vStepHeight, vNextPos + vStepHeight);
-		Vector vPreGroundPos = wallTrace.endpos;
-
-		if (wallTrace.startsolid)
-		{
-			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Stuck in wall at iteration %d\n", i);
-			return false;
-		}
-
-		float flTotalDist = (vPreGroundPos - vIterStartPos).Length();
-		int iNumSegments = std::max(1, static_cast<int>(std::floor(flTotalDist / flMinStepSize)));
-
-		bool bFoundGround = false;
-		for (int s = 1; s <= iNumSegments; s++)
-		{
-			float t = static_cast<float>(s) / iNumSegments;
-			Vector vSegmentPos = vIterStartPos + (vPreGroundPos - vIterStartPos) * t;
-			CGameTrace segGroundTrace = PerformTraceHull(vSegmentPos + vStepHeight, vSegmentPos - vMaxFallDistance);
-
-			m_vWalkableSegments.push_back({ vCurrentPos, segGroundTrace.endpos });
-
-			if (segGroundTrace.fraction == 1.0f)
-			{
-				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Pit/Ledge too high at iteration %d, segment %d\n", i, s);
-				return false;
-			}
-
-			if (IsSurfaceWalkable(segGroundTrace.plane.normal))
-			{
-				vLastDir = AdjustDirectionToSurface(vLastDir, segGroundTrace.plane.normal);
-				vCurrentPos = segGroundTrace.endpos;
-				bFoundGround = true;
-			}
-			else
-			{
-				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Surface too steep (normal.z: %.3f) at iteration %d, segment %d\n", segGroundTrace.plane.normal.z, i, s);
-				return false;
-			}
-		}
-
-		if (!bFoundGround)
-		{
-			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Ground lost at iteration %d\n", i);
-			return false;
-		}
-
-		float flCurrentDist = vCurrentPos.DistTo2D(vEnd);
-		if (flCurrentDist < 16.f)
-		{
-			if (std::abs(vEnd.z - vCurrentPos.z) < flStepHeight + 2.f)
-			{
-				if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 0, 255 }, "  [SUCCESS] Goal reached at iteration %d\n", i);
-				return true;
-			}
-			else if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 255, 0, 255 }, "  [INFO] Near goal but height mismatch (diff: %.1f) at iteration %d\n", std::abs(vEnd.z - vCurrentPos.z), i);
-		}
-
-		if (vCurrentPos.DistTo(vIterStartPos) < 1.f)
-		{
-			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Infinite loop detected at iteration %d\n", i);
-			return false;
-		}
+		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Start solid in wall\n");
+		return false;
 	}
 
-	if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Max iterations reached\n");
-	return false;
+	if (wallTrace.fraction < 1.0f)
+	{
+		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Path blocked by wall/entity (fraction: %.2f)\n", wallTrace.fraction);
+		return false;
+	}
+
+	float flStepSize = 64.f;
+	int iNumSteps = std::max(1, static_cast<int>(std::ceil(flMaxDist / flStepSize)));
+	Vector vDir = (vEnd - vStart).Normalized();
+
+	for (int i = 1; i <= iNumSteps; i++)
+	{
+		Vector vCheckPos = vStart + vDir * std::min(flMaxDist, i * flStepSize);
+		CGameTrace groundCheck = PerformTraceHull(vCheckPos + vStepHeight, vCheckPos - vMaxFallDistance);
+
+		if (groundCheck.fraction == 1.0f)
+		{
+			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Pit/Ledge detected at step %d\n", i);
+			return false;
+		}
+
+		if (!IsSurfaceWalkable(groundCheck.plane.normal))
+		{
+			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Surface too steep at step %d\n", i);
+			return false;
+		}
+
+		if (std::abs(groundCheck.endpos.z - vCurrentPos.z) > flStepHeight + 2.f)
+		{
+			CGameTrace granularCheck = PerformTraceHull(vCurrentPos + vStepHeight, groundCheck.endpos + vStepHeight);
+			if (granularCheck.fraction < 1.0f)
+			{
+				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Height gap not passable at step %d\n", i);
+				return false;
+			}
+		}
+
+		m_vWalkableSegments.push_back({ vCurrentPos, groundCheck.endpos });
+		vCurrentPos = groundCheck.endpos;
+	}
+
+	if (std::abs(vCurrentPos.z - vEnd.z) > flStepHeight + 2.f)
+	{
+		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 255, 0, 255 }, "  [FAIL] Final height mismatch (diff: %.1f)\n", std::abs(vCurrentPos.z - vEnd.z));
+		return false;
+	}
+
+	if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 0, 255 }, "  [SUCCESS] Path is walkable\n");
+	return true;
 }
 
 bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)

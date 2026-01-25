@@ -280,12 +280,49 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		// Check if the path we just built is even valid with traces
 		// If not, we might want to try again with traces ignored if absolutely necessary
 		bool bValid = true;
+		const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 		{
-			if (!IsPlayerPassableNavigation(pLocalPlayer, m_vCrumbs[i].m_vPos, m_vCrumbs[i + 1].m_vPos))
+			const auto& tCrumb = m_vCrumbs[i];
+			const auto& tNextCrumb = m_vCrumbs[i + 1];
+			const std::pair<CNavArea*, CNavArea*> tKey(tCrumb.m_pNavArea, tNextCrumb.m_pNavArea);
+
+			// Check if we have a valid cache entry
+			if (m_pMap->m_mVischeckCache.count(tKey))
 			{
+				auto& tEntry = m_pMap->m_mVischeckCache[tKey];
+				if (tEntry.m_iExpireTick > I::GlobalVars->tickcount)
+				{
+					if (!tEntry.m_bPassable)
+					{
+						bValid = false;
+						break;
+					}
+					continue;
+				}
+			}
+
+			if (!IsPlayerPassableNavigation(pLocalPlayer, tCrumb.m_vPos, tNextCrumb.m_vPos))
+			{
+				// Cache failure immediately
+				CachedConnection_t tEntry{};
+				tEntry.m_iExpireTick = iVischeckCacheExpireTimestamp;
+				tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
+				tEntry.m_bPassable = false;
+				tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+				m_pMap->m_mVischeckCache[tKey] = tEntry;
+
 				bValid = false;
 				break;
+			}
+			else
+			{
+				// Cache success
+				CachedConnection_t& tEntry = m_pMap->m_mVischeckCache[tKey];
+				tEntry.m_iExpireTick = iVischeckCacheExpireTimestamp;
+				tEntry.m_eVischeckState = VischeckStateEnum::Visible;
+				tEntry.m_bPassable = true;
 			}
 		}
 
@@ -357,6 +394,21 @@ void CNavEngine::VischeckPath()
 		auto vCurrentCenter = tCrumb.m_vPos;
 		auto vNextCenter = tNextCrumb.m_vPos;
 
+		// Check if we have a valid cache entry
+		if (m_pMap->m_mVischeckCache.count(tKey))
+		{
+			auto& tEntry = m_pMap->m_mVischeckCache[tKey];
+			if (tEntry.m_iExpireTick > I::GlobalVars->tickcount)
+			{
+				if (!tEntry.m_bPassable)
+				{
+					AbandonPath("Traceline blocked (cached)");
+					break;
+				}
+				continue;
+			}
+		}
+
 		// Check if we can pass, if not, abort pathing and mark as bad
 		if (!IsPlayerPassableNavigation(pLocal, vCurrentCenter, vNextCenter))
 		{
@@ -371,7 +423,7 @@ void CNavEngine::VischeckPath()
 			break;
 		}
 		// Else we can update the cache (if not marked bad before this)
-		else if (!m_pMap->m_mVischeckCache.count(tKey) || m_pMap->m_mVischeckCache[tKey].m_eVischeckState != VischeckStateEnum::NotVisible)
+		else
 		{
 			CachedConnection_t& tEntry = m_pMap->m_mVischeckCache[tKey];
 			tEntry.m_iExpireTick = iVischeckCacheExpireTimestamp;
@@ -667,8 +719,9 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_vRejectedPaths.clear();
 		if (pArea)
 		{
+			// Collect nearby exit areas
 			std::vector<CNavArea*> vAreas;
-			m_pMap->CollectAreasAround(vLocalOrigin, 1000.f, vAreas);
+			m_pMap->CollectAreasAround(vLocalOrigin, 500.f, vAreas);
 			for (auto* pCurrentArea : vAreas)
 			{
 				for (auto& tConnection : pCurrentArea->m_vConnections)
@@ -722,8 +775,9 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_vDebugWalkablePaths.clear();
 		if (pArea)
 		{
+			// Collect nearby exit areas
 			std::vector<CNavArea*> vAreas;
-			m_pMap->CollectAreasAround(vLocalOrigin, 1000.f, vAreas);
+			m_pMap->CollectAreasAround(vLocalOrigin, 500.f, vAreas);
 			for (auto* pCurrentArea : vAreas)
 			{
 				for (auto& tConnection : pCurrentArea->m_vConnections)
