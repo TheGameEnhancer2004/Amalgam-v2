@@ -564,8 +564,17 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("CNavEngine", std::format("Stuck for too long, blacklisting the node (expires on tick: {})", iBlacklistExpireTick).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 			m_pMap->m_mVischeckCache[tKey].m_iExpireTick = iBlacklistExpireTick;
-			m_pMap->m_mVischeckCache[tKey].m_eVischeckState = VischeckStateEnum::NotChecked;
+			m_pMap->m_mVischeckCache[tKey].m_eVischeckState = VischeckStateEnum::NotVisible;
 			m_pMap->m_mVischeckCache[tKey].m_bPassable = false;
+
+			if (m_vCrumbs[0].m_pNavArea)
+			{
+				auto tAreaKey = std::pair<CNavArea*, CNavArea*>(m_vCrumbs[0].m_pNavArea, m_vCrumbs[0].m_pNavArea);
+				m_pMap->m_mVischeckCache[tAreaKey].m_iExpireTick = iBlacklistExpireTick;
+				m_pMap->m_mVischeckCache[tAreaKey].m_eVischeckState = VischeckStateEnum::NotVisible;
+				m_pMap->m_mVischeckCache[tAreaKey].m_bPassable = false;
+			}
+
 			AbandonPath("Stuck");
 			return;
 		}
