@@ -216,7 +216,7 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 				Vector vDirection = tHint.m_vApproachDir;
 
 				// Distance to move forward before dropping. Favour wider moves for larger drops.
-				const float desiredAdvance = std::clamp(flDropDistance * 0.4f, PLAYER_WIDTH * 0.75f, PLAYER_WIDTH * 2.5f);
+				const float desiredAdvance = std::clamp(flDropDistance * 0.5f, PLAYER_WIDTH * 0.85f, PLAYER_WIDTH * 2.5f);
 				const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
 				float flApproach = desiredAdvance;
 				if (flMaxAdvance > 0.f)
@@ -224,7 +224,7 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 				else
 					flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
 
-				const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.6f, flHorizontalLength * 0.5f));
+				const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.75f, flHorizontalLength * 0.5f));
 				flApproach = std::max(flApproach, minAdvance);
 				flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
 				tHint.m_flApproachDistance = std::max(flApproach, 0.f);
@@ -472,7 +472,8 @@ void CMap::CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector
 	qAreas.emplace(pSeedArea, flSeedDist);
 	setVisited.insert(pSeedArea);
 
-	while (!qAreas.empty())
+	int iLoopLimit = 2048;
+	while (!qAreas.empty() && iLoopLimit-- > 0)
 	{
 		auto [tArea, flDist] = qAreas.front();
 		qAreas.pop();
@@ -504,6 +505,7 @@ void CMap::CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector
 
 void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const BlacklistReason_t& tReason, unsigned int nMask, bool bRequireLOS)
 {
+	std::lock_guard lock(m_mutex);
 	std::vector<CNavArea*> vCandidates;
 	CollectAreasAround(vOrigin, flRadius + HALF_PLAYER_WIDTH, vCandidates);
 	if (vCandidates.empty())
@@ -543,6 +545,7 @@ void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const Bla
 
 CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 {
+	std::lock_guard lock(m_mutex);
 	float flOverallBestDist = FLT_MAX, flBestDist = FLT_MAX;
 	Vector vCorrected = vPos; vCorrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 

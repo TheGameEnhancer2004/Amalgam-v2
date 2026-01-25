@@ -50,6 +50,7 @@ private:
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
+	bool m_bRepathRequested = false;
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
