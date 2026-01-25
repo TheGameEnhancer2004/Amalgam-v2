@@ -479,6 +479,17 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 				return;
 			}
 		}
+
+		if (tCrumb.m_pNavArea)
+		{
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(tCrumb.m_pNavArea, tCrumb.m_pNavArea);
+			auto itVischeck = m_pMap->m_mVischeckCache.find(tAreaKey);
+			if (itVischeck != m_pMap->m_mVischeckCache.end() && !itVischeck->second.m_bPassable && (itVischeck->second.m_iExpireTick == 0 || itVischeck->second.m_iExpireTick > I::GlobalVars->tickcount))
+			{
+				AbandonPath("Area blacklisted (stuck)");
+				return;
+			}
+		}
 	}
 }
 
@@ -575,8 +586,20 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 				m_pMap->m_mVischeckCache[tAreaKey].m_bPassable = false;
 			}
 
+			m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck = 0;
+			m_tInactivityTimer.Update();
+
 			AbandonPath("Stuck");
 			return;
+		}
+
+		if (m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck > iDetectTicks / 2)
+		{
+			auto pLocalPlayer = H::Entities.GetLocal();
+			if (pLocalPlayer && pLocalPlayer->OnSolid())
+			{
+				G::CurrentUserCmd->buttons |= IN_JUMP;
+			}
 		}
 	}
 }

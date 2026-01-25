@@ -1012,6 +1012,19 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 {
 	if (!pLocal) return false;
 
+	auto pMap = F::NavEngine.GetNavMap();
+	if (pMap)
+	{
+		auto pDestArea = F::NavEngine.FindClosestNavArea(vEnd);
+		if (pDestArea)
+		{
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(pDestArea, pDestArea);
+			auto it = pMap->m_mVischeckCache.find(tAreaKey);
+			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
+				return false;
+		}
+	}
+
 	const bool bDebug = Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable;
 	if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 255, 255 }, "[IsWalkable] Testing path from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)\n", vStart.x, vStart.y, vStart.z, vEnd.x, vEnd.y, vEnd.z);
 
