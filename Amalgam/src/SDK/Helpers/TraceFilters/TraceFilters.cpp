@@ -129,8 +129,9 @@ bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int 
 	case ETFClassID::CBaseObject:
 	case ETFClassID::CObjectSentrygun:
 	case ETFClassID::CObjectDispenser:
-	case ETFClassID::CObjectTeleporter:
 		return m_iObject == OBJECT_ALL ? true : m_iObject == OBJECT_NONE ? false : pEntity->m_iTeamNum() != m_iTeam;
+	case ETFClassID::CObjectTeleporter:
+		return true;
 	case ETFClassID::CTFBaseBoss:
 	case ETFClassID::CTFTankBoss:
 	case ETFClassID::CMerasmus:
