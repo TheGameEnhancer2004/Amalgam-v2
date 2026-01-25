@@ -79,6 +79,7 @@ struct CachedConnection_t
 	DropdownHint_t m_tDropdown = {};
 	NavPoints_t m_tPoints = {};
 	bool m_bPassable = false;
+	bool m_bStuckBlacklist = false;
 };
 
 struct CachedStucktime_t

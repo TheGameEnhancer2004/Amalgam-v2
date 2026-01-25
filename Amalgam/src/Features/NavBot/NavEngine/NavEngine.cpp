@@ -486,8 +486,11 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 			auto itVischeck = m_pMap->m_mVischeckCache.find(tAreaKey);
 			if (itVischeck != m_pMap->m_mVischeckCache.end() && !itVischeck->second.m_bPassable && (itVischeck->second.m_iExpireTick == 0 || itVischeck->second.m_iExpireTick > I::GlobalVars->tickcount))
 			{
-				AbandonPath("Area blacklisted (stuck)");
-				return;
+				if (!m_bIgnoreTraces || itVischeck->second.m_bStuckBlacklist)
+				{
+					AbandonPath("Area blacklisted (stuck)");
+					return;
+				}
 			}
 		}
 	}
@@ -574,9 +577,12 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 			const auto iBlacklistExpireTick = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::StuckBlacklistTime.Value);
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("CNavEngine", std::format("Stuck for too long, blacklisting the node (expires on tick: {})", iBlacklistExpireTick).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+			
 			m_pMap->m_mVischeckCache[tKey].m_iExpireTick = iBlacklistExpireTick;
 			m_pMap->m_mVischeckCache[tKey].m_eVischeckState = VischeckStateEnum::NotVisible;
 			m_pMap->m_mVischeckCache[tKey].m_bPassable = false;
+			m_pMap->m_mVischeckCache[tKey].m_bStuckBlacklist = true;
+			m_pMap->m_mVischeckCache[tKey].m_tPoints = { m_tLastCrumb.m_pNavArea ? m_tLastCrumb.m_vPos : pLocal->GetAbsOrigin(), m_vCrumbs[0].m_vPos, m_vCrumbs[0].m_vPos, m_vCrumbs[0].m_vPos }; // Store points for visualization
 
 			if (m_vCrumbs[0].m_pNavArea)
 			{
@@ -584,6 +590,22 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 				m_pMap->m_mVischeckCache[tAreaKey].m_iExpireTick = iBlacklistExpireTick;
 				m_pMap->m_mVischeckCache[tAreaKey].m_eVischeckState = VischeckStateEnum::NotVisible;
 				m_pMap->m_mVischeckCache[tAreaKey].m_bPassable = false;
+				m_pMap->m_mVischeckCache[tAreaKey].m_bStuckBlacklist = true;
+				m_pMap->m_mVischeckCache[tAreaKey].m_tPoints = { m_vCrumbs[0].m_vPos, m_vCrumbs[0].m_vPos, m_vCrumbs[0].m_vPos, m_vCrumbs[0].m_vPos };
+
+				std::vector<CNavArea*> vNearbyAreas;
+				m_pMap->CollectAreasAround(m_vCrumbs[0].m_vPos, 120.f, vNearbyAreas);
+				for (auto pArea : vNearbyAreas)
+				{
+					if (pArea == m_pLocalArea) continue; 
+
+					auto tNearbyKey = std::pair<CNavArea*, CNavArea*>(pArea, pArea);
+					m_pMap->m_mVischeckCache[tNearbyKey].m_iExpireTick = iBlacklistExpireTick;
+					m_pMap->m_mVischeckCache[tNearbyKey].m_eVischeckState = VischeckStateEnum::NotVisible;
+					m_pMap->m_mVischeckCache[tNearbyKey].m_bPassable = false;
+					m_pMap->m_mVischeckCache[tNearbyKey].m_bStuckBlacklist = true;
+					m_pMap->m_mVischeckCache[tNearbyKey].m_tPoints = { pArea->m_vCenter, pArea->m_vCenter, pArea->m_vCenter, pArea->m_vCenter };
+				}
 			}
 
 			m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck = 0;
@@ -833,18 +855,10 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	else
 		m_vDebugWalkablePaths.clear();
 
-	if (!IsBlacklistIrrelevant())
-	{
-		m_pMap->UpdateIgnores(pLocal);
-		CheckBlacklist(pLocal);
-	}
-	// Clear blacklist as we dont need it anyway
-	else if (!m_pMap->m_mFreeBlacklist.empty())
-		m_pMap->m_mFreeBlacklist.clear();
-
 	// CheckPathValidity(pLocal);
 	FollowCrumbs(pLocal, pWeapon, pCmd);
 	UpdateStuckTime(pLocal);
+	CheckBlacklist(pLocal);
 }
 
 void CNavEngine::AbandonPath(const std::string& sReason)
@@ -1279,12 +1293,31 @@ void CNavEngine::Render()
 	{
 		if (auto pBlacklist = GetFreeBlacklist())
 		{
-			if (!pBlacklist->empty())
+			for (auto& tBlacklistedArea : *pBlacklist)
 			{
-				for (auto& tBlacklistedArea : *pBlacklist)
+				H::Draw.RenderBox(tBlacklistedArea.first->m_vCenter, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Vars::Colors::NavbotBlacklist.Value, false);
+				H::Draw.RenderWireframeBox(tBlacklistedArea.first->m_vCenter, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Vars::Colors::NavbotBlacklist.Value, false);
+			}
+		}
+
+		if (m_pMap)
+		{
+			for (auto& [tKey, tEntry] : m_pMap->m_mVischeckCache)
+			{
+				if (tEntry.m_eVischeckState == VischeckStateEnum::NotVisible && (tEntry.m_iExpireTick == 0 || tEntry.m_iExpireTick > I::GlobalVars->tickcount))
 				{
-					H::Draw.RenderBox(tBlacklistedArea.first->m_vCenter, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Vars::Colors::NavbotBlacklist.Value, false);
-					H::Draw.RenderWireframeBox(tBlacklistedArea.first->m_vCenter, Vector(-4.0f, -4.0f, -1.0f), Vector(4.0f, 4.0f, 1.0f), Vector(), Vars::Colors::NavbotBlacklist.Value, false);
+					if (tEntry.m_tPoints.m_vCurrent.Length() > 0.f && tEntry.m_tPoints.m_vNext.Length() > 0.f)
+					{
+						H::Draw.RenderLine(tEntry.m_tPoints.m_vCurrent, tEntry.m_tPoints.m_vNext, Color_t(255, 0, 0, 255), false);
+						H::Draw.RenderBox(tEntry.m_tPoints.m_vCurrent, Vector(-2.f, -2.f, -2.f), Vector(2.f, 2.f, 2.f), Vector(), Color_t(255, 0, 0, 255), false);
+						H::Draw.RenderBox(tEntry.m_tPoints.m_vNext, Vector(-2.f, -2.f, -2.f), Vector(2.f, 2.f, 2.f), Vector(), Color_t(255, 0, 0, 255), false);
+					}
+
+					if (tKey.first == tKey.second && tKey.first)
+					{
+						H::Draw.RenderBox(tKey.first->m_vCenter, Vector(-6.0f, -6.0f, -2.0f), Vector(6.0f, 6.0f, 2.0f), Vector(), Color_t(255, 0, 0, 255), false);
+						H::Draw.RenderWireframeBox(tKey.first->m_vCenter, Vector(-6.0f, -6.0f, -2.0f), Vector(6.0f, 6.0f, 2.0f), Vector(), Color_t(255, 0, 0, 255), false);
+					}
 				}
 			}
 		}

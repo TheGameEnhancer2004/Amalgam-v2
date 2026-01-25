@@ -26,12 +26,12 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		}
 
 		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
-		if (!F::NavEngine.m_bIgnoreTraces)
+		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
 		{
-			if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
+			if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
+				(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
 			{
-				if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
-					(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
+				if (!F::NavEngine.m_bIgnoreTraces || itBlocked->second.m_bStuckBlacklist)
 					continue;
 			}
 		}
@@ -53,8 +53,11 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
 			pCachedEntry = &itCache->second;
 
-		if (!F::NavEngine.m_bIgnoreTraces && pCachedEntry && !pCachedEntry->m_bPassable)
-			continue;
+		if (pCachedEntry && !pCachedEntry->m_bPassable)
+		{
+			if (!F::NavEngine.m_bIgnoreTraces || pCachedEntry->m_bStuckBlacklist)
+				continue;
+		}
 
 		NavPoints_t tPoints{};
 		DropdownHint_t tDropdown{};
