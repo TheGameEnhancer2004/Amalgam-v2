@@ -545,7 +545,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 // 	}
 // }
 
-void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
+void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	// No crumbs
 	if (m_vCrumbs.empty())
@@ -617,14 +617,8 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal)
 			return;
 		}
 
-		if (m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck > iDetectTicks / 2)
-		{
-			auto pLocalPlayer = H::Entities.GetLocal();
-			if (pLocalPlayer && pLocalPlayer->OnSolid())
-			{
-				G::CurrentUserCmd->buttons |= IN_JUMP;
-			}
-		}
+		if (m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck > iDetectTicks / 2 && pLocal->OnSolid())
+			pCmd->buttons |= IN_JUMP;
 	}
 }
 
@@ -866,7 +860,7 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	// CheckPathValidity(pLocal);
 	FollowCrumbs(pLocal, pWeapon, pCmd);
-	UpdateStuckTime(pLocal);
+	UpdateStuckTime(pLocal, pCmd);
 	CheckBlacklist(pLocal);
 }
 

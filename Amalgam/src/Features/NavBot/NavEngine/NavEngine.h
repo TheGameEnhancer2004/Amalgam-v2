@@ -132,7 +132,7 @@ public:
 	void FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void VischeckPath();
 	void CheckBlacklist(CTFPlayer* pLocal);
-	void UpdateStuckTime(CTFPlayer* pLocal);
+	void UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd);
 
 	// Make sure to update m_pLocalArea with GetLocalNavArea before running
 	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIgnoreTraces = false);

@@ -214,75 +214,22 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 
 	if (nClassID == ETFClassID::CTFPlayer)
 	{
-		return false;
+		if (m_iPlayer == PLAYER_ALL) return true;
+		if (m_iPlayer == PLAYER_NONE) return false;
+		return pEntity->m_iTeamNum() != m_iTeam;
 	}
 
-	switch (nClassID)
+	if (nClassID == ETFClassID::CBaseObject ||
+		nClassID == ETFClassID::CObjectSentrygun ||
+		nClassID == ETFClassID::CObjectDispenser)
 	{
-	case ETFClassID::CBaseDoor:
-	case ETFClassID::CPhysicsProp:
-	case ETFClassID::CPhysicsPropMultiplayer:
-	case ETFClassID::CFunc_LOD:
-	case ETFClassID::CObjectCartDispenser:
-	case ETFClassID::CFuncTrackTrain:
-	case ETFClassID::CFuncConveyor:
-	case ETFClassID::CObjectSentrygun:
-	case ETFClassID::CObjectDispenser:
-	case ETFClassID::CObjectTeleporter:
-	case ETFClassID::CBaseProjectile:
-	case ETFClassID::CBaseGrenade:
-	case ETFClassID::CTFWeaponBaseGrenadeProj:
-	case ETFClassID::CTFWeaponBaseMerasmusGrenade:
-	case ETFClassID::CTFGrenadePipebombProjectile:
-	case ETFClassID::CTFStunBall:
-	case ETFClassID::CTFBall_Ornament:
-	case ETFClassID::CTFProjectile_Jar:
-	case ETFClassID::CTFProjectile_Cleaver:
-	case ETFClassID::CTFProjectile_JarGas:
-	case ETFClassID::CTFProjectile_JarMilk:
-	case ETFClassID::CTFProjectile_SpellBats:
-	case ETFClassID::CTFProjectile_SpellKartBats:
-	case ETFClassID::CTFProjectile_SpellMeteorShower:
-	case ETFClassID::CTFProjectile_SpellMirv:
-	case ETFClassID::CTFProjectile_SpellPumpkin:
-	case ETFClassID::CTFProjectile_SpellSpawnBoss:
-	case ETFClassID::CTFProjectile_SpellSpawnHorde:
-	case ETFClassID::CTFProjectile_SpellSpawnZombie:
-	case ETFClassID::CTFProjectile_SpellTransposeTeleport:
-	case ETFClassID::CTFProjectile_Throwable:
-	case ETFClassID::CTFProjectile_ThrowableBreadMonster:
-	case ETFClassID::CTFProjectile_ThrowableBrick:
-	case ETFClassID::CTFProjectile_ThrowableRepel:
-	case ETFClassID::CTFBaseRocket:
-	case ETFClassID::CTFFlameRocket:
-	case ETFClassID::CTFProjectile_Arrow:
-	case ETFClassID::CTFProjectile_GrapplingHook:
-	case ETFClassID::CTFProjectile_HealingBolt:
-	case ETFClassID::CTFProjectile_Rocket:
-	case ETFClassID::CTFProjectile_BallOfFire:
-	case ETFClassID::CTFProjectile_MechanicalArmOrb:
-	case ETFClassID::CTFProjectile_SentryRocket:
-	case ETFClassID::CTFProjectile_SpellFireball:
-	case ETFClassID::CTFProjectile_SpellLightningOrb:
-	case ETFClassID::CTFProjectile_SpellKartOrb:
-	case ETFClassID::CTFProjectile_EnergyBall:
-	case ETFClassID::CTFProjectile_Flare:
-	case ETFClassID::CTFBaseProjectile:
-	case ETFClassID::CTFProjectile_EnergyRing:
-		return false;
-	case ETFClassID::CFuncRespawnRoomVisualizer:
-	{
-		auto pLocal = H::Entities.GetLocal();
-		const int iTargetTeam = pEntity->m_iTeamNum(), iLocalTeam = pLocal ? pLocal->m_iTeamNum() : iTargetTeam;
-
-		if (pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iLocalTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK))
-			return true;
-		break;
-	}
+		if (m_iObject == OBJECT_ALL) return true;
+		if (m_iObject == OBJECT_NONE) return false;
+		return pEntity->m_iTeamNum() != m_iTeam || ((nContentsMask & CONTENTS_PLAYERCLIP) && m_pSkip && pEntity->As<CBaseObject>()->m_hBuilder().GetEntryIndex() == m_pSkip->entindex());
 	}
 
-	if (nClassID != ETFClassID::CBaseEntity)
-		return false;
+	if (nClassID == ETFClassID::CFuncRespawnRoomVisualizer)
+		return (nContentsMask & CONTENTS_PLAYERCLIP) && m_iTeam != TEAM_UNASSIGNED && pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, m_iTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK);
 
 	return false;
 }

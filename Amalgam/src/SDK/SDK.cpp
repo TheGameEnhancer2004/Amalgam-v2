@@ -1031,9 +1031,6 @@ int SDK::GetWeaponMaxReserveAmmo(int WeaponID, int DefIdx)
 
 std::string SDK::GetLevelName()
 {
-	if (!I::EngineClient)
-		return "None";
-
 	const std::string name = I::EngineClient->GetLevelName();
 	if (name.empty())
 		return "None";

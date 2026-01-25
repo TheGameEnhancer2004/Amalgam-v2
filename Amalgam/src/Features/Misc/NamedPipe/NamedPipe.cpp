@@ -123,7 +123,7 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 
 	if (!tInfo.m_uAccountID)
 		tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
-	tInfo.m_bInGame = I::EngineClient && I::EngineClient->IsInGame();
+	tInfo.m_bInGame = I::EngineClient->IsInGame();
 
 	if (!m_bSetMapName)
 	{
@@ -133,7 +133,7 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 
 	if (!m_bSetServerName)
 	{
-		if (auto pNetChan = (I::EngineClient ? I::EngineClient->GetNetChannelInfo() : nullptr))
+		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
 		{
 			const char* cAddr = pNetChan->GetAddress();
 			if (cAddr && cAddr[0] != '\0' && std::string(cAddr) != "loopback")
