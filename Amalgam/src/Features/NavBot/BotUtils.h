@@ -78,7 +78,7 @@ public:
 	ShouldTargetEnum::ShouldTargetEnum ShouldTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIdx);
 	ShouldTargetEnum::ShouldTargetEnum ShouldTargetBuilding(CTFPlayer* pLocal, int iEntIdx);
 
-	bool GetDormantOrigin(int iIndex, Vector& vOut);
+	bool GetDormantOrigin(int iIndex, Vector* pOut = nullptr);
 
 	void SetSlot(CTFPlayer* pLocal, int iSlot);
 

@@ -599,9 +599,6 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 		constexpr float flInvulnerableRadius = 1000.0f;
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
-			if (!pEntity->IsPlayer())
-				continue;
-
 			auto pPlayer = pEntity->As<CTFPlayer>();
 			if (!pPlayer->IsAlive())
 				continue;
@@ -610,7 +607,7 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 				continue;
 
 			Vector vPlayerOrigin;
-			if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), vPlayerOrigin))
+			if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), &vPlayerOrigin))
 				continue;
 
 			vPlayerOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
@@ -626,9 +623,6 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 		{
-			if (!pEntity->IsBuilding())
-				continue;
-
 			auto pBuilding = pEntity->As<CBaseObject>();
 			if (pBuilding->GetClassID() != ETFClassID::CObjectSentrygun)
 				continue;
@@ -650,7 +644,7 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 				continue;
 
 			Vector vSentryOrigin;
-			if (!F::BotUtils.GetDormantOrigin(pSentry->entindex(), vSentryOrigin))
+			if (!F::BotUtils.GetDormantOrigin(pSentry->entindex(), &vSentryOrigin))
 				continue;
 
 			vSentryOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;

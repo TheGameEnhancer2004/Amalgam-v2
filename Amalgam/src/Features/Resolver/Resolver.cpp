@@ -55,8 +55,9 @@ void CResolver::FrameStageNotify()
 	for (auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() || !pPlayer->IsAlive() || pPlayer->IsAGhost()
-			|| !H::Entities.GetDeltaTime(pPlayer->entindex()))
+		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() ||
+			pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost() ||
+			!H::Entities.GetDeltaTime(pPlayer->entindex()))
 			continue;
 
 		int iUserID = pResource->m_iUserID(pPlayer->entindex());
@@ -135,7 +136,7 @@ void CResolver::CreateMove(CTFPlayer* pLocal)
 
 			for (auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 			{
-				if (pEntity->entindex() == I::EngineClient->GetLocalPlayer())
+				if (pEntity->entindex() == I::EngineClient->GetLocalPlayer() || pEntity->IsDormant())
 					continue;
 
 				Vec3 vCurPos = pEntity->GetCenter();

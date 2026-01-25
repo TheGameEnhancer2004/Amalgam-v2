@@ -81,7 +81,7 @@ void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon
 			continue;
 
 		Vector vOrigin;
-		if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), vOrigin))
+		if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), &vOrigin))
 			continue;
 
 		vOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;

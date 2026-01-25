@@ -41,7 +41,7 @@ void CMovementSimulation::Store()
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		auto& vRecords = m_mRecords[pPlayer->entindex()];
 
-		if (!pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->m_vecVelocity().IsZero())
+		if (pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->m_vecVelocity().IsZero())
 		{
 			vRecords.clear();
 			continue;
@@ -112,7 +112,7 @@ void CMovementSimulation::Store()
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		auto& vSimTimes = m_mSimTimes[pPlayer->entindex()];
 
-		if (pEntity->entindex() == I::EngineClient->GetLocalPlayer() || !pPlayer->IsAlive() || pPlayer->IsAGhost())
+		if (pEntity->entindex() == I::EngineClient->GetLocalPlayer() || pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost())
 		{
 			vSimTimes.clear();
 			continue;

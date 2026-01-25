@@ -10,7 +10,7 @@ void CEnginePrediction::AdjustPlayers(CBaseEntity* pLocal)
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer == pLocal || !pPlayer->IsAlive() || pPlayer->IsAGhost())
+		if (pPlayer == pLocal || pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost())
 			continue;
 
 		m_mRestore[pPlayer] = { pPlayer->GetAbsOrigin(), pPlayer->m_vecMins(), pPlayer->m_vecMaxs() };

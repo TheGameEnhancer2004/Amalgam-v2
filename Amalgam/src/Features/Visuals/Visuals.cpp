@@ -792,7 +792,7 @@ void CVisuals::DrawHitboxes(int iStore)
 		for (auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 		{
 			auto pPlayer = pEntity->As<CTFPlayer>();
-			if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() && !I::Input->CAM_IsThirdPerson() || !pPlayer->IsAlive())
+			if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() && !I::Input->CAM_IsThirdPerson() || pPlayer->IsDormant() || !pPlayer->IsAlive())
 				continue;
 
 			if (auto aBones = F::Backtrack.GetBones(pEntity))
@@ -1167,8 +1167,9 @@ void CVisuals::Store()
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 		{
 			auto pPlayer = pEntity->As<CTFPlayer>();
-			if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer()
-				|| !F::Groups.GetGroup(pEntity, pGroup, false) || !(pGroup->m_iSightlines & SightlinesEnum::Enabled))
+			if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() ||
+				pPlayer->IsDormant() || !F::Groups.GetGroup(pEntity, pGroup, false) ||
+				!(pGroup->m_iSightlines & SightlinesEnum::Enabled))
 				continue;
 
 			auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();

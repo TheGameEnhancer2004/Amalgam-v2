@@ -214,8 +214,12 @@ void CEntities::Store()
 		if (n <= nMaxClients)
 		{
 			if (nClassID == ETFClassID::CTFPlayer)
-			{
+			{	
 				auto pPlayer = pEntity->As<CTFPlayer>();
+
+				m_mGroups[EntityEnum::PlayerAll].push_back(pPlayer);
+				m_mGroups[pPlayer->m_iTeamNum() != iLocalTeam ? EntityEnum::PlayerEnemy : EntityEnum::PlayerTeam].push_back(pPlayer);
+
 				if (n != nLocalIndex)
 				{
 					if (!UpdatePlayerDetails(n, pPlayer, iLag))
@@ -227,8 +231,6 @@ void CEntities::Store()
 						pPlayer->m_hObserverTarget().GetEntryIndex() == nLocalIndex)
 						m_bIsSpectated = true;
 				}
-				m_mGroups[EntityEnum::PlayerAll].push_back(pPlayer);
-				m_mGroups[pPlayer->m_iTeamNum() != iLocalTeam ? EntityEnum::PlayerEnemy : EntityEnum::PlayerTeam].push_back(pPlayer);
 				m_mModels[n] = FNV1A::Hash32(I::ModelInfoClient->GetModelName(pEntity->GetModel()));
 			}
 		}
@@ -343,6 +345,12 @@ void CEntities::Store()
 				m_mGroups[EntityEnum::SniperDots].push_back(pEntity);
 				break;
 			}
+		}
+		else if (nClassID == ETFClassID::CObjectSentrygun ||
+			nClassID == ETFClassID::CObjectDispenser)
+		{
+			m_mGroups[EntityEnum::BuildingAll].push_back(pEntity);
+			m_mGroups[pEntity->m_iTeamNum() != iLocalTeam ? EntityEnum::BuildingEnemy : EntityEnum::BuildingTeam].push_back(pEntity);
 		}
 	}
 

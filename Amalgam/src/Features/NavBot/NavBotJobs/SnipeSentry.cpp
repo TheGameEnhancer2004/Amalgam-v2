@@ -20,11 +20,9 @@ bool CNavBotSnipe::IsAreaValidForSnipe(Vector vEntOrigin, Vector vAreaOrigin, bo
 bool CNavBotSnipe::TryToSnipe(int iEntIdx, bool bShortRangeClass)
 {
 	Vector vOrigin;
-	if (!F::BotUtils.GetDormantOrigin(iEntIdx, vOrigin))
+	if (!F::BotUtils.GetDormantOrigin(iEntIdx, &vOrigin))
 		return false;
 
-	// Add some z to dormant sentries as it only returns origin
-	//if (ent->IsDormant())
 	vOrigin.z += 40.0f;
 
 	auto pNavFile = F::NavEngine.GetNavFile();
@@ -81,7 +79,7 @@ bool CNavBotSnipe::Run(CTFPlayer* pLocal)
 		tInvalidTargetTimer.Update();
 
 		Vector vOrigin;
-		if (F::BotUtils.GetDormantOrigin(m_iTargetIdx, vOrigin))
+		if (F::BotUtils.GetDormantOrigin(m_iTargetIdx, &vOrigin))
 		{
 			// We cannot just use the last crumb, as it is always nullptr
 			if (F::NavEngine.m_tLastCrumb.m_pNavArea)
@@ -102,8 +100,11 @@ bool CNavBotSnipe::Run(CTFPlayer* pLocal)
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
-		int iEntIdx = pEntity->entindex();
+		if (pEntity->IsDormant())
+			continue;
 
+		int iEntIdx = pEntity->entindex();
+		
 		// Invalid sentry
 		if (F::BotUtils.ShouldTargetBuilding(pLocal, iEntIdx) != ShouldTargetEnum::Target)
 			continue;

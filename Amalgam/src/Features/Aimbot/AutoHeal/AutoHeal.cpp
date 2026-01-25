@@ -268,7 +268,7 @@ void CAutoHeal::GetDangers(CTFPlayer* pTarget, bool bVaccinator, float& flBullet
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iIndex = pPlayer->entindex();
-		if (!pPlayer->CanAttack(true, false))
+		if (pPlayer->IsDormant() || !pPlayer->CanAttack(true, false))
 			continue;
 
 		auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();
@@ -411,10 +411,10 @@ void CAutoHeal::GetDangers(CTFPlayer* pTarget, bool bVaccinator, float& flBullet
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 	{
-		auto pSentry = pEntity->As<CObjectSentrygun>();
-		if (!pSentry->IsBuilding())
+		if (pEntity->GetClassID() != ETFClassID::CObjectSentrygun)
 			continue;
 
+		auto pSentry = pEntity->As<CObjectSentrygun>();
 		if (pSentry->m_hEnemy().Get() != pTarget && pSentry->m_hAutoAimTarget().Get() != pTarget || !pSentry->m_iAmmoShells())
 			continue;
 

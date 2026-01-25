@@ -30,9 +30,7 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 			{
 				Vec3 vOrigin;
 				float flDistance = FLT_MAX;
-				F::BotUtils.GetDormantOrigin(iEntIndex, vOrigin);
-
-				if (!vOrigin.IsZero())
+				if (F::BotUtils.GetDormantOrigin(iEntIndex, &vOrigin))
 					flDistance = vLocalOrigin.DistTo(vOrigin);
 
 				if (flDistance <= flMaxDist)
@@ -91,7 +89,7 @@ void CFollowBot::UpdateLockedTarget(CTFPlayer* pLocal)
 	else if (Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && bCanNav)
 	{
 		Vector vOrigin;
-		if (F::BotUtils.GetDormantOrigin(m_tLockedTarget.m_iEntIndex, vOrigin))
+		if (F::BotUtils.GetDormantOrigin(m_tLockedTarget.m_iEntIndex, &vOrigin))
 			m_tLockedTarget.m_vLastKnownPos = vOrigin;
 
 		if (m_tLockedTarget.m_vLastKnownPos.IsZero())

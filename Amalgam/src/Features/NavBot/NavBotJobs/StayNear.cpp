@@ -11,7 +11,7 @@ bool CNavBotStayNear::StayNearTarget(int iEntIndex)
 	Vector vOrigin;
 
 	// No origin recorded, don't bother
-	if (!F::BotUtils.GetDormantOrigin(iEntIndex, vOrigin))
+	if (!F::BotUtils.GetDormantOrigin(iEntIndex, &vOrigin))
 		return false;
 
 	auto pLocalArea = F::NavEngine.GetLocalNavArea();
@@ -85,7 +85,7 @@ bool CNavBotStayNear::IsAreaValidForStayNear(Vector vEntOrigin, CNavArea* pArea,
 
 int CNavBotStayNear::IsStayNearTargetValid(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex)
 {
-	if (!pLocal || !iEntIndex || iEntIndex == pLocal->entindex())
+	if (!pLocal || iEntIndex <= 0 || iEntIndex == pLocal->entindex())
 		return 0;
 
 	return F::BotUtils.ShouldTarget(pLocal, pWeapon, iEntIndex);
@@ -136,7 +136,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 
 		Vector vOrigin;
-		if (F::BotUtils.GetDormantOrigin(iStayNearTargetIdx, vOrigin))
+		if (F::BotUtils.GetDormantOrigin(iStayNearTargetIdx, &vOrigin))
 		{
 			// Check if current target area is valid
 			if (F::NavEngine.IsPathing())
@@ -176,6 +176,9 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	std::unordered_set<int> sHasPriority{};
 	for (const auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
+		if (pEntity->IsDormant())
+			continue;
+
 		int iPriority = H::Entities.GetPriority(pEntity->entindex());
 		if (iPriority > F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(DEFAULT_TAG)].m_iPriority)
 		{
@@ -220,7 +223,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 
 		Vector vOrigin;
-		if (!F::BotUtils.GetDormantOrigin(iPlayerIdx, vOrigin))
+		if (!F::BotUtils.GetDormantOrigin(iPlayerIdx, &vOrigin))
 			continue;
 
 		vSortedPlayers.push_back({ iPlayerIdx, vOrigin.DistTo(pLocal->GetAbsOrigin()) });

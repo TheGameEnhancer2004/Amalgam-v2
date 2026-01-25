@@ -32,7 +32,7 @@ MAKE_HOOK(CWeaponMedigun_PrimaryAttack, S::CWeaponMedigun_PrimaryAttack(), void,
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer == pOwner || !pPlayer->IsAlive() || pPlayer->IsAGhost())
+		if (pPlayer == pOwner || pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost())
 			continue;
 
 		std::vector<TickRecord*> vRecords = {};

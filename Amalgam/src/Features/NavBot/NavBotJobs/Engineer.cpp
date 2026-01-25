@@ -201,7 +201,7 @@ void CNavBotEngineer::RefreshBuildingSpots(CTFPlayer* pLocal, ClosestEnemy_t tCl
 		bool bFoundEnemy = false;
 
 		// 1. Try dormant enemy origin (last known position of the closest enemy)
-		if (F::BotUtils.GetDormantOrigin(tClosestEnemy.m_iEntIdx, vEnemyOrigin))
+		if (F::BotUtils.GetDormantOrigin(tClosestEnemy.m_iEntIdx, &vEnemyOrigin))
 			bFoundEnemy = true;
 		// 2. Try enemy objective (if we are attacking)
 		else if (F::FlagController.GetPosition(iEnemyTeam, vEnemyOrigin))

@@ -232,8 +232,9 @@ void CBacktrack::MakeRecords()
 	for (auto& pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() || !pPlayer->IsAlive() || pPlayer->IsAGhost()
-			|| !H::Entities.GetDeltaTime(pPlayer->entindex()))
+		if (pPlayer->entindex() == I::EngineClient->GetLocalPlayer() ||
+			pPlayer->IsDormant() || !pPlayer->IsAlive() || pPlayer->IsAGhost() ||
+			!H::Entities.GetDeltaTime(pPlayer->entindex()))
 			continue;
 
 
@@ -494,10 +495,7 @@ void CBacktrack::BacktrackToCrosshair(CTFPlayer* pLocal, CTFWeaponBase* pWeapon,
 	std::vector<std::pair<TickRecord, CrosshairRecordInfo_t>> vValidRecords;
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 	{
-		if (!pEntity)
-			continue;
-
-		if (/*pEntity->IsDormant() || */!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost() || pEntity->As<CTFPlayer>()->IsInvulnerable())
+		if (!pEntity->As<CTFPlayer>()->IsAlive() || pEntity->As<CTFPlayer>()->IsAGhost() || pEntity->As<CTFPlayer>()->IsInvulnerable())
 			continue;
 
 		CrosshairRecordInfo_t sRecordInfo{};
