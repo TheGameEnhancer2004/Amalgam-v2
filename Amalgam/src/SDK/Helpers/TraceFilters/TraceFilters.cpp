@@ -219,6 +219,7 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 		if (m_iPlayer == PLAYER_NONE) return false;
 		return pEntity->m_iTeamNum() != m_iTeam;
 	}
+
 	if (nClassID == ETFClassID::CBaseObject ||
 		nClassID == ETFClassID::CObjectSentrygun ||
 		nClassID == ETFClassID::CObjectDispenser)

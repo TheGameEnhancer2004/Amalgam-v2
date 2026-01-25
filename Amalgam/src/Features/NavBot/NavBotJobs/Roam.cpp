@@ -104,7 +104,19 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	}
 	m_bDefending = false;
 	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
-		return true;
+	{
+		auto pMap = F::NavEngine.GetNavMap();
+		if (pMap)
+		{
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(pCurrentTargetArea, pCurrentTargetArea);
+			auto it = pMap->m_mVischeckCache.find(tAreaKey);
+			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
+				pCurrentTargetArea = nullptr;
+		}
+
+		if (pCurrentTargetArea)
+			return true;
+	}
 
 	// Reset current target if we are not pathing or it's invalid
 	pCurrentTargetArea = nullptr;
@@ -118,6 +130,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		// Skip if area is blacklisted
 		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
 			continue;
+
+		auto pMap = F::NavEngine.GetNavMap();
+		if (pMap)
+		{
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(&tArea, &tArea);
+			auto it = pMap->m_mVischeckCache.find(tAreaKey);
+			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
+				continue;
+		}
 
 		// Dont run in spawn bitch
 		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
@@ -175,8 +196,14 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 
+	int iAttempts = 0;
 	for (auto pArea : vValidAreas)
 	{
+		if (!pArea)
+			continue;
+
+		if (iAttempts++ > 10)
+			break;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
 			pCurrentTargetArea = pArea;

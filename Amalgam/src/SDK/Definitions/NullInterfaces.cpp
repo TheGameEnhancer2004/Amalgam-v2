@@ -5,6 +5,12 @@
 #define Validate(x) if (!x) { U::Core.AppendFailText("CNullInterfaces::Initialize() failed to initialize "#x); m_bFailed = true; }
 #define ValidateNonLethal(x) if (!x) { const char* sMessage = "CNullInterfaces::Initialize() failed to initialize "#x; MessageBox(nullptr, sMessage, "Warning", MB_OK | MB_ICONERROR); U::Core.AppendFailText(sMessage); }
 
+#ifdef TEXTMODE
+#define ValidateSteam(x) if (!x) { U::Core.AppendFailText("CNullInterfaces::Initialize() failed to initialize "#x" in Textmode"); }
+#else
+#define ValidateSteam(x) Validate(x)
+#endif
+
 MAKE_SIGNATURE(Get_TFPartyClient, "client.dll", "48 8B 05 ? ? ? ? C3 CC CC CC CC CC CC CC CC 48 89 5C 24 ? 48 89 74 24 ? 48 89 7C 24 ? 41 56", 0x0);
 MAKE_SIGNATURE(Get_SteamNetworkingUtils, "client.dll", "40 53 48 83 EC ? 48 8B D9 48 8D 15 ? ? ? ? 33 C9 FF 15 ? ? ? ? 33 C9", 0x0);
 
@@ -16,32 +22,35 @@ bool CNullInterfaces::Initialize()
 	I::KeyValuesSystem = U::Memory.GetModuleExport<IKeyValuesSystem*(*)()>("vstdlib.dll", "KeyValuesSystem")();
 	Validate(I::KeyValuesSystem);
 
+	if (!I::SteamClient)
+		return !m_bFailed;
+
 	const HSteamPipe hsNewPipe = I::SteamClient->CreateSteamPipe();
-	Validate(hsNewPipe);
+	ValidateSteam(hsNewPipe);
 
 	const HSteamPipe hsNewUser = I::SteamClient->ConnectToGlobalUser(hsNewPipe);
-	Validate(hsNewUser);
+	ValidateSteam(hsNewUser);
 
 	I::SteamFriends = I::SteamClient->GetISteamFriends(hsNewUser, hsNewPipe, STEAMFRIENDS_INTERFACE_VERSION);
-	Validate(I::SteamFriends);
+	ValidateSteam(I::SteamFriends);
 
 	I::SteamUtils = I::SteamClient->GetISteamUtils(hsNewUser, STEAMUTILS_INTERFACE_VERSION);
-	Validate(I::SteamUtils);
+	ValidateSteam(I::SteamUtils);
 
 	I::SteamApps = I::SteamClient->GetISteamApps(hsNewUser, hsNewPipe, STEAMAPPS_INTERFACE_VERSION);
 	ValidateNonLethal(I::SteamApps);
 
 	I::SteamUserStats = I::SteamClient->GetISteamUserStats(hsNewUser, hsNewPipe, STEAMUSERSTATS_INTERFACE_VERSION);
-	Validate(I::SteamUserStats);
+	ValidateSteam(I::SteamUserStats);
 
 	I::SteamUser = I::SteamClient->GetISteamUser(hsNewUser, hsNewPipe, STEAMUSER_INTERFACE_VERSION);
-	Validate(I::SteamUser);
+	ValidateSteam(I::SteamUser);
 
 	S::Get_SteamNetworkingUtils.Call<ISteamNetworkingUtils*>(&I::SteamNetworkingUtils);
-	Validate(I::SteamNetworkingUtils);
+	ValidateSteam(I::SteamNetworkingUtils);
 
 	I::SteamMatchmakingServers = I::SteamClient->GetISteamMatchmakingServers(hsNewUser, hsNewPipe, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION);
-	Validate(I::SteamMatchmakingServers);
+	ValidateSteam(I::SteamMatchmakingServers);
 
 	return !m_bFailed;
 }

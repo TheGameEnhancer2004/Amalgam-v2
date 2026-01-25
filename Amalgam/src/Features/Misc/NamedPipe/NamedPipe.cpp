@@ -143,6 +143,17 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 			}
 		}
 	}
+
+	if (I::SteamFriends)
+	{
+		const char* szPersonaName = I::SteamFriends->GetPersonaName();
+		if (szPersonaName)
+			tInfo.m_sBotName = szPersonaName;
+		else
+			tInfo.m_sBotName = "Unknown";
+	}
+	else
+		tInfo.m_sBotName = "Unknown";
 }
 
 void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
@@ -158,7 +169,7 @@ void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
 void CNamedPipe::Reset()
 {
 	std::lock_guard lock(m_infoMutex);
-	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_uAccountID, false);
+	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_sBotName, tInfo.m_uAccountID, false);
 	m_bSetServerName = false;
 	m_bSetMapName = false;
 	ClearCaptureReservations();
@@ -329,6 +340,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				// Client info
 				F::NamedPipe.QueueMessage("Map", F::NamedPipe.tInfo.m_sCurrentMapName, false);
 				F::NamedPipe.QueueMessage("Server", F::NamedPipe.tInfo.m_sCurrentServer, false);
+				F::NamedPipe.QueueMessage("BotName", F::NamedPipe.tInfo.m_sBotName, false);
 				F::NamedPipe.QueueMessage("PlayerClass", F::NamedPipe.GetPlayerClassName(F::NamedPipe.tInfo.m_iCurrentClass), false);
 				F::NamedPipe.QueueMessage("Health", std::to_string(F::NamedPipe.tInfo.m_iCurrentHealth), false);
 				F::NamedPipe.QueueMessage("FPS", std::to_string(F::NamedPipe.tInfo.m_iCurrentFPS), false);
@@ -491,11 +503,18 @@ void CNamedPipe::SendStatusUpdate(std::string sStatus)
 void CNamedPipe::ExecuteCommand(std::string sCommand)
 {
 	Log("ExecuteCommand called with: " + sCommand);
-
-	Log("EngineClient is available, sending command to TF2 console");
-	I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
-	Log("Command sent to TF2 console: " + sCommand);
-	SendStatusUpdate("CommandExecuted:" + sCommand);
+	if (I::EngineClient)
+	{
+		Log("EngineClient is available, sending command to TF2 console");
+		I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
+		Log("Command sent to TF2 console: " + sCommand);
+		SendStatusUpdate("CommandExecuted:" + sCommand);
+	}
+	else
+	{
+		Log("EngineClient is NOT available, command ignored: " + sCommand);
+		SendStatusUpdate("CommandFailed:EngineClientNotAvailable");
+	}
 }
 
 void CNamedPipe::QueueMessage(std::string sType, std::string sContent, bool bIsPriority)
@@ -708,8 +727,12 @@ void CNamedPipe::UpdateLocalBotIgnoreStatus()
 		if (!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
 			!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
 		{
-			const char* szName = I::SteamFriends->GetFriendPersonaName(CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual));
-			if (!szName) szName = "";
+			const char* szName = "";
+			if (I::SteamFriends)
+			{
+				szName = I::SteamFriends->GetFriendPersonaName(CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual));
+				if (!szName) szName = "";
+			}
 
 			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
 			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);

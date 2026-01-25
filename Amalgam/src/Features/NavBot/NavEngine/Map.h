@@ -5,6 +5,7 @@
 #include <limits>
 #include <queue>
 #include <unordered_set>
+#include <mutex>
 
 #define PLAYER_WIDTH		49.0f
 #define HALF_PLAYER_WIDTH	PLAYER_WIDTH / 2.0f
@@ -79,6 +80,7 @@ struct CachedConnection_t
 	DropdownHint_t m_tDropdown = {};
 	NavPoints_t m_tPoints = {};
 	bool m_bPassable = false;
+	bool m_bStuckBlacklist = false;
 };
 
 struct CachedStucktime_t
@@ -100,6 +102,7 @@ public:
 		m_eState = m_navfile.m_bOK ? NavStateEnum::Active : NavStateEnum::Unavailable;
 	}
 	micropather::MicroPather m_pather{ this, 3000, 6, true };
+	std::recursive_mutex m_mutex;
 
 	std::unordered_map<std::pair<CNavArea*, CNavArea*>, CachedConnection_t, boost::hash<std::pair<CNavArea*, CNavArea*>>> m_mVischeckCache;
 	std::unordered_map<std::pair<CNavArea*, CNavArea*>, CachedStucktime_t, boost::hash<std::pair<CNavArea*, CNavArea*>>> m_mConnectionStuckTime;
@@ -137,6 +140,7 @@ public:
 		if (m_eState != NavStateEnum::Active)
 			return {};
 
+		std::lock_guard lock(m_mutex);
 		float flCost;
 		std::vector<void*> vPath;
 		int iResult = m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost);
@@ -153,6 +157,7 @@ public:
 
 	void Reset()
 	{
+		std::lock_guard lock(m_mutex);
 		m_mVischeckCache.clear();
 		m_mConnectionStuckTime.clear();
 		m_mFreeBlacklist.clear();

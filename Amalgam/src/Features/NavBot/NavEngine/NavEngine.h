@@ -50,6 +50,7 @@ private:
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
+	bool m_bRepathRequested = false;
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
@@ -131,7 +132,7 @@ public:
 	void FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void VischeckPath();
 	void CheckBlacklist(CTFPlayer* pLocal);
-	void UpdateStuckTime(CTFPlayer* pLocal);
+	void UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd);
 
 	// Make sure to update m_pLocalArea with GetLocalNavArea before running
 	bool NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority = PriorityListEnum::Patrol, bool bShouldRepath = true, bool bNavToLocal = true, bool bIgnoreTraces = false);

@@ -229,7 +229,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	bool bHasCloseDispenser = false;
 	if (bGotDispensers)
 	{
-		bHasCloseDispenser = m_vTempDispensers.front().m_vOrigin.DistTo(vLocalOrigin) <= 1600.f;
+		bHasCloseDispenser = true;
 		m_vTempMain.reserve(m_vTempMain.size() + m_vTempDispensers.size());
 		m_vTempMain.insert(m_vTempMain.end(), m_vTempDispensers.begin(), m_vTempDispensers.end());
 		std::sort(m_vTempMain.begin(), m_vTempMain.end(), [&](SupplyData_t& a, SupplyData_t& b) -> bool
@@ -247,14 +247,6 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 			if (pSupplyData.m_flRespawnTime)
 				continue;
 
-			// Too far
-			if (pSupplyData.m_vOrigin.DistTo(vLocalOrigin) > 800.f)
-			{
-				// If no other target was found wait for this entity to respawn
-				bWaitForRespawn = !pBest;
-				break;
-			}
-
 			if (pBest)
 			{
 				pSecondBest = &pSupplyData;
@@ -263,9 +255,6 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 			else
 				pBest = &pSupplyData;
 		}
-		// Check again if its worth going for this entity
-		if (!bWaitForRespawn && pBest && F::NavEngine.GetPathCost(vLocalOrigin, pBest->m_vOrigin) >= 2000.f)
-			pBest = pSecondBest = nullptr;
 	}
 
 	if (!pBest)
