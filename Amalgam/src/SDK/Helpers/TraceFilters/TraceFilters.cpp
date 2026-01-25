@@ -4,41 +4,63 @@
 
 bool CTraceFilterHitscan::ShouldHitEntity(IHandleEntity* pServerEntity, int nContentsMask)
 {
-	if (!pServerEntity || pServerEntity == pSkip)
+	if (!pServerEntity || pServerEntity == m_pSkip)
 		return false;
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
-	if (iTeam == -1) iTeam = pSkip ? pSkip->m_iTeamNum() : 0;
-	if (iType != SKIP_CHECK && !vWeapons.empty())
-	{
-		if (auto pWeapon = pSkip && pSkip->IsPlayer() ? pSkip->As<CTFPlayer>()->m_hActiveWeapon()->As<CTFWeaponBase>() : nullptr)
-		{
-			int iWeaponID = pWeapon->GetWeaponID();
-			bWeapon = std::find(vWeapons.begin(), vWeapons.end(), iWeaponID) != vWeapons.end();
-		}
-		vWeapons.clear();
-	}
+	const auto nClassID = pEntity->GetClassID();
 
-	switch (pEntity->GetClassID())
+	switch (nClassID)
 	{
 	case ETFClassID::CTFAmmoPack:
 	case ETFClassID::CFuncAreaPortalWindow:
 	case ETFClassID::CFuncRespawnRoomVisualizer:
-	case ETFClassID::CTFReviveMarker: return false;
+	case ETFClassID::CTFReviveMarker:
+		return false;
 	case ETFClassID::CBaseDoor:
-	case ETFClassID::CBasePropDoor: return !bIgnoreDoors;
+	case ETFClassID::CBasePropDoor:
+		return !m_bIgnoreDoors;
 	case ETFClassID::CObjectCartDispenser:
-	case ETFClassID::CFuncTrackTrain: return !bIgnoreCart;
-	case ETFClassID::CTFMedigunShield: return pEntity->m_iTeamNum() != iTeam;
-	case ETFClassID::CTFPlayer:
-	case ETFClassID::CBaseObject:
-	case ETFClassID::CObjectSentrygun:
-	case ETFClassID::CObjectDispenser:
-	case ETFClassID::CObjectTeleporter: 
-		if (iType != SKIP_CHECK && (iWeapon == WEAPON_INCLUDE ? bWeapon : !bWeapon))
-			return iType == FORCE_HIT ? true : false;
-		return pEntity->m_iTeamNum() != iTeam;
+	case ETFClassID::CFuncTrackTrain:
+		return !m_bIgnoreCart;
 	}
+
+	if (m_iTeam == -1)
+		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
+
+	if (nClassID == ETFClassID::CTFPlayer ||
+		nClassID == ETFClassID::CBaseObject ||
+		nClassID == ETFClassID::CObjectSentrygun ||
+		nClassID == ETFClassID::CObjectDispenser)
+	{
+		if (m_iType != SKIP_CHECK && !m_vWeapons.empty())
+		{
+			if (m_pSkip && m_pSkip->IsPlayer())
+			{
+				auto pPlayer = m_pSkip->As<CTFPlayer>();
+				if (auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>())
+				{
+					int iActiveWeaponID = pWeapon->GetWeaponID();
+					bool bFound = false;
+					for (int iWeaponId : m_vWeapons)
+					{
+						if (iWeaponId == iActiveWeaponID) { bFound = true; break; }
+					}
+					m_bWeapon = bFound;
+				}
+			}
+			m_vWeapons.clear();
+		}
+
+		if (m_iType != SKIP_CHECK && (m_iWeapon == WEAPON_INCLUDE ? m_bWeapon : !m_bWeapon))
+			return m_iType == FORCE_HIT;
+
+		return pEntity->m_iTeamNum() != m_iTeam;
+	}
+	if (nClassID == ETFClassID::CObjectTeleporter)
+		return true;
+	if (nClassID == ETFClassID::CTFMedigunShield)
+		return pEntity->m_iTeamNum() != m_iTeam;
 
 	return true;
 }
@@ -49,63 +71,80 @@ TraceType_t CTraceFilterHitscan::GetTraceType() const
 
 bool CTraceFilterCollideable::ShouldHitEntity(IHandleEntity* pServerEntity, int nContentsMask)
 {
-	if (!pServerEntity || pServerEntity == pSkip)
+	if (!pServerEntity || pServerEntity == m_pSkip)
 		return false;
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
-	if (iTeam == -1) iTeam = pSkip ? pSkip->m_iTeamNum() : 0;
-	if (iType != SKIP_CHECK && !vWeapons.empty())
-	{
-		if (auto pWeapon = pSkip && pSkip->IsPlayer() ? pSkip->As<CTFPlayer>()->m_hActiveWeapon()->As<CTFWeaponBase>() : nullptr)
-		{
-			int iWeaponID = pWeapon->GetWeaponID();
-			bWeapon = std::find(vWeapons.begin(), vWeapons.end(), iWeaponID) != vWeapons.end();
-		}
-		vWeapons.clear();
-	}
+	const auto nClassID = pEntity->GetClassID();
 
-	switch (pEntity->GetClassID())
+	if (m_iTeam == -1) 
+		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
+
+	switch (nClassID)
 	{
 	case ETFClassID::CBaseEntity:
-	case ETFClassID::CBaseDoor:
-	case ETFClassID::CBasePropDoor:
-		return !bIgnoreDoors;
 	case ETFClassID::CDynamicProp:
 	case ETFClassID::CPhysicsProp:
 	case ETFClassID::CPhysicsPropMultiplayer:
 	case ETFClassID::CFunc_LOD:
 	case ETFClassID::CFuncConveyor:
 	case ETFClassID::CTFGenericBomb: 
-	case ETFClassID::CTFPumpkinBomb: return true;
+	case ETFClassID::CTFPumpkinBomb:
+		return true;
+	case ETFClassID::CBaseDoor:
+	case ETFClassID::CBasePropDoor:
+		return !m_bIgnoreDoors;
 	case ETFClassID::CObjectCartDispenser:
-	case ETFClassID::CFuncTrackTrain: return !bIgnoreCart;
-	case ETFClassID::CFuncRespawnRoomVisualizer:
-		if (nContentsMask & CONTENTS_PLAYERCLIP)
-			return pEntity->m_iTeamNum() != iTeam;
-		break;
-	case ETFClassID::CTFMedigunShield:
-		if (!(nContentsMask & CONTENTS_PLAYERCLIP))
-			return pEntity->m_iTeamNum() != iTeam;
-		break;
+	case ETFClassID::CFuncTrackTrain:
+		return !m_bIgnoreCart;
 	case ETFClassID::CTFPlayer:
-		if (iPlayer == PLAYER_ALL)
-			return true;
-		if (iPlayer == PLAYER_NONE)
-			return false;
-		if (iType != SKIP_CHECK && (iWeapon == WEAPON_INCLUDE ? bWeapon : !bWeapon))
-			return iType == FORCE_HIT ? true : false;
-		return pEntity->m_iTeamNum() != iTeam;
+	{
+		if (m_iPlayer == PLAYER_ALL) return true;
+		if (m_iPlayer == PLAYER_NONE) return false;
+
+		if (m_iType != SKIP_CHECK && !m_vWeapons.empty())
+		{
+			if (m_pSkip && m_pSkip->IsPlayer())
+			{
+				auto pPlayer = m_pSkip->As<CTFPlayer>();
+				if (auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>())
+				{
+					int iActiveWeaponID = pWeapon->GetWeaponID();
+					bool bFound = false;
+					for (int iWeaponId : m_vWeapons)
+					{
+						if (iWeaponId == iActiveWeaponID) { bFound = true; break; }
+					}
+					m_bWeapon = bFound;
+				}
+			}
+			m_vWeapons.clear();
+		}
+
+		if (m_iType != SKIP_CHECK && (m_iWeapon == WEAPON_INCLUDE ? m_bWeapon : !m_bWeapon))
+			return m_iType == FORCE_HIT;
+
+		return pEntity->m_iTeamNum() != m_iTeam;
+	}
 	case ETFClassID::CBaseObject:
 	case ETFClassID::CObjectSentrygun:
-	case ETFClassID::CObjectDispenser: return iObject == OBJECT_ALL ? true : iObject == OBJECT_NONE ? false : pEntity->m_iTeamNum() != iTeam;
-	case ETFClassID::CObjectTeleporter: return true;
+	case ETFClassID::CObjectDispenser:
+		return m_iObject == OBJECT_ALL ? true : m_iObject == OBJECT_NONE ? false : pEntity->m_iTeamNum() != m_iTeam;
+	case ETFClassID::CObjectTeleporter:
+		return true;
 	case ETFClassID::CTFBaseBoss:
 	case ETFClassID::CTFTankBoss:
 	case ETFClassID::CMerasmus:
 	case ETFClassID::CEyeballBoss:
 	case ETFClassID::CHeadlessHatman:
-	case ETFClassID::CZombie: return bMisc;
-	case ETFClassID::CTFGrenadePipebombProjectile: return bMisc && pEntity->As<CTFGrenadePipebombProjectile>()->m_iType() == TF_GL_MODE_REMOTE_DETONATE;
+	case ETFClassID::CZombie:
+		return m_bMisc;
+	case ETFClassID::CTFGrenadePipebombProjectile:
+		return m_bMisc && pEntity->As<CTFGrenadePipebombProjectile>()->m_iType() == TF_GL_MODE_REMOTE_DETONATE;
+	case ETFClassID::CFuncRespawnRoomVisualizer:
+		return (nContentsMask & CONTENTS_PLAYERCLIP) && pEntity->m_iTeamNum() != m_iTeam;
+	case ETFClassID::CTFMedigunShield:
+		return !(nContentsMask & CONTENTS_PLAYERCLIP) && pEntity->m_iTeamNum() != m_iTeam;
 	}
 
 	return false;
@@ -117,13 +156,16 @@ TraceType_t CTraceFilterCollideable::GetTraceType() const
 
 bool CTraceFilterWorldAndPropsOnly::ShouldHitEntity(IHandleEntity* pServerEntity, int nContentsMask)
 {
-	if (!pServerEntity || pServerEntity == pSkip)
+	if (!pServerEntity || pServerEntity == m_pSkip)
 		return false;
 	if (pServerEntity->GetRefEHandle().GetSerialNumber() == (1 << 15))
-		return I::ClientEntityList->GetClientEntity(0) != pSkip;
+		return I::ClientEntityList->GetClientEntity(0) != m_pSkip;
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
-	if (iTeam == -1) iTeam = pSkip ? pSkip->m_iTeamNum() : 0;
+	const auto nClassID = pEntity->GetClassID();
+
+	if (m_iTeam == -1) 
+		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
 
 	switch (pEntity->GetClassID())
 	{
@@ -135,8 +177,10 @@ bool CTraceFilterWorldAndPropsOnly::ShouldHitEntity(IHandleEntity* pServerEntity
 	case ETFClassID::CFunc_LOD:
 	case ETFClassID::CObjectCartDispenser:
 	case ETFClassID::CFuncTrackTrain:
-	case ETFClassID::CFuncConveyor: return true;
-	case ETFClassID::CFuncRespawnRoomVisualizer: return nContentsMask & CONTENTS_PLAYERCLIP && pEntity->m_iTeamNum() != iTeam;
+	case ETFClassID::CFuncConveyor:
+		return true;
+	case ETFClassID::CFuncRespawnRoomVisualizer:
+		return nContentsMask & CONTENTS_PLAYERCLIP && pEntity->m_iTeamNum() != m_iTeam;
 	}
 
 	return false;
@@ -156,84 +200,38 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 		return false;
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
-	if (pEntity->entindex() != 0)
+	if (pEntity->entindex() == 0)
+		return true;
+
+	const auto nClassID = pEntity->GetClassID();
+	if (nClassID == ETFClassID::CBaseEntity)
+		return true;
+
+	if (nClassID == ETFClassID::CObjectTeleporter)
+		return (nContentsMask & CONTENTS_PLAYERCLIP) || m_iObject != OBJECT_NONE;
+
+	if (m_iTeam == -1) 
+		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
+
+	if (nClassID == ETFClassID::CTFPlayer)
 	{
-		switch (pEntity->GetClassID())
-		{
-		case ETFClassID::CBaseDoor:
-		case ETFClassID::CPhysicsProp:
-		case ETFClassID::CPhysicsPropMultiplayer:
-		case ETFClassID::CFunc_LOD:
-		case ETFClassID::CObjectCartDispenser:
-		case ETFClassID::CFuncTrackTrain:
-		case ETFClassID::CFuncConveyor:
-		case ETFClassID::CObjectSentrygun:
-		case ETFClassID::CObjectDispenser:
-		case ETFClassID::CObjectTeleporter:
-		case ETFClassID::CBaseProjectile:
-		case ETFClassID::CBaseGrenade:
-		case ETFClassID::CTFWeaponBaseGrenadeProj:
-		case ETFClassID::CTFWeaponBaseMerasmusGrenade:
-		case ETFClassID::CTFGrenadePipebombProjectile:
-		case ETFClassID::CTFStunBall:
-		case ETFClassID::CTFBall_Ornament:
-		case ETFClassID::CTFProjectile_Jar:
-		case ETFClassID::CTFProjectile_Cleaver:
-		case ETFClassID::CTFProjectile_JarGas:
-		case ETFClassID::CTFProjectile_JarMilk:
-		case ETFClassID::CTFProjectile_SpellBats:
-		case ETFClassID::CTFProjectile_SpellKartBats:
-		case ETFClassID::CTFProjectile_SpellMeteorShower:
-		case ETFClassID::CTFProjectile_SpellMirv:
-		case ETFClassID::CTFProjectile_SpellPumpkin:
-		case ETFClassID::CTFProjectile_SpellSpawnBoss:
-		case ETFClassID::CTFProjectile_SpellSpawnHorde:
-		case ETFClassID::CTFProjectile_SpellSpawnZombie:
-		case ETFClassID::CTFProjectile_SpellTransposeTeleport:
-		case ETFClassID::CTFProjectile_Throwable:
-		case ETFClassID::CTFProjectile_ThrowableBreadMonster:
-		case ETFClassID::CTFProjectile_ThrowableBrick:
-		case ETFClassID::CTFProjectile_ThrowableRepel:
-		case ETFClassID::CTFBaseRocket:
-		case ETFClassID::CTFFlameRocket:
-		case ETFClassID::CTFProjectile_Arrow:
-		case ETFClassID::CTFProjectile_GrapplingHook:
-		case ETFClassID::CTFProjectile_HealingBolt:
-		case ETFClassID::CTFProjectile_Rocket:
-		case ETFClassID::CTFProjectile_BallOfFire:
-		case ETFClassID::CTFProjectile_MechanicalArmOrb:
-		case ETFClassID::CTFProjectile_SentryRocket:
-		case ETFClassID::CTFProjectile_SpellFireball:
-		case ETFClassID::CTFProjectile_SpellLightningOrb:
-		case ETFClassID::CTFProjectile_SpellKartOrb:
-		case ETFClassID::CTFProjectile_EnergyBall:
-		case ETFClassID::CTFProjectile_Flare:
-		case ETFClassID::CTFBaseProjectile:
-		case ETFClassID::CTFProjectile_EnergyRing:
-			return false;
-		case ETFClassID::CFuncRespawnRoomVisualizer:
-		{
-			auto pLocal = H::Entities.GetLocal();
-			const int iTargetTeam = pEntity->m_iTeamNum(), iLocalTeam = pLocal ? pLocal->m_iTeamNum() : iTargetTeam;
-
-			if (pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iLocalTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK))
-				return true;
-			break;
-		}
-		case ETFClassID::CTFPlayer:
-		{
-			auto pLocal = H::Entities.GetLocal();
-			if (pLocal && pEntity->m_iTeamNum() == pLocal->m_iTeamNum())
-				return false;
-			return true;
-		}
-		}
-
-		if (pEntity->GetClassID() != ETFClassID::CBaseEntity)
-			return false;
+		if (m_iPlayer == PLAYER_ALL) return true;
+		if (m_iPlayer == PLAYER_NONE) return false;
+		return pEntity->m_iTeamNum() != m_iTeam;
+	}
+	if (nClassID == ETFClassID::CBaseObject ||
+		nClassID == ETFClassID::CObjectSentrygun ||
+		nClassID == ETFClassID::CObjectDispenser)
+	{
+		if (m_iObject == OBJECT_ALL) return true;
+		if (m_iObject == OBJECT_NONE) return false;
+		return pEntity->m_iTeamNum() != m_iTeam || ((nContentsMask & CONTENTS_PLAYERCLIP) && m_pSkip && pEntity->As<CBaseObject>()->m_hBuilder().GetEntryIndex() == m_pSkip->entindex());
 	}
 
-	return true;
+	if (nClassID == ETFClassID::CFuncRespawnRoomVisualizer)
+		return (nContentsMask & CONTENTS_PLAYERCLIP) && m_iTeam != TEAM_UNASSIGNED && pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, m_iTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK);
+
+	return false;
 }
 
 TraceType_t CTraceFilterNavigation::GetTraceType() const

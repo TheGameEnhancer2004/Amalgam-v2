@@ -277,7 +277,7 @@ public:
 	VIRTUAL(EyePosition, Vec3, 142, this);
 	VIRTUAL(EyeAngles, Vec3&, 143, this);
 	VIRTUAL(UpdateVisibility, void, 91, this);
-	VIRTUAL_ARGS(ShouldCollide, bool, 146, ( int collisionGroup, int contentsMask), this, collisionGroup, contentsMask);
+	VIRTUAL_ARGS(ShouldCollide, bool, 146, (int collisionGroup, int contentsMask), this, collisionGroup, contentsMask);
 
 	SIGNATURE_ARGS(SetAbsOrigin, void, CBaseEntity, (const Vec3& vOrigin), this, std::ref(vOrigin));
 	SIGNATURE_ARGS(SetAbsAngles, void, CBaseEntity, (const Vec3& vAngles), this, std::ref(vAngles));

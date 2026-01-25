@@ -6,7 +6,7 @@
 bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	static Timer tRoamTimer;
-	static std::vector<CNavArea*> vVisitedAreas;
+	static std::vector<CNavArea*> vVisitedAreas; // Should be cleared when nav engine is off, currently it is not
 	static Timer tVisitedAreasClearTimer;
 	static CNavArea* pCurrentTargetArea = nullptr;
 	static int iConsecutiveFails = 0;
@@ -115,9 +115,6 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
 	{
-		// Skip if area is invalid
-		if (!&tArea)
-			continue;
 		// Skip if area is blacklisted
 		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
 			continue;
@@ -130,7 +127,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		bool bTooCloseToVisited = false;
 		for (auto pVisited : vVisitedAreas)
 		{
-			if (pVisited && tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+			if (tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
 			{
 				bTooCloseToVisited = true;
 				break;
@@ -165,7 +162,6 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	// Sort by distance first (farthest first)
 	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b)
 		{
-			if (!a || !b) return false;
 			return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
 		});
 
@@ -181,8 +177,6 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	for (auto pArea : vValidAreas)
 	{
-		if (!pArea)
-			continue;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
 			pCurrentTargetArea = pArea;

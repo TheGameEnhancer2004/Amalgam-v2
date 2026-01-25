@@ -49,7 +49,7 @@ bool CNavBotSupplies::GetDispensersData(CTFPlayer* pLocal)
 			continue;
 
 		Vector vOrigin;
-		if (!F::BotUtils.GetDormantOrigin(pDispenser->entindex(), vOrigin))
+		if (!F::BotUtils.GetDormantOrigin(pDispenser->entindex(), &vOrigin))
 			continue;
 
 		Vec2 vOrigin2D = Vec2(vOrigin.x, vOrigin.y);

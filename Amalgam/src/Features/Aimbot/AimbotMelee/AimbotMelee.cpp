@@ -406,8 +406,8 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 	}
 
 	CGameTrace trace = {};
-	CTraceFilterHitscan filter = {};
-	filter.pSkip = pLocal;
+	CTraceFilterHitscan filter(pLocal);
+
 	for (auto pRecord : vRecords)
 	{
 		Vec3 vRestoreOrigin = tTarget.m_pEntity->GetAbsOrigin();

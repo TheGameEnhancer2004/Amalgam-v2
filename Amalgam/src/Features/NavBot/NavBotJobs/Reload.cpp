@@ -83,9 +83,6 @@ bool CNavBotReload::RunSafe(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		float flBestDist = FLT_MAX;
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
-			if (pEntity->IsDormant())
-				continue;
-
 			if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pEntity->entindex()))
 				continue;
 

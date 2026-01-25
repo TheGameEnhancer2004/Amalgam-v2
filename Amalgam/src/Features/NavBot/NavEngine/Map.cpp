@@ -508,7 +508,7 @@ void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const Bla
 
 	const float flRadiusSqr = flRadius * flRadius;
 
-	for (auto* pArea : vCandidates)
+	for (auto pArea : vCandidates)
 	{
 		if (!pArea)
 			continue;
@@ -569,7 +569,7 @@ CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 		vCenterCorrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
 		// Check if we are within x and y bounds of an area
-		if (!tArea.IsOverlapping(vPos) || !F::NavEngine.IsVectorVisibleNavigation(vCorrected, vCenterCorrected))
+		if (!tArea.IsOverlapping(vPos) || !F::NavEngine.IsVectorVisibleNavigation(vCorrected, vCenterCorrected, MASK_SHOT | CONTENTS_GRATE))
 			continue;
 
 		flOverallBestDist = flDist;
@@ -599,9 +599,6 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 		constexpr float flInvulnerableRadius = 1000.0f;
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
 		{
-			if (!pEntity->IsPlayer())
-				continue;
-
 			auto pPlayer = pEntity->As<CTFPlayer>();
 			if (!pPlayer->IsAlive())
 				continue;
@@ -610,7 +607,7 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 				continue;
 
 			Vector vPlayerOrigin;
-			if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), vPlayerOrigin))
+			if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), &vPlayerOrigin))
 				continue;
 
 			vPlayerOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
@@ -626,9 +623,6 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 
 		for (auto pEntity : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
 		{
-			if (!pEntity->IsBuilding())
-				continue;
-
 			auto pBuilding = pEntity->As<CBaseObject>();
 			if (pBuilding->GetClassID() != ETFClassID::CObjectSentrygun)
 				continue;
@@ -650,15 +644,15 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 				continue;
 
 			Vector vSentryOrigin;
-			if (!F::BotUtils.GetDormantOrigin(pSentry->entindex(), vSentryOrigin))
+			if (!F::BotUtils.GetDormantOrigin(pSentry->entindex(), &vSentryOrigin))
 				continue;
 
 			vSentryOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
 
-			ApplyBlacklistAround(vSentryOrigin, flHighDangerRange, BlacklistReason_t(BlacklistReasonEnum::Sentry), MASK_SHOT, true);
-			ApplyBlacklistAround(vSentryOrigin, flMediumDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryMedium), MASK_SHOT, true);
+			ApplyBlacklistAround(vSentryOrigin, flHighDangerRange, BlacklistReason_t(BlacklistReasonEnum::Sentry), MASK_SHOT | CONTENTS_GRATE, true);
+			ApplyBlacklistAround(vSentryOrigin, flMediumDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryMedium), MASK_SHOT | CONTENTS_GRATE, true);
 			if (!bStrongClass)
-				ApplyBlacklistAround(vSentryOrigin, flLowDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryLow), MASK_SHOT, true);
+				ApplyBlacklistAround(vSentryOrigin, flLowDangerRange, BlacklistReason_t(BlacklistReasonEnum::SentryLow), MASK_SHOT | CONTENTS_GRATE, true);
 		}
 	}
 

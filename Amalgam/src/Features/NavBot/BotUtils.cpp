@@ -28,7 +28,7 @@ bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	int iLocalIdx = pLocal->entindex();
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerTeam))
 	{
-		if (pEntity->entindex() == iLocalIdx || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
+		if (pEntity->entindex() == iLocalIdx || pEntity->IsDormant() || vShootPos.DistTo(pEntity->GetCenter()) > flRange)
 			continue;
 
 		if (pEntity->As<CTFPlayer>()->InCond(TF_COND_STEALTHED) ||
@@ -63,6 +63,9 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTarget(CTFPlayer* pLocal, CT
 	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIdx)->As<CBaseEntity>();
 	if (!pEntity || !pEntity->IsPlayer())
 		return ShouldTargetEnum::Invalid;
+
+	if (!GetDormantOrigin(iEntIdx))
+		return ShouldTargetEnum::DontTarget;
 
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (!pPlayer->IsAlive() || pPlayer == pLocal)
@@ -118,7 +121,7 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTargetBuilding(CTFPlayer* pL
 	if (!pEntity)
 		return ShouldTargetEnum::Invalid;
 
-	if (!pEntity->IsBuilding())
+	if (!pEntity->IsBuilding() || !GetDormantOrigin(iEntIdx))
 		return ShouldTargetEnum::DontTarget;
 
 	auto pBuilding = pEntity->As<CBaseObject>();
@@ -144,7 +147,7 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTargetBuilding(CTFPlayer* pL
 	return ShouldTargetEnum::Target;
 }
 
-bool CBotUtils::GetDormantOrigin(int iIndex, Vector& vOut)
+bool CBotUtils::GetDormantOrigin(int iIndex, Vector* pOut)
 {
 	if (iIndex <= 0)
 		return false;
@@ -157,7 +160,8 @@ bool CBotUtils::GetDormantOrigin(int iIndex, Vector& vOut)
 
 	if (!pEntity->IsDormant() || H::Entities.GetDormancy(iIndex))
 	{
-		vOut = pEntity->GetAbsOrigin();
+		if (pOut)
+			*pOut = pEntity->GetAbsOrigin();
 		return true;
 	}
 
@@ -172,14 +176,10 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 	{
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iEntIndex = pPlayer->entindex();
-		if (!ShouldTarget(pLocal, pWeapon, iEntIndex))
+		if (ShouldTarget(pLocal, pWeapon, iEntIndex) == ShouldTargetEnum::DontTarget)
 			continue;
 
-		Vector vOrigin;
-		if (!GetDormantOrigin(iEntIndex, vOrigin))
-			continue;
-
-		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(vOrigin));
+		m_vCloseEnemies.emplace_back(iEntIndex, pPlayer, pLocal->GetAbsOrigin().DistTo(pPlayer->GetAbsOrigin()));
 	}
 
 	std::sort(m_vCloseEnemies.begin(), m_vCloseEnemies.end(), [](const ClosestEnemy_t& a, const ClosestEnemy_t& b) -> bool
@@ -496,9 +496,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			vLook.z -= 10.f;
 		}
 		else
-		{
 			vLook = pBestEnemy->GetCenter();
-		}
 
 		iLastTarget = pBestEnemy->entindex();
 		flLastSeen = I::GlobalVars->curtime;
@@ -524,8 +522,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			vLook = vEye + (vForward * 500.f);
 
 			CGameTrace trace;
-			CTraceFilterHitscan filter;
-			filter.pSkip = pLocal;
+			CTraceFilterHitscan filter(pLocal);
 			SDK::Trace(vEye, vLook, MASK_SHOT, &filter, &trace);
 
 			if (trace.fraction < 0.25f)
@@ -628,15 +625,14 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	{
 		float flYawScale = std::clamp(flVelocity2D / 220.f, 0.3f, 0.95f);
 		float flPitchScale = std::clamp(flVelocity2D / 320.f, 0.18f, 0.75f);
-		if (bEnemyLock)
-		{
-			tState.m_vOffsetGoal = {};
-		}
-		else
+		if (!bEnemyLock)
 		{
 			tState.m_vOffsetGoal.y = SDK::RandomFloat(-28.f, 28.f) * flYawScale;
 			tState.m_vOffsetGoal.x = SDK::RandomFloat(-3.f, 4.f) * flPitchScale;
 		}
+		else
+			tState.m_vOffsetGoal = {};
+
 		tState.m_flNextOffset = SDK::RandomFloat(0.65f, 1.95f);
 	}
 
@@ -664,14 +660,11 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 			Math::AngleVectors(vScanAngles, &vForward);
 
 			CGameTrace trace;
-			CTraceFilterHitscan filter;
-			filter.pSkip = pLocal;
+			CTraceFilterHitscan filter(pLocal);
 			SDK::Trace(vEye, vEye + vForward * 1000.f, MASK_SHOT, &filter, &trace);
 
 			if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value)
-			{
 				G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, trace.endpos), I::GlobalVars->curtime + 1.f, Color_t{ 255, 255, 255, 100 }, false);
-			}
 
 			if (trace.fraction * 1000.f > flBestTraceDist)
 			{
@@ -681,9 +674,7 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		}
 
 		if (Vars::Misc::Movement::BotUtils::LookAtPathDebug.Value && !vBestScanDir.IsZero())
-		{
 			G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(vEye, vEye + vBestScanDir * flBestTraceDist), I::GlobalVars->curtime + 1.f, Color_t{ 0, 255, 0, 255 }, false);
-		}
 
 		if (flBestTraceDist > 400.f)
 		{
@@ -845,7 +836,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemy->IsDormant())
 			continue;
 
-		if (!ShouldTarget(pLocal, pWeapon, pEnemy->entindex()))
+		if (ShouldTarget(pLocal, pWeapon, pEnemy->entindex()) == ShouldTargetEnum::DontTarget)
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
@@ -856,7 +847,7 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 		if (pEnemyBuilding->IsDormant())
 			continue;
 
-		if (!ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()))
+		if (ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()) == ShouldTargetEnum::DontTarget)
 			continue;
 
 		vEnemiesSorted.emplace_back(pEnemyBuilding, pEnemyBuilding->GetAbsOrigin().DistToSqr(vLocalOrigin));
@@ -1035,12 +1026,7 @@ bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector
 	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
 		{
 			CGameTrace trace = {};
-			CTraceFilterCollideable filter = {};
-			filter.pSkip = pLocal;
-			filter.iPlayer = PLAYER_NONE;
-			filter.iObject = OBJECT_ALL;
-			filter.bIgnoreDoors = true;
-			filter.bIgnoreCart = true;
+			CTraceFilterNavigation filter(pLocal);
 			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
 			return trace;
 		};
@@ -1208,8 +1194,9 @@ bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 		Vector vTraceEnd = vTraceStart + vJumpDirection * flDistTravelled;
 
 		CGameTrace forwardTrace = {};
-		CTraceFilterNavigation filter = {};
-		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID_BRUSHONLY, &filter, &forwardTrace);
+		CTraceFilterNavigation filter(pLocal);
+		filter.m_iPlayer = PLAYER_DEFAULT;
+		SDK::TraceHull(vTraceStart, vTraceEnd, vHullMinSjump, vHullMaxSjump, MASK_PLAYERSOLID, &filter, &forwardTrace);
 
 		m_vPredictedJumpPos = forwardTrace.endpos;
 

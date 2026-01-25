@@ -26,7 +26,10 @@ struct VelFixRecord
 class CEntities
 {
 private:
-	bool ManageDormancy(CBaseEntity* pEntity);
+	bool ManageDormancy(int nIndex, CBaseEntity* pEntity);
+	bool UpdatePlayerDetails(int nIndex, CTFPlayer* pPlayer, int iLag);
+	void UpdatePartyAndLobbyInfo(int nLocalIndex);
+	void UpdatePlayerAnimations(int nLocalIndex);
 
 	CTFPlayer* m_pLocal = nullptr;
 	CTFWeaponBase* m_pLocalWeapon = nullptr;
