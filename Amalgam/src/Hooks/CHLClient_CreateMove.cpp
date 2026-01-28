@@ -262,6 +262,11 @@ __declspec(noinline) static void AntiCheatCompatibility(CUserCmd* pCmd, bool* pS
 	}
 }
 
+// Fuck you microslop build
+#pragma optimize("", off)
+bool* AntiGhostMeasures() { return reinterpret_cast<bool*>(uintptr_t(_AddressOfReturnAddress()) + 0x68); }
+#pragma optimize("", on)
+
 MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 	void* rcx, int sequence_number, float input_sample_frametime, bool active)
 {
@@ -271,10 +276,8 @@ MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
 #endif
 
 	CALL_ORIGINAL(rcx, sequence_number, input_sample_frametime, active);
-	
-	static auto uSendPackedAddr = reinterpret_cast<uintptr_t>(_AddressOfReturnAddress()) + 0x20;
-	auto pSendPacket = reinterpret_cast<bool*>(uSendPackedAddr);
 
+	auto pSendPacket = AntiGhostMeasures();
 	auto pLocal = H::Entities.GetLocal();
 	auto pWeapon = H::Entities.GetWeapon();
 	if (!pLocal || G::Unload)
