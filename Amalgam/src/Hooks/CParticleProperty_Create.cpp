@@ -17,10 +17,10 @@ MAKE_HOOK(CParticleProperty_Create_Name, S::CParticleProperty_Create_Name(), voi
         return CALL_ORIGINAL(rcx, pszParticleName, iAttachType, pszAttachmentName);
 #endif
 
+    const auto dwRetAddr = uintptr_t(_ReturnAddress());
     const auto dwUpdateEffects1 = S::CWeaponMedigun_UpdateEffects_CreateName_Call1();
     const auto dwUpdateEffects2 = S::CWeaponMedigun_UpdateEffects_CreateName_Call2();
     const auto dwManageChargeEffect = S::CWeaponMedigun_ManageChargeEffect_CreateName_Call();
-    const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
     bool bUpdateEffects = dwRetAddr == dwUpdateEffects1 || dwRetAddr == dwUpdateEffects2, bManageChargeEffect = dwRetAddr == dwManageChargeEffect;
     if (bUpdateEffects || bManageChargeEffect)

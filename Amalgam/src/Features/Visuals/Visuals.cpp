@@ -51,7 +51,7 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 
 	Vec3 vAngles = bQuick ? I::EngineClient->GetViewAngles() : G::CurrentUserCmd->viewangles;
 	int iFlags = bQuick ? ProjSimEnum::Trace | ProjSimEnum::InitCheck | ProjSimEnum::Quick : ProjSimEnum::Trace | ProjSimEnum::InitCheck;
-	if (bQuick && F::Spectate.m_iTarget != -1)
+	if (bQuick && F::Spectate.HasTarget())
 	{
 		pPlayer = I::ClientEntityList->GetClientEntity(I::EngineClient->GetPlayerForUserID(F::Spectate.m_iTarget))->As<CTFPlayer>();
 		if (!pPlayer || pPlayer->IsDormant())
@@ -111,20 +111,20 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 		case TF_WEAPON_ROCKETLAUNCHER_DIRECTHIT:
 		case TF_WEAPON_PARTICLE_CANNON:
 			if (Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::Rockets)
-				flRadius = 146.f;
+				flRadius = TF_ROCKET_RADIUS;
 			break;
 		case TF_WEAPON_PIPEBOMBLAUNCHER:
 			if (Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::Stickies)
-				flRadius = 146.f;
+				flRadius = TF_ROCKET_RADIUS;
 			break;
 		case TF_WEAPON_GRENADELAUNCHER:
 			if (Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::Pipes)
-				flRadius = 146.f;
+				flRadius = TF_ROCKET_RADIUS;
 			break;
 		case TF_WEAPON_FLAREGUN:
 		case TF_WEAPON_FLAREGUN_REVENGE:
 			if (Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::ScorchShot && pWeapon->As<CTFFlareGun>()->GetFlareGunType() == FLAREGUN_SCORCHSHOT)
-				flRadius = 110.f;
+				flRadius = TF_FLARE_DET_RADIUS;
 		}
 
 		if (flRadius)
@@ -648,8 +648,8 @@ MAKE_HOOK(NDebugOverlay_BoxAngles, S::NDebugOverlay_BoxAngles(), void,
 
 	if (s_bBoxesHeadOnly)
 	{
-		const auto dwDesired = S::CBaseAnimating_DrawServerHitboxes_BoxAngles_Call();
 		const auto dwRetAddr = uintptr_t(_ReturnAddress());
+		const auto dwDesired = S::CBaseAnimating_DrawServerHitboxes_BoxAngles_Call();
 
 		if (dwRetAddr == dwDesired && (r != 255 || g != 127 || b != 127))
 			return;
@@ -712,7 +712,7 @@ void CVisuals::FOV(CTFPlayer* pLocal, CViewSetup* pView)
 
 void CVisuals::ThirdPerson(CTFPlayer* pLocal, CViewSetup* pView)
 {
-	if (!pLocal->IsAlive() || F::Spectate.m_iTarget != -1)
+	if (!pLocal->IsAlive() || F::Spectate.HasTarget())
 		return I::Input->CAM_ToFirstPerson();
 
 	const bool bForce = pLocal->IsTaunting() || pLocal->IsAGhost() || pLocal->InCond(TF_COND_HALLOWEEN_KART) || pLocal->InCond(TF_COND_STUNNED) && pLocal->m_iStunFlags() & (TF_STUN_CONTROLS | TF_STUN_LOSER_STATE);

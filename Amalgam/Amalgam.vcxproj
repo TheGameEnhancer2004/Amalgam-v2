@@ -964,6 +964,7 @@
     <ClCompile Include="src\Hooks\CBaseEntity_BaseInterpolatePart1.cpp" />
     <ClCompile Include="src\Hooks\CBaseEntity_EstimateAbsVelocity.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
+    <ClCompile Include="src\Hooks\CHLTVCamera_CalcView.cpp" />
     <ClCompile Include="src\Hooks\CInput_ValidateUserCmd.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
     <ClCompile Include="src\Hooks\CTFRocketLauncher_CheckReloadMisfire.cpp" />
@@ -1274,6 +1275,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CEconWearable.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CEntitySphereQuery.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CGameTrace.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CHLTVCamera.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\CInterpolatedVar.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CModel.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IEngineTrace.h" />

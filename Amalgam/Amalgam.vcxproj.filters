@@ -199,6 +199,7 @@
     <ClCompile Include="src\Hooks\IMaterialSystem_FindTexture.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
+    <ClCompile Include="src\Hooks\CHLTVCamera_CalcView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -583,6 +584,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\ILocalize.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IMemAlloc.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CPredictionCopy.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CHLTVCamera.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

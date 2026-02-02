@@ -36,12 +36,12 @@ bool CSpectatorList::GetSpectators(CTFPlayer* pTarget)
 
 		int iObserverTarget = !pPlayer->IsDormant() ? pPlayer->m_hObserverTarget().GetEntryIndex() : iTarget;
 		int iObserverMode = pPlayer->m_iObserverMode();
-		if (bLocal && F::Spectate.m_iTarget != -1)
+		if (bLocal && F::Spectate.HasTarget())
 		{
 			iObserverTarget = F::Spectate.m_hOriginalTarget.GetEntryIndex();
 			iObserverMode = F::Spectate.m_iOriginalMode;
 		}
-		if (iObserverTarget != iTarget || bLocal && !I::EngineClient->IsPlayingDemo() && F::Spectate.m_iTarget == -1)
+		if (iObserverTarget != iTarget || bLocal && !I::EngineClient->IsPlayingDemo() && !F::Spectate.HasTarget())
 		{
 			if (m_mRespawnCache.contains(n))
 				m_mRespawnCache.erase(n);

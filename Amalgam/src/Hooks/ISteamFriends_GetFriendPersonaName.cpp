@@ -12,8 +12,8 @@ MAKE_HOOK(ISteamFriends_GetFriendPersonaName, U::Memory.GetVirtual(I::SteamFrien
 		return CALL_ORIGINAL(rcx, steamIDFriend);
 #endif
 
-	const auto dwDesired = S::GetPlayerNameForSteamID_GetFriendPersonaName_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::GetPlayerNameForSteamID_GetFriendPersonaName_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Visuals::UI::StreamerMode.Value)
 	{

@@ -124,8 +124,8 @@ MAKE_HOOK(SectionedListPanel_SetItemFgColor, S::SectionedListPanel_SetItemFgColo
 		return CALL_ORIGINAL(rcx, itemID, color);
 #endif
 
-	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_SetItemFgColor_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_SetItemFgColor_Call();
 
 	if (dwDesired == dwRetAddr && Vars::Visuals::UI::ScoreboardColors.Value && !SDK::CleanScreenshot())
 		SetScoreboardColor(s_iPlayerIndex, color);

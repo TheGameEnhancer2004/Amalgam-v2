@@ -12,7 +12,7 @@ MAKE_HOOK(CBasePlayer_CalcObserverView, S::CBasePlayer_CalcObserverView(), void,
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
 #endif
 
-	if (F::Spectate.m_iTarget == -1)
+	if (!F::Spectate.HasTarget())
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
 
 	auto pPlayer = reinterpret_cast<CBasePlayer*>(rcx);

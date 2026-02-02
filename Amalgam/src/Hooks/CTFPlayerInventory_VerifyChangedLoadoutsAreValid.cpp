@@ -39,8 +39,8 @@ MAKE_HOOK(CTFInventoryManager_GetItemInLoadoutForClass, S::CTFInventoryManager_G
 		return CALL_ORIGINAL(rcx, iClass, iSlot, pID);
 #endif
 
-	const auto dwDesired = S::CEquipSlotItemSelectionPanel_UpdateModelPanelsForSelection_GetItemInLoadoutForClass_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CEquipSlotItemSelectionPanel_UpdateModelPanelsForSelection_GetItemInLoadoutForClass_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Misc::Exploits::EquipRegionUnlock.Value)
 		return nullptr;

@@ -10,8 +10,8 @@ MAKE_HOOK(ClientModeTFNormal_BIsFriendOrPartyMember, S::ClientModeTFNormal_BIsFr
 		return CALL_ORIGINAL(rcx, pEntity);
 #endif
 
-	const auto dwDesired = S::CHudInspectPanel_UserCmd_InspectTarget_BIsFriendOrPartyMember_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CHudInspectPanel_UserCmd_InspectTarget_BIsFriendOrPartyMember_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Misc::MannVsMachine::AllowInspect.Value)
 		return true;

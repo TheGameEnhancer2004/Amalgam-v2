@@ -13,8 +13,8 @@ MAKE_HOOK(bf_read_ReadString, S::bf_read_ReadString(), bool,
 		return CALL_ORIGINAL(rcx, pStr, maxLen, bLine, pOutNumChars);
 #endif
 
-	const auto dwDesired = S::CHudVote_MsgFunc_VoteStart_ReadString_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CHudVote_MsgFunc_VoteStart_ReadString_Call();
 
 	bool bReturn = CALL_ORIGINAL(rcx, pStr, maxLen, bLine, pOutNumChars);
 

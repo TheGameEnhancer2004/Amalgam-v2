@@ -38,8 +38,8 @@ MAKE_HOOK(CTFPlayerPanel_GetTeam, S::CTFPlayerPanel_GetTeam(), int,
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	const auto dwDesired = S::CTFTeamStatusPlayerPanel_Update_GetTeam_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CTFTeamStatusPlayerPanel_Update_GetTeam_Call();
 
 	int iReturn = CALL_ORIGINAL(rcx);
 
@@ -68,8 +68,8 @@ MAKE_HOOK(vgui_Panel_SetBgColor, S::vgui_Panel_SetBgColor(), void,
 		return CALL_ORIGINAL(rcx, color);
 #endif
 
-	const auto dwDesired = S::CTFTeamStatusPlayerPanel_Update_SetBgColor_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CTFTeamStatusPlayerPanel_Update_SetBgColor_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Visuals::UI::ScoreboardColors.Value && !SDK::CleanScreenshot())
 		SetScoreboardColor(s_iPlayerIndex, color);

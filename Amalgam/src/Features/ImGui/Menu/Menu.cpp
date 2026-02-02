@@ -1028,9 +1028,12 @@ void CMenu::MenuMisc(int iTab)
 				{
 					if (Section("##Debug"))
 					{
-						FSlider(Vars::Misc::Movement::TimingOffset);
-						FSlider(Vars::Misc::Movement::ChokeCount);
-						FSlider(Vars::Misc::Movement::ApplyAbove);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeGrounded, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeAir, FToggleEnum::Right);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipGround, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipAir, FToggleEnum::Right);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpTimingOffset, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpApplyAbove, FToggleEnum::Right);
 					} EndSection();
 				}
 				if (Section("Automation"))

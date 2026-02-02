@@ -12,12 +12,12 @@ MAKE_HOOK(CAttributeManager_AttribHookInt, S::CAttributeManager_AttribHookInt(),
 	int value, const char* name, void* econent, void* buffer, bool isGlobalConstString)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CAttributeManager_AttribHookValue[DEFAULT_BIND])
+	if (!Vars::Hooks::CAttributeManager_AttribHookInt[DEFAULT_BIND])
 		return CALL_ORIGINAL(value, name, econent, buffer, isGlobalConstString);
 #endif
 
-	const auto dwDesired = S::CTFPlayer_FireEvent_AttribHookValue_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CTFPlayer_FireEvent_AttribHookValue_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Visuals::Effects::SpellFootsteps.Value
 		&& econent == H::Entities.GetLocal() && FNV1A::Hash32(name) == FNV1A::Hash32Const("halloween_footstep_type"))

@@ -108,9 +108,9 @@ namespace G
 	inline std::vector<DrawSphere_t> SphereStorage = {};
 	inline std::vector<DrawSwept_t> SweptStorage = {};
 
-	inline int* RandomSeed()
+	inline int& RandomSeed()
 	{
-		static auto pRandomSeed = reinterpret_cast<int*>(U::Memory.RelToAbs(S::RandomSeed()));
+		static auto& pRandomSeed = *reinterpret_cast<int*>(U::Memory.RelToAbs(S::RandomSeed()));
 		return pRandomSeed;
 	}
 };

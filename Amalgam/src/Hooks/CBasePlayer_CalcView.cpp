@@ -12,7 +12,7 @@ MAKE_HOOK(CBasePlayer_CalcView, S::CBasePlayer_CalcView(), void,
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, zNear, zFar, fov);
 #endif
 
-	if (!Vars::Visuals::Removals::ViewPunch.Value && F::Spectate.m_iTarget == -1)
+	if (!Vars::Visuals::Removals::ViewPunch.Value && !F::Spectate.HasTarget())
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, zNear, zFar, fov);
 
 	auto pPlayer = reinterpret_cast<CBasePlayer*>(rcx);

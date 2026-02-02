@@ -1,20 +1,20 @@
 #include "../SDK/SDK.h"
 
-MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41 56 41 57 48 8D AC 24", 0x0);
+MAKE_SIGNATURE(CBaseViewModel_CalcViewModelView, "client.dll", "48 89 74 24 ? 55 41 56 41 57 48 8D AC 24", 0x0);
+MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 49 8B F0 48 8B EA 48 8B F9 33 DB", 0x0);
 
-MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
-	void* rcx, CBaseEntity* pOwner, /*const*/ Vec3& vEyePosition, Vec3& vEyeAngles)
+MAKE_HOOK(CBaseViewModel_CalcViewModelView, S::CBaseViewModel_CalcViewModelView(), void,
+	void* rcx, CBasePlayer* owner, /*const*/ Vector& eyePosition, /*const*/ QAngle& eyeAngles)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcViewModelView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
+	if (!Vars::Hooks::CBaseViewModel_CalcViewModelView[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, owner, eyePosition, eyeAngles);
 #endif
 
 	Vec3 vOffset = { Vars::Visuals::Viewmodel::OffsetX.Value, Vars::Visuals::Viewmodel::OffsetY.Value, Vars::Visuals::Viewmodel::OffsetZ.Value };
-	bool bOffset = !vOffset.IsZero();
-
-	if (!Vars::Visuals::Viewmodel::ViewmodelAim.Value && !bOffset && !Vars::Visuals::Viewmodel::Roll.Value || SDK::CleanScreenshot())
-		return CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
+	Vec3 vAngles = { Vars::Visuals::Viewmodel::Pitch.Value, Vars::Visuals::Viewmodel::Yaw.Value, Vars::Visuals::Viewmodel::Roll.Value };
+	if (!Vars::Visuals::Viewmodel::ViewmodelAim.Value && vOffset.IsZero() && vAngles.IsZero() || SDK::CleanScreenshot())
+		return CALL_ORIGINAL(rcx, owner, eyePosition, eyeAngles);
 
 	bool bFlip = G::FlipViewmodels;
 
@@ -23,26 +23,39 @@ MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), voi
 		auto pLocal = H::Entities.GetLocal();
 		if (pLocal && pLocal->IsAlive() && G::AimPoint.m_iTickCount)
 		{
-			Vec3 vDiff = I::EngineClient->GetViewAngles() - Math::CalcAngle(vEyePosition, G::AimPoint.m_vOrigin);
+			Vec3 vDiff = I::EngineClient->GetViewAngles() - Math::CalcAngle(eyePosition, G::AimPoint.m_vOrigin);
 			if (bFlip)
 				vDiff.y *= -1;
-			vEyeAngles = I::EngineClient->GetViewAngles() - vDiff;
+			eyeAngles = I::EngineClient->GetViewAngles() - vDiff;
 		}
 	}
 
-	if (bOffset)
+	if (!vOffset.IsZero())
 	{
-		Vec3 vForward, vRight, vUp; Math::AngleVectors(vEyeAngles, &vForward, &vRight, &vUp);
-		vEyePosition += vForward * vOffset.y;
-		vEyePosition += vRight * vOffset.x * (bFlip ? -1 : 1);
-		vEyePosition += vUp * vOffset.z;
+		Vec3 vForward, vRight, vUp; Math::AngleVectors(eyeAngles, &vForward, &vRight, &vUp);
+		eyePosition += vForward * vOffset.y;
+		eyePosition += vRight * vOffset.x * (bFlip ? -1 : 1);
+		eyePosition += vUp * vOffset.z;
 	}
-	if (Vars::Visuals::Viewmodel::Pitch.Value)
-		vEyeAngles.x += Vars::Visuals::Viewmodel::Pitch.Value;
-	if (Vars::Visuals::Viewmodel::Yaw.Value)
-		vEyeAngles.y += Vars::Visuals::Viewmodel::Yaw.Value * (bFlip ? -1 : 1);
-	if (Vars::Visuals::Viewmodel::Roll.Value)
-		vEyeAngles.z += Vars::Visuals::Viewmodel::Roll.Value * (bFlip ? -1 : 1);
+	if (vAngles.x)
+		eyeAngles.x += vAngles.x;
+	if (vAngles.y)
+		eyeAngles.y += vAngles.y * (bFlip ? -1 : 1);
+	if (vAngles.z)
+		eyeAngles.z += vAngles.z * (bFlip ? -1 : 1);
 
-	CALL_ORIGINAL(rcx, pOwner, vEyePosition, vEyeAngles);
+	CALL_ORIGINAL(rcx, owner, eyePosition, eyeAngles);
+}
+
+MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
+	void* rcx, /*const*/ Vector& eyeOrigin, /*const*/ QAngle& eyeAngles)
+{
+#ifdef DEBUG_HOOKS
+	if (!Vars::Hooks::CBasePlayer_CalcViewModelView[DEFAULT_BIND])
+		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles);
+#endif
+
+	Vector vOldEyeOrigin = eyeOrigin, vOldEyeAngles = eyeAngles;
+	CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles);
+	eyeOrigin = vOldEyeOrigin, eyeAngles = vOldEyeAngles;
 }

@@ -51,8 +51,8 @@ MAKE_HOOK(CBaseAnimating_DrawModel, S::CBaseAnimating_DrawModel(), int,
 		return CALL_ORIGINAL(rcx, flags);
 #endif
 
-	const auto dwDesired = S::CEconEntity_DrawOverriddenViewmodel_DrawModel_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CEconEntity_DrawOverriddenViewmodel_DrawModel_Call();
 
 	if (dwRetAddr != dwDesired || I::EngineVGui->IsGameUIVisible() || SDK::CleanScreenshot()
 		|| F::CameraWindow.m_bDrawing || !F::Materials.m_bLoaded || G::Unload)
@@ -68,7 +68,7 @@ MAKE_HOOK(CBaseAnimating_InternalDrawModel, S::CBaseAnimating_InternalDrawModel(
 	void* rcx, int flags)
 {
 #ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IVModelRender_DrawModelExecute[DEFAULT_BIND])
+	if (!Vars::Hooks::CBaseAnimating_InternalDrawModel[DEFAULT_BIND])
 		return CALL_ORIGINAL(rcx, flags);
 #endif
 

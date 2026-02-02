@@ -285,7 +285,7 @@ bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeap
 
 bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, Vec3 vAngles, ProjectileInfo& tProjInfo, int iFlags, float flAutoCharge)
 {
-	bool InitCheck = iFlags & ProjSimEnum::InitCheck;
+	bool bInitCheck = iFlags & ProjSimEnum::InitCheck;
 	bool bQuick = iFlags & ProjSimEnum::Quick;
 
 	const float flOldCurrentTime = I::GlobalVars->curtime;
@@ -294,7 +294,7 @@ bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, 
 	I::GlobalVars->curtime = flOldCurrentTime;
 	tProjInfo.m_iFlags = iFlags;
 
-	if (!bReturn || !InitCheck)
+	if (!bReturn || !bInitCheck)
 		return bReturn;
 
 	CGameTrace trace = {};
@@ -305,7 +305,9 @@ bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, 
 	Vec3 vEnd = tProjInfo.m_vPos;
 
 	SDK::TraceHull(vStart, vEnd, tProjInfo.m_vHull * -1.f, tProjInfo.m_vHull, MASK_SOLID, &filter, &trace);
-	return !trace.DidHit();
+	tProjInfo.m_vPos = trace.endpos;
+
+	return true;
 }
 
 void CProjectileSimulation::GetInfo(CBaseEntity* pProjectile, ProjectileInfo& tProjInfo)

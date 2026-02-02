@@ -11,8 +11,8 @@ MAKE_HOOK(CTFPlayer_IsPlayerClass, S::CTFPlayer_IsPlayerClass(), bool,
 		return CALL_ORIGINAL(rcx, iClass);
 #endif
 
-	static const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_IsPlayerClass_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	static const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_IsPlayerClass_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Misc::Sound::HitsoundAlways.Value)
 		return false;

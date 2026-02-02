@@ -6,6 +6,7 @@
 #include "Interfaces/CClientState.h"
 #include "Interfaces/CGlobalVarsBase.h"
 #include "Interfaces/CHLClient.h"
+#include "Interfaces/CHLTVCamera.h"
 #include "Interfaces/CTFGameRules.h"
 #include "Interfaces/CTFGCClientSystem.h"
 #include "Interfaces/CTFPartyClient.h"

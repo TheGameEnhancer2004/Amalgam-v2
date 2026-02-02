@@ -24,7 +24,7 @@ MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndC
 	if (const char* sReplace = F::PlayerUtils.GetPlayerName(clientIndex, nullptr, &iType))
 	{
 		if (iFind != std::string::npos)
-			sMessage = sMessage.replace(std::max(iFind - 1, 0ui64), strlen(sName) + 1, std::format("\x3{}\x1", sReplace));
+			sMessage = sMessage.replace(std::max(int(iFind) - 1, 0), strlen(sName) + 1, std::format("\x3{}\x1", sReplace));
 		sName = sReplace;
 	}
 
@@ -45,9 +45,9 @@ MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndC
 
 		if (!sTag.empty())
 		{
-			if (iFind != std::string::npos)
-				sMessage.insert(iFind + strlen(sName), "\x1");
-			sMessage.insert(0, std::format("{}[{}] \x3", cColor, sTag));
+			if (iFind != std::string::npos && iType == NameTypeEnum::None)
+				sMessage = sMessage.replace(std::max(int(iFind) - 1, 0), strlen(sName) + 1, std::format("\x3{}\x1", sName));
+			sMessage.insert(0, std::format("{}[{}] ", cColor, sTag));
 		}
 	}
 

@@ -98,7 +98,7 @@ void CDraw::String(const Font_t& tFont, int x, int y, Color_t tColor, EAlign eAl
 
 	I::MatSystemSurface->DrawSetTextPos(x, y);
 	I::MatSystemSurface->DrawSetTextFont(dwFont);
-	I::MatSystemSurface->DrawSetTextColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetTextColor(tColor);
 	I::MatSystemSurface->DrawPrintText(s_wstr, int(wcslen(s_wstr)));
 }
 void CDraw::String(const Font_t& tFont, int x, int y, Color_t tColor, EAlign eAlign, const wchar_t* wstr)
@@ -121,7 +121,7 @@ void CDraw::String(const Font_t& tFont, int x, int y, Color_t tColor, EAlign eAl
 
 	I::MatSystemSurface->DrawSetTextPos(x, y);
 	I::MatSystemSurface->DrawSetTextFont(dwFont);
-	I::MatSystemSurface->DrawSetTextColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetTextColor(tColor);
 	I::MatSystemSurface->DrawPrintText(wstr, int(wcslen(wstr)));
 }
 void CDraw::StringOutlined(const Font_t& tFont, int x, int y, Color_t tColor, Color_t tColorOut, EAlign eAlign, const char* str, bool bAlpha)
@@ -156,14 +156,14 @@ void CDraw::StringOutlined(const Font_t& tFont, int x, int y, Color_t tColor, Co
 		{
 			I::MatSystemSurface->DrawSetTextPos(x + x2, y + y2);
 			I::MatSystemSurface->DrawSetTextFont(dwFont);
-			I::MatSystemSurface->DrawSetTextColor(tColorOut.r, tColorOut.g, tColorOut.b, tColorOut.a);
+			I::MatSystemSurface->DrawSetTextColor(tColorOut);
 			I::MatSystemSurface->DrawPrintText(s_wstr, int(wcslen(s_wstr)));
 		}
 	}
 
 	I::MatSystemSurface->DrawSetTextPos(x, y);
 	I::MatSystemSurface->DrawSetTextFont(dwFont);
-	I::MatSystemSurface->DrawSetTextColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetTextColor(tColor);
 	I::MatSystemSurface->DrawPrintText(s_wstr, int(wcslen(s_wstr)));
 }
 void CDraw::StringOutlined(const Font_t& tFont, int x, int y, Color_t tColor, Color_t tColorOut, EAlign eAlign, const wchar_t* wstr, bool bAlpha)
@@ -197,20 +197,20 @@ void CDraw::StringOutlined(const Font_t& tFont, int x, int y, Color_t tColor, Co
 		{
 			I::MatSystemSurface->DrawSetTextPos(x + x2, y + y2);
 			I::MatSystemSurface->DrawSetTextFont(dwFont);
-			I::MatSystemSurface->DrawSetTextColor(tColorOut.r, tColorOut.g, tColorOut.b, tColorOut.a);
+			I::MatSystemSurface->DrawSetTextColor(tColorOut);
 			I::MatSystemSurface->DrawPrintText(wstr, int(wcslen(wstr)));
 		}
 	}
 
 	I::MatSystemSurface->DrawSetTextPos(x, y);
 	I::MatSystemSurface->DrawSetTextFont(dwFont);
-	I::MatSystemSurface->DrawSetTextColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetTextColor(tColor);
 	I::MatSystemSurface->DrawPrintText(wstr, int(wcslen(wstr)));
 }
 
 void CDraw::Line(int x1, int y1, int x2, int y2, Color_t tColor)
 {
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawLine(x1, y1, x2, y2);
 }
 
@@ -220,7 +220,7 @@ void CDraw::FillPolygon(std::vector<Vertex_t> vVertices, Color_t tColor)
 	if (!I::MatSystemSurface->IsTextureIDValid(iId))
 		iId = I::MatSystemSurface->CreateNewTextureID();
 
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawSetTexture(iId);
 	I::MatSystemSurface->DrawTexturedPolygon(int(vVertices.size()), vVertices.data());
 }
@@ -230,26 +230,26 @@ void CDraw::LinePolygon(std::vector<Vertex_t> vVertices, Color_t tColor)
 	if (!I::MatSystemSurface->IsTextureIDValid(iId))
 		iId = I::MatSystemSurface->CreateNewTextureID();
 
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawSetTexture(iId);
 	I::MatSystemSurface->DrawTexturedPolyLine(vVertices.data(), int(vVertices.size()));
 }
 
 void CDraw::FillRect(int x, int y, int w, int h, Color_t tColor)
 {
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawFilledRect(x, y, x + w, y + h);
 }
 void CDraw::LineRect(int x, int y, int w, int h, Color_t tColor)
 {
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawOutlinedRect(x, y, x + w, y + h);
 }
 void CDraw::GradientRect(int x, int y, int w, int h, Color_t tColorTop, Color_t tColorBottom, bool bHorizontal)
 {
-	I::MatSystemSurface->DrawSetColor(tColorTop.r, tColorTop.g, tColorTop.b, tColorTop.a);
+	I::MatSystemSurface->DrawSetColor(tColorTop);
 	I::MatSystemSurface->DrawFilledRectFade(x, y, x + w, y + h, tColorTop.a, tColorBottom.a, bHorizontal);
-	I::MatSystemSurface->DrawSetColor(tColorBottom.r, tColorBottom.g, tColorBottom.b, tColorBottom.a);
+	I::MatSystemSurface->DrawSetColor(tColorBottom);
 	I::MatSystemSurface->DrawFilledRectFade(x, y, x + w, y + h, tColorTop.a, tColorBottom.a, bHorizontal);
 }
 void CDraw::FillRectOutline(int x, int y, int w, int h, Color_t tColor, Color_t tColorOut)
@@ -336,7 +336,7 @@ void CDraw::FillCircle(int x, int y, float iRadius, int iSegments, Color_t tColo
 }
 void CDraw::LineCircle(int x, int y, float iRadius, int iSegments, Color_t tColor)
 {
-	I::MatSystemSurface->DrawSetColor(tColor.r, tColor.g, tColor.b, tColor.a);
+	I::MatSystemSurface->DrawSetColor(tColor);
 	I::MatSystemSurface->DrawOutlinedCircle(x, y, iRadius, iSegments);
 }
 
@@ -375,7 +375,7 @@ int CDraw::CreateTextureFromArray(const unsigned char* rgba, int w, int h)
 	I::MatSystemSurface->DrawSetTextureRGBAEx(nTextureIdOut, rgba, w, h, IMAGE_FORMAT_RGBA8888);
 	return nTextureIdOut;
 }
-void CDraw::DrawHudTexture(float x, float y, float s, const CHudTexture* pTexture, Color_t clr)
+void CDraw::DrawHudTexture(float x, float y, float s, const CHudTexture* pTexture, Color_t tColor)
 {
 	if (!pTexture)
 		return;
@@ -383,18 +383,18 @@ void CDraw::DrawHudTexture(float x, float y, float s, const CHudTexture* pTextur
 	if (pTexture->bRenderUsingFont)
 	{
 		I::MatSystemSurface->DrawSetTextFont(pTexture->hFont);
-		I::MatSystemSurface->DrawSetTextColor(clr.r, clr.g, clr.b, clr.a);
+		I::MatSystemSurface->DrawSetTextColor(tColor);
 		I::MatSystemSurface->DrawSetTextPos(x, y);
 		I::MatSystemSurface->DrawUnicodeChar(pTexture->cCharacterInFont);
 	}
 	else if (pTexture->textureId != -1)
 	{
 		I::MatSystemSurface->DrawSetTexture(pTexture->textureId);
-		I::MatSystemSurface->DrawSetColor(clr.r, clr.g, clr.b, clr.a);
+		I::MatSystemSurface->DrawSetColor(tColor);
 		I::MatSystemSurface->DrawTexturedSubRect(x, y, x + pTexture->Width() * s, y + pTexture->Height() * s, pTexture->texCoords[0], pTexture->texCoords[1], pTexture->texCoords[2], pTexture->texCoords[3]);
 	}
 }
-void CDraw::DrawHudTextureByName(float x, float y, float s, const char* sTexture, Color_t clr)
+void CDraw::DrawHudTextureByName(float x, float y, float s, const char* sTexture, Color_t tColor)
 {
 	const CHudTexture* pIcon = GetIcon(sTexture, 0);
 
@@ -404,14 +404,14 @@ void CDraw::DrawHudTextureByName(float x, float y, float s, const char* sTexture
 	if (pIcon->bRenderUsingFont)
 	{
 		I::MatSystemSurface->DrawSetTextFont(pIcon->hFont);
-		I::MatSystemSurface->DrawSetTextColor(clr.r, clr.g, clr.b, clr.a);
+		I::MatSystemSurface->DrawSetTextColor(tColor);
 		I::MatSystemSurface->DrawSetTextPos(x, y);
 		I::MatSystemSurface->DrawUnicodeChar(pIcon->cCharacterInFont);
 	}
 	else if (pIcon->textureId != -1)
 	{
 		I::MatSystemSurface->DrawSetTexture(pIcon->textureId);
-		I::MatSystemSurface->DrawSetColor(clr.r, clr.g, clr.b, clr.a);
+		I::MatSystemSurface->DrawSetColor(tColor);
 		I::MatSystemSurface->DrawTexturedSubRect(x, y, x + pIcon->Width() * s, y + pIcon->Height() * s, pIcon->texCoords[0], pIcon->texCoords[1], pIcon->texCoords[2], pIcon->texCoords[3]);
 	}
 }

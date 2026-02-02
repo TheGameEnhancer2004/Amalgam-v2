@@ -16,13 +16,13 @@ MAKE_HOOK(CTFPlayerShared_InCond, S::CTFPlayerShared_InCond(), bool,
 		return CALL_ORIGINAL(rcx, nCond);
 #endif
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwZoomPlayer = S::CTFPlayer_ShouldDraw_InCond_Call();
 	const auto dwZoomWearable = S::CTFWearable_ShouldDraw_InCond_Call();
 	const auto dwZoomHudScope = S::CHudScope_ShouldDraw_InCond_Call();
 	const auto dwTaunt = S::CTFPlayer_CreateMove_InCondTaunt_Call();
 	const auto dwKart1 = S::CTFPlayer_CreateMove_InCondKart_Call();
 	const auto dwKart2 = S::CTFInput_ApplyMouse_InCond_Call();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	auto GetOuter = [&rcx]() -> CBaseEntity*
 		{

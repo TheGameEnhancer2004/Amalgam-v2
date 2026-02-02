@@ -46,8 +46,8 @@ MAKE_HOOK(IEngineTrace_SetTraceEntity, U::Memory.GetVirtual(I::EngineTrace, 20),
 		return CALL_ORIGINAL(rcx, pCollideable, pTrace);
 #endif
 
-	const auto dwDesired = S::IEngineTrace_TraceRay_SetTraceEntity_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::IEngineTrace_TraceRay_SetTraceEntity_Call();
 
 	CALL_ORIGINAL(rcx, pCollideable, pTrace);
 

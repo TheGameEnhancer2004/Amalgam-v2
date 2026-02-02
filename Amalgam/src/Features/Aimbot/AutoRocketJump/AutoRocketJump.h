@@ -10,6 +10,7 @@ private:
 	bool m_bFull = false;
 	int m_iFrame = -1;
 	int m_iDelay = 0;
+	int m_iChoke = 0;
 	bool m_bRunning = false;
 
 public:

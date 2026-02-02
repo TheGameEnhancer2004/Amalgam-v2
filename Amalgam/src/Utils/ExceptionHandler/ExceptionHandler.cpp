@@ -117,12 +117,12 @@ static LONG APIENTRY ExceptionFilter(PEXCEPTION_POINTERS ExceptionInfo)
 
 	std::stringstream ssErrorStream;
 	ssErrorStream << std::format("Error: {} (0x{:X}) ({})\n", sError, ExceptionInfo->ExceptionRecord->ExceptionCode, ++s_iExceptions);
-	if (U::Memory.GetOffsetFromBase(s_lpParam))
-		ssErrorStream << std::format("This: {}\n", U::Memory.GetModuleOffset(s_lpParam));
 	ssErrorStream << "Built @ " __DATE__ ", " __TIME__ ", " __CONFIGURATION__ "\n";
 	ssErrorStream << std::format("Time @ {}, {}\n", SDK::GetDate(), SDK::GetTime());
 
 	ssErrorStream << "\n";
+	if (U::Memory.GetOffsetFromBase(s_lpParam))
+		ssErrorStream << std::format("This: {}\n", U::Memory.GetModuleOffset(s_lpParam));
 	ssErrorStream << std::format("RIP: {:#x}\n", ExceptionInfo->ContextRecord->Rip);
 	ssErrorStream << std::format("RAX: {:#x}\n", ExceptionInfo->ContextRecord->Rax);
 	ssErrorStream << std::format("RCX: {:#x}\n", ExceptionInfo->ContextRecord->Rcx);

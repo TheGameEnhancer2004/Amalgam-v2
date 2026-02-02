@@ -15,9 +15,9 @@ MAKE_HOOK(CTFPlayerShared_IsPlayerDominated, S::CTFPlayerShared_IsPlayerDominate
 		return CALL_ORIGINAL(rcx, index);
 #endif
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_IsPlayerDominated_Call();
 	const auto dwJump = S::CTFClientScoreBoardDialog_UpdatePlayerList_Jump();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	bool bReturn = CALL_ORIGINAL(rcx, index);
 
@@ -35,9 +35,9 @@ MAKE_HOOK(KeyValues_SetInt, S::KeyValues_SetInt(), void,
 		return CALL_ORIGINAL(rcx, keyName, value);
 #endif
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_SetInt_Call();
 	const auto dwJump = S::CTFClientScoreBoardDialog_UpdatePlayerList_Jump();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	CALL_ORIGINAL(rcx, keyName, value);
 

@@ -15,8 +15,8 @@ MAKE_HOOK(FX_FireBullets, S::FX_FireBullets(), void,
 		return CALL_ORIGINAL(pWpn, iPlayer, vecOrigin, vecAngles, iWeapon, iMode, iSeed, flSpread, flDamage, bCritical);
 #endif
 
-	const auto dwDesired = S::CTFWeaponBaseGun_FireBullet_FireBullets_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CTFWeaponBaseGun_FireBullet_FireBullets_Call();
 
 	if (iPlayer != I::EngineClient->GetLocalPlayer())
 		F::Backtrack.ReportShot(iPlayer);

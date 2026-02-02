@@ -9,7 +9,6 @@
 static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	std::vector<Target_t> vTargets;
-	const auto iSort = Vars::Aimbot::General::TargetSelection.Value;
 
 	Vec3 vLocalPos = F::Ticks.GetShootPos();
 	Vec3 vLocalAngles = I::EngineClient->GetViewAngles();

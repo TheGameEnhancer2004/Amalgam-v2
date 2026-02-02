@@ -203,7 +203,7 @@ public:
 	SIGNATURE(UpdateWearables, void, CTFPlayer, this);
 
 	Vec3 GetEyeAngles();
-	Vec3 GetViewOffset(); // use on nonlocal players
+	Vec3 GetViewOffset(bool bScale = true); // use on nonlocal players
 	bool InCond(ETFCond eCond);
 	void AddCond(ETFCond eCond); // bits only
 	void RemoveCond(ETFCond eCond); // bits only

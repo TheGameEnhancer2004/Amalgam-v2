@@ -36,8 +36,8 @@ MAKE_HOOK(CBasePlayer_EyePosition, S::CBasePlayer_EyePosition(), Vec3*,
 		return CALL_ORIGINAL(rcx, rdx);
 #endif
 
-	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyePosition_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyePosition_Call();
 
 	if (dwRetAddr == dwDesired)
 		return &s_vEyePosition;
@@ -53,8 +53,8 @@ MAKE_HOOK(CTFPlayer_EyeAngles, S::CTFPlayer_EyeAngles(), Vec3*,
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyeAngles_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyeAngles_Call();
 
 	if (dwRetAddr == dwDesired)
 		return &s_vEyeAngles;

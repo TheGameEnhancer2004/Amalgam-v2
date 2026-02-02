@@ -16,7 +16,7 @@ static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* p
 
 	int iObserverTarget = pLocal->m_hObserverTarget().GetEntryIndex();
 	int iObserverMode = pLocal->m_iObserverMode();
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget())
 	{
 		iObserverTarget = F::Spectate.m_hTargetTarget.GetEntryIndex();
 		iObserverMode = F::Spectate.m_iTargetMode;

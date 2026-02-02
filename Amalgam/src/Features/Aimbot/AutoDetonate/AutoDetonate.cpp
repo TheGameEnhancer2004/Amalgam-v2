@@ -45,7 +45,7 @@ static inline bool GetRadius(EntityEnum::EntityEnum iGroup, CBaseEntity* pProjec
 		if (!pPipebomb->m_flCreationTime() || I::GlobalVars->curtime < pPipebomb->m_flCreationTime() + SDK::AttribHookValue(0.8f, "sticky_arm_time", pWeapon))
 			return false;
 
-		flRadius *= 146.f;
+		flRadius *= TF_ROCKET_RADIUS;
 		if (!pPipebomb->m_bTouched())
 		{
 			static auto tf_grenadelauncher_livetime = H::ConVars.FindVar("tf_grenadelauncher_livetime");
@@ -58,7 +58,7 @@ static inline bool GetRadius(EntityEnum::EntityEnum iGroup, CBaseEntity* pProjec
 		}
 	}
 	else
-		flRadius *= 110.f;
+		flRadius *= TF_FLARE_DET_RADIUS;
 	flRadius = SDK::AttribHookValue(flRadius, "mult_explosion_radius", pWeapon);
 	return true;
 }

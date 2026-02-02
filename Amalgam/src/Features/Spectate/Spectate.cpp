@@ -7,13 +7,13 @@ void CSpectate::NetUpdateEnd(CTFPlayer* pLocal)
 
 	m_iTarget = m_iIntendedTarget;
 	CTFPlayer* pEntity = nullptr;
-	if (m_iTarget != -1)
+	if (HasTarget())
 	{
 		pEntity = I::ClientEntityList->GetClientEntity(I::EngineClient->GetPlayerForUserID(m_iTarget))->As<CTFPlayer>();
 		if (pEntity == pLocal)
 			m_iTarget = m_iIntendedTarget = -1;
 	}
-	if (m_iTarget == -1)
+	if (!HasTarget())
 	{
 		if (pLocal->IsAlive() && pLocal->m_hObserverTarget())
 		{
@@ -46,7 +46,7 @@ void CSpectate::NetUpdateEnd(CTFPlayer* pLocal)
 
 void CSpectate::NetUpdateStart(CTFPlayer* pLocal)
 {
-	if (!pLocal || m_iTarget == -1)
+	if (!pLocal || !HasTarget())
 		return;
 
 	pLocal->m_hObserverTarget().Set(m_hOriginalTarget);
@@ -61,15 +61,15 @@ void CSpectate::CreateMove(CUserCmd* pCmd)
 
 	static bool bStaticView = false;
 	const bool bLastView = bStaticView;
-	const bool bCurrView = bStaticView = m_iTarget != -1;
-	if (!bCurrView)
-	{
-		if (bLastView)
-			I::EngineClient->SetViewAngles(m_vOldView);
+	const bool bCurrView = bStaticView = HasTarget();
+	if (!bCurrView && !bLastView)
 		m_vOldView = pCmd->viewangles;
-	}
 	else
+	{
+		if (!bCurrView)
+			I::EngineClient->SetViewAngles(m_vOldView);
 		pCmd->viewangles = m_vOldView;
+	}
 }
 
 void CSpectate::SetTarget(int iTarget)

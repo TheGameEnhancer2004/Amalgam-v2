@@ -9,6 +9,8 @@ public:
 	void CreateMove(CUserCmd* pCmd);
 	void SetTarget(int iTarget);
 
+	inline bool HasTarget() { return m_iTarget != -1; }
+
 	int m_iTarget = -1;
 	int m_iIntendedTarget = -1;
 	Vec3 m_vOldView = {}; // don't let spectating change viewangles

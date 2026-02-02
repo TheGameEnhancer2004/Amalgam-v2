@@ -15,7 +15,7 @@ MAKE_HOOK(CClientState_ProcessFixAngle, S::CClientState_ProcessFixAngle(), bool,
 	if (Vars::Visuals::Removals::AngleForcing.Value)
 		return false;
 
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget())
 		F::Spectate.m_vOldView = msg->m_Angle;
 
 	return CALL_ORIGINAL(rcx, msg);

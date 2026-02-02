@@ -19,7 +19,7 @@ MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
 		auto pLocal = H::Entities.GetLocal();
 		auto pTarget = I::ClientEntityList->GetClientEntity(I::EngineClient->GetPlayerForUserID(F::Spectate.m_iTarget))->As<CTFPlayer>();
@@ -40,14 +40,14 @@ MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(
 		return CALL_ORIGINAL(rcx);
 #endif
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	//const auto dwDesired = S::CTFWeaponBase_PostDataUpdate_ShouldDrawThisPlayer_Call();
 	const auto dwUndesired = S::CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThisPlayer_Call();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	//if (dwRetAddr == dwDesired)
 	//	return false; // breaks thirdperson jigglebones?
 
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
 		if (dwRetAddr == dwUndesired)
 			return false;
@@ -71,13 +71,13 @@ MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlaye
 		return CALL_ORIGINAL(/*rcx*/);
 #endif
 
-	//const auto dwDesired = S::CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call();
 	//const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	//const auto dwDesired = S::CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call();
 
 	//if (dwRetAddr == dwDesired)
 	//	return false;
 
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
 		auto pLocal = H::Entities.GetLocal();
 		if (pLocal && pLocal->IsAlive())
@@ -95,7 +95,7 @@ MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 		return CALL_ORIGINAL(rcx);
 #endif
 
-	if (F::Spectate.m_iTarget != -1)
+	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
 		auto pWeapon = H::Entities.GetWeapon();
 		if (pWeapon && rcx == pWeapon->GetClientRenderable())
@@ -113,5 +113,5 @@ MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 		return CALL_ORIGINAL(rcx, viewRender, drawViewmodel);
 #endif
 
-	CALL_ORIGINAL(rcx, viewRender, F::Spectate.m_iTarget != -1 ? false : drawViewmodel);
+	CALL_ORIGINAL(rcx, viewRender, F::Spectate.HasTarget() && !I::EngineClient->IsHLTV() ? false : drawViewmodel);
 }

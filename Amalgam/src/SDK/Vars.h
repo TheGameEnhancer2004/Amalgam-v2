@@ -361,10 +361,10 @@ namespace Vars
 			CVar(HuntsmanClamp, "Huntsman clamp", 5.f, NOSAVE | DEBUGVAR | SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 10.f, 0.5f);
 			CVar(HuntsmanPullPoint, "Huntsman pull point", false, NOSAVE | DEBUGVAR);
 
-			CVar(SplashPointsDirect, "Splash points direct", 100, NOSAVE | DEBUGVAR | SLIDER_MIN, 0, 400, 5);
-			CVar(SplashPointsArc, "Splash points arc", 100, NOSAVE | DEBUGVAR | SLIDER_MIN, 0, 400, 5);
-			CVar(SplashCountDirect, "Splash count direct", 100, NOSAVE | DEBUGVAR | SLIDER_MIN, 1, 100);
-			CVar(SplashCountArc, "Splash count arc", 5, NOSAVE | DEBUGVAR | SLIDER_MIN, 1, 100);
+			CVar(SplashPointsDirect, "Splash points direct", 100, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 0, 400, 5);
+			CVar(SplashPointsArc, "Splash points arc", 100, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 0, 400, 5);
+			CVar(SplashCountDirect, "Splash count direct", 100, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 1, 400, 5);
+			CVar(SplashCountArc, "Splash count arc", 5, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 1, 400, 5);
 			CVar(SplashRotateX, "Splash Rx", -1.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, -1.f, 360.f);
 			CVar(SplashRotateY, "Splash Ry", -1.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, -1.f, 360.f);
 			CVar(SplashTraceInterval, "Splash trace interval", 10, NOSAVE | DEBUGVAR, 1, 10);
@@ -715,9 +715,12 @@ namespace Vars
 			CVar(BreakJump, "Break jump", false);
 			CVar(ShieldTurnRate, "Shield turn rate", false);
 
-			CVar(TimingOffset, "Timing offset", 0, NOSAVE | DEBUGVAR, 0, 3);
-			CVar(ChokeCount, "Choke count", 1, NOSAVE | DEBUGVAR, 0, 3);
-			CVar(ApplyAbove, "Apply timing offset above", 0, NOSAVE | DEBUGVAR, 0, 8);
+			CVar(AutoRocketJumpChokeGrounded, "Choke grounded", 1, NOSAVE | DEBUGVAR, 0, 3);
+			CVar(AutoRocketJumpChokeAir, "Choke air", 1, NOSAVE | DEBUGVAR, 0, 3);
+			CVar(AutoRocketJumpSkipGround, "Skip grounded", 0, NOSAVE | DEBUGVAR, 0, 3);
+			CVar(AutoRocketJumpSkipAir, "Skip air", 1, NOSAVE | DEBUGVAR, 0, 3);
+			CVar(AutoRocketJumpTimingOffset, "Timing offset", 0, NOSAVE | DEBUGVAR, 0, 3);
+			CVar(AutoRocketJumpApplyAbove, "Apply offset above", 0, NOSAVE | DEBUGVAR, 0, 10);
 		SUBNAMESPACE_END(Movement);
 
 		SUBNAMESPACE_BEGIN(Automation)
@@ -904,6 +907,7 @@ namespace Vars
 		CVar(CBasePlayer_ItemPostFrame, "CBasePlayer_ItemPostFrame", true, NOSAVE | DEBUGVAR);
 		CVar(CBasePlayer_ShouldDrawLocalPlayer, "CBasePlayer_ShouldDrawLocalPlayer", true, NOSAVE | DEBUGVAR);
 		CVar(CBasePlayer_ShouldDrawThisPlayer, "CBasePlayer_ShouldDrawThisPlayer", true, NOSAVE | DEBUGVAR);
+		CVar(CBaseViewModel_CalcViewModelView, "CBaseViewModel_CalcViewModelView", true, NOSAVE | DEBUGVAR);
 		CVar(CBaseViewModel_ShouldFlipViewModel, "CBaseViewModel_ShouldFlipViewModel", true, NOSAVE | DEBUGVAR);
 		CVar(Cbuf_ExecuteCommand, "Cbuf_ExecuteCommand", true, NOSAVE | DEBUGVAR);
 		CVar(CClientModeShared_DoPostScreenSpaceEffects, "CClientModeShared_DoPostScreenSpaceEffects", true, NOSAVE | DEBUGVAR);
@@ -916,6 +920,9 @@ namespace Vars
 		CVar(CHLClient_DispatchUserMessage, "CHLClient_DispatchUserMessage", true, NOSAVE | DEBUGVAR);
 		CVar(CHLClient_FrameStageNotify, "CHLClient_FrameStageNotify", true, NOSAVE | DEBUGVAR);
 		CVar(CHLClient_LevelShutdown, "CHLClient_LevelShutdown", true, NOSAVE | DEBUGVAR);
+		CVar(CHLTVCamera_CalcView, "CHLTVCamera_CalcView", true, NOSAVE | DEBUGVAR);
+		CVar(CHLTVCamera_GetMode, "CHLTVCamera_GetMode", true, NOSAVE | DEBUGVAR);
+		CVar(CHLTVCamera_GetPrimaryTarget, "CHLTVCamera_GetPrimaryTarget", true, NOSAVE | DEBUGVAR);
 		CVar(CHudCrosshair_GetDrawPosition, "CHudCrosshair_GetDrawPosition", true, NOSAVE | DEBUGVAR);
 		CVar(CInput_GetUserCmd, "CInput_GetUserCmd", true, NOSAVE | DEBUGVAR);
 		CVar(CInput_ValidateUserCmd, "CInput_ValidateUserCmd", true, NOSAVE | DEBUGVAR);
@@ -941,6 +948,7 @@ namespace Vars
 		CVar(CParticleProperty_Create_Point, "CParticleProperty_Create_Point", true, NOSAVE | DEBUGVAR);
 		CVar(CParticleProperty_AddControlPoint_Pointer, "CParticleProperty_AddControlPoint_Pointer", true, NOSAVE | DEBUGVAR);
 		CVar(CPlayerResource_GetPlayerName, "CPlayerResource_GetPlayerName", true, NOSAVE | DEBUGVAR);
+		CVar(CPlayerResource_IsFakePlayer, "CPlayerResource_IsFakePlayer", true, NOSAVE | DEBUGVAR);
 		CVar(CPrediction_RunSimulation, "CPrediction_RunSimulation", true, NOSAVE | DEBUGVAR);
 		CVar(CRendering3dView_EnableWorldFog, "CRendering3dView_EnableWorldFog", true, NOSAVE | DEBUGVAR);
 		CVar(CSkyboxView_Enable3dSkyboxFog, "CSkyboxView_Enable3dSkyboxFog", true, NOSAVE | DEBUGVAR);
@@ -994,7 +1002,6 @@ namespace Vars
 		CVar(CViewRender_LevelInit, "CViewRender_LevelInit", true, NOSAVE | DEBUGVAR);
 		CVar(CViewRender_PerformScreenOverlay, "CViewRender_PerformScreenOverlay", true, NOSAVE | DEBUGVAR);
 		CVar(CViewRender_RenderView, "CViewRender_RenderView", true, NOSAVE | DEBUGVAR);
-		CVar(CVoiceStatus_IsPlayerBlocked, "CVoiceStatus_IsPlayerBlocked", true, NOSAVE | DEBUGVAR);
 		CVar(CWeaponMedigun_PrimaryAttack, "CWeaponMedigun_PrimaryAttack", true, NOSAVE | DEBUGVAR);
 		CVar(DoEnginePostProcessing, "DoEnginePostProcessing", true, NOSAVE | DEBUGVAR);
 		CVar(DSP_Process, "DSP_Process", true, NOSAVE | DEBUGVAR);
