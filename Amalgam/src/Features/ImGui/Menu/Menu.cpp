@@ -2543,13 +2543,14 @@ void CMenu::MenuSettings(int iTab)
 					if (FButton(std::format("Parent: {}", sParent).c_str(), FButtonEnum::Right | FButtonEnum::SameLine | FButtonEnum::NoUpper, { 0, 40 }))
 						bParent = 2;
 				}
-				FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot" }, {}, FDropdownEnum::Left);
+				FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 				switch (tBind.m_iType)
 				{
 				case BindEnum::Key: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 2); FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
 				case BindEnum::Class: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 8); FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
 				case BindEnum::WeaponType: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
 				case BindEnum::ItemSlot: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Misc: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 				}
 			} EndChild();
 
@@ -2693,6 +2694,31 @@ void CMenu::MenuSettings(int iTab)
 							sType = "slot";
 							sInfo = std::format("{}", _tBind.m_iInfo + 1);
 							break;
+						case BindEnum::Misc:
+							switch (_tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Spectated:
+							case BindEnum::MiscEnum::SpectatedFirst:
+							case BindEnum::MiscEnum::SpectatedThird:
+								sType = "spectated";
+								switch (_tBind.m_iInfo)
+								{
+								case BindEnum::MiscEnum::Spectated: { sInfo = "any"; break; }
+								case BindEnum::MiscEnum::SpectatedFirst: { sInfo = "1st"; break; }
+								case BindEnum::MiscEnum::SpectatedThird: { sInfo = "3rd"; break; }
+						}
+								break;
+							case BindEnum::MiscEnum::Zoomed:
+							case BindEnum::MiscEnum::Aiming:
+								sType = "cond";
+								switch (_tBind.m_iInfo)
+								{
+								case BindEnum::MiscEnum::Zoomed: { sInfo = "zoomed"; break; }
+								case BindEnum::MiscEnum::Aiming: { sInfo = "aiming"; break; }
+								}
+								break;
+							}
+							break;
 						}
 						if (_tBind.m_bNot && (_tBind.m_iType != BindEnum::Key || _tBind.m_iInfo == BindEnum::KeyEnum::Hold))
 							sType = std::format("not {}", sType);
@@ -2814,13 +2840,14 @@ void CMenu::MenuSettings(int iTab)
 									_tBind.m_sName = sInput;
 							}
 
-							FDropdown("Type", &_tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot" }, {}, FDropdownEnum::Left);
+							FDropdown("Type", &_tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 							switch (_tBind.m_iType)
 							{
 							case BindEnum::Key: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 2); FDropdown("Behavior", &_tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
 							case BindEnum::Class: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 8); FDropdown("Class", &_tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
 							case BindEnum::WeaponType: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &_tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
 							case BindEnum::ItemSlot: _tBind.m_iInfo = std::max(_tBind.m_iInfo, 0); FDropdown("Item slot", &_tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Misc: _tBind.m_iInfo = std::max(_tBind.m_iInfo, 0); FDropdown("Misc", &_tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 							}
 							if (_tBind.m_iType == BindEnum::Key)
 								FKeybind("Key", _tBind.m_iKey);
@@ -3566,6 +3593,31 @@ void CMenu::DrawBinds()
 					case BindEnum::ItemSlot:
 						sType = "slot";
 						sInfo = std::format("{}", tBind.m_iInfo + 1);
+						break;
+					case BindEnum::Misc:
+						switch (tBind.m_iInfo)
+						{
+						case BindEnum::MiscEnum::Spectated:
+						case BindEnum::MiscEnum::SpectatedFirst:
+						case BindEnum::MiscEnum::SpectatedThird:
+							sType = "spectated";
+							switch (tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Spectated: { sInfo = "any"; break; }
+							case BindEnum::MiscEnum::SpectatedFirst: { sInfo = "1st"; break; }
+							case BindEnum::MiscEnum::SpectatedThird: { sInfo = "3rd"; break; }
+							}
+							break;
+						case BindEnum::MiscEnum::Zoomed:
+						case BindEnum::MiscEnum::Aiming:
+							sType = "cond";
+							switch (tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Zoomed: { sInfo = "zoomed"; break; }
+							case BindEnum::MiscEnum::Aiming: { sInfo = "aiming"; break; }
+							}
+							break;
+						}
 						break;
 					}
 					if (tBind.m_bNot && (tBind.m_iType != BindEnum::Key || tBind.m_iInfo == BindEnum::KeyEnum::Hold))

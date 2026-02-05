@@ -1,13 +1,14 @@
 #pragma once
 #include "../../SDK/SDK.h"
 
-Enum(Bind, Key, Class, WeaponType, ItemSlot)
+Enum(Bind, Key, Class, WeaponType, ItemSlot, Misc)
 namespace BindEnum
 {
 	Enum(Key, Hold, Toggle, DoubleClick)
 	Enum(Class, Scout, Soldier, Pyro, Demoman, Heavy, Engineer, Medic, Sniper, Spy)
 	Enum(WeaponType, Hitscan, Projectile, Melee, Throwable)
 	//Enum(ItemType, First, Second, Third, Fourth, Fifth, Sixth, Seventh, Eighth, Ninth)
+	Enum(Misc, Spectated, SpectatedFirst, SpectatedThird, Zoomed, Aiming)
 }
 Enum(BindVisibility, Always, WhileActive, Hidden)
 

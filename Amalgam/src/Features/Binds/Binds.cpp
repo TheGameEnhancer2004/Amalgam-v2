@@ -120,6 +120,59 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 					tBind.m_bActive = !tBind.m_bActive;
 				break;
 			}
+			case BindEnum::Misc:
+			{
+				switch (tBind.m_iInfo)
+				{
+				case BindEnum::MiscEnum::Spectated:
+				case BindEnum::MiscEnum::SpectatedFirst:
+				case BindEnum::MiscEnum::SpectatedThird:
+				{
+					bool bFirst = false, bThird = false;
+					if (auto pResource = H::Entities.GetResource())
+					{
+						int iLocal = I::EngineClient->GetLocalPlayer();
+						for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+						{
+							auto pPlayer = I::ClientEntityList->GetClientEntity(n)->As<CTFPlayer>();
+
+							if (iLocal == n || pResource->IsFakePlayer(n)
+								|| !pPlayer || !pPlayer->IsPlayer() || pPlayer->IsAlive() || pPlayer->IsDormant()
+								|| pResource->m_iTeam(iLocal) != pResource->m_iTeam(n))
+								continue;
+
+							int iObserverTarget = pPlayer->m_hObserverTarget().GetEntryIndex();
+							int iObserverMode = pPlayer->m_iObserverMode();
+							if (iObserverTarget != iLocal)
+								continue;
+
+							switch (iObserverMode)
+							{
+							case OBS_MODE_FIRSTPERSON: bFirst = true; break;
+							case OBS_MODE_THIRDPERSON: bThird = true; break;
+							}
+						}
+					}
+
+					switch (tBind.m_iInfo)
+					{
+					case BindEnum::MiscEnum::Spectated: tBind.m_bActive = bFirst || bThird; break;
+					case BindEnum::MiscEnum::SpectatedFirst: tBind.m_bActive = bFirst; break;
+					case BindEnum::MiscEnum::SpectatedThird: tBind.m_bActive = bThird; break;
+					}
+					break;
+				}
+				case BindEnum::MiscEnum::Zoomed:
+					tBind.m_bActive = pLocal ? pLocal->InCond(TF_COND_ZOOMED) : false;
+					break;
+				case BindEnum::MiscEnum::Aiming:
+					tBind.m_bActive = pLocal ? pLocal->InCond(TF_COND_AIMING) : false;
+					break;
+				}
+				if (tBind.m_bNot)
+					tBind.m_bActive = !tBind.m_bActive;
+				break;
+			}
 			}
 		}
 
