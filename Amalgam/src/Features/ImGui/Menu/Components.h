@@ -15,7 +15,7 @@ Enum(FButton, None = 0, Left = 1 << 0, Right = 1 << 1, Fit = 1 << 2, SameLine = 
 Enum(FKeybind, None = 0, AllowNone = 1 << 5);
 Enum(FToggle, None = 0, Left = 1 << 0, Right = 1 << 1, PlainColor = 1 << 2);
 Enum(FSlider, None = 0, Left = 1 << 0, Right = 1 << 1, Clamp = 1 << 2, Min = 1 << 3, Max = 1 << 4, Precision = 1 << 5, NoAutoUpdate = 1 << 6);
-Enum(FDropdown, None = 0, Left = 1 << 0, Right = 1 << 1, Multi = 1 << 2, Modifiable = 1 << 3);
+Enum(FDropdown, None = 0, Left = 1 << 0, Right = 1 << 1, Multi = 1 << 2, Modifiable = 1 << 3, NoSanitization = 1 << 4);
 Enum(FSDropdown, None = 0, Custom = 1 << 2, AutoUpdate = 1 << 3);
 Enum(FColorPicker, None = 0, Left = 1 << 0, Right = 1 << 1, Full = 1 << 2, SameLine = 1 << 3, Tooltip = 1 << 4, NoTooltip = 1 << 5, RetainPosition = 1 << 6, HoverContents = 1 << 7, RemoveVisuals = 1 << 8);
 
@@ -1239,14 +1239,19 @@ namespace ImGui
 				bool bEnter = U::KeyHandler.Pressed(VK_RETURN);
 				if (bEnter)
 				{
-					try // prevent the user from being a retard with invalid inputs
+					try
 					{
 						bool bVar1 = mActiveMap[uHash2] == 1;
 						float& pVar = bVar1 ? flSVar1 : flSVar2;
 
 						pVar = sText.length() ? std::stof(sText) : 0.f;
 						if (pVar2)
-							pVar = std::min(pVar, bVar1 ? *pVar2 - flStep : *pVar1 + flStep);
+						{
+							if (bVar1)
+								pVar = std::min(pVar, *pVar2 - flStep);
+							else
+								pVar = std::max(pVar, *pVar1 + flStep);
+						}
 						if (!(iFlags & FSliderEnum::Precision))
 							pVar = pVar - fnmodf(pVar - flStep / 2, flStep) + flStep / 2;
 						if (iFlags & FSliderEnum::Clamp)
@@ -1327,7 +1332,7 @@ namespace ImGui
 			{
 				if (bWithin && !mActiveMap[uHash])
 				{
-					int iVar = fabsf(vMouse.x - (vDrawPos.x + flLowerPos)) < fabsf(vMouse.x - (vDrawPos.x + flUpperPos)) ? 1 : 2;
+					int iVar = vMouse.x - vDrawPos.x < (flLowerPos + flUpperPos) / 2 ? 1 : 2;
 					if (IsMouseClicked(ImGuiMouseButton_Left))
 						mActiveMap[uHash] = iVar;
 					pDrawList->AddCircleFilled({ vDrawPos.x + (iVar == 1 ? flLowerPos : flUpperPos), vDrawPos.y + vMins.y + H::Draw.Scale(1) }, H::Draw.Scale(12), tTransparent);
@@ -1453,6 +1458,25 @@ namespace ImGui
 
 				vValues.push_back(iFlags & FDropdownEnum::Multi ? 1 << i : i);
 				i++;
+			}
+		}
+
+		if (!(iFlags & FDropdownEnum::NoSanitization) && !vValues.empty())
+		{
+			if (!(iFlags & FDropdownEnum::Multi))
+			{
+				bool bFound = std::find(vValues.begin(), vValues.end(), *pVar) != vValues.end();
+				if (!bFound)
+					*pVar = vValues.front();
+			}
+			else
+			{
+				for (int i = 0; i < sizeof(int) * 8; i++)
+				{
+					bool bFound = *pVar & (1 << i) && std::find(vValues.begin(), vValues.end(), (1 << i)) != vValues.end();
+					if (!bFound)
+						*pVar &= ~(1 << i);
+				}
 			}
 		}
 
@@ -2539,11 +2563,11 @@ namespace ImGui
 		bLastHovered = bLastHovered || bHovered;
 		switch (tBind.m_iType)
 		{
-		case BindEnum::Key: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 2); FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
-		case BindEnum::Class: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 8); FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
-		case BindEnum::WeaponType: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
-		case BindEnum::ItemSlot: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
-		case BindEnum::Misc: tBind.m_iInfo = std::max(tBind.m_iInfo, 0, 4); FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
+		case BindEnum::Key: FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
+		case BindEnum::Class: FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
+		case BindEnum::WeaponType: FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
+		case BindEnum::ItemSlot: FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
+		case BindEnum::Misc: FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 		}
 		bLastHovered = bLastHovered || bHovered;
 

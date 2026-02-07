@@ -744,7 +744,7 @@ void CMenu::MenuVisuals(int iTab)
 					{
 						SetCursorPosY(GetCursorPosY() - H::Draw.Scale(8));
 
-						FDropdown("##Draw", &tGroup.m_iBacktrack, { "Last", "First", "##Divider", "Always" }, { BacktrackEnum::Last, BacktrackEnum::First, BacktrackEnum::Always }, FDropdownEnum::Multi, 0, "All");
+						FDropdown("##Draw", &tGroup.m_iBacktrack, { "Last", "First", "##Divider", "Always" }, { BacktrackEnum::Last, BacktrackEnum::First, BacktrackEnum::Always }, FDropdownEnum::Multi | FDropdownEnum::NoSanitization, 0, "All");
 
 						FMDropdown("Material", &tGroup.m_vBacktrackChams, FDropdownEnum::Left);
 						SetCursorPos({ GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, GetCursorPosY() - H::Draw.Scale(32) });
@@ -770,7 +770,7 @@ void CMenu::MenuVisuals(int iTab)
 					{
 						SetCursorPosY(GetCursorPosY() - H::Draw.Scale(8));
 
-						FDropdown("Flags", &tGroup.m_iTrajectory, { "Predict", "##Divider", "Radius", "Trace", "Sphere", "##Divider", "Path" }, { TrajectoryEnum::Predict, TrajectoryEnum::Radius, TrajectoryEnum::Trace, TrajectoryEnum::Sphere, TrajectoryEnum::Path }, FDropdownEnum::Multi);
+						FDropdown("Flags", &tGroup.m_iTrajectory, { "Predict", "##Divider", "Radius", "Trace", "Sphere", "##Divider", "Path" }, { TrajectoryEnum::Predict, TrajectoryEnum::Radius, TrajectoryEnum::Trace, TrajectoryEnum::Sphere, TrajectoryEnum::Path }, FDropdownEnum::Multi | FDropdownEnum::NoSanitization);
 						FToggle("Ignore Z", &tGroup.m_iTrajectory, SightlinesEnum::IgnoreZ);
 
 						EndPopup();
@@ -2546,11 +2546,11 @@ void CMenu::MenuSettings(int iTab)
 				FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 				switch (tBind.m_iType)
 				{
-				case BindEnum::Key: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 2); FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::Class: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 8); FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::WeaponType: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::ItemSlot: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::Misc: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Key: FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Class: FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::WeaponType: FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::ItemSlot: FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Misc: FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 				}
 			} EndChild();
 
@@ -2843,11 +2843,11 @@ void CMenu::MenuSettings(int iTab)
 							FDropdown("Type", &_tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 							switch (_tBind.m_iType)
 							{
-							case BindEnum::Key: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 2); FDropdown("Behavior", &_tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::Class: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 8); FDropdown("Class", &_tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::WeaponType: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &_tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::ItemSlot: _tBind.m_iInfo = std::max(_tBind.m_iInfo, 0); FDropdown("Item slot", &_tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::Misc: _tBind.m_iInfo = std::max(_tBind.m_iInfo, 0); FDropdown("Misc", &_tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Key: FDropdown("Behavior", &_tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Class: FDropdown("Class", &_tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::WeaponType: FDropdown("Weapon type", &_tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::ItemSlot: FDropdown("Item slot", &_tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Misc: FDropdown("Misc", &_tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 							}
 							if (_tBind.m_iType == BindEnum::Key)
 								FKeybind("Key", _tBind.m_iKey);

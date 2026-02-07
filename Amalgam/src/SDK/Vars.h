@@ -165,6 +165,7 @@ public:
 #define SLIDER_NOAUTOUPDATE (1 << 6)
 #define DROPDOWN_MULTI (1 << 2)
 #define DROPDOWN_MODIFIABLE (1 << 3)
+#define DROPDOWN_NOSANITIZATION (1 << 4)
 #define DROPDOWN_CUSTOM (1 << 2)
 #define DROPDOWN_AUTOUPDATE (1 << 3)
 
@@ -518,7 +519,7 @@ namespace Vars
 	NAMESPACE_END(CheaterDetection);
 
 	NAMESPACE_BEGIN(ESP)
-		CVarValues(ActiveGroups, "Active groups", int(0b11111111111111111111111111111111), VISUAL | DROPDOWN_MULTI, nullptr);
+		CVarValues(ActiveGroups, "Active groups", int(0b11111111111111111111111111111111), VISUAL | DROPDOWN_MULTI | DROPDOWN_NOSANITIZATION, nullptr);
 	NAMESPACE_END(ESP);
 
 	NAMESPACE_BEGIN(Visuals)

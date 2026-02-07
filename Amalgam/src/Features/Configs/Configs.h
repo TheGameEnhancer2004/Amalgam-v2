@@ -19,35 +19,10 @@ public:
 	void DeleteVisual(const std::string& sConfigName, bool bNotify = true);
 	void ResetVisual(const std::string& sConfigName, bool bNotify = true);
 
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, bool v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, byte v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, int v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, float v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const std::string& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const IntRange_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const FloatRange_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const std::vector<std::pair<std::string, Color_t>>& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const Color_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const Gradient_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const DragBox_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const WindowBox_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const Chams_t& v);
-	void SaveJson(boost::property_tree::ptree& t, const std::string& s, const Glow_t& v);
+	template <class T> void SaveJson(boost::property_tree::ptree& t, const std::string& s, const T& v);
+	template <class T> void LoadJson(const boost::property_tree::ptree& t, const std::string& s, T& v);
+	template <class T> void LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<T>* c, int i);
 
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, bool& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, byte& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, int& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, float& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, std::string& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, IntRange_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, FloatRange_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, std::vector<std::pair<std::string, Color_t>>& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, Color_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, Gradient_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, DragBox_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, WindowBox_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, Chams_t& v);
-	void LoadJson(const boost::property_tree::ptree& t, const std::string& s, Glow_t& v);
 	std::string m_sCurrentConfig = "default";
 	std::string m_sCurrentVisuals = "default";
 	std::string m_sConfigPath;
