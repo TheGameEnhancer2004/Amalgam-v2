@@ -4,6 +4,7 @@
 class CTicks
 {
 private:
+	void SendMoveFunc();
 	void MoveFunc(float accumulated_extra_samples, bool bFinalTick);
 	void MoveManage();
 
@@ -13,7 +14,7 @@ private:
 	void Speedhack();
 	bool ValidWeapon(CTFWeaponBase* pWeapon);
 
-	void ManagePacket(CUserCmd* pCmd, bool* pSendPacket);
+	void ManagePacket(CUserCmd* pCmd);
 
 	bool m_bGoalReached = true;
 	Vec3 m_vShootPos = {};
@@ -26,7 +27,7 @@ private:
 
 public:
 	void Move(float accumulated_extra_samples, bool bFinalTick);
-	void CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool* pSendPacket);
+	void CreateMove(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Draw(CTFPlayer* pLocal);
 	void Reset();
 
@@ -45,7 +46,7 @@ public:
 
 	void SaveShootPos(CTFPlayer* pLocal);
 	Vec3 GetShootPos();
-	void SaveShootAngle(CUserCmd* pCmd, bool bSendPacket);
+	void SaveShootAngle(CUserCmd* pCmd);
 	Vec3* GetShootAngle();
 	bool IsTimingUnsure();
 

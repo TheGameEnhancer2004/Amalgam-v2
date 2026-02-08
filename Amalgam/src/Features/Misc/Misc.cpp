@@ -606,9 +606,9 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	}
 }
 
-int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
+int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
-	if (!Vars::Misc::Automation::AntiBackstab.Value || !bSendPacket || G::Attacking == 1 || !pLocal || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+	if (!Vars::Misc::Automation::AntiBackstab.Value || !G::SendPacket || G::Attacking == 1 || !pLocal || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->InCond(TF_COND_HALLOWEEN_KART))
 		return 0;
 
 	std::vector<std::pair<Vec3, CBaseEntity*>> vTargets = {};

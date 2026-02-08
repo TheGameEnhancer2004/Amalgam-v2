@@ -116,6 +116,7 @@ struct TriggerData_t
 namespace G
 {
 	inline bool Unload = false;
+	inline bool SendPacket = false;
 
 	inline int Attacking = 0;
 	inline bool Reloading = false;

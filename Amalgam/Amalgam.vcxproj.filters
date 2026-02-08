@@ -238,6 +238,7 @@
     <ClCompile Include="src\SDK\Definitions\Main\CEntityMapData.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
+    <ClCompile Include="src\Features\Players\SteamProfileCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -664,6 +665,9 @@
     <ClInclude Include="src\Features\NavBot\NavBotJobs\GroupWithOthers.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CEntityMapData.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CModelLoader.h" />
+    <ClInclude Include="src\Features\Players\SteamProfileCache.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoPlayer.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoRecorder.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

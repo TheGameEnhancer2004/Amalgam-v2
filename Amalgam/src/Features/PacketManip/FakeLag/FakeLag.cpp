@@ -84,7 +84,7 @@ void CFakeLag::Prediction(CTFPlayer* pLocal, CUserCmd* pCmd)
 	Unduck(pLocal, pCmd);
 }
 
-void CFakeLag::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool* pSendPacket)
+void CFakeLag::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if (!m_iGoal)
 	{
@@ -105,5 +105,5 @@ void CFakeLag::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bo
 		return;
 	}
 
-	*pSendPacket = false;
+	G::SendPacket = false;
 }

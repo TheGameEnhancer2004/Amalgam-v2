@@ -14,7 +14,7 @@ private:
 	bool m_bUnducking = false;
 
 public:
-	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool* pSendPacket);
+	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 
 	int m_iGoal = 0;
 };

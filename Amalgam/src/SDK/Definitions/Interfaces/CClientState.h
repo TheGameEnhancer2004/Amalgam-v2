@@ -6,6 +6,8 @@
 #include "../Definitions.h"
 
 MAKE_SIGNATURE(CBaseClientState_SendStringCmd, "engine.dll", "48 81 EC ? ? ? ? 48 8B 49", 0x0);
+MAKE_SIGNATURE(CBaseClientState_ForceFullUpdate, "engine.dll", "40 53 48 83 EC ? 83 B9 ? ? ? ? ? 48 8B D9 74 ? E8", 0x0);
+MAKE_SIGNATURE(CClientState_IsPaused, "engine.dll", "48 83 EC ? 80 B9 ? ? ? ? ? 75", 0x0);
 
 class IChangeFrameList;
 
@@ -42,7 +44,7 @@ class CClientState
 public:
 	byte pad0[24];
 	int m_Socket;
-	INetChannel* m_NetChannel;
+	CNetChannel* m_NetChannel;
 	unsigned int m_nChallengeNr;
 	double m_flConnectTime;
 	int m_nRetryNumber;
@@ -89,9 +91,19 @@ public:
 	bool m_bMarkedCRCsUnverified;
 
 public:
-	void SendStringCmd(const char* command)
+	inline void SendStringCmd(const char* command)
 	{
-		reinterpret_cast<void(*)(void*, const char*)>(S::CBaseClientState_SendStringCmd())(this, command);
+		S::CBaseClientState_SendStringCmd.Call<void>(this, command);
+	}
+
+	inline void ForceFullUpdate()
+	{
+		S::CBaseClientState_ForceFullUpdate.Call<void>(this);
+	}
+
+	inline bool IsPaused()
+	{
+		return S::CClientState_IsPaused.Call<bool>(this);
 	}
 };
 
