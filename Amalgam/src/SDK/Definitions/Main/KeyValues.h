@@ -89,6 +89,7 @@ public:
 	void SetColor(const char* keyName, Color_t value);
 	void SetBool(const char* keyName, bool value);
 
+	void Clear();
 	void DeleteThis();
 };
 

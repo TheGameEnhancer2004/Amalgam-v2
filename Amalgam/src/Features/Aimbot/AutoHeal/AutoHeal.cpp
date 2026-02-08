@@ -733,10 +733,15 @@ void CAutoHeal::Event(IGameEvent* pEvent, uint32_t uHash)
 #ifdef DEBUG_VACCINATOR
 		SDK::Output("Hurt", std::format("{}, {}", m_iDamagedType, m_flDamagedDPS).c_str(), { 255, 100, 100 });
 #endif
-		break;
+		return;
 	}
 	case FNV1A::Hash32Const("player_spawn"):
+	{
+		if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid")) != I::EngineClient->GetLocalPlayer())
+			return;
+
 		m_flDamagedTime = 0.f;
+	}
 	}
 }
 

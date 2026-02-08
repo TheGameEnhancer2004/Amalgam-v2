@@ -420,7 +420,12 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	switch (uHash)
 	{
 	case FNV1A::Hash32Const("player_spawn"):
+	{
+		if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid")) != I::EngineClient->GetLocalPlayer())
+			return;
+
 		m_bPeekPlaced = false;
+	}
 	}
 }
 

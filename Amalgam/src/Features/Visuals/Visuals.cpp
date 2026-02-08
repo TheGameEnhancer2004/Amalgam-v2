@@ -450,6 +450,18 @@ std::vector<DrawBox_t> CVisuals::GetHitboxes(matrix3x4* aBones, CBaseAnimating* 
 		Vec3 vMins = pBox->bbmin * pEntity->m_flModelScale();
 		Vec3 vMaxs = pBox->bbmax * pEntity->m_flModelScale();
 
+		if (Vars::Debug::Info.Value)
+		{
+			float flBoneScale = Vars::Aimbot::Hitscan::BoneSizeMinimumScale.Value;
+			float flBoneSubtract = Vars::Aimbot::Hitscan::BoneSizeSubtract.Value;
+
+			if (F::AimbotGlobal.ShouldMultipoint(pEntity, nHitbox, Vars::Aimbot::Hitscan::MultipointHitboxes.Value))
+				flBoneScale = std::max(flBoneScale, Vars::Aimbot::Hitscan::MultipointScale.Value / 100.f);
+
+			vMins = (pBox->bbmin + flBoneSubtract / pEntity->m_flModelScale()) * flBoneScale * pEntity->m_flModelScale();
+			vMaxs = (pBox->bbmax - flBoneSubtract / pEntity->m_flModelScale()) * flBoneScale * pEntity->m_flModelScale();
+		}
+
 		Color_t tEdge = bTargeted ? Vars::Colors::TargetHitboxEdgeIgnoreZ.Value : Vars::Colors::BoneHitboxEdgeIgnoreZ.Value;
 		Color_t tFace = bTargeted ? Vars::Colors::TargetHitboxFaceIgnoreZ.Value : Vars::Colors::BoneHitboxFaceIgnoreZ.Value;
 		if (tEdge.a || tFace.a)
@@ -459,28 +471,6 @@ std::vector<DrawBox_t> CVisuals::GetHitboxes(matrix3x4* aBones, CBaseAnimating* 
 		tFace = bTargeted ? Vars::Colors::TargetHitboxFace.Value : Vars::Colors::BoneHitboxFace.Value;
 		if (tEdge.a || tFace.a)
 			vBoxes.emplace_back(vOrigin, vMins, vMaxs, vAngle, I::GlobalVars->curtime + Vars::Visuals::Hitbox::DrawDuration.Value, tEdge, tFace, true);
-
-		if (Vars::Debug::Info.Value)
-		{
-			float flBoneScale = Vars::Aimbot::Hitscan::BoneSizeMinimumScale.Value;
-			float flBoneSubtract = Vars::Aimbot::Hitscan::BoneSizeSubtract.Value;
-
-			if (F::AimbotGlobal.ShouldMultipoint(pEntity, nHitbox, Vars::Aimbot::Hitscan::MultipointHitboxes.Value))
-				flBoneScale = std::max(flBoneScale, Vars::Aimbot::Hitscan::MultipointScale.Value / 100.f);
-
-			Vec3 vCheckMins = (pBox->bbmin + flBoneSubtract / pEntity->m_flModelScale()) * flBoneScale * pEntity->m_flModelScale();
-			Vec3 vCheckMaxs = (pBox->bbmax - flBoneSubtract / pEntity->m_flModelScale()) * flBoneScale * pEntity->m_flModelScale();
-
-			tEdge = bTargeted ? Vars::Colors::TargetHitboxEdgeIgnoreZ.Value : Vars::Colors::BoneHitboxEdgeIgnoreZ.Value;
-			tFace = bTargeted ? Vars::Colors::TargetHitboxFaceIgnoreZ.Value : Vars::Colors::BoneHitboxFaceIgnoreZ.Value;
-			if (tEdge.a || tFace.a)
-				vBoxes.emplace_back(vOrigin, vCheckMins, vCheckMaxs, vAngle, I::GlobalVars->curtime + Vars::Visuals::Hitbox::DrawDuration.Value, tEdge, tFace);
-
-			tEdge = bTargeted ? Vars::Colors::TargetHitboxEdge.Value : Vars::Colors::BoneHitboxEdge.Value;
-			tFace = bTargeted ? Vars::Colors::TargetHitboxFace.Value : Vars::Colors::BoneHitboxFace.Value;
-			if (tEdge.a || tFace.a)
-				vBoxes.emplace_back(vOrigin, vCheckMins, vCheckMaxs, vAngle, I::GlobalVars->curtime + Vars::Visuals::Hitbox::DrawDuration.Value, tEdge, tFace, true);
-		}
 	}
 
 	return vBoxes;
@@ -766,15 +756,15 @@ void CVisuals::Event(IGameEvent* pEvent, uint32_t uHash)
 		bool bBones = Vars::Visuals::Hitbox::BonesEnabled.Value & Vars::Visuals::Hitbox::BonesEnabledEnum::OnHit;
 		bool bBounds = Vars::Visuals::Hitbox::BoundsEnabled.Value & Vars::Visuals::Hitbox::BoundsEnabledEnum::OnHit;
 		if (!bBones && !bBounds)
-			break;
+			return;
 
 		if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker")) != I::EngineClient->GetLocalPlayer())
-			break;
+			return;
 
 		int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
 		auto pEntity = I::ClientEntityList->GetClientEntity(iVictim)->As<CBaseAnimating>();
 		if (!pEntity || iVictim == I::EngineClient->GetLocalPlayer())
-			break;
+			return;
 
 		switch (G::PrimaryWeaponType)
 		{
@@ -782,21 +772,21 @@ void CVisuals::Event(IGameEvent* pEvent, uint32_t uHash)
 		case EWeaponType::MELEE:
 		{
 			if (!bBones)
-				break;
+				return;
 
 			auto aBones = F::Backtrack.GetBones(pEntity);
 			if (!aBones)
-				break;
+				return;
 
 			auto vBoxes = GetHitboxes(aBones, pEntity);
 			G::BoxStorage.insert(G::BoxStorage.end(), vBoxes.begin(), vBoxes.end());
 
-			break;
+			return;
 		}
 		case EWeaponType::PROJECTILE:
 		{
 			if (!bBounds)
-				break;
+				return;
 
 			if (Vars::Colors::BoundHitboxEdgeIgnoreZ.Value.a || Vars::Colors::BoundHitboxFaceIgnoreZ.Value.a)
 				G::BoxStorage.emplace_back(pEntity->m_vecOrigin(), pEntity->m_vecMins(), pEntity->m_vecMaxs(), Vec3(), I::GlobalVars->curtime + Vars::Visuals::Hitbox::DrawDuration.Value, Vars::Colors::BoundHitboxEdgeIgnoreZ.Value, Vars::Colors::BoundHitboxFaceIgnoreZ.Value);
@@ -805,7 +795,7 @@ void CVisuals::Event(IGameEvent* pEvent, uint32_t uHash)
 		}
 		}
 
-		break;
+		return;
 	}
 	case FNV1A::Hash32Const("item_pickup"):
 	{
@@ -824,15 +814,16 @@ void CVisuals::Event(IGameEvent* pEvent, uint32_t uHash)
 
 		Group_t* pGroup = nullptr;
 		if (!F::Groups.GetGroup(iType, pGroup, pEntity) || !pGroup->m_bPickupTimer)
-			break;
+			return;
 
 		m_vPickups.emplace_back(iType, I::GlobalVars->curtime + 10.f, pEntity->m_vecOrigin());
-		break;
+		return;
 	}
 	case FNV1A::Hash32Const("client_disconnect"):
 	case FNV1A::Hash32Const("client_beginconnect"):
 	case FNV1A::Hash32Const("game_newmap"):
 	case FNV1A::Hash32Const("teamplay_round_start"):
+	{
 		m_vPickups.clear();
 
 		G::LineStorage.clear();
@@ -840,6 +831,7 @@ void CVisuals::Event(IGameEvent* pEvent, uint32_t uHash)
 		G::PathStorage.clear();
 		G::SphereStorage.clear();
 		G::SweptStorage.clear();
+	}
 	}
 }
 

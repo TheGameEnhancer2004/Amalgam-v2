@@ -276,7 +276,7 @@ bool SDK::IsOnScreen(CBaseEntity* pEntity, const matrix3x4& mTransform, float* p
 	return !(flRight < 0 || flLeft > H::Draw.m_nScreenW || flTop < 0 || flBottom > H::Draw.m_nScreenH);
 }
 
-bool SDK::IsOnScreen(CBaseEntity* pEntity, Vec3 vOrigin, bool bAll)
+bool SDK::IsOnScreen(CBaseEntity* pEntity, const Vec3& vOrigin, bool bAll)
 {
 	float flLeft = 0.f, flRight = 0.f, flTop = 0.f, flBottom = 0.f;
 
@@ -389,7 +389,7 @@ bool SDK::VisPosWorld(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3
 	return true;
 }
 
-Vec3 SDK::PredictOrigin(Vec3& vOrigin, Vec3 vVelocity, float flLatency, bool bTrace, Vec3 vMins, Vec3 vMaxs, unsigned int nMask, float flNormal)
+Vec3 SDK::PredictOrigin(const Vec3& vOrigin, const Vec3& vVelocity, float flLatency, bool bTrace, const Vec3& vMins, const Vec3& vMaxs, unsigned int nMask, float flNormal)
 {
 	if (vVelocity.IsZero() || !flLatency)
 		return vOrigin;
@@ -405,7 +405,7 @@ Vec3 SDK::PredictOrigin(Vec3& vOrigin, Vec3 vVelocity, float flLatency, bool bTr
 	return trace.endpos + (flNormal ? trace.plane.normal * flNormal : Vec3());
 }
 
-bool SDK::PredictOrigin(Vec3& vOut, Vec3& vOrigin, Vec3 vVelocity, float flLatency, bool bTrace, Vec3 vMins, Vec3 vMaxs, unsigned int nMask, float flNormal)
+bool SDK::PredictOrigin(Vec3& vOut, const Vec3& vOrigin, const Vec3& vVelocity, float flLatency, bool bTrace, const Vec3& vMins, const Vec3& vMaxs, unsigned int nMask, float flNormal)
 {
 	vOut = vOrigin;
 	if (vVelocity.IsZero() || !flLatency)
@@ -764,7 +764,7 @@ bool SDK::StopMovement(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 }
 
-Vec3 SDK::ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo)
+Vec3 SDK::ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vFrom, const Vec3& vTo)
 {
 	const Vec3 vDiff = vTo - vFrom;
 	if (!vDiff.Length2D())
@@ -782,7 +782,7 @@ Vec3 SDK::ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3
 	return vMove;
 }
 
-void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo, float flScale)
+void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vFrom, const Vec3& vTo, float flScale)
 {
 	const auto vResult = ComputeMove(pCmd, pLocal, vFrom, vTo);
 
@@ -791,7 +791,7 @@ void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo, floa
 	pCmd->upmove = vResult.z * flScale;
 }
 
-void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vTo, float flScale)
+void SDK::WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vTo, float flScale)
 {
 	Vec3 vLocalPos = pLocal->m_vecOrigin();
 	WalkTo(pCmd, pLocal, vLocalPos, vTo, flScale);

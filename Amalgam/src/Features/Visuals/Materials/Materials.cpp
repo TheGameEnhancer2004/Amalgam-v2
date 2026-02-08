@@ -182,9 +182,10 @@ void CMaterials::LoadMaterials()
 	for (auto& [_, tMaterial] : m_mMaterials)
 	{
 		KeyValues* kv = new KeyValues(tMaterial.m_sName.c_str());
-		bool bLoad = kv->LoadFromBuffer(tMaterial.m_sName.c_str(), tMaterial.m_sVMT.c_str());
+		if (!kv->LoadFromBuffer(tMaterial.m_sName.c_str(), tMaterial.m_sVMT.c_str()))
+			continue;
+
 		ModifyKeyValues(kv);
-			
 		tMaterial.m_pMaterial = Create(tMaterial.m_sName.c_str(), kv);
 		//StoreVars(tMaterial);
 	}
@@ -233,8 +234,8 @@ void CMaterials::UnloadMaterials()
 {
 	m_bLoaded = false;
 
-	for (auto& [_, mat] : m_mMaterials)
-		Remove(mat.m_pMaterial);
+	for (auto& [_, tMaterial] : m_mMaterials)
+		Remove(tMaterial.m_pMaterial);
 	m_mMaterials.clear();
 	m_mMatList.clear();
 

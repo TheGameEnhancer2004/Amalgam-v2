@@ -462,6 +462,13 @@ void KeyValues::SetBool(const char* keyName, bool value)
 	SetInt(keyName, value ? 1 : 0);
 }
 
+void KeyValues::Clear()
+{
+	delete m_pSub;
+	m_pSub = NULL;
+	m_iDataType = TYPE_NONE;
+}
+
 void KeyValues::DeleteThis()
 {
 	delete this;

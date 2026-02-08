@@ -17,6 +17,7 @@ static inline void SetMain(BaseVar*& pBase, int iBind)
 #define Set(t, b) if (IsType(t)) SetMain<t>(pBase, b);
 
 static std::unordered_map<BaseVar*, bool> s_mVars = {};
+static bool s_bUI = false, s_bMenu = false;
 
 static inline void LoopVars(int iBind, std::vector<BaseVar*>& vVars = G::Vars)
 {
@@ -66,16 +67,14 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 				case BindEnum::KeyEnum::Toggle: bKey = U::KeyHandler.Pressed(tBind.m_iKey, false, &tBind.m_tKeyStorage); break;
 				case BindEnum::KeyEnum::DoubleClick: bKey = U::KeyHandler.Double(tBind.m_iKey, false, &tBind.m_tKeyStorage); break;
 				}
-				const bool bShouldUse = !I::EngineVGui->IsGameUIVisible() && (!I::MatSystemSurface->IsCursorVisible() || I::EngineClient->IsPlayingDemo())
-					|| F::Menu.m_bIsOpen && !ImGui::GetIO().WantTextInput && !F::Menu.m_bInKeybind && (!F::Menu.m_bWindowHovered || tBind.m_iKey != VK_LBUTTON && tBind.m_iKey != VK_RBUTTON); // allow in menu
-				bKey = bShouldUse && bKey;
+				bKey = bKey && (!s_bUI || s_bMenu && (!F::Menu.m_bWindowHovered || tBind.m_iKey != VK_LBUTTON && tBind.m_iKey != VK_RBUTTON)); // allow in menu
 
 				switch (tBind.m_iInfo)
 				{
 				case BindEnum::KeyEnum::Hold:
-					if (tBind.m_bNot)
-						bKey = !bKey;
 					tBind.m_bActive = bKey;
+					if (tBind.m_bNot)
+						tBind.m_bActive = !tBind.m_bActive;
 					break;
 				case BindEnum::KeyEnum::Toggle:
 				case BindEnum::KeyEnum::DoubleClick:
@@ -105,10 +104,7 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 			}
 			case BindEnum::WeaponType:
 			{
-				if (tBind.m_iInfo != BindEnum::WeaponTypeEnum::Throwable)
-					tBind.m_bActive = tBind.m_iInfo + 1 == int(SDK::GetWeaponType(pWeapon));
-				else
-					tBind.m_bActive = G::Throwing;
+				tBind.m_bActive = tBind.m_iInfo == BindEnum::WeaponTypeEnum::Throwable ? G::Throwing : tBind.m_iInfo + 1 == int(SDK::GetWeaponType(pWeapon));
 				if (tBind.m_bNot)
 					tBind.m_bActive = !tBind.m_bActive;
 				break;
@@ -187,8 +183,13 @@ static inline void GetBinds(int iParent, CTFPlayer* pLocal, CTFWeaponBase* pWeap
 void CBinds::SetVars(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bManage)
 {
 	s_mVars.clear();
+	s_bUI = I::EngineVGui->IsGameUIVisible() || I::MatSystemSurface->IsCursorVisible() && !I::EngineClient->IsPlayingDemo();
+	s_bMenu = F::Menu.m_bIsOpen && !ImGui::GetIO().WantTextInput && !F::Menu.m_bInKeybind;
+
 	GetBinds(DEFAULT_BIND, pLocal, pWeapon, m_vBinds, bManage);
 	LoopVars(DEFAULT_BIND);
+
+	m_bDisplay = F::Menu.m_bIsOpen || Vars::Menu::BindWindow.Value && !s_bUI;
 }
 
 void CBinds::Run()

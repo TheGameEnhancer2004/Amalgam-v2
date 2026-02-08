@@ -37,16 +37,11 @@ bool CTFPlayer::InCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		return m_nPlayerCond() & (1 << eCond) || _condition_bits() & (1 << eCond);
-	case 1:
-		return m_nPlayerCondEx() & (1 << (eCond - 32));
-	case 2:
-		return m_nPlayerCondEx2() & (1 << (eCond - 64));
-	case 3:
-		return m_nPlayerCondEx3() & (1 << (eCond - 96));
-	case 4:
-		return m_nPlayerCondEx4() & (1 << (eCond - 128));
+	case 0: return m_nPlayerCond() & (1 << eCond) || _condition_bits() & (1 << eCond);
+	case 1: return m_nPlayerCondEx() & (1 << (eCond - 32));
+	case 2: return m_nPlayerCondEx2() & (1 << (eCond - 64));
+	case 3: return m_nPlayerCondEx3() & (1 << (eCond - 96));
+	case 4: return m_nPlayerCondEx4() & (1 << (eCond - 128));
 	}
 	return false;
 }
@@ -55,16 +50,11 @@ void CTFPlayer::AddCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		m_nPlayerCond() |= (1 << eCond), _condition_bits() |= (1 << eCond); break;
-	case 1:
-		m_nPlayerCondEx() |= (1 << (eCond - 32)); break;
-	case 2:
-		m_nPlayerCondEx2() |= (1 << (eCond - 64)); break;
-	case 3:
-		m_nPlayerCondEx3() |= (1 << (eCond - 96)); break;
-	case 4:
-		m_nPlayerCondEx4() |= (1 << (eCond - 128)); break;
+	case 0: m_nPlayerCond() |= (1 << eCond), _condition_bits() |= (1 << eCond); break;
+	case 1: m_nPlayerCondEx() |= (1 << (eCond - 32)); break;
+	case 2: m_nPlayerCondEx2() |= (1 << (eCond - 64)); break;
+	case 3: m_nPlayerCondEx3() |= (1 << (eCond - 96)); break;
+	case 4: m_nPlayerCondEx4() |= (1 << (eCond - 128)); break;
 	}
 }
 
@@ -72,16 +62,11 @@ void CTFPlayer::RemoveCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		m_nPlayerCond() &= ~(1 << eCond), _condition_bits() &= ~(1 << eCond); break;
-	case 1:
-		m_nPlayerCondEx() &= ~(1 << (eCond - 32)); break;
-	case 2:
-		m_nPlayerCondEx2() &= ~(1 << (eCond - 64)); break;
-	case 3:
-		m_nPlayerCondEx3() &= ~(1 << (eCond - 96)); break;
-	case 4:
-		m_nPlayerCondEx4() &= ~(1 << (eCond - 128)); break;
+	case 0: m_nPlayerCond() &= ~(1 << eCond), _condition_bits() &= ~(1 << eCond); break;
+	case 1: m_nPlayerCondEx() &= ~(1 << (eCond - 32)); break;
+	case 2: m_nPlayerCondEx2() &= ~(1 << (eCond - 64)); break;
+	case 3: m_nPlayerCondEx3() &= ~(1 << (eCond - 96)); break;
+	case 4: m_nPlayerCondEx4() &= ~(1 << (eCond - 128)); break;
 	}
 }
 

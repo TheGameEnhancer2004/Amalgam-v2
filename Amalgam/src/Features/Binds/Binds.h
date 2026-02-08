@@ -47,6 +47,7 @@ public:
 	void Move(int i1, int i2);
 
 	std::vector<Bind_t> m_vBinds = {};
+	bool m_bDisplay = false;
 };
 
 ADD_FEATURE(CBinds, Binds);

@@ -44,12 +44,12 @@ MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
 	const auto dwDesired1 = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_AddMenuItem_CallProfile();
 	const auto dwDesired2 = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_AddMenuItem_CallSpectate();
 
-	if (dwRetAddr == dwDesired1 && Vars::Visuals::UI::ScoreboardUtility.Value && s_iPlayerIndex != -1)
+	if (dwRetAddr == dwDesired1 && Vars::Visuals::UI::ScoreboardUtility.Value)
 	{
-		auto pReturn = CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);
-
-		if (auto pResource = H::Entities.GetResource())
+		if (auto pResource = H::Entities.GetResource(); pResource && pResource->m_bValid(s_iPlayerIndex))
 		{
+			auto pReturn = CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);
+
 			s_uAccountID = pResource->m_iAccountID(s_iPlayerIndex);
 			s_sPlayerName = pResource->GetName(s_iPlayerIndex);
 
@@ -67,12 +67,12 @@ MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
 				bool bHasTag = F::PlayerUtils.HasTag(s_uAccountID, iID);
 				CALL_ORIGINAL(rcx, std::format("{} {}", bHasTag ? "Remove" : "Add", tTag.m_sName).c_str(), std::format("modifytag{}", iID).c_str(), "tags");
 			}
+
+			return pReturn;
 		}
-		
-		return pReturn;
 	}
 
-	if (dwRetAddr == dwDesired2 && Vars::Visuals::UI::ScoreboardUtility.Value && s_iPlayerIndex != -1)
+	if (dwRetAddr == dwDesired2 && Vars::Visuals::UI::ScoreboardUtility.Value)
 		return nullptr;
 
 	return CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);

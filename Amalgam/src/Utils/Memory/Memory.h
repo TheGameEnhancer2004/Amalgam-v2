@@ -59,6 +59,11 @@ ADD_FEATURE_CUSTOM(CMemory, Memory, U);
 	return *reinterpret_cast<type*>(uintptr_t(this) + offset); \
 }
 
+#define OFFSET_EMBED(name, type, offset) inline type name() \
+{ \
+	return reinterpret_cast<type>(uintptr_t(this) + offset); \
+}
+
 #define CONDGET(name, conditions, cond) inline bool name() \
 { \
 	return conditions & cond; \

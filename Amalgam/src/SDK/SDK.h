@@ -61,17 +61,22 @@
 #define VK_Y              0x59
 #define VK_Z              0x5A
 
-template <typename T> int sign(T val)
-{
-	return (val > T(0)) - (val < T(0));
-}
-
 #define OUTPUT_CONSOLE 1 << 0
 #define OUTPUT_DEBUG 1 << 1
 #define OUTPUT_TOAST 1 << 2
 #define OUTPUT_MENU 1 << 3
 #define OUTPUT_CHAT 1 << 4
 #define OUTPUT_PARTY 1 << 5
+
+template <class T> int sign(T val)
+{
+	return (val > T(0)) - (val < T(0));
+}
+
+inline float fnmodf(float flX, float flY)
+{	// silly fix for negative values
+	return fmodf(flX, flY) + (flX < 0 ? flY : 0);
+}
 
 namespace SDK
 {
@@ -103,7 +108,7 @@ namespace SDK
 
 	bool W2S(const Vec3& vOrigin, Vec3& vScreen, bool bAlways = false);
 	bool IsOnScreen(CBaseEntity* pEntity, const matrix3x4& mTransform, float* pLeft = nullptr, float* pRight = nullptr, float* pTop = nullptr, float* pBottom = nullptr, bool bAll = false);
-	bool IsOnScreen(CBaseEntity* pEntity, Vec3 vOrigin, bool bAll = false);
+	bool IsOnScreen(CBaseEntity* pEntity, const Vec3& vOrigin, bool bAll = false);
 	bool IsOnScreen(CBaseEntity* pEntity, bool bShouldGetOwner = true);
 
 	void Trace(const Vec3& vStart, const Vec3& vEnd, unsigned int nMask, ITraceFilter* pFilter, CGameTrace* pTrace);
@@ -113,8 +118,8 @@ namespace SDK
 	bool VisPosCollideable(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFrom, const Vec3& vTo, unsigned int nMask = MASK_SHOT | CONTENTS_GRATE);
 	bool VisPosWorld(CBaseEntity* pSkip, const CBaseEntity* pEntity, const Vec3& vFrom, const Vec3& vTo, unsigned int nMask = MASK_SHOT | CONTENTS_GRATE);
 
-	Vec3 PredictOrigin(Vec3& vOrigin, Vec3 vVelocity, float flLatency, bool bTrace = true, Vec3 vMins = {}, Vec3 vMaxs = {}, unsigned int nMask = MASK_SOLID, float flNormal = 0.f);
-	bool PredictOrigin(Vec3& vOut, Vec3& vOrigin, Vec3 vVelocity, float flLatency, bool bTrace = true, Vec3 vMins = {}, Vec3 vMaxs = {}, unsigned int nMask = MASK_SOLID, float flNormal = 0.f);
+	Vec3 PredictOrigin(const Vec3& vOrigin, const Vec3& vVelocity, float flLatency, bool bTrace = true, const Vec3& vMins = {}, const Vec3& vMaxs = {}, unsigned int nMask = MASK_SOLID, float flNormal = 0.f);
+	bool PredictOrigin(Vec3& vOut, const Vec3& vOrigin, const Vec3& vVelocity, float flLatency, bool bTrace = true, const Vec3& vMins = {}, const Vec3& vMaxs = {}, unsigned int nMask = MASK_SOLID, float flNormal = 0.f);
 
 	bool IsLoopback();
 	int GetRoundState();
@@ -130,9 +135,9 @@ namespace SDK
 	void FixMovement(CUserCmd* pCmd, const Vec3& vTargetAngle);
 	bool StopMovement(CTFPlayer* pLocal, CUserCmd* pCmd);
 
-	Vec3 ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo);
-	void WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vFrom, Vec3& vTo, float flScale = 1.f);
-	void WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, Vec3& vTo, float flScale = 1.f);
+	Vec3 ComputeMove(const CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vFrom, const Vec3& vTo);
+	void WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vFrom, const Vec3& vTo, float flScale = 1.f);
+	void WalkTo(CUserCmd* pCmd, CTFPlayer* pLocal, const Vec3& vTo, float flScale = 1.f);
 
 	void GetProjectileFireSetup(CTFPlayer* pPlayer, const Vec3& vAngIn, Vec3 vOffset, Vec3& vPosOut, Vec3& vAngOut, bool bPipes = false, bool bInterp = false, bool bAllowFlip = true);
 

@@ -20,16 +20,18 @@ void CAimbotGlobal::SortTargetsPre(std::vector<Target_t>& vTargets, int iMethod)
 	switch (iMethod)
 	{
 	case Vars::Aimbot::General::TargetSelectionEnum::FOV:
-		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+		std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
 		{
 			return a.m_flFOVTo < b.m_flFOVTo;
 		});
+		break;
 	case Vars::Aimbot::General::TargetSelectionEnum::Distance:
 	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
-		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
-			{
-				return a.m_flDistTo < b.m_flDistTo;
-			});
+		std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+		{
+			return a.m_flDistTo < b.m_flDistTo;
+		});
+		break;
 	}
 }
 
@@ -38,10 +40,11 @@ void CAimbotGlobal::SortTargetsPost(std::vector<Target_t>& vTargets, int iMethod
 	switch (iMethod)
 	{
 	case Vars::Aimbot::General::TargetSelectionEnum::Hybrid:
-		return std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
+		std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool
 			{
 				return a.m_flFOVTo < b.m_flFOVTo;
 			});
+		break;
 	}
 
 	std::sort(vTargets.begin(), vTargets.end(), [&](const Target_t& a, const Target_t& b) -> bool

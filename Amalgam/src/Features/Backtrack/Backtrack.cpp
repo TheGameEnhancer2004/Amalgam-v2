@@ -101,10 +101,9 @@ void CBacktrack::SendLerp()
 	}
 }
 
-void CBacktrack::SetLerp(IGameEvent* pEvent)
+void CBacktrack::SetLerp()
 {
-	if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid")) == I::EngineClient->GetLocalPlayer())
-		m_flFakeInterp = m_flSentInterp;
+	m_flFakeInterp = m_flSentInterp;
 }
 
 void CBacktrack::UpdateDatagram()

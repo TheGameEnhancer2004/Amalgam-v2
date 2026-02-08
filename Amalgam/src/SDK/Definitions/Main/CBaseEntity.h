@@ -95,7 +95,7 @@ public:
 	NETVAR_OFF(m_MoveType, byte, "CTFPlayer", "m_nWaterLevel", -4);
 	NETVAR_OFF(m_MoveCollide, byte, "CTFPlayer", "m_nWaterLevel", -3);
 	NETVAR_OFF(m_nWaterType, byte, "CTFPlayer", "m_nWaterLevel", 1);
-	NETVAR_EMBED_OFF(m_Particles, CParticleProperty*, "CBaseEntity", "m_flElasticity", -56);
+	NETVAR_OFF_EMBED(m_Particles, CParticleProperty*, "CBaseEntity", "m_flElasticity", -56);
 	NETVAR_OFF(m_iv_vecVelocity, CInterpolatedVar<Vec3>, "CBaseEntity", "m_iTeamNum", 156);
 	NETVAR_OFF(m_iv_vecOrigin, CInterpolatedVar<Vec3>, "CBaseEntity", "m_flShadowCastDistance", 84);
 	NETVAR_OFF(m_iv_angRotation, CInterpolatedVar<Vec3>, "CBaseEntity", "m_vecOrigin", -128);

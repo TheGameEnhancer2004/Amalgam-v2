@@ -2706,7 +2706,7 @@ void CMenu::MenuSettings(int iTab)
 								case BindEnum::MiscEnum::Spectated: { sInfo = "any"; break; }
 								case BindEnum::MiscEnum::SpectatedFirst: { sInfo = "1st"; break; }
 								case BindEnum::MiscEnum::SpectatedThird: { sInfo = "3rd"; break; }
-						}
+								}
 								break;
 							case BindEnum::MiscEnum::Zoomed:
 							case BindEnum::MiscEnum::Aiming:
@@ -3539,7 +3539,7 @@ void CMenu::DrawBinds()
 {
 	using namespace ImGui;
 
-	if (m_bIsOpen ? false : !Vars::Menu::BindWindow.Value || I::EngineVGui->IsGameUIVisible() || I::MatSystemSurface->IsCursorVisible() && !I::EngineClient->IsPlayingDemo())
+	if (!F::Binds.m_bDisplay)
 		return;
 
 	std::vector<BindInfo_t> vInfo;

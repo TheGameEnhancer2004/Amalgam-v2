@@ -143,12 +143,6 @@ namespace ImGui
 		return flMax;
 	}
 
-	inline float fnmodf(float flX, float flY)
-	{
-		// silly fix for negative values
-		return fmodf(flX, flY) + (flX < 0 ? flY : 0);
-	}
-
 	inline bool IsColorBright(ImColor tColor, float flValue = 0.686f, float flRed = 0.299f, float flGreen = 0.587f, float flBlue = 0.114f)
 	{
 		return tColor.Value.x * flRed + tColor.Value.y * flGreen + tColor.Value.z * flBlue > flValue;
