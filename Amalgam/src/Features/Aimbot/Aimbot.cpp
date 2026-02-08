@@ -70,6 +70,10 @@ void CAimbot::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	RunAimbot(pLocal, pWeapon, pCmd);
 	RunAimbot(pLocal, pWeapon, pCmd, true);
+
+	auto iWeaponID = pWeapon->GetWeaponID();
+	if (m_eRanType == EWeaponType::UNKNOWN && (!Vars::Aimbot::General::AimType.Value || (G::CanPrimaryAttack || G::CanSecondaryAttack) && (!(pCmd->buttons & IN_ATTACK) || (iWeaponID != TF_WEAPON_COMPOUND_BOW && iWeaponID != TF_WEAPON_PIPEBOMBLAUNCHER && iWeaponID != TF_WEAPON_CANNON))) || pWeapon->GetWeaponID() == TF_WEAPON_GRAPPLINGHOOK)
+		F::AimbotProjectile.RunGrapplingHook(pLocal, pWeapon, pCmd);
 }
 
 void CAimbot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)

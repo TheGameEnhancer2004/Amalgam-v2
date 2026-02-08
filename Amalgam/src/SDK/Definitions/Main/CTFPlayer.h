@@ -8,6 +8,7 @@ MAKE_SIGNATURE(CTFPlayer_UpdateClientSideAnimation, "client.dll", "48 89 5C 24 ?
 MAKE_SIGNATURE(CTFPlayer_GetEffectiveInvisibilityLevel, "client.dll", "40 57 48 83 EC ? 0F 29 7C 24", 0x0);
 MAKE_SIGNATURE(CTFPlayer_UpdateWearables, "client.dll", "40 53 48 83 EC ? 48 8B D9 E8 ? ? ? ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 4C 8D 0D ? ? ? ? C7 44 24 ? ? ? ? ? 48 8B C8 4C 8D 05 ? ? ? ? 33 D2 E8 ? ? ? ? 48 85 C0", 0x0);
 MAKE_SIGNATURE(CTFPlayer_GetObjectOfType, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 56 41 57 48 83 EC ? 48 63 B1", 0x0);
+MAKE_SIGNATURE(CTFPlayer_GetEntityForLoadoutSlot, "client.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 41 54 41 55 41 56 41 57 48 83 EC ? 8D 42", 0x0);
 
 class CBaseObject;
 
@@ -206,6 +207,7 @@ public:
 	
 	SIGNATURE_ARGS(CalculateMaxSpeed, float, TeamFortress, (bool bIgnoreSpecialAbility = false), this, bIgnoreSpecialAbility);
 	SIGNATURE_ARGS(GetObjectOfType, CBaseObject*, CTFPlayer, (int iObjectType, int iObjectMode = 0), this, iObjectType, iObjectMode);
+	SIGNATURE_ARGS(GetEntityForLoadoutSlot, CBaseEntity*, CTFPlayer, (int iLoadoutSlot, bool bForceCheckWearable = false), this, iLoadoutSlot, bForceCheckWearable);
 	SIGNATURE(IsPlayerOnSteamFriendsList, bool, CTFPlayer, this, this);
 	SIGNATURE(UpdateClientSideAnimation, void, CTFPlayer, this);
 	SIGNATURE(GetEffectiveInvisibilityLevel, float, CTFPlayer, this);
