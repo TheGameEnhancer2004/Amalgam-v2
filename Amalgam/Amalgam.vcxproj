@@ -1525,6 +1525,8 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGCClientSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CHLClient.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFInventoryManager.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoPlayer.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoRecorder.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IFileSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IGameMovement.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IInput.h" />

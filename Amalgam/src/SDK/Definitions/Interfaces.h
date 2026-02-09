@@ -38,6 +38,8 @@
 #include "Interfaces/CServerTools.h"
 #include "Interfaces/CTFInventoryManager.h"
 #include "Interfaces/CModelLoader.h"
+#include "Interfaces/IDemoPlayer.h"
+#include "Interfaces/IDemoRecorder.h"
 
 #ifndef TEXTMODE
 #include <d3d9.h>

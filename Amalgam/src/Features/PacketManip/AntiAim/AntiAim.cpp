@@ -291,11 +291,11 @@ void CAntiAim::MinWalk(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 
 
-void CAntiAim::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool bSendPacket)
+void CAntiAim::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	G::AntiAim = AntiAimOn() && ShouldRun(pLocal, pWeapon, pCmd);
 
-	int iAntiBackstab = F::Misc.AntiBackstab(pLocal, pCmd, bSendPacket);
+	int iAntiBackstab = F::Misc.AntiBackstab(pLocal, pCmd);
 	if (!iAntiBackstab)
 		FakeShotAngles(pLocal, pWeapon, pCmd);
 
@@ -308,9 +308,9 @@ void CAntiAim::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bo
 
 	vEdgeTrace.clear();
 
-	Vec2& vAngles = bSendPacket ? vFakeAngles : vRealAngles;
+	Vec2& vAngles = G::SendPacket ? vFakeAngles : vRealAngles;
 	vAngles.x = iAntiBackstab != 2 ? GetPitch(pCmd->viewangles.x) : pCmd->viewangles.x;
-	vAngles.y = !iAntiBackstab ? GetYaw(pLocal, pCmd, bSendPacket) : pCmd->viewangles.y;
+	vAngles.y = !iAntiBackstab ? GetYaw(pLocal, pCmd, G::SendPacket) : pCmd->viewangles.y;
 
 	if (Vars::Misc::Game::AntiCheatCompatibility.Value)
 		Math::ClampAngles(vAngles);

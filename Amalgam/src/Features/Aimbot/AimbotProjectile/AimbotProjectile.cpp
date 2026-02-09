@@ -178,7 +178,36 @@ static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase*
 
 	return vTargets;
 }
+static inline std::vector<Target_t> GetPlayers(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
+{
+	std::vector<Target_t> vTargets;
+	const auto iSort = Vars::Aimbot::General::TargetSelection.Value;
 
+	const Vec3 vLocalPos = F::Ticks.GetShootPos();
+	const Vec3 vLocalAngles = I::EngineClient->GetViewAngles();
+
+	{
+		auto eGroupType = EntityEnum::Invalid;
+		if (Vars::Aimbot::General::Target.Value & Vars::Aimbot::General::TargetEnum::Players)
+			eGroupType = !F::AimbotGlobal.FriendlyFire() || Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Team ? EntityEnum::PlayerEnemy : EntityEnum::PlayerAll;
+
+		for (auto pEntity : H::Entities.GetGroup(eGroupType))
+		{
+			if (F::AimbotGlobal.ShouldIgnore(pEntity, pLocal, pWeapon))
+				continue;
+
+			float flFOVTo; Vec3 vPos, vAngleTo;
+			if (!F::AimbotGlobal.PlayerBoneInFOV(pEntity->As<CTFPlayer>(), vLocalPos, vLocalAngles, flFOVTo, vPos, vAngleTo))
+				continue;
+
+			float flDistTo = vLocalPos.DistTo(vPos);
+			int iPriority = F::AimbotGlobal.GetPriority(pEntity->entindex());
+			vTargets.emplace_back(pEntity, TargetEnum::Player, vPos, vAngleTo, flFOVTo, flDistTo, iPriority);
+		}
+	}
+
+	return vTargets;
+}
 
 float CAimbotProjectile::GetSplashRadius(CTFWeaponBase* pWeapon, CTFPlayer* pPlayer)
 {
@@ -1114,7 +1143,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 	}
 	else
 	{
-		switch (pWeapon->GetWeaponID())
+		switch (m_iWeaponID)
 		{
 		case TF_WEAPON_ROCKETLAUNCHER:
 		case TF_WEAPON_ROCKETLAUNCHER_DIRECTHIT:
@@ -1145,7 +1174,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 	int nMask = MASK_SOLID;
 	if (!bSplash && F::AimbotGlobal.FriendlyFire())
 	{
-		switch (pWeapon->GetWeaponID())
+		switch (m_iWeaponID)
 		{	// only weapons that actually hit teammates properly
 		case TF_WEAPON_ROCKETLAUNCHER:
 		case TF_WEAPON_ROCKETLAUNCHER_DIRECTHIT:
@@ -1228,7 +1257,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 
 			bool bTime = bSplash
 				? trace.endpos.DistTo(vPoint) < tProjInfo.m_flVelocity * TICK_INTERVAL + tProjInfo.m_vHull.z
-				: iSimTime - n < 5 || pWeapon->GetWeaponID() == TF_WEAPON_LUNCHBOX; // projectile so slow it causes problems if we don't waive this check
+				: iSimTime - n < 5 || m_iWeaponID == TF_WEAPON_LUNCHBOX; // projectile so slow it causes problems if we don't waive this check
 			bool bTarget = trace.m_pEnt == tTarget.m_pEntity || bSplash;
 			bool bValid = bTarget && bTime;
 			if (bValid && bSplash)
@@ -1240,7 +1269,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 				if (bValid)
 				{
 					Vec3 vFrom = trace.endpos;
-					switch (pWeapon->GetWeaponID())
+					switch (m_iWeaponID)
 					{
 					case TF_WEAPON_ROCKETLAUNCHER:
 					case TF_WEAPON_ROCKETLAUNCHER_DIRECTHIT:
@@ -1296,7 +1325,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 					Vec3 vPos = trace.endpos + F::ProjSim.GetVelocity().Normalized() * 16 + vOffset;
 
 					float flClosest = 0.f; int iClosest = -1;
-					for (auto tHitboxInfo : *pHitboxInfos)
+					for (auto& tHitboxInfo : *pHitboxInfos)
 					{
 						const float flDist = vPos.DistTo(tHitboxInfo.m_vCenter);
 						if (iClosest != -1 && flDist < flClosest || iClosest == -1)
@@ -1311,7 +1340,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 
 				bDidHit = true;
 			}
-			else if (!bSplash && bTarget && pWeapon->GetWeaponID() == TF_WEAPON_PIPEBOMBLAUNCHER)
+			else if (!bSplash && bTarget && m_iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER)
 			{	// run for more ticks to check for splash
 				iSimTime = n + 5;
 				bSplash = bPrimeTime = true;
@@ -1339,7 +1368,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 	return bDidHit;
 }
 
-int CAimbotProjectile::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bVisuals)
+int CAimbotProjectile::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bVisuals, int iMethod)
 {
 	//if (Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Unsimulated && H::Entities.GetChoke(tTarget.m_pEntity->entindex()) > Vars::Aimbot::General::TickTolerance.Value)
 	//	return false;
@@ -1485,7 +1514,7 @@ skipSplash:
 				vPoint.m_tSolution.m_flPitch = tSolution.m_flPitch, vPoint.m_tSolution.m_flYaw = tSolution.m_flYaw;
 			}
 
-			Vec3 vAngles; Aim(G::CurrentUserCmd->viewangles, { vPoint.m_tSolution.m_flPitch, vPoint.m_tSolution.m_flYaw, 0.f }, vAngles);
+			Vec3 vAngles; Aim(G::CurrentUserCmd->viewangles, { vPoint.m_tSolution.m_flPitch, vPoint.m_tSolution.m_flYaw, 0.f }, vAngles, iMethod);
 			std::vector<Vec3> vProjLines; bool bHitSolid = false;
 
 			if (TestAngle(pLocal, pWeapon, tTarget, vPoint.m_vPoint, vAngles, i, bSplash, &bHitSolid, &vProjLines))
@@ -1632,8 +1661,7 @@ void CAimbotProjectile::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 		I::EngineClient->SetViewAngles(vAngle);
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Silent:
-		if (auto pWeapon = H::Entities.GetWeapon();
-			G::Attacking == 1 || bUnsure || pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER)
+		if (G::Attacking == 1 || bUnsure || m_iWeaponID == TF_WEAPON_FLAMETHROWER)
 		{
 			SDK::FixMovement(pCmd, vAngle);
 			pCmd->viewangles = vAngle;
@@ -1728,13 +1756,11 @@ static inline void DrawVisuals(int iResult, Target_t& tTarget, std::vector<Vec3>
 
 bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
-	const int nWeaponID = pWeapon->GetWeaponID();
-
 	static int iStaticAimType = Vars::Aimbot::General::AimType.Value;
 	const int iLastAimType = iStaticAimType;
 	const int iRealAimType = Vars::Aimbot::General::AimType.Value;
 
-	switch (nWeaponID)
+	switch (m_iWeaponID)
 	{
 	case TF_WEAPON_COMPOUND_BOW:
 	case TF_WEAPON_PIPEBOMBLAUNCHER:
@@ -1751,11 +1777,11 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 	if (F::AimbotGlobal.ShouldHoldAttack(pWeapon))
 		pCmd->buttons |= IN_ATTACK;
 	if (!Vars::Aimbot::General::AimType.Value
-		|| !F::AimbotGlobal.ShouldAim() && nWeaponID != TF_WEAPON_FLAMETHROWER)
+		|| !F::AimbotGlobal.ShouldAim() && m_iWeaponID != TF_WEAPON_FLAMETHROWER)
 		return false;
 
 	if (Vars::Aimbot::Projectile::Modifiers.Value & Vars::Aimbot::Projectile::ModifiersEnum::ChargeWeapon && iRealAimType
-		&& (nWeaponID == TF_WEAPON_COMPOUND_BOW || nWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER || nWeaponID == TF_WEAPON_CANNON && G::LastUserCmd->buttons & IN_ATTACK))
+		&& (m_iWeaponID == TF_WEAPON_COMPOUND_BOW || m_iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER || m_iWeaponID == TF_WEAPON_CANNON && G::LastUserCmd->buttons & IN_ATTACK))
 	{
 		pCmd->buttons |= IN_ATTACK;
 		if (!G::CanPrimaryAttack && !G::Reloading && Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Silent)
@@ -1781,7 +1807,7 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 		m_vPlayerPath.clear(); m_vProjectilePath.clear(); m_vBoxes.clear();
 
 		const int iResult = CanHit(tTarget, pLocal, pWeapon);
-		if (iResult != 1 && pWeapon->GetWeaponID() == TF_WEAPON_CANNON && Vars::Aimbot::Projectile::Modifiers.Value & Vars::Aimbot::Projectile::ModifiersEnum::ChargeWeapon
+		if (iResult != 1 && m_iWeaponID == TF_WEAPON_CANNON && Vars::Aimbot::Projectile::Modifiers.Value & Vars::Aimbot::Projectile::ModifiersEnum::ChargeWeapon
 			&& !(G::OriginalCmd.buttons & (IN_ATTACK | IN_USE)))
 		{
 			float flTime = m_flTimeTo - GRENADE_CHECK_INTERVAL;
@@ -1817,7 +1843,7 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 
 		if (Vars::Aimbot::General::AutoShoot.Value)
 		{
-			switch (nWeaponID)
+			switch (m_iWeaponID)
 			{
 			case TF_WEAPON_COMPOUND_BOW:
 			case TF_WEAPON_PIPEBOMBLAUNCHER:
@@ -1876,7 +1902,7 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 		Aim(pCmd, tTarget.m_vAngleTo);
 		if (G::PSilentAngles)
 		{
-			switch (nWeaponID)
+			switch (m_iWeaponID)
 			{
 			case TF_WEAPON_FLAMETHROWER: // angles show up anyways
 			case TF_WEAPON_CLEAVER: // can't psilent with these weapons, they use SetContextThink
@@ -1896,6 +1922,8 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 
 void CAimbotProjectile::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
+	m_iWeaponID = pWeapon->GetWeaponID();
+
 	const bool bSuccess = RunMain(pLocal, pWeapon, pCmd);
 #ifdef SPLASH_DEBUG6
 	if (Vars::Aimbot::General::AimType.Value && !s_mTraceCount.empty())
@@ -1911,19 +1939,19 @@ void CAimbotProjectile::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd*
 #endif
 
 	float flAmount = 0.f;
-	if (pWeapon->GetWeaponID() == TF_WEAPON_PIPEBOMBLAUNCHER)
+	if (m_iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER)
 	{
 		const float flCharge = pWeapon->As<CTFPipebombLauncher>()->m_flChargeBeginTime() > 0.f ? I::GlobalVars->curtime - pWeapon->As<CTFPipebombLauncher>()->m_flChargeBeginTime() : 0.f;
 		flAmount = Math::RemapVal(flCharge, 0.f, SDK::AttribHookValue(4.f, "stickybomb_charge_rate", pWeapon), 0.f, 1.f);
 	}
-	else if (pWeapon->GetWeaponID() == TF_WEAPON_CANNON)
+	else if (m_iWeaponID == TF_WEAPON_CANNON)
 	{
 		const float flMortar = SDK::AttribHookValue(0.f, "grenade_launcher_mortar_mode", pWeapon);
 		const float flCharge = pWeapon->As<CTFGrenadeLauncher>()->m_flDetonateTime() > 0.f ? I::GlobalVars->curtime - pWeapon->As<CTFGrenadeLauncher>()->m_flDetonateTime() : -flMortar;
 		flAmount = flMortar ? Math::RemapVal(flCharge, -flMortar, 0.f, 0.f, 1.f) : 0.f;
 	}
 
-	if (pWeapon->GetWeaponID() == TF_WEAPON_PIPEBOMBLAUNCHER && G::OriginalCmd.buttons & IN_ATTACK && Vars::Aimbot::Projectile::AutoRelease.Value && flAmount > Vars::Aimbot::Projectile::AutoRelease.Value / 100)
+	if (m_iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER && G::OriginalCmd.buttons & IN_ATTACK && Vars::Aimbot::Projectile::AutoRelease.Value && flAmount > Vars::Aimbot::Projectile::AutoRelease.Value / 100)
 		pCmd->buttons &= ~IN_ATTACK;
 	else if (G::CanPrimaryAttack && Vars::Aimbot::Projectile::Modifiers.Value & Vars::Aimbot::Projectile::ModifiersEnum::CancelCharge)
 	{
@@ -1934,7 +1962,147 @@ void CAimbotProjectile::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd*
 	m_bLastTickHeld = Vars::Aimbot::General::AimType.Value;
 }
 
+void CAimbotProjectile::RunGrapplingHook(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+{
+	static auto tf_grapplinghook_enable = H::ConVars.FindVar("tf_grapplinghook_enable");
+	if (!tf_grapplinghook_enable->GetBool())
+	{
+		if (m_tGrappleInfo.m_flRanTime)
+			I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+		m_tGrappleInfo = {};
+		return;
+	}
 
+	m_iWeaponID = pWeapon->GetWeaponID();
+	m_pGrapplingHook = m_iWeaponID != TF_WEAPON_GRAPPLINGHOOK ? pLocal->GetEntityForLoadoutSlot(LOADOUT_POSITION_ACTION)->As<CTFGrapplingHook>() : pWeapon->As<CTFGrapplingHook>();
+
+	if (!Vars::Aimbot::Projectile::GrapplingHookAim.Value)
+	{
+		if (m_tGrappleInfo.m_flRanTime)
+		{
+			if (!m_tGrappleInfo.m_bGrapplingHookShot)
+			{
+				I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+				m_tGrappleInfo = {};
+			}
+			else if (pLocal->m_hGrapplingHookTarget() || m_pGrapplingHook && !m_pGrapplingHook->m_hProjectile())
+			{
+				I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+				m_tGrappleInfo = {};
+			}
+		}
+		return;
+	}
+
+	if (!m_pGrapplingHook)
+		return;
+
+	if (m_tGrappleInfo.m_flRanTime)
+	{
+		const float flMaxDelay = F::Backtrack.GetReal() + 0.25f;
+		const float flDelta = I::GlobalVars->curtime - m_tGrappleInfo.m_flRanTime;
+		if (flDelta > flMaxDelay && !m_tGrappleInfo.m_bGrapplingHookShot)
+		{
+			I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+			m_tGrappleInfo.Fail();
+		}
+		else
+		{
+			if (auto pTarget = pLocal->m_hGrapplingHookTarget().Get())
+			{
+				I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+
+				if (m_tGrappleInfo.m_flRanTime && !pTarget->IsPlayer())
+					m_tGrappleInfo.Fail();
+				return;
+			}
+
+			if (auto pProjectile = m_pGrapplingHook->m_hProjectile().Get())
+			{
+				m_tGrappleInfo.m_bGrapplingHookShot = true;
+				if (!m_tGrappleInfo.m_bWallOnMiss)
+				{
+					auto vDelta = m_tGrappleInfo.m_vLastGrapplePoint - pProjectile->GetCenter();
+					if (pProjectile->GetAbsVelocity().Dot(vDelta) < 0.f)
+					{
+						I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+						m_tGrappleInfo.Fail();
+						return;
+					}
+				}
+			}
+			else if (!m_pGrapplingHook->m_hProjectile() && m_tGrappleInfo.m_bGrapplingHookShot)
+			{
+				I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+				m_tGrappleInfo = {};
+				return;
+			}
+
+			if (pLocal->m_bUsingActionSlot() && !m_tGrappleInfo.m_bGrapplingHookShot)
+			{
+				G::Attacking = true;
+				Aim(pCmd, m_tGrappleInfo.m_vLastAngleTo, Vars::Aimbot::General::AimTypeEnum::Silent);
+				G::PSilentAngles = false;
+			}
+		}
+	}
+	else if (pLocal->m_bUsingActionSlot() && m_pGrapplingHook->m_hProjectile())
+	{
+		if (!m_tGrappleInfo.m_bFail)
+			I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+		return;
+	}
+
+	auto vTargets = F::AimbotGlobal.ManageTargets(GetPlayers, pLocal, m_pGrapplingHook);
+	if (vTargets.empty()) return;
+
+	m_iWeaponID = TF_WEAPON_GRAPPLINGHOOK;
+
+	auto vShootPos = pLocal->GetShootPos();
+	for (auto& tTarget : vTargets)
+	{
+		m_flTimeTo = std::numeric_limits<float>::max();
+		m_vPlayerPath.clear(); m_vProjectilePath.clear(); m_vBoxes.clear();
+		if (tTarget.m_flDistTo > 1900.f)
+			continue;
+
+		const bool bResult = CanHit(tTarget, pLocal, m_pGrapplingHook, true, Vars::Aimbot::General::AimTypeEnum::Plain);
+		if (!bResult || tTarget.m_vPos.DistTo(vShootPos) > 1900.f) continue;
+
+		bool bFirstRun = !m_tGrappleInfo.m_flRanTime;
+		if (bFirstRun)
+		{
+			I::EngineClient->ClientCmd_Unrestricted("+use_action_slot_item");
+			m_tGrappleInfo.m_flRanTime = I::GlobalVars->curtime;
+			m_tGrappleInfo.m_bFail = false;
+		}
+		else if (m_tGrappleInfo.m_flLastTimeTo - 1.5f > m_flTimeTo)
+		{
+			I::EngineClient->ClientCmd_Unrestricted("-use_action_slot_item");
+			m_tGrappleInfo.Fail();
+			break;
+		}
+		m_tGrappleInfo.m_flLastTimeTo = m_flTimeTo;
+
+		if (bFirstRun)
+		{
+			Vec3 vForward; Math::AngleVectors(tTarget.m_vAngleTo, &vForward);
+
+			CGameTrace wallTrace = {};
+			CTraceFilterWorldAndPropsOnly filter = {};
+			SDK::TraceHull(tTarget.m_vPos, tTarget.m_vPos + vForward * 500.f, -m_tInfo.m_vHull, m_tInfo.m_vHull, MASK_SHOT_HULL, &filter, &wallTrace);
+
+			m_tGrappleInfo.m_bWallOnMiss = wallTrace.DidHit();
+		}
+
+		DrawVisuals(1, tTarget, m_vPlayerPath, m_vProjectilePath, m_vBoxes);
+		G::AimTarget = { tTarget.m_pEntity->entindex(), I::GlobalVars->tickcount };
+		G::AimPoint = { tTarget.m_vPos, I::GlobalVars->tickcount };
+		m_tGrappleInfo.m_vLastGrapplePoint = tTarget.m_vPos;
+		m_tGrappleInfo.m_vLastAngleTo = tTarget.m_vAngleTo;
+		break;
+	}
+}
 
 // TestAngle and CanHit shares a bunch of code, possibly merge somehow
 
@@ -2272,6 +2440,8 @@ bool CAimbotProjectile::AutoAirblast(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, 
 	auto vTargets = F::AimbotGlobal.ManageTargets(GetTargets, pLocal, pWeapon);
 	if (vTargets.empty())
 		return false;
+
+	m_iWeaponID = pWeapon->GetWeaponID();
 
 	//if (!G::AimTarget.m_iEntIndex)
 	//	G::AimTarget = { vTargets.front().m_pEntity->entindex(), I::GlobalVars->tickcount, 0 };

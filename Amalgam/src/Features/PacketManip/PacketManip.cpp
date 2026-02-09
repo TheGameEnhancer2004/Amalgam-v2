@@ -9,12 +9,12 @@ static inline bool AntiAimCheck(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 		&& I::ClientState->chokedcommands < F::AntiAim.AntiAimTicks();
 }
 
-void CPacketManip::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool* pSendPacket)
+void CPacketManip::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	F::FakeAngle.bDrawChams = Vars::Fakelag::Fakelag.Value || F::AntiAim.AntiAimOn();
 
-	*pSendPacket = true;
-	F::FakeLag.Run(pLocal, pWeapon, pCmd, pSendPacket);
+	G::SendPacket = true;
+	F::FakeLag.Run(pLocal, pWeapon, pCmd);
 	if (AntiAimCheck(pLocal, pWeapon, pCmd))
-		*pSendPacket = false;
+		G::SendPacket = false;
 }
