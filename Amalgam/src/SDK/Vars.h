@@ -1009,6 +1009,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(FreezeQueue, "Freeze queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
+			CVar(MapPopularizing, "Map popularizing mode", false);
 			CVar(MapBarBoost, "Boost Playercount Visualizer", false);
 			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", true);
 			CVar(AutoDumpProfiles, "Auto dump profiles", false);

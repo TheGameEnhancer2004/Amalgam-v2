@@ -1675,7 +1675,8 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
 		//			FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
-					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::MapPopularizing, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
 						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);

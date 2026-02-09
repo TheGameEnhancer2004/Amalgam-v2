@@ -2,9 +2,7 @@
 #include "../../Players/PlayerUtils.h"
 #include "../../NavBot/NavEngine/NavEngine.h"
 #include "../Misc.h"
-#ifdef TEXTMODE
 #include "../NamedPipe/NamedPipe.h"
-#endif
 
 void CAutoQueue::Run()
 {
@@ -21,13 +19,6 @@ void CAutoQueue::Run()
 	const char* pszLevelName = I::EngineClient->GetLevelName();
 	const std::string sLevelName = pszLevelName ? pszLevelName : "";
 
-	if (Vars::Misc::Queueing::MapBarBoost.Value && bIsLoadingMapNow)
-	{
-		if (I::TFGCClientSystem)
-			I::TFGCClientSystem->AbandonCurrentMatch();
-		return;
-	}
-
 	if (sLevelName != m_sLastLevelName)
 	{
 		m_sLastLevelName = sLevelName;
@@ -35,6 +26,140 @@ void CAutoQueue::Run()
 		m_flNavmeshAbandonStartTime = 0.0f;
 		m_bAutoDumpedThisMatch = false;
 		m_flAutoDumpStartTime = 0.0f;
+		m_flLastHumanJoinTime = 0.0f;
+		m_bMapPopularizingAbandonTriggered = false;
+	}
+
+	if (bIsLoadingMapNow)
+	{
+		if (m_flLoadingStartTime <= 0.0f)
+			m_flLoadingStartTime = flCurrentTime;
+	}
+	else
+		m_flLoadingStartTime = 0.0f;
+
+	if (Vars::Misc::Queueing::MapPopularizing.Value)
+	{
+		if (!bIsLoadingMapNow && bIsConnectedNow)
+		{
+			int nHumanCount = 0;
+			{
+				std::shared_lock lock(F::PlayerUtils.m_tMutex);
+				for (const auto& player : F::PlayerUtils.m_vPlayerCache)
+				{
+					if (player.m_bFake)
+						continue;
+					if (player.m_uAccountID && F::NamedPipe.IsLocalBot(player.m_uAccountID))
+						continue;
+					nHumanCount++;
+				}
+			}
+
+			if (nHumanCount > 0)
+				m_flLastHumanJoinTime = flCurrentTime;
+
+			bool bShouldAbandon = false;
+			std::string sAbandonReason = "";
+
+			if (nHumanCount > 2)
+			{
+				bShouldAbandon = true;
+				sAbandonReason = "More than 2 humans on server";
+			}
+			else if (m_flLastHumanJoinTime > 0.0f && (flCurrentTime - m_flLastHumanJoinTime) >= 600.0f)
+			{
+				bShouldAbandon = true;
+				sAbandonReason = "No new humans joined for 10 minutes";
+			}
+			else
+			{
+				const char* pszServerIP = I::EngineClient->GetNetChannelInfo() ? I::EngineClient->GetNetChannelInfo()->GetAddress() : "";
+				auto vOtherBots = F::NamedPipe.GetOtherBotsOnServer(pszServerIP);
+				if (!vOtherBots.empty())
+				{
+					int iMyBotId = F::NamedPipe.GetBotId();
+					bool bKeepThisBot = true;
+					for (int iOtherId : vOtherBots)
+					{
+						if (iOtherId < iMyBotId)
+						{
+							bKeepThisBot = false;
+							break;
+						}
+					}
+
+					if (!bKeepThisBot)
+					{
+						bShouldAbandon = true;
+						sAbandonReason = "Another local bot with lower ID is already on this server";
+					}
+				}
+			}
+
+			if (bShouldAbandon && !m_bMapPopularizingAbandonTriggered)
+			{
+				m_bMapPopularizingAbandonTriggered = true;
+				SDK::Output("AutoQueue", std::format("Map Popularizing: {}, abandoning match", sAbandonReason).c_str(), { 255, 100, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+				I::TFGCClientSystem->AbandonCurrentMatch();
+				bWasInGame = false;
+				bWasDisconnected = true;
+				flLastQueueTime = 0.0f;
+				bQueuedFromRQif = false;
+				return;
+			}
+		}
+
+		if (!bIsConnectedNow && !bIsLoadingMapNow)
+		{
+			if (!I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default))
+			{
+				static bool bHasLoaded = false;
+				if (!bHasLoaded)
+				{
+					I::TFPartyClient->LoadSavedCasualCriteria();
+					bHasLoaded = true;
+				}
+				I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
+				flLastQueueTime = flCurrentTime;
+				bQueuedOnce = true;
+			}
+		}
+
+		if (bIsLoadingMapNow)
+		{
+			if ((flCurrentTime - m_flLoadingStartTime) >= 360.0f)
+			{
+				if (I::TFGCClientSystem)
+					I::TFGCClientSystem->AbandonCurrentMatch();
+
+				if (!I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default))
+				{
+					static bool bHasLoaded = false;
+					if (!bHasLoaded)
+					{
+						I::TFPartyClient->LoadSavedCasualCriteria();
+						bHasLoaded = true;
+					}
+
+					SDK::Output("AutoQueue", "Loading screen for over 6 minutes, requeueing", { 255, 255, 100 }, OUTPUT_CONSOLE | OUTPUT_TOAST, -1);
+					I::TFPartyClient->RequestQueueForMatch(k_eTFMatchGroup_Casual_Default);
+					flLastQueueTime = flCurrentTime;
+					bQueuedOnce = true;
+					m_flLoadingStartTime = flCurrentTime;
+				}
+			}
+			else if (I::TFPartyClient->BInQueueForMatchGroup(k_eTFMatchGroup_Casual_Default))
+				I::TFPartyClient->CancelMatchQueueRequest(k_eTFMatchGroup_Casual_Default);
+
+			return;
+		}
+	}
+
+	if (Vars::Misc::Queueing::MapBarBoost.Value && bIsLoadingMapNow)
+	{
+		if (I::TFGCClientSystem)
+			I::TFGCClientSystem->AbandonCurrentMatch();
+		return;
 	}
 
 	if (!Vars::Misc::Queueing::AutoAbandonIfNoNavmesh.Value)

@@ -22,6 +22,10 @@ private:
 	float m_flAutoDumpStartTime = 0.0f;
 	bool m_bAutoDumpedThisMatch = false;
 
+	float m_flLoadingStartTime = 0.0f;
+	float m_flLastHumanJoinTime = 0.0f;
+	bool m_bMapPopularizingAbandonTriggered = false;
+
 	void RunCommunityQueue();
 	void SearchCommunityServers();
 	void ConnectToServer(const gameserveritem_t* pServer);
