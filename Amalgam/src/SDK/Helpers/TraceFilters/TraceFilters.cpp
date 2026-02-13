@@ -207,6 +207,15 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 	if (nClassID == ETFClassID::CBaseEntity)
 		return true;
 
+	if (nClassID == ETFClassID::CBaseDoor ||
+		nClassID == ETFClassID::CBasePropDoor ||
+		nClassID == ETFClassID::CDynamicProp ||
+		nClassID == ETFClassID::CPhysicsProp ||
+		nClassID == ETFClassID::CPhysicsPropMultiplayer)
+	{
+		return false;
+	}
+
 	if (nClassID == ETFClassID::CObjectTeleporter)
 		return (nContentsMask & CONTENTS_PLAYERCLIP) || m_iObject != OBJECT_NONE;
 

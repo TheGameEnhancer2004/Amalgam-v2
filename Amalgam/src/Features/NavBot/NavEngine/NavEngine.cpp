@@ -1,4 +1,5 @@
 #include "NavEngine.h"
+#include "NavMeshNormalizer.h"
 #include "../DangerManager/DangerManager.h"
 #include "../NavBotJobs/Engineer.h"
 #include "../../Ticks/Ticks.h"
@@ -623,6 +624,21 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 }
 
+void CNavEngine::NormalizeNavMesh(const char* sNavPath)
+{
+	if (!m_pMap)
+		return;
+
+	CNavMeshNormalizer normalizer;
+	if (normalizer.Normalize(&m_pMap->m_navfile))
+	{
+		if (Vars::Debug::Logging.Value)
+			SDK::Output("NavEngine", "Nav Mesh normalized, saving changes...", { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+
+		m_pMap->m_navfile.Save(sNavPath);
+	}
+}
+
 void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
@@ -644,6 +660,7 @@ void CNavEngine::Reset(bool bForced)
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("NavEngine", std::format("Nav File location: {}", sNavPath).c_str(), { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 			m_pMap = std::make_unique<CMap>(sNavPath.c_str());
+			NormalizeNavMesh(sNavPath.c_str());
 			m_vRespawnRoomExitAreas.clear();
 			m_bUpdatedRespawnRooms = false;
 		}
@@ -936,6 +953,7 @@ void CNavEngine::CancelPath()
 	m_vCurrentPathDir = {};
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
+	m_vLastLookTarget = {};
 }
 
 bool CanJumpIfScoped(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -975,6 +993,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		{
 			if (G::Attacking == 1)
 			{
+				m_vLastLookTarget = {};
 				F::BotUtils.InvalidateLLAP();
 				return;
 			}
@@ -985,12 +1004,14 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 			if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
 			{
+				m_vLastLookTarget = {};
 				F::BotUtils.InvalidateLLAP();
 				return;
 			}
 
 			if (bSilent && G::AntiAim)
 			{
+				m_vLastLookTarget = {};
 				F::BotUtils.InvalidateLLAP();
 				return;
 			}
@@ -1003,7 +1024,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 				F::BotUtils.LookAtPath(pCmd, Vec2(vTarget.x, vTarget.y), pLocal->GetEyePosition(), bSilent);
 			}
 			else
+			{
+				m_vLastLookTarget = {};
 				F::BotUtils.InvalidateLLAP();
+			}
 		};
 	// No more crumbs, reset status
 	if (!uCrumbsSize)
@@ -1254,22 +1278,39 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		bool bLegit = eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Legit || eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::LegitSilent;
 
 		if (eLook == Vars::Misc::Movement::NavEngine::LookAtPathEnum::Off)
-			F::BotUtils.InvalidateLLAP();
-		else if (bSilent && G::AntiAim)
-			F::BotUtils.InvalidateLLAP();
-		else if (bLegit)
 		{
-			Vec3 vLookTarget{ vMoveTarget.x, vMoveTarget.y, vMoveTarget.z };
-			F::BotUtils.LookLegit(pLocal, pCmd, vLookTarget, bSilent);
+			m_vLastLookTarget = {};
+			F::BotUtils.InvalidateLLAP();
+		}
+		else if (bSilent && G::AntiAim)
+		{
+			m_vLastLookTarget = {};
+			F::BotUtils.InvalidateLLAP();
 		}
 		else
 		{
-			F::BotUtils.InvalidateLLAP();
-			F::BotUtils.LookAtPath(pCmd, Vec2(vMoveTarget.x, vMoveTarget.y), pLocal->GetEyePosition(), bSilent);
+			Vector vLookTarget = vMoveTarget;
+			if (!m_vLastLookTarget.IsZero())
+			{
+				float flDelta = I::GlobalVars->interval_per_tick * 15.f;
+				vLookTarget = m_vLastLookTarget.Lerp(vLookTarget, std::clamp(flDelta, 0.f, 1.f));
+			}
+			m_vLastLookTarget = vLookTarget;
+
+			if (bLegit)
+				F::BotUtils.LookLegit(pLocal, pCmd, vLookTarget, bSilent);
+			else
+			{
+				F::BotUtils.InvalidateLLAP();
+				F::BotUtils.LookAtPath(pCmd, Vec2(vLookTarget.x, vLookTarget.y), pLocal->GetEyePosition(), bSilent);
+			}
 		}
 	}
 	else
+	{
+		m_vLastLookTarget = {};
 		F::BotUtils.InvalidateLLAP();
+	}
 
 	SDK::WalkTo(pCmd, pLocal, vMoveTarget);
 }

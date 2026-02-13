@@ -93,6 +93,8 @@ public:
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }
 
+	void NormalizeNavMesh(const char* sNavPath);
+
 	// Get whole blacklist or with matching category
 	std::unordered_map<CNavArea*, BlacklistReason_t>* GetFreeBlacklist() { return &m_pMap->m_mFreeBlacklist; }
 	std::unordered_map<CNavArea*, BlacklistReason_t> GetFreeBlacklist(BlacklistReason_t tReason)
@@ -129,6 +131,7 @@ public:
 	Crumb_t m_tLastCrumb;
 	Vector m_vCurrentPathDir;
 	Vector m_vLastDestination;
+	Vector m_vLastLookTarget;
 
 public:
 	void FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);

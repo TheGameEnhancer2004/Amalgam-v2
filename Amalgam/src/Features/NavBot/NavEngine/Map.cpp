@@ -117,31 +117,7 @@ void CMap::GetDirectNeighbors(CNavArea* pCurrentArea, std::vector<micropather::S
 	auto pLocal = H::Entities.GetLocal();
 	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
 
-	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
-	{
-		CNavArea* pNextArea = tConnection.m_pArea;
-		if (!pNextArea || pNextArea == pCurrentArea)
-			continue;
-
-		if (!m_bFreeBlacklistBlocked && !F::NavEngine.m_bIgnoreTraces)
-		{
-			if (auto itBlacklist = m_mFreeBlacklist.find(pNextArea); itBlacklist != m_mFreeBlacklist.end())
-			{
-				float flPenalty = GetBlacklistPenalty(itBlacklist->second);
-				float flThreshold = F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture ? 4000.f : 1000.f;
-				if (flPenalty >= flThreshold) 
-					continue;
-			}
-		}
-		
-		if (!F::NavEngine.m_bIgnoreTraces)
-		{
-			if (pNextArea->IsBlocked(iTeam))
-				continue;
-		}
-
-		AdjacentCost(reinterpret_cast<void*>(pCurrentArea), &neighbors);
-	}
+	AdjacentCost(reinterpret_cast<void*>(pCurrentArea), &neighbors);
 }
 
 void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent)
