@@ -1651,12 +1651,9 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
-<<<<<<< Updated upstream
-		//			FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
-					FToggle(Vars::Misc::Queueing::MapPopularizing, FToggleEnum::Left);
-=======
 					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
->>>>>>> Stashed changes
+					FToggle(Vars::Misc::Queueing::MapPopularizing, FToggleEnum::Right);
+		            FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
