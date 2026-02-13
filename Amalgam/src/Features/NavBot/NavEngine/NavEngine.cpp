@@ -1,4 +1,5 @@
 #include "NavEngine.h"
+#include "../DangerManager/DangerManager.h"
 #include "../NavBotJobs/Engineer.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
@@ -153,12 +154,12 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		{
 			switch (iPathResult)
 			{
-			case micropather::MicroPather::NO_SOLUTION:
+			case 1: // NO_SOLUTION
 			{
 				if (!bIgnoreTraces)
 				{
 					m_sLastFailureReason = "No solution found, attempting fallback";
-					m_pMap->m_pather.Reset();
+					// m_pMap->m_pather.Reset(); // Not needed with custom solver
 					return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
 				}
 
@@ -191,7 +192,7 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 				}
 				break;
 			}
-			case micropather::MicroPather::START_END_SAME: m_sLastFailureReason = "Start and end are same"; break;
+			case 2: m_sLastFailureReason = "Start and end are same"; break; // START_END_SAME
 			default: m_sLastFailureReason = "Pathing engine error"; break;
 			}
 			return false;
@@ -200,7 +201,6 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 
 	if (!bSingleAreaPath && !bNavToLocal && !vPath.empty())
 	{
-		vPath.erase(vPath.begin());
 		if (vPath.empty())
 		{
 			if (m_pLocalArea == pDestArea)
@@ -354,7 +354,7 @@ float CNavEngine::GetPathCost(const Vector& vLocalOrigin, const Vector& vDestina
 
 	float flCost;
 	std::vector<void*> vPath;
-	if (m_pMap->m_pather.Solve(reinterpret_cast<void*>(m_pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
+	if (m_pMap->Solve(m_pLocalArea, pDestArea, &vPath, &flCost) == micropather::MicroPather::START_END_SAME)
 		return 0.f;
 
 	return flCost;
@@ -446,7 +446,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	if (pLocal->IsInvulnerable())
 	{
 		m_pMap->m_bFreeBlacklistBlocked = true;
-		m_pMap->m_pather.Reset();
+		// m_pMap->m_pather.Reset();
 		return;
 	}
 
@@ -457,7 +457,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 		if (pArea == m_pLocalArea)
 		{
 			m_pMap->m_bFreeBlacklistBlocked = true;
-			m_pMap->m_pather.Reset();
+			// m_pMap->m_pather.Reset();
 			return;
 		}
 	}
@@ -465,8 +465,8 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	// Local player is not blocking the nav area, so blacklist should not be marked as blocked
 	m_pMap->m_bFreeBlacklistBlocked = false;
 
-	// Ignore sentry blacklist if we are trying to snipe one
-	m_pMap->m_bIgnoreSentryBlacklist = m_eCurrentPriority == PriorityListEnum::SnipeSentry;
+	// thats dumb, we shouldnt generally do that but i will
+	m_pMap->m_bIgnoreSentryBlacklist = m_eCurrentPriority == PriorityListEnum::SnipeSentry || m_eCurrentPriority == PriorityListEnum::Capture;
 
 	for (auto& tCrumb : m_vCrumbs)
 	{
@@ -474,7 +474,8 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 		if (itBlacklist != m_pMap->m_mFreeBlacklist.end())
 		{
 			float flPenalty = m_pMap->GetBlacklistPenalty(itBlacklist->second);
-			if (flPenalty >= 2500.f) // Only abandon for extreme danger, otherwise let cost-based pathing handle it
+			float flThreshold = m_eCurrentPriority == PriorityListEnum::Capture ? 4000.f : 2500.f;
+			if (flPenalty >= flThreshold)
 			{
 				AbandonPath("Blacklisted area");
 				return;
@@ -870,7 +871,7 @@ void CNavEngine::AbandonPath(const std::string& sReason)
 		return;
 
 	m_sLastFailureReason = sReason;
-	m_pMap->m_pather.Reset();
+	// m_pMap->m_pather.Reset();
 	m_vCrumbs.clear();
 	m_tLastCrumb.m_pNavArea = nullptr;
 	// We want to repath on failure
@@ -1281,6 +1282,8 @@ void CNavEngine::Render()
 	auto pLocal = H::Entities.GetLocal();
 	if (!pLocal || !pLocal->IsAlive())
 		return;
+
+	F::DangerManager.Render();
 
 	/*if (!F::NavBot.m_vSlightDangerDrawlistNormal.empty())
 	{

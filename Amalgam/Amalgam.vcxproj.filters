@@ -219,6 +219,7 @@
     <ClCompile Include="src\SDK\Definitions\Main\ValveRandom.cpp" />
     <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
     <ClCompile Include="src\Features\NavBot\BotUtils.cpp" />
+    <ClCompile Include="src\Features\NavBot\DangerManager\DangerManager.cpp" />
     <ClCompile Include="src\Hooks\CBoneFollower_TestCollision.cpp" />
     <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
     <ClCompile Include="src\Hooks\Voice_Enabled.cpp" />
@@ -651,6 +652,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoomShim.h" />
     <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
     <ClInclude Include="src\Features\NavBot\BotUtils.h" />
+    <ClInclude Include="src\Features\NavBot\DangerManager\DangerManager.h" />
     <ClInclude Include="src\Features\NavBot\NavBotCore.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Map.h" />
     <ClInclude Include="src\Features\NavBot\NavBotJobs\EscapeDanger.h" />

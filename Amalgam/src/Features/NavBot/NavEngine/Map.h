@@ -53,6 +53,15 @@ struct BlacklistReason_t
 	}
 };
 
+struct PathNode_t
+{
+	float m_g = std::numeric_limits<float>::max();
+	float m_f = std::numeric_limits<float>::max(); // g + h
+	CNavArea* m_pParent = nullptr;
+	uint32_t m_iQueryId = 0;
+	bool m_bInOpen = false;
+};
+
 struct NavPoints_t
 {
 	Vector m_vCurrent;
@@ -101,7 +110,7 @@ public:
 		m_sMapName = sMapName;
 		m_eState = m_navfile.m_bOK ? NavStateEnum::Active : NavStateEnum::Unavailable;
 	}
-	micropather::MicroPather m_pather{ this, 3000, 6, true };
+	// micropather::MicroPather m_pather{ this, 3000, 6, true };
 	std::recursive_mutex m_mutex;
 
 	std::unordered_map<std::pair<CNavArea*, CNavArea*>, CachedConnection_t, boost::hash<std::pair<CNavArea*, CNavArea*>>> m_mVischeckCache;
@@ -116,9 +125,16 @@ public:
 	bool m_bFreeBlacklistBlocked = false;
 	bool m_bIgnoreSentryBlacklist = false;
 
-	float LeastCostEstimate(void* pStartArea, void* pEndArea) override { return reinterpret_cast<CNavArea*>(pStartArea)->m_vCenter.DistTo(reinterpret_cast<CNavArea*>(pEndArea)->m_vCenter); }
-	void AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent) override;
+	std::vector<PathNode_t> m_vPathNodes;
+	uint32_t m_iQueryId = 0;
 	
+	int Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, float* cost);
+	
+	// legacy
+	float LeastCostEstimate(void* pStartArea, void* pEndArea) override { return 0.0f; } 
+	void AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent) override;
+	void GetDirectNeighbors(CNavArea* pArea, std::vector<micropather::StateCost>& neighbors);
+
 	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay);
 	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay);
 	bool IsOneWay(CNavArea* pFrom, CNavArea* pTo) const;
@@ -143,7 +159,7 @@ public:
 		std::lock_guard lock(m_mutex);
 		float flCost;
 		std::vector<void*> vPath;
-		int iResult = m_pather.Solve(reinterpret_cast<void*>(pLocalArea), reinterpret_cast<void*>(pDestArea), &vPath, &flCost);
+		int iResult = Solve(pLocalArea, pDestArea, &vPath, &flCost);
 		if (pOutResult)
 			*pOutResult = iResult;
 
@@ -161,7 +177,7 @@ public:
 		m_mVischeckCache.clear();
 		m_mConnectionStuckTime.clear();
 		m_mFreeBlacklist.clear();
-		m_pather.Reset();
+		// m_pather.Reset();
 	}
 
 	// Unnecessary thing that is sadly necessary

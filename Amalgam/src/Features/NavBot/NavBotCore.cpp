@@ -8,6 +8,7 @@
 #include "NavBotJobs/GroupWithOthers.h"
 #include "NavBotJobs/Reload.h"
 #include "NavBotJobs/StayNear.h"
+#include "DangerManager/DangerManager.h"
 #include "NavEngine/NavEngine.h"
 #include "../FollowBot/FollowBot.h"
 #include "../PacketManip/FakeLag/FakeLag.h"
@@ -15,128 +16,6 @@
 #include "../Ticks/Ticks.h"
 #include "../Misc/Misc.h"
 
-void CNavBotCore::UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot)
-{
-	if (!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::Players) ||
-		F::NavEngine.IsBlacklistIrrelevant())
-		return;
-
-	if (!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::DormantThreats))
-		F::NavEngine.ClearFreeBlacklist(BlacklistReason_t(BlacklistReasonEnum::EnemyDormant));
-
-	if (!(Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::NormalThreats))
-	{
-		F::NavEngine.ClearFreeBlacklist(BlacklistReason_t(BlacklistReasonEnum::EnemyNormal));
-		return;
-	}
-
-	static Timer tBlacklistUpdateTimer{};
-	static Timer tDormantUpdateTimer{};
-	static int iLastSlotBlacklist = SLOT_PRIMARY;
-
-	bool bShouldRunNormal = tBlacklistUpdateTimer.Run(Vars::Misc::Movement::NavBot::BlacklistDelay.Value) || iLastSlotBlacklist != iSlot;
-	bool bShouldRunDormant = Vars::Misc::Movement::NavBot::Blacklist.Value & Vars::Misc::Movement::NavBot::BlacklistEnum::DormantThreats && (tDormantUpdateTimer.Run(Vars::Misc::Movement::NavBot::BlacklistDormantDelay.Value) || iLastSlotBlacklist != iSlot);
-	// Don't run since we do not care here
-	if (!bShouldRunNormal && !bShouldRunDormant)
-		return;
-
-	// Clear blacklist for normal entities
-	if (bShouldRunNormal)
-		F::NavEngine.ClearFreeBlacklist(BlacklistReason_t(BlacklistReasonEnum::EnemyNormal));
-
-	// Clear blacklist for dormant entities
-	if (bShouldRunDormant)
-		F::NavEngine.ClearFreeBlacklist(BlacklistReason_t(BlacklistReasonEnum::EnemyDormant));
-
-	if (const auto& pGameRules = I::TFGameRules())
-	{
-		if (pGameRules->m_iRoundState() == GR_STATE_TEAM_WIN)
-			return;
-	}
-
-	// #NoFear
-	if (iSlot == SLOT_MELEE && pLocal->m_iClass() != TF_CLASS_SPY)
-		return;
-
-	// Store the danger of the individual nav areas
-	std::unordered_map<CNavArea*, int> mDormantSlightDanger;
-	std::unordered_map<CNavArea*, int> mNormalSlightDanger;
-
-	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
-	{
-		// Entity is generally invalid, ignore
-		auto pPlayer = pEntity->As<CTFPlayer>();
-		if (!pPlayer->IsAlive())
-			continue;
-
-		bool bDormant = pPlayer->IsDormant();
-		if (!bDormant)
-		{
-			// Should not run on normal entity and entity is not dormant, ignore
-			if (!bShouldRunNormal)
-				continue;
-		}
-		// Should not run on dormant and entity is dormant, ignore.
-		else if (!bShouldRunDormant)
-			continue;
-
-		Vector vOrigin;
-		if (!F::BotUtils.GetDormantOrigin(pPlayer->entindex(), &vOrigin))
-			continue;
-
-		vOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-		float flSlightDangerDist = m_tSelectedConfig.m_flMinSlightDanger;
-		float flFullDangerDist = m_tSelectedConfig.m_flMinFullDanger;
-
-		// Not dangerous, Still don't bump
-		if (!F::BotUtils.ShouldTarget(pLocal, pWeapon, pPlayer->entindex()))
-		{
-			flSlightDangerDist = PLAYER_WIDTH * 1.2f;
-			flFullDangerDist = PLAYER_WIDTH * 1.2f;
-		}
-
-		// Add new danger entries
-		auto mToMark = bDormant ? &mDormantSlightDanger : &mNormalSlightDanger;
-
-		std::vector<CNavArea*> vAreas;
-		F::NavEngine.GetNavMap()->CollectAreasAround(vOrigin, flSlightDangerDist, vAreas);
-
-		for (auto& pArea : vAreas)
-		{
-			float flDist = pArea->m_vCenter.DistTo(vOrigin);
-
-			Vector vNavAreaPos = pArea->m_vCenter;
-			vNavAreaPos.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-			if (pLocal->m_iClass() == TF_CLASS_SPY && iSlot == SLOT_MELEE)
-			{
-				if (pLocal->InCond(TF_COND_STEALTHED))
-					continue;
-
-				Vec3 vForward;
-				Math::AngleVectors(pPlayer->GetEyeAngles(), &vForward);
-				Vec3 vToArea = vNavAreaPos - vOrigin;
-				vToArea.Normalize();
-				if (vForward.Dot(vToArea) < 0.3f)
-					continue;
-			}
-
-			if (!F::NavEngine.IsVectorVisibleNavigation(vOrigin, vNavAreaPos))
-				continue;
-
-			// Just slightly dangerous, only mark as such if it's clear
-			if (flDist >= flFullDangerDist &&
-				(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::SafeCapping || F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture))
-			{
-				(*mToMark)[pArea]++;
-				if ((*mToMark)[pArea] < Vars::Misc::Movement::NavBot::BlacklistSlightDangerLimit.Value)
-					continue;
-			}
-			(*F::NavEngine.GetFreeBlacklist())[pArea] = bDormant ? BlacklistReasonEnum::EnemyDormant : BlacklistReasonEnum::EnemyNormal;
-		}
-	}
-}
 
 void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 {
@@ -360,7 +239,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	}
 
 	UpdateSlot(pLocal, F::BotUtils.m_tClosestEnemy);
-	UpdateEnemyBlacklist(pLocal, pWeapon, F::BotUtils.m_iCurrentSlot);
+	F::DangerManager.Update(pLocal);
 
 	// TODO:
 	// Add engie logic and target sentries logic. (Done)
@@ -626,5 +505,31 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 		float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
 		bool bIsIdle = F::NavEngine.m_eCurrentPriority == PriorityListEnum::None || !F::NavEngine.IsPathing();
 		H::Draw.StringOutlined(fFont, x, y += nTall, bIsIdle ? Vars::Menu::Theme::Active.Value : Vars::Menu::Theme::Inactive.Value, Vars::Menu::Theme::Background.Value, align, std::format("Idle: {} ({:.1f}s)", bIsIdle ? "Yes" : "No", std::max(0.f, flIdleTime)).c_str());
+
+		if (pLocal && Vars::Misc::Movement::NavBot::DangerOverlay.Value)
+		{
+			int iDrawn = 0;
+			const float flMaxDist = Vars::Misc::Movement::NavBot::DangerOverlayMaxDist.Value;
+			const float flMaxDistSqr = flMaxDist * flMaxDist;
+			for (const auto& [pArea, tData] : F::DangerManager.GetDangerMap())
+			{
+				if (!pArea || tData.m_flScore <= 0.f)
+					continue;
+
+				if (pArea->m_vCenter.DistToSqr(pLocal->GetAbsOrigin()) > flMaxDistSqr)
+					continue;
+
+				Color_t tColor = Color_t(255, 200, 0, 80);
+				if (tData.m_flScore >= DANGER_SCORE_STICKY)
+					tColor = Color_t(255, 50, 50, 90);
+				else if (tData.m_flScore >= DANGER_SCORE_ENEMY_NORMAL)
+					tColor = Color_t(255, 140, 0, 90);
+
+				G::SphereStorage.push_back({ pArea->m_vCenter, 24.f, 10, 10, I::GlobalVars->curtime + I::GlobalVars->interval_per_tick * 2.f, tColor, Color_t(), true });
+
+				if (++iDrawn >= 64)
+					break;
+			}
+		}
 	}
 }

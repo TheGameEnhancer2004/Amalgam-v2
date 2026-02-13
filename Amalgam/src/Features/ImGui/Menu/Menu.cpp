@@ -1403,15 +1403,15 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Movement::Bunnyhop, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::EdgeJump, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::AutoJumpbug, FToggleEnum::Left); // this is unreliable without setups, do not depend on it!
-					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::AutoRocketJump, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Left);
 					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
@@ -1422,30 +1422,15 @@ void CMenu::MenuMisc(int iTab)
 						FSlider(Vars::Misc::Movement::ApplyAbove);
 					} EndSection();
 				}
-				if (Section("Automation"))
+				if (Section("Exploits"))
 				{
-					FDropdown(Vars::Misc::Automation::AntiBackstab); // pitch/fake _might_ slip up some auto backstabs
-					FToggle(Vars::Misc::Automation::AcceptItemDrops);
-					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
-					FToggle(Vars::Misc::Automation::TauntControl, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Right);
-					FToggle(Vars::Misc::Automation::AutoTaunt, FToggleEnum::Left);
-					PushTransparent(!Vars::Misc::Automation::AutoTaunt.Value);
-					{
-						FSlider(Vars::Misc::Automation::AutoTauntChance, FSliderEnum::Right);
-					}
-					PopTransparent();
-					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
-					FDropdown(Vars::Misc::Automation::AutoVotekick, FDropdownEnum::Left);
-					FToggle(Vars::Misc::Automation::AutoVoteMap, FToggleEnum::Right);
-					PushTransparent(!Vars::Misc::Automation::AutoVoteMap.Value);
-					{
-						FSlider(Vars::Misc::Automation::AutoVoteMapOption, FSliderEnum::Right);
-					}
-					PopTransparent();
-					FToggle(Vars::Misc::Automation::AutoReport);
+					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
+					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::BreakShootSound, FToggleEnum::Right);
+					FTooltip("breaks weapon shoot sound by switching weapons (soldier only)");
+					FToggleSlider(Vars::Misc::Exploits::PingReducer, Vars::Misc::Exploits::PingTarget);
+					FToggle(Vars::Misc::Exploits::BackpackExpander);
 				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{
@@ -1453,33 +1438,34 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::MannVsMachine::InstantRevive, FToggleEnum::Right);
 					FToggle(Vars::Misc::MannVsMachine::AllowInspect, FToggleEnum::Left);
 					FToggle(Vars::Misc::MannVsMachine::AutoMvmReadyUp, FToggleEnum::Right);
-					FToggle(Vars::Misc::MannVsMachine::BuyBot, FToggleEnum::Left);
+					FToggleSlider(Vars::Misc::MannVsMachine::BuyBot, Vars::Misc::MannVsMachine::MaxCash);
 					FTooltip("WARNING: Works only on Mann Up missions with enough starting cash (600$) before the 1st wave!\nRequirements:\n1. Be a Vaccinator Medic\n2. Ping must be below 80ms\n3. Walk to the upgrade station\nPerforms MVM upgrade station exploit for extra cash.");
-					PushTransparent(!Vars::Misc::MannVsMachine::BuyBot.Value);
-					{
-						FSlider(Vars::Misc::MannVsMachine::MaxCash);
-					}
-					PopTransparent();
 				} EndSection();
 			}
 
 			/* Column 2 */
 			TableNextColumn();
 			{
-				if (Section("Exploits", 8))
+				if (Section("Automation"))
 				{
-					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
-					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::BreakShootSound, FToggleEnum::Right);
-					FTooltip("breaks weapon shoot sound by switching weapons (soldier only)");
-					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::PingReducer, FToggleEnum::Right);
-					PushTransparent(!Vars::Misc::Exploits::PingReducer.Value);
-					{
-						FSlider(Vars::Misc::Exploits::PingTarget);
-					}
-					PopTransparent();
+					FDropdown(Vars::Misc::Automation::AntiBackstab); // pitch/fake _might_ slip up some auto backstabs
+					FToggle(Vars::Misc::Automation::AcceptItemDrops);
+					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AutoReport, FToggleEnum::Right);
+				} EndSection();
+				if (Section("Voting", 8))
+				{
+					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FToggleSlider(Vars::Misc::Automation::AutoVoteMap, Vars::Misc::Automation::AutoVoteMapOption);
+					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
+				} EndSection();
+				if (Section("Taunts", 8))
+				{
+					FToggle(Vars::Misc::Automation::TauntControl);
+					FToggleSlider(Vars::Misc::Automation::AutoTaunt, Vars::Misc::Automation::AutoTauntChance);
 				} EndSection();
 				if (Section("Game", 8))
 				{
@@ -1519,9 +1505,10 @@ void CMenu::MenuMisc(int iTab)
 				if (Section("Nav Engine"))
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Right);
+				FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
+				FToggle(Vars::Misc::Movement::NavEngine::PathRandomization, FToggleEnum::Left);
+				FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Right);
+				FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
@@ -1566,10 +1553,43 @@ void CMenu::MenuMisc(int iTab)
 							}
 							PopTransparent();
 							FSlider(Vars::Misc::Movement::NavBot::MeleeTargetRange);
+							FToggleSlider(Vars::Misc::Movement::NavBot::DangerOverlay, Vars::Misc::Movement::NavBot::DangerOverlayMaxDist);
 						}
 						PopTransparent();
 					}
 					PopTransparent();
+				} EndSection();
+				if (Section("Followbot"))
+				{
+					FToggle(Vars::Misc::Movement::FollowBot::Enabled);
+					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
+						FDropdown(Vars::Misc::Movement::FollowBot::UseNav, FDropdownEnum::Left);
+						FTooltip("Use nav engine when unable to reach current target.\nNormal - runs in case the target is NOT dormant\nNormal + Dormant - runs regardless of dormancy\nNOTE:\n'+ Dormant' does not make the followbot target players across the whole map. \nIt only prevents followbot from losing current target in case it goes dormant");
+					PopTransparent();
+					FDropdown(Vars::Misc::Movement::FollowBot::Targets, FDropdownEnum::Right);
+					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
+					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
+						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
+						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
+						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
+					PopTransparent();
+					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);
+					FTooltip("Allowed amount of path nodes.\nExceeding that abandons the target.");
+					FSlider(Vars::Misc::Movement::FollowBot::MinPriority, FSliderEnum::Right);
+					FTooltip("Minimal priority at which followbot starts to target a player.\nOverrides playerlist follow priority minimum allowing to change which targets followbot selects depending on this config");
+					FSlider(Vars::Misc::Movement::FollowBot::ActivationDistance, FSliderEnum::Left);
+					FTooltip("Distance at which followbot starts to follow.\nDoesn't affect anything with nav being active.");
+					FSlider(Vars::Misc::Movement::FollowBot::FollowDistance, FSliderEnum::Right);
+					FTooltip("Distance to target which followbot tries to maintain.");
+					FSlider(Vars::Misc::Movement::FollowBot::AbandonDistance, FSliderEnum::Left);
+					FTooltip("Distance at which followbot abandons the target (will try to use nav instead).");
+					PushTransparent(!Vars::Misc::Movement::FollowBot::UseNav.Value);
+						FSlider(Vars::Misc::Movement::FollowBot::NavAbandonDistance, FSliderEnum::Right);
+						FTooltip("Distance at which followbot abandons the target completely.");
+					PopTransparent();
+					FToggle(Vars::Misc::Movement::FollowBot::DrawPath, FToggleEnum::Left);
+					FColorPicker(Vars::Colors::FollowbotPathLine, FColorPickerEnum::SameLine);
+					FColorPicker(Vars::Colors::FollowbotPathBox, FColorPickerEnum::SameLine);
 				} EndSection();
 				if (Section("Bot Utils"))
 				{
@@ -1626,67 +1646,22 @@ void CMenu::MenuMisc(int iTab)
 			/* Column 2 */
 			TableNextColumn();
 			{
-				if (Section("Followbot"))
-				{
-					FToggle(Vars::Misc::Movement::FollowBot::Enabled);
-					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
-						FDropdown(Vars::Misc::Movement::FollowBot::UseNav, FDropdownEnum::Left);
-						FTooltip("Use nav engine when unable to reach current target.\nNormal - runs in case the target is NOT dormant\nNormal + Dormant - runs regardless of dormancy\nNOTE:\n'+ Dormant' does not make the followbot target players across the whole map. \nIt only prevents followbot from losing current target in case it goes dormant");
-					PopTransparent();
-					FDropdown(Vars::Misc::Movement::FollowBot::Targets, FDropdownEnum::Right);
-					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
-					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
-						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
-						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
-						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
-					PopTransparent();
-					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);
-					FTooltip("Allowed amount of path nodes.\nExceeding that abandons the target.");
-					FSlider(Vars::Misc::Movement::FollowBot::MinPriority, FSliderEnum::Right);
-					FTooltip("Minimal priority at which followbot starts to target a player.\nOverrides playerlist follow priority minimum allowing to change which targets followbot selects depending on this config");
-					FSlider(Vars::Misc::Movement::FollowBot::ActivationDistance, FSliderEnum::Left);
-					FTooltip("Distance at which followbot starts to follow.\nDoesn't affect anything with nav being active.");
-					FSlider(Vars::Misc::Movement::FollowBot::FollowDistance, FSliderEnum::Right);
-					FTooltip("Distance to target which followbot tries to maintain.");
-					FSlider(Vars::Misc::Movement::FollowBot::AbandonDistance, FSliderEnum::Left);
-					FTooltip("Distance at which followbot abandons the target (will try to use nav instead).");
-					PushTransparent(!Vars::Misc::Movement::FollowBot::UseNav.Value);
-						FSlider(Vars::Misc::Movement::FollowBot::NavAbandonDistance, FSliderEnum::Right);
-						FTooltip("Distance at which followbot abandons the target completely.");
-					PopTransparent();
-					FToggle(Vars::Misc::Movement::FollowBot::DrawPath, FToggleEnum::Left);
-					FColorPicker(Vars::Colors::FollowbotPathLine, FColorPickerEnum::SameLine);
-					FColorPicker(Vars::Colors::FollowbotPathBox, FColorPickerEnum::SameLine);
-				} EndSection();
-				if (Section("Auto-Item"))
-				{
-					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
-					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
-					FSlider(Vars::Misc::Automation::AutoItem::Interval);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
-					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
-					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
-				} EndSection();
 				if (Section("Queueing", 8))
 				{
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
 					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
+<<<<<<< Updated upstream
 		//			FToggle(Vars::Misc::Queueing::AutoMannUpQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::MapPopularizing, FToggleEnum::Left);
+=======
+					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
+>>>>>>> Stashed changes
 					FToggle(Vars::Misc::Queueing::MapBarBoost, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Queueing::AutoCasualQueue.Value);
 					{
-						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh, FToggleEnum::Right);
-						FToggle(Vars::Misc::Queueing::AutoDumpProfiles, FToggleEnum::Left);
-						PushTransparent(!Vars::Misc::Queueing::AutoDumpProfiles.Value);
-						{
-							FSlider(Vars::Misc::Queueing::AutoDumpDelay);
-						}
-						PopTransparent();
+						FToggle(Vars::Misc::Queueing::AutoAbandonIfNoNavmesh);
+						FToggleSlider(Vars::Misc::Queueing::AutoDumpProfiles, Vars::Misc::Queueing::AutoDumpDelay);
 					}
 					PopTransparent();
 					FSlider(Vars::Misc::Queueing::QueueDelay, FSliderEnum::None);
@@ -1717,12 +1692,23 @@ void CMenu::MenuMisc(int iTab)
 					}
 					PopTransparent();
 				} EndSection();
+				if (Section("Auto-Item"))
+				{
+					FDropdown(Vars::Misc::Automation::AutoItem::Enable);
+					FTooltip("Allows you to automatically rent and craft items, very useful for bots.");
+					FSlider(Vars::Misc::Automation::AutoItem::Interval);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Primary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::FirstHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Secondary, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::SecondHat, FDropdownEnum::Right);
+					FSDropdown(Vars::Misc::Automation::AutoItem::Melee, FDropdownEnum::Left);
+					FSDropdown(Vars::Misc::Automation::AutoItem::ThirdHat, FDropdownEnum::Right);
+				} EndSection();
 				if (Section("Chat", 8))
 				{
-					FToggle(Vars::Misc::Automation::ChatSpam::Enable);
+					FToggleSlider(Vars::Misc::Automation::ChatSpam::Enable, Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Clamp);
 					PushTransparent(!Vars::Misc::Automation::ChatSpam::Enable.Value);
 					{
-						FSlider(Vars::Misc::Automation::ChatSpam::Interval, FSliderEnum::Clamp);
 						FToggle(Vars::Misc::Automation::ChatSpam::TeamChat, FToggleEnum::Left);
 						FToggle(Vars::Misc::Automation::ChatSpam::Randomize, FToggleEnum::Right);
 					}

@@ -85,8 +85,10 @@ public:
 	std::vector<CNavArea*>* GetRespawnRoomExitAreas() { return &m_vRespawnRoomExitAreas; }
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
+	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }
 	CMap* GetNavMap() { return m_pMap.get(); }
+	CNavArea* GetLocalNavArea() { return m_pLocalArea; }
 
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }
@@ -139,7 +141,6 @@ public:
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
 
-	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavArea* GetLocalNavArea(const Vector& vLocalOrigin);
 	const Vector& GetCurrentPathDir() const { return m_vCurrentPathDir; }
 

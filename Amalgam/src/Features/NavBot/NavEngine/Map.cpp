@@ -1,6 +1,148 @@
 #include "NavEngine.h"
 #include "../BotUtils.h"
+#include "../DangerManager/DangerManager.h"
 #include <cmath>
+#include <queue>
+#include <algorithm>
+
+// 0 = Success, 1 = No Path, 2 = Start/End invalid
+int CMap::Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, float* cost)
+{
+	if (!pStart || !pEnd || m_navfile.m_vAreas.empty())
+		return 2;
+
+	if (m_vPathNodes.size() != m_navfile.m_vAreas.size())
+		m_vPathNodes.assign(m_navfile.m_vAreas.size(), {});
+
+	m_iQueryId++;
+
+	using NodePair = std::pair<float, size_t>;
+	std::priority_queue<NodePair, std::vector<NodePair>, std::greater<NodePair>> openSet;
+
+	size_t uStartIndex = pStart - &m_navfile.m_vAreas[0];
+	size_t uEndIndex = pEnd - &m_navfile.m_vAreas[0];
+
+	if (uStartIndex >= m_vPathNodes.size() || uEndIndex >= m_vPathNodes.size())
+		return 2;
+
+	PathNode_t& startNode = m_vPathNodes[uStartIndex];
+	startNode.m_g = 0.0f;
+	startNode.m_f = pStart->m_vCenter.DistTo(pEnd->m_vCenter);
+	startNode.m_pParent = nullptr;
+	startNode.m_iQueryId = m_iQueryId;
+	startNode.m_bInOpen = true;
+
+	openSet.push({ startNode.m_f, uStartIndex });
+
+	std::vector<micropather::StateCost> vNeighbors;
+	vNeighbors.reserve(8);
+
+	while (!openSet.empty())
+	{
+		size_t uCurrentIndex = openSet.top().second;
+		float fCurrentScore = openSet.top().first;
+		openSet.pop();
+
+		if (uCurrentIndex == uEndIndex)
+		{
+			// Path Found! Reconstruct.
+			if (cost) *cost = m_vPathNodes[uCurrentIndex].m_g;
+			
+			path->clear();
+			CNavArea* pCurrent = pEnd;
+			while (pCurrent)
+			{
+				path->push_back(reinterpret_cast<void*>(pCurrent)); // MicroPather returns void*
+				size_t uIdx = pCurrent - &m_navfile.m_vAreas[0];
+				pCurrent = m_vPathNodes[uIdx].m_pParent;
+			}
+			std::reverse(path->begin(), path->end());
+			return 0;
+		}
+
+		PathNode_t& currentNode = m_vPathNodes[uCurrentIndex];
+		currentNode.m_bInOpen = false;
+
+		if (fCurrentScore > currentNode.m_f)
+			continue;
+
+		CNavArea* pCurrentArea = &m_navfile.m_vAreas[uCurrentIndex];
+
+		vNeighbors.clear();
+		GetDirectNeighbors(pCurrentArea, vNeighbors);
+
+		for (const auto& neighbor : vNeighbors)
+		{
+			CNavArea* pNextArea = reinterpret_cast<CNavArea*>(neighbor.state);
+			float flCostToNext = neighbor.cost;
+			
+			size_t uNextIndex = pNextArea - &m_navfile.m_vAreas[0];
+			PathNode_t& nextNode = m_vPathNodes[uNextIndex];
+
+			if (nextNode.m_iQueryId != m_iQueryId)
+			{
+				nextNode.m_g = std::numeric_limits<float>::max();
+				nextNode.m_f = std::numeric_limits<float>::max();
+				nextNode.m_pParent = nullptr;
+				nextNode.m_iQueryId = m_iQueryId;
+				nextNode.m_bInOpen = false;
+			}
+
+			float flNewG = currentNode.m_g + flCostToNext;
+
+			if (flNewG < nextNode.m_g)
+			{
+				nextNode.m_pParent = pCurrentArea;
+				nextNode.m_g = flNewG;
+				float h = pNextArea->m_vCenter.DistTo(pEnd->m_vCenter);
+				nextNode.m_f = flNewG + h; 
+
+				if (!nextNode.m_bInOpen)
+				{
+					nextNode.m_bInOpen = true;
+					openSet.push({ nextNode.m_f, uNextIndex });
+				}
+			}
+		}
+	}
+
+	return 1;
+}
+
+void CMap::GetDirectNeighbors(CNavArea* pCurrentArea, std::vector<micropather::StateCost>& neighbors)
+{
+	const int iNow = I::GlobalVars->tickcount;
+	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+
+	auto pLocal = H::Entities.GetLocal();
+	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
+
+	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
+	{
+		CNavArea* pNextArea = tConnection.m_pArea;
+		if (!pNextArea || pNextArea == pCurrentArea)
+			continue;
+
+		if (!m_bFreeBlacklistBlocked && !F::NavEngine.m_bIgnoreTraces)
+		{
+			if (auto itBlacklist = m_mFreeBlacklist.find(pNextArea); itBlacklist != m_mFreeBlacklist.end())
+			{
+				float flPenalty = GetBlacklistPenalty(itBlacklist->second);
+				float flThreshold = F::NavEngine.m_eCurrentPriority == PriorityListEnum::Capture ? 4000.f : 1000.f;
+				if (flPenalty >= flThreshold) 
+					continue;
+			}
+		}
+		
+		if (!F::NavEngine.m_bIgnoreTraces)
+		{
+			if (pNextArea->IsBlocked(iTeam))
+				continue;
+		}
+
+		AdjacentCost(reinterpret_cast<void*>(pCurrentArea), &neighbors);
+	}
+}
 
 void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjacent)
 {
@@ -48,14 +190,13 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		}
 
 		const auto tKey = std::pair<CNavArea*, CNavArea*>(pCurrentArea, pNextArea);
-		CachedConnection_t* pCachedEntry = nullptr;
-		if (auto itCache = m_mVischeckCache.find(tKey); itCache != m_mVischeckCache.end() &&
-			(itCache->second.m_iExpireTick == 0 || itCache->second.m_iExpireTick > iNow))
-			pCachedEntry = &itCache->second;
+		
+		CachedConnection_t& tEntry = m_mVischeckCache[tKey];
+		bool bValidCache = (tEntry.m_iExpireTick == 0 || tEntry.m_iExpireTick > iNow);
 
-		if (pCachedEntry && !pCachedEntry->m_bPassable)
+		if (bValidCache && !tEntry.m_bPassable)
 		{
-			if (!F::NavEngine.m_bIgnoreTraces || pCachedEntry->m_bStuckBlacklist)
+			if (!F::NavEngine.m_bIgnoreTraces || tEntry.m_bStuckBlacklist)
 				continue;
 		}
 
@@ -64,11 +205,11 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		float flBaseCost = std::numeric_limits<float>::max();
 		bool bPassable = false;
 
-		if (pCachedEntry && pCachedEntry->m_eVischeckState == VischeckStateEnum::Visible && pCachedEntry->m_bPassable)
+		if (bValidCache && tEntry.m_eVischeckState == VischeckStateEnum::Visible && tEntry.m_bPassable)
 		{
-			tPoints = pCachedEntry->m_tPoints;
-			tDropdown = pCachedEntry->m_tDropdown;
-			flBaseCost = pCachedEntry->m_flCachedCost;
+			tPoints = tEntry.m_tPoints;
+			tDropdown = tEntry.m_tDropdown;
+			flBaseCost = tEntry.m_flCachedCost;
 			bPassable = true;
 		}
 		else
@@ -79,10 +220,8 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 			tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
-			const float flHeightDiff = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
-			if (!F::NavEngine.m_bIgnoreTraces && flHeightDiff > PLAYER_CROUCHED_JUMP_HEIGHT)
+			if (!F::NavEngine.m_bIgnoreTraces && (tPoints.m_vCenterNext.z - tPoints.m_vCenter.z) > PLAYER_CROUCHED_JUMP_HEIGHT)
 			{
-				CachedConnection_t& tEntry = m_mVischeckCache[tKey];
 				tEntry.m_iExpireTick = iCacheExpiry;
 				tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
 				tEntry.m_bPassable = false;
@@ -94,29 +233,15 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			Vector vMid = tPoints.m_vCenter;
 			Vector vEnd = tPoints.m_vNext;
 
-			auto pLocal = H::Entities.GetLocal();
-			if (F::NavEngine.m_bIgnoreTraces || (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, vStart, vMid) && F::NavEngine.IsPlayerPassableNavigation(pLocal, vMid, vEnd)))
-			{
-				bPassable = true;
-				flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
+			bPassable = true;
+			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
 
-				CachedConnection_t& tEntry = m_mVischeckCache[tKey];
-				tEntry.m_iExpireTick = iCacheExpiry;
-				tEntry.m_eVischeckState = VischeckStateEnum::Visible;
-				tEntry.m_bPassable = true;
-				tEntry.m_tPoints = tPoints;
-				tEntry.m_tDropdown = tDropdown;
-				tEntry.m_flCachedCost = flBaseCost;
-			}
-			else
-			{
-				CachedConnection_t& tEntry = m_mVischeckCache[tKey];
-				tEntry.m_iExpireTick = iCacheExpiry;
-				tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
-				tEntry.m_bPassable = false;
-				tEntry.m_flCachedCost = std::numeric_limits<float>::max();
-				continue;
-			}
+			tEntry.m_iExpireTick = iCacheExpiry;
+			tEntry.m_eVischeckState = VischeckStateEnum::Visible;
+			tEntry.m_bPassable = true;
+			tEntry.m_tPoints = tPoints;
+			tEntry.m_tDropdown = tDropdown;
+			tEntry.m_flCachedCost = flBaseCost;
 		}
 
 		if (!bPassable)
@@ -125,17 +250,16 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!std::isfinite(flBaseCost) || flBaseCost <= 0.f)
 		{
 			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);
-			if (pCachedEntry)
-			{
-				pCachedEntry->m_flCachedCost = flBaseCost;
-				pCachedEntry->m_tPoints = tPoints;
-				pCachedEntry->m_tDropdown = tDropdown;
-			}
+			tEntry.m_flCachedCost = flBaseCost;
+			tEntry.m_tPoints = tPoints;
+			tEntry.m_tDropdown = tDropdown;
 		}
 
 		float flFinalCost = flBaseCost;
 		if (!F::NavEngine.m_bIgnoreTraces)
 		{
+			flFinalCost += F::DangerManager.GetCost(pNextArea);
+
 			if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
 				flFinalCost += flBlacklistPenalty;
 
@@ -150,21 +274,14 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		}
 		else
 		{
-			auto pLocal = H::Entities.GetLocal();
+			// irronically, i made it run bilion traces before
 			float flDist = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
+			flFinalCost = flDist * 1.5f;
 
-			if (pLocal && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter) && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext))
-			{
-				flFinalCost = flDist;
-			}
-			else if ((pNextArea->m_vSeCorner.x - pNextArea->m_vNwCorner.x) >= PLAYER_WIDTH && (pNextArea->m_vSeCorner.y - pNextArea->m_vNwCorner.y) >= PLAYER_WIDTH)
-			{
-				flFinalCost = flDist * 2.f;
-			}
-			else
-			{
-				flFinalCost = flDist * 10.f;
-			}
+			float flAreaWidth = pNextArea->m_vSeCorner.x - pNextArea->m_vNwCorner.x;
+			float flAreaHeight = pNextArea->m_vSeCorner.y - pNextArea->m_vNwCorner.y;
+			if (flAreaWidth < PLAYER_WIDTH || flAreaHeight < PLAYER_WIDTH)
+				flFinalCost *= 2.0f;
 
 			if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
 				flFinalCost += 100000.f;
@@ -175,14 +292,22 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)
 			continue;
 
-		pAdjacent->push_back({ reinterpret_cast<void*>(pNextArea), flFinalCost });
-		if (auto itCache = m_mVischeckCache.find(tKey); itCache != m_mVischeckCache.end())
+		if (Vars::Misc::Movement::NavEngine::PathRandomization.Value)
 		{
-			if (itCache->second.m_bPassable)
-			{
-				itCache->second.m_flCachedCost = flBaseCost;
-				itCache->second.m_iExpireTick = iCacheExpiry;
-			}
+			// Deterministic randomization based on bot index and area address blah blah i dont know how it works
+			// ai made this im bad at math
+			uintptr_t uSeed = reinterpret_cast<uintptr_t>(pNextArea) ^ (pLocal ? pLocal->entindex() : 0);
+			uSeed = (uSeed ^ 0xDEADBEEF) * 1664525u + 1013904223u;
+			float flNoise = (uSeed & 0xFFFF) / 65536.0f;
+			flFinalCost *= (1.0f + flNoise * 0.15f);
+		}
+
+		pAdjacent->push_back({ reinterpret_cast<void*>(pNextArea), flFinalCost });
+		
+		if (tEntry.m_bPassable)
+		{
+			tEntry.m_flCachedCost = flBaseCost;
+			tEntry.m_iExpireTick = iCacheExpiry;
 		}
 	}
 }
@@ -546,47 +671,20 @@ void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const Bla
 CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 {
 	std::lock_guard lock(m_mutex);
-	float flOverallBestDist = FLT_MAX, flBestDist = FLT_MAX;
-	Vector vCorrected = vPos; vCorrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+	float flBestDist = FLT_MAX;
+	CNavArea* pBestArea = nullptr;
 
-	// If multiple candidates for LocalNav have been found, pick the closest
-	CNavArea* pOverallBestArea = nullptr, * pBestArea = nullptr;
 	for (auto& tArea : m_navfile.m_vAreas)
 	{
-		// Marked bad, do not use if local origin
-		if (bLocalOrigin)
-		{
-			auto tKey = std::pair<CNavArea*, CNavArea*>(&tArea, &tArea);
-			if (m_mVischeckCache.count(tKey) && m_mVischeckCache[tKey].m_eVischeckState == VischeckStateEnum::NotVisible)
-				continue;
-		}
-
 		float flDist = tArea.m_vCenter.DistToSqr(vPos);
 		if (flDist < flBestDist)
 		{
 			flBestDist = flDist;
 			pBestArea = &tArea;
 		}
-
-		if (flOverallBestDist < flDist)
-			continue;
-
-		auto vCenterCorrected = tArea.m_vCenter;
-		vCenterCorrected.z += PLAYER_CROUCHED_JUMP_HEIGHT;
-
-		// Check if we are within x and y bounds of an area
-		if (!tArea.IsOverlapping(vPos) || !F::NavEngine.IsVectorVisibleNavigation(vCorrected, vCenterCorrected, MASK_SHOT | CONTENTS_GRATE))
-			continue;
-
-		flOverallBestDist = flDist;
-		pOverallBestArea = &tArea;
-
-		// Early return if the area is overlapping and visible
-		if (flOverallBestDist == flBestDist)
-			return pOverallBestArea;
 	}
 
-	return pOverallBestArea ? pOverallBestArea : pBestArea;
+	return pBestArea;
 }
 
 void CMap::UpdateIgnores(CTFPlayer* pLocal)
@@ -691,7 +789,4 @@ void CMap::UpdateIgnores(CTFPlayer* pLocal)
 
 	bool bErased = uPreviousBlacklistSize != m_mFreeBlacklist.size();
 	uPreviousBlacklistSize = m_mFreeBlacklist.size();
-
-	if (bErased)
-		m_pather.Reset();
 }

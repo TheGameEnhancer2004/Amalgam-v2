@@ -21,7 +21,6 @@ public:
 	const BotClassConfig_t CONFIG_GUNSLINGER_ENGINEER = { 50.0f, 300.0f, 2000.0f, false };
 	BotClassConfig_t m_tSelectedConfig;
 private:
-	void UpdateEnemyBlacklist(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iSlot);
 	void UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy);
 public:
 	// Recursive function to find hiding spot

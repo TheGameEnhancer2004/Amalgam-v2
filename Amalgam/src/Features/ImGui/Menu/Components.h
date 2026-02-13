@@ -1409,6 +1409,249 @@ namespace ImGui
 		return *pVar1 != flOriginal1 || pVar2 && *pVar2 != flOriginal2;
 	}
 
+	inline bool FToggleSlider(const char* sLabel, bool* pToggleVar, float* pSliderVar, float flMin, float flMax, float flStep = 1.f, const char* fmt = "%g", int iFlags = FSliderEnum::None, bool* pHovered = nullptr)
+	{
+		auto uHash = FNV1A::Hash32Const(sLabel);
+
+		ImDrawList* pDrawList = GetWindowDrawList();
+		float flOriginal = *pSliderVar;
+		bool bOriginalToggle = *pToggleVar;
+
+		static std::unordered_map<uint32_t, float> mStaticVars = {};
+		if (!mActiveMap[uHash])
+			mStaticVars[uHash] = flOriginal;
+		float& flSVar = mStaticVars[uHash];
+
+		if (Transparent || Disabled)
+			PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+
+		ImVec2 vSize;
+		bool bFull = !(iFlags & (FSliderEnum::Left | FSliderEnum::Right));
+
+		vSize.x = GetWindowWidth();
+		if (!bFull)
+			vSize.x = vSize.x / 2 - GetStyle().WindowPadding.x * 1.5f;
+		else
+			vSize.x -= GetStyle().WindowPadding.x * 2;
+		if (iFlags & FSliderEnum::Right)
+			SameLine(vSize.x + GetStyle().WindowPadding.x * 2);
+
+		ImVec2 vOriginalPos = GetCursorPos(), vDrawPos = GetDrawPos();
+
+		float flBoxSize = H::Draw.Scale(14);
+		ImVec2 vBoxMin = { vDrawPos.x + vOriginalPos.x + H::Draw.Scale(2), vDrawPos.y + vOriginalPos.y + H::Draw.Scale(4) };
+		ImVec2 vBoxMax = { vBoxMin.x + flBoxSize, vBoxMin.y + flBoxSize };
+
+		bool bHoveredCheckbox = IsMouseWithin(vBoxMin.x, vBoxMin.y, flBoxSize, flBoxSize);
+		if (bHoveredCheckbox && IsMouseClicked(ImGuiMouseButton_Left) && !Disabled)
+			*pToggleVar = !*pToggleVar;
+
+		ImColor tColor = *pToggleVar ? (iFlags & FToggleEnum::PlainColor ? F::Render.Active : F::Render.Accent) : F::Render.Inactive;
+		if (*pToggleVar)
+		{
+			pDrawList->AddRectFilled(vBoxMin, vBoxMax, tColor, H::Draw.Scale(3));
+			PushFont(F::Render.IconFont);
+			const char* sIcon = ICON_MD_CHECK;
+			ImVec2 vIconSize = CalcTextSize(sIcon);
+			pDrawList->AddText({ vBoxMin.x + (flBoxSize - vIconSize.x) / 2, vBoxMin.y + (flBoxSize - vIconSize.y) / 2 }, F::Render.Background0, sIcon);
+			PopFont();
+		}
+		else
+			pDrawList->AddRect(vBoxMin, vBoxMax, F::Render.Inactive, H::Draw.Scale(3), ImDrawFlags_None, H::Draw.Scale(1.5f));
+
+		bool bSliderDisabled = !*pToggleVar;
+		if (bSliderDisabled)
+			PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+
+		PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
+
+		static std::unordered_map<uint32_t, float> mEntryWidth = {};
+		float& flEntryWidth = mEntryWidth[FNV1A::Hash32(sLabel)];
+		float flCheckboxWidth = H::Draw.Scale(24);
+
+#ifdef ALTERNATE_FULL_SLIDER
+		auto vWrapped = WrapText(StripDoubleHash(sLabel), bFull ? vSize.x / 2 - H::Draw.Scale(24) - flCheckboxWidth : vSize.x - flEntryWidth - H::Draw.Scale(20) - flCheckboxWidth);
+#else
+		auto vWrapped = WrapText(StripDoubleHash(sLabel), vSize.x - H::Draw.Scale(14) - flEntryWidth - flCheckboxWidth);
+#endif
+		int iWraps = std::min(int(vWrapped.size()), 2); // prevent too many wraps
+#ifdef ALTERNATE_FULL_SLIDER
+		vSize.y = H::Draw.Scale(H::Draw.Scale(bFull ? 6 : 14) + 18 * iWraps);
+#else
+		vSize.y = H::Draw.Scale(16 + 18 * iWraps);
+#endif
+
+		for (size_t i = 0; i < iWraps; i++)
+		{
+#ifdef ALTERNATE_FULL_SLIDER
+			SetCursorPos({ vOriginalPos.x + H::Draw.Scale(6) + flCheckboxWidth, vOriginalPos.y + H::Draw.Scale((bFull ? 5 : 3) + 18 * i) });
+#else
+			SetCursorPos({ vOriginalPos.x + H::Draw.Scale(6) + flCheckboxWidth, vOriginalPos.y + H::Draw.Scale(4 + 18 * i) });
+#endif
+			TextUnformatted(vWrapped[i].c_str());
+		}
+
+#ifdef ALTERNATE_FULL_SLIDER
+		float flTextY = vOriginalPos.y + H::Draw.Scale(bFull ? -4 + 9 * iWraps : -15 + 18 * iWraps);
+#else
+		float flTextY = vOriginalPos.y + H::Draw.Scale(-14 + 18 * iWraps);
+#endif
+		{
+			auto uHash2 = FNV1A::Hash32Const(std::format("{}## Text", sLabel).c_str());
+
+			static std::string sText, sInput;
+			if (!mActiveMap[uHash2])
+				sText = FormatText(fmt, flSVar);
+			else
+			{
+				SetCursorPos({ -1000, flTextY }); // lol
+				SetKeyboardFocusHere();
+				InputText("##SliderText", &sInput, ImGuiInputTextFlags_CharsDecimal); sText = sInput;
+
+				bool bEnter = U::KeyHandler.Pressed(VK_RETURN);
+				if (bEnter)
+				{
+					try // prevent the user from being a retard with invalid inputs
+					{
+						float& pVar = flSVar;
+
+						pVar = sText.length() ? std::stof(sText) : 0.f;
+						if (!(iFlags & FSliderEnum::Precision))
+							pVar = pVar - fnmodf(pVar - flStep / 2, flStep) + flStep / 2;
+						if (iFlags & FSliderEnum::Clamp)
+							pVar = std::clamp(pVar, flMin, flMax);
+						else if (iFlags & FSliderEnum::Min)
+							pVar = std::max(pVar, flMin);
+						else if (iFlags & FSliderEnum::Max)
+							pVar = std::min(pVar, flMax);
+
+						*pSliderVar = flSVar;
+					}
+					catch (...) {}
+				}
+				if (bEnter || IsMouseClicked(ImGuiMouseButton_Left) || U::KeyHandler.Pressed(VK_ESCAPE))
+					mActiveMap[uHash2] = false;
+			}
+			float flWidth = FCalcTextSize(sText.c_str()).x;
+#ifdef ALTERNATE_FULL_SLIDER
+			if (bFull)
+				SetCursorPos({ vOriginalPos.x + vSize.x - H::Draw.Scale(36), flTextY });
+			else
+				SetCursorPos({ vOriginalPos.x + vSize.x - flWidth - H::Draw.Scale(6), flTextY });
+#else
+			SetCursorPos({ vOriginalPos.x + vSize.x - flWidth - H::Draw.Scale(6), flTextY });
+#endif
+
+			ImVec2 vOriginalPos2 = GetCursorPos();
+			flEntryWidth = FCalcTextSize(sText.c_str()).x;
+			TextUnformatted(sText.c_str());
+			if (!Disabled && !bSliderDisabled)
+			{
+				if (IsItemHovered() && IsWindowHovered())
+					SetMouseCursor(ImGuiMouseCursor_TextInput);
+				if (mActiveMap[uHash2])
+					pDrawList->AddRectFilled({ vDrawPos.x + vOriginalPos2.x, vDrawPos.y + vOriginalPos2.y + H::Draw.Scale(14) }, { vDrawPos.x + vOriginalPos2.x + flWidth, vDrawPos.y + vOriginalPos2.y + H::Draw.Scale(15) }, F::Render.Active);
+				else if (IsItemClicked())
+				{
+					float* pVar = pSliderVar;
+					sInput = std::format("{}", *pVar); // would use to_string but i don't like its formatting
+					mActiveMap[uHash2] = 1;
+				}
+			}
+		}
+
+		vDrawPos += vOriginalPos;
+#ifdef ALTERNATE_FULL_SLIDER
+		ImVec2 vMins = { vSize.x / 2 - H::Draw.Scale(10), vSize.y / 2 - H::Draw.Scale(1) }, vMaxs = { vSize.x - H::Draw.Scale(50), vSize.y / 2 + H::Draw.Scale(1) };
+		if (!bFull)
+			vMins = { H::Draw.Scale(6), vSize.y - H::Draw.Scale(8) }, vMaxs = { vSize.x - H::Draw.Scale(6), vSize.y - H::Draw.Scale(6) };
+#else
+		ImVec2 vMins = { H::Draw.Scale(6), vSize.y - H::Draw.Scale(8) }, vMaxs = { vSize.x - H::Draw.Scale(6), vSize.y - H::Draw.Scale(6) };
+#endif
+		ImColor tAccent = F::Render.Accent, tMuted = F::Render.Inactive;
+		tMuted.Value.w *= 0.3f;
+
+		bool bWithin = IsWindowHovered() && IsMouseWithin(vDrawPos.x + vMins.x - H::Draw.Scale(6), vDrawPos.y + vMins.y - H::Draw.Scale(6), (vMaxs.x - vMins.x) + H::Draw.Scale(12), (vMaxs.y - vMins.y) + H::Draw.Scale(12));
+		if (!Disabled && !bSliderDisabled && bWithin)
+			SetMouseCursor(ImGuiMouseCursor_Hand);
+		ImVec2 vMouse = GetMousePos();
+		float flMousePerc = (vMouse.x - (vDrawPos.x + vMins.x)) / ((vDrawPos.x + vMaxs.x) - (vDrawPos.x + vMins.x)) + (flStep / 2) / (flMax - flMin);
+
+		pDrawList->AddRectFilled({ vDrawPos.x + vMins.x, vDrawPos.y + vMins.y }, { vDrawPos.x + vMaxs.x, vDrawPos.y + vMaxs.y }, tMuted, H::Draw.Scale(4));
+
+		{
+			float flPercent = std::clamp((flSVar - flMin) / (flMax - flMin), 0.f, 1.f);
+			float flPos = vMins.x + (vMaxs.x - vMins.x) * flPercent;
+
+			pDrawList->AddRectFilled({ vDrawPos.x + vMins.x, vDrawPos.y + vMins.y }, { vDrawPos.x + flPos, vDrawPos.y + vMaxs.y }, tAccent, H::Draw.Scale(4));
+
+			pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(5), F::Render.Background0);
+			pDrawList->AddCircleFilled({ vDrawPos.x + flPos, vDrawPos.y + (vMins.y + vMaxs.y) / 2 }, H::Draw.Scale(3), tAccent);
+
+			if (!Disabled && !bSliderDisabled)
+			{
+				if (bWithin && !mActiveMap[uHash])
+				{
+					if (IsMouseClicked(ImGuiMouseButton_Left))
+						mActiveMap[uHash] = 1;
+				}
+				else if (mActiveMap[uHash] && IsMouseDown(ImGuiMouseButton_Left))
+				{
+					flSVar = flMin + (flMax - flMin) * flMousePerc;
+					flSVar = std::clamp(flSVar - fnmodf(flSVar, flStep), flMin, flMax);
+				}
+				else
+					mActiveMap[uHash] = false;
+
+				if (iFlags & FSliderEnum::NoAutoUpdate ? !mActiveMap[uHash] : true)
+					*pSliderVar = flSVar;
+			}
+		}
+
+		PopStyleColor();
+		SetCursorPos({ vOriginalPos.x + vMins.x - 6, vOriginalPos.y + vMins.y - 6 });
+		Button("##", { vMaxs.x - vMins.x + 12, 14 }); // don't drag it around
+		SetCursorPos(vOriginalPos);
+		AddRowSize(vOriginalPos, vSize);
+		DebugDummy({ vSize.x, GetRowSize(vSize.y) });
+
+		if (bSliderDisabled)
+			PopStyleVar();
+
+		if (pHovered)
+			*pHovered = IsItemHovered() || bHoveredCheckbox;
+
+		if (Transparent || Disabled)
+			PopStyleVar();
+
+		return *pSliderVar != flOriginal || *pToggleVar != bOriginalToggle;
+	}
+
+	inline bool FToggleSlider(const char* sLabel, bool* pToggleVar, int* pSliderVar, int iMin, int iMax, int iStep = 1, const char* fmt = "%i", int iFlags = FSliderEnum::None, bool* pHovered = nullptr)
+	{
+		std::string sReplace = fmt;
+		std::string sFrom = "%d", sTo = "%g";
+		auto iFind = sReplace.find(sFrom);
+		while (iFind != std::string::npos)
+		{
+			sReplace.replace(iFind, sFrom.length(), sTo);
+			iFind = sReplace.find(sFrom);
+		}
+		sFrom = "%i";
+		iFind = sReplace.find(sFrom);
+		while (iFind != std::string::npos)
+		{
+			sReplace.replace(iFind, sFrom.length(), sTo);
+			iFind = sReplace.find(sFrom);
+		}
+		fmt = sReplace.c_str();
+
+		float flRedir = *pSliderVar;
+		bool bReturn = FToggleSlider(sLabel, pToggleVar, &flRedir, iMin, iMax, iStep, fmt, iFlags, pHovered);
+		*pSliderVar = flRedir;
+		return bReturn;
+	}
+
 	inline bool FSlider(const char* sLabel, int* pVar1, int* pVar2, int iMin, int iMax, int iStep = 1, const char* fmt = "%i", int iFlags = FSliderEnum::None, bool* pHovered = nullptr)
 	{
 		// replace incorrect formats as it will be converted to float
@@ -2916,4 +3159,110 @@ namespace ImGui
 	WRAPPER(FMDropdown, VA_LIST(std::vector<std::pair<std::string, ChamsMaterial_t>>), VA_LIST(int iFlags = 0, int iSizeOffset = 0), VA_LIST(&val, iFlags, iSizeOffset))
 	WRAPPER(FColorPicker, Color_t, VA_LIST(int iFlags = 0, ImVec2 vOffset = {}, ImVec2 vSize = { H::Draw.Scale(12), H::Draw.Scale(12) }, ImVec2 vIconOffset = {}), VA_LIST(&val, iFlags, vOffset, vSize, vIconOffset))
 	WRAPPER(FColorPicker, Gradient_t, VA_LIST(bool bStart = true, int iFlags = 0, ImVec2 vOffset = {}, ImVec2 vSize = { H::Draw.Scale(12), H::Draw.Scale(12) }, ImVec2 vIconOffset = {}), VA_LIST(bStart ? &val.StartColor : &val.EndColor, iFlags, vOffset, vSize, vIconOffset))
+
+	inline bool FToggleSlider(ConfigVar<bool>& toggleVar, ConfigVar<float>& sliderVar, int iFlags = 0, const char* sFormatOverride = nullptr, bool* pHovered = nullptr)
+	{
+		const char* sLabel = toggleVar.m_vTitle.front();
+		int iVarFlags = (toggleVar.m_iFlags | sliderVar.m_iFlags) & ~(VISUAL | NOSAVE | NOBIND | DEBUGVAR);
+		iFlags |= iVarFlags;
+
+		auto bVal = FGet(toggleVar, true);
+		auto flVal = FGet(sliderVar, true);
+		bool bHovered = false;
+
+		bool bReturn = FToggleSlider(std::format("{}## {}", sLabel, toggleVar.m_sName).c_str(), &bVal, &flVal, sliderVar.m_unMin.f, sliderVar.m_unMax.f, sliderVar.m_unStep.f, sFormatOverride ? sFormatOverride : sliderVar.m_sExtra, iFlags, &bHovered);
+
+		FSet(toggleVar, bVal);
+		FSet(sliderVar, flVal);
+
+		if (pHovered)
+			*pHovered = bHovered;
+
+		if (!(toggleVar.m_iFlags & (NOBIND | NOSAVE)) && !Disabled && CurrentBind == DEFAULT_BIND)
+		{
+			static auto staticVal = bVal;
+			bool bNewPopup = bHovered && IsMouseReleased(ImGuiMouseButton_Right) && !IsMouseDown(ImGuiMouseButton_Left) && !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+			if (bNewPopup)
+			{
+				OpenPopup(toggleVar.m_sName.c_str());
+				staticVal = bVal;
+			}
+			SetNextWindowSize({ H::Draw.Scale(300), 0 });
+			bool bPopup = FBeginPopup(toggleVar.m_sName.c_str());
+			if (bPopup)
+			{
+				std::string sBind = toggleVar.m_vTitle.back();
+				std::transform(sBind.begin(), sBind.end(), sBind.begin(), ::tolower);
+				iFlags = iVarFlags;
+				PushTransparent(false);
+				static bool bLastHovered = false;
+				DrawBindInfo(toggleVar, staticVal, StripDoubleHash(sBind.c_str()), bNewPopup, bLastHovered);
+				bVal = staticVal;
+
+				float flDummy = flVal;
+				bool bDummy = bVal;
+				FToggleSlider(std::format("{}## Bind", toggleVar.m_vTitle.front()).c_str(), &bDummy, &flDummy, sliderVar.m_unMin.f, sliderVar.m_unMax.f, sliderVar.m_unStep.f, sFormatOverride ? sFormatOverride : sliderVar.m_sExtra, iFlags, &bHovered);
+
+				bLastHovered = bLastHovered || bHovered;
+				staticVal = bVal;
+				PopTransparent(2);
+				EndPopup();
+			}
+		}
+
+		return bReturn;
+	}
+
+	inline bool FToggleSlider(ConfigVar<bool>& toggleVar, ConfigVar<int>& sliderVar, int iFlags = 0, const char* sFormatOverride = nullptr, bool* pHovered = nullptr)
+	{
+		const char* sLabel = toggleVar.m_vTitle.front();
+		int iVarFlags = (toggleVar.m_iFlags | sliderVar.m_iFlags) & ~(VISUAL | NOSAVE | NOBIND | DEBUGVAR);
+		iFlags |= iVarFlags;
+
+		auto bVal = FGet(toggleVar, true);
+		auto iVal = FGet(sliderVar, true);
+		bool bHovered = false;
+
+		bool bReturn = FToggleSlider(std::format("{}## {}", sLabel, toggleVar.m_sName).c_str(), &bVal, &iVal, sliderVar.m_unMin.i, sliderVar.m_unMax.i, sliderVar.m_unStep.i, sFormatOverride ? sFormatOverride : sliderVar.m_sExtra, iFlags, &bHovered);
+
+		FSet(toggleVar, bVal);
+		FSet(sliderVar, iVal);
+
+		if (pHovered)
+			*pHovered = bHovered;
+
+		if (!(toggleVar.m_iFlags & (NOBIND | NOSAVE)) && !Disabled && CurrentBind == DEFAULT_BIND)
+		{
+			static auto staticVal = bVal;
+			bool bNewPopup = bHovered && IsMouseReleased(ImGuiMouseButton_Right) && !IsMouseDown(ImGuiMouseButton_Left) && !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+			if (bNewPopup)
+			{
+				OpenPopup(toggleVar.m_sName.c_str());
+				staticVal = bVal;
+			}
+			SetNextWindowSize({ H::Draw.Scale(300), 0 });
+			bool bPopup = FBeginPopup(toggleVar.m_sName.c_str());
+			if (bPopup)
+			{
+				std::string sBind = toggleVar.m_vTitle.back();
+				std::transform(sBind.begin(), sBind.end(), sBind.begin(), ::tolower);
+				iFlags = iVarFlags;
+				PushTransparent(false);
+				static bool bLastHovered = false;
+				DrawBindInfo(toggleVar, staticVal, StripDoubleHash(sBind.c_str()), bNewPopup, bLastHovered);
+				bVal = staticVal;
+
+				int iDummy = iVal;
+				bool bDummy = bVal;
+				FToggleSlider(std::format("{}## Bind", toggleVar.m_vTitle.front()).c_str(), &bDummy, &iDummy, sliderVar.m_unMin.i, sliderVar.m_unMax.i, sliderVar.m_unStep.i, sFormatOverride ? sFormatOverride : sliderVar.m_sExtra, iFlags, &bHovered);
+
+				bLastHovered = bLastHovered || bHovered;
+				staticVal = bVal;
+				PopTransparent(2);
+				EndPopup();
+			}
+		}
+
+		return bReturn;
+	}
 }
