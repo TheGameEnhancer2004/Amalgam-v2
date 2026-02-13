@@ -144,46 +144,36 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 			continue;
 
-		// Skip if we recently visited this area or something near it
-		bool bTooCloseToVisited = false;
-		for (auto pVisited : vVisitedAreas)
-		{
-			if (tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
-			{
-				bTooCloseToVisited = true;
-				break;
-			}
-		}
-		if (bTooCloseToVisited)
-			continue;
-
-		// Skip areas that are too close to us
-		float flDist = tArea.m_vCenter.DistTo(vLocalOrigin);
-		if (flDist < 500.f)
-			continue;
-
 		vValidAreas.push_back(&tArea);
 	}
 
 	// No valid areas found
 	if (vValidAreas.empty())
-	{
-		// If we failed too many times in a row, clear visited areas
-		if (++iConsecutiveFails >= 3)
-		{
-			vVisitedAreas.clear();
-			iConsecutiveFails = 0;
-		}
 		return false;
-	}
 
-	// Reset fail counter since we found valid areas
-	iConsecutiveFails = 0;
-
-	// Sort by distance first (farthest first)
 	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b)
 		{
-			return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
+			auto getScore = [&](CNavArea* pArea)
+			{
+				float flDist = pArea->m_vCenter.DistTo(vLocalOrigin);
+				float flScore = flDist;
+
+				if (flDist < 500.f)
+					flScore -= 500.f;
+
+				for (auto pVisited : vVisitedAreas)
+				{
+					if (pArea->m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+					{
+						flScore -= 500.f;
+						break;
+					}
+				}
+
+				return flScore;
+			};
+
+			return getScore(a) > getScore(b);
 		});
 
 	for (size_t i = 0; i < vValidAreas.size(); ++i)
@@ -208,8 +198,15 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		{
 			pCurrentTargetArea = pArea;
 			vVisitedAreas.push_back(pArea);
+			iConsecutiveFails = 0;
 			return true;
 		}
+	}
+
+	if (++iConsecutiveFails >= 3)
+	{
+		vVisitedAreas.clear();
+		iConsecutiveFails = 0;
 	}
 
 	return false;
