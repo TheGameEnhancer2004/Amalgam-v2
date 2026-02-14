@@ -61,7 +61,7 @@ void CAimbot::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (!ShouldRun(pLocal, pWeapon))
 		return;
 
-	F::AutoDetonate.Run(pLocal, pWeapon, pCmd);
+	F::AutoDetonate.Run(pLocal, pCmd);
 	F::AutoAirblast.Run(pLocal, pWeapon, pCmd);
 	F::AutoHeal.Run(pLocal, pWeapon, pCmd);
 
