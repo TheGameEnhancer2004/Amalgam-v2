@@ -267,6 +267,7 @@ void CMenu::MenuAimbot(int iTab)
 					if (Section("##Debug Projectile"))
 					{
 						FText("Ground");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::GroundSamples, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::GroundStraightFuzzyValue, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::GroundLowMinimumSamples, FSliderEnum::Left);
@@ -276,7 +277,9 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::GroundMaxChanges, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::GroundMaxChangeTime, FSliderEnum::Right);
 
-						FText("\nAir");
+						Divider();
+						FText("Air");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::AirSamples, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::AirStraightFuzzyValue, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::AirLowMinimumSamples, FSliderEnum::Left);
@@ -286,7 +289,9 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::AirMaxChanges, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::AirMaxChangeTime, FSliderEnum::Right);
 
-						FText("");
+						Divider();
+						FText("General");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::VelocityAverageCount, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::VerticalShift, FSliderEnum::Right);
 
@@ -297,9 +302,12 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::HuntsmanAdd, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::HuntsmanAddLow, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::HuntsmanClamp, FSliderEnum::Left);
-						FToggle(Vars::Aimbot::Projectile::HuntsmanPullPoint, FToggleEnum::Right);
-						SetCursorPosY(GetCursorPosY() + 8);
+						FToggle(Vars::Aimbot::Projectile::HuntsmanPullPoint, FSliderEnum::Left);
+						FToggle(Vars::Aimbot::Projectile::HuntsmanPullNoZ, FToggleEnum::Right);
 
+						Divider();
+						FText("Splash");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::SplashPointsDirect, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::SplashPointsArc, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::SplashCountDirect, FSliderEnum::Left);
@@ -310,9 +318,12 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::SplashNormalSkip, FSliderEnum::Right);
 						FDropdown(Vars::Aimbot::Projectile::SplashMode, FDropdownEnum::Left);
 						FDropdown(Vars::Aimbot::Projectile::RocketSplashMode, FDropdownEnum::Right, 0, &Hovered); FTooltip("Special splash type for rockets, more expensive", Hovered);
-						FToggle(Vars::Aimbot::Projectile::SplashGrates);
-						SetCursorPosY(GetCursorPosY() + 8);
+						FToggle(Vars::Aimbot::Projectile::SplashGrates, FSliderEnum::Left);
+						FSlider(Vars::Aimbot::Projectile::Out2NormalCheck, FSliderEnum::Right);
 
+						Divider();
+						FText("Misc");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::DeltaCount, FSliderEnum::Left);
 						FDropdown(Vars::Aimbot::Projectile::DeltaMode, FDropdownEnum::Right);
 						FDropdown(Vars::Aimbot::Projectile::MovesimFrictionFlags);

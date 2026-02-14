@@ -275,6 +275,11 @@ public:
 		return x * v.x + y * v.y;
 	}
 
+	inline float DotNormalized(const Vec2& v) const
+	{
+		return (x * v.x + y * v.y) / (Length() * v.Length());
+	}
+
 	inline bool IsZero(float flEpsilon = 0.001f) const
 	{
 		return fabsf(x) < flEpsilon &&
@@ -615,6 +620,11 @@ public:
 	inline float Dot(const Vec3& v) const
 	{
 		return x * v.x + y * v.y + z * v.z;
+	}
+
+	inline float DotNormalized(const Vec3& v) const
+	{
+		return (x * v.x + y * v.y + z * v.z) / (Length() * v.Length());
 	}
 
 	inline Vec3 Cross(const Vec3& v) const
