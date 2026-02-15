@@ -276,6 +276,38 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		}
 	}
 
+	if (!m_vCrumbs.empty())
+	{
+		if (auto pLocalPlayer = H::Entities.GetLocal())
+		{
+			const Vector vLocalOrigin = pLocalPlayer->GetAbsOrigin();
+
+			if (m_tLastCrumb.m_pNavArea)
+			{
+				if (m_vCrumbs.front().m_vPos.DistToSqr(m_tLastCrumb.m_vPos) < 1.0f)
+					m_vCrumbs.erase(m_vCrumbs.begin());
+			}
+
+			if (!m_vCrumbs.empty() && m_vCrumbs.size() >= 2)
+			{
+				const Vector vFirst = m_vCrumbs[0].m_vPos;
+				const Vector vSecond = m_vCrumbs[1].m_vPos;
+
+				Vector vToSecond = vSecond - vFirst;
+				Vector vToLocal = vLocalOrigin - vFirst;
+
+				float flLenSq = vToSecond.LengthSqr();
+				if (flLenSq > 0.001f)
+				{
+					float flDot = vToLocal.Dot(vToSecond);
+
+					if (flDot > 0.f)
+						m_vCrumbs.erase(m_vCrumbs.begin());
+				}
+			}
+		}
+	}
+
 	if (!bIgnoreTraces && !m_vCrumbs.empty())
 	{
 		// Check if the path we just built is even valid with traces
