@@ -687,6 +687,7 @@ void CNavEngine::Reset(bool bForced)
 
 		if (bForced || !m_pMap || m_pMap->m_sMapName != sLevelName)
 		{
+			F::DangerManager.Reset();
 			sLevelName.erase(sLevelName.find_last_of('.'));
 			std::string sNavPath = std::format("{}\\tf\\{}.nav", sPath, sLevelName);
 			if (Vars::Debug::Logging.Value)

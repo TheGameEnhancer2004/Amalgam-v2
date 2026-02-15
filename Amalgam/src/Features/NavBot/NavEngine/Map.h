@@ -151,6 +151,17 @@ public:
 	// Get closest nav area to target vector
 	CNavArea* FindClosestNavArea(const Vector& vPos, bool bLocalOrigin);
 
+	bool IsAreaValid(CNavArea* pArea) const
+	{
+		if (!pArea || m_navfile.m_vAreas.empty())
+			return false;
+
+		const CNavArea* pBegin = &m_navfile.m_vAreas.front();
+		const CNavArea* pEnd = &m_navfile.m_vAreas.back();
+
+		return pArea >= pBegin && pArea <= pEnd;
+	}
+
 	std::vector<void*> FindPath(CNavArea* pLocalArea, CNavArea* pDestArea, int* pOutResult = nullptr)
 	{
 		if (m_eState != NavStateEnum::Active)

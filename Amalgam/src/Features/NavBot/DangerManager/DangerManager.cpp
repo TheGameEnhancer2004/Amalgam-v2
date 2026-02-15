@@ -291,7 +291,7 @@ void CDangerManager::Render()
 				break;
 			}
 
-			if (!pArea)
+			if (!F::NavEngine.GetNavMap() || !F::NavEngine.GetNavMap()->IsAreaValid(pArea))
 				continue;
 
 			H::Draw.RenderBox(pArea->m_vCenter, Vector(-6.0f, -6.0f, -6.0f), Vector(6.0f, 6.0f, 6.0f), Vector(0, 0, 0), color, false);

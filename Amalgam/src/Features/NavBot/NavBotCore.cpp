@@ -513,7 +513,7 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 			const float flMaxDistSqr = flMaxDist * flMaxDist;
 			for (const auto& [pArea, tData] : F::DangerManager.GetDangerMap())
 			{
-				if (!pArea || tData.m_flScore <= 0.f)
+				if (!F::NavEngine.GetNavMap() || !F::NavEngine.GetNavMap()->IsAreaValid(pArea) || tData.m_flScore <= 0.f)
 					continue;
 
 				if (pArea->m_vCenter.DistToSqr(pLocal->GetAbsOrigin()) > flMaxDistSqr)
