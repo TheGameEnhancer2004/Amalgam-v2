@@ -130,19 +130,13 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	const int iCacheExpirySeconds = std::min(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value, 45);
 	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(iCacheExpirySeconds);
 
-	auto pLocal = H::Entities.GetLocal();
-	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
+		auto pLocal = H::Entities.GetLocal();
+		const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
 	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
 	{
 		CNavArea* pNextArea = tConnection.m_pArea;
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
-
-		if (!F::NavEngine.m_bIgnoreTraces)
-		{
-			if (pNextArea->IsBlocked(iTeam))
-				continue;
-		}
 
 		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
 		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
@@ -501,13 +495,13 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 	if (bRedSpawn || bBlueSpawn)
 	{
 		if (iTeam == TF_TEAM_RED && bBlueSpawn && !bRedSpawn)
-			flCost += 100000.f;
+			flCost += 220.f;
 		else if (iTeam == TF_TEAM_BLUE && bRedSpawn && !bBlueSpawn)
-			flCost += 100000.f;
+			flCost += 220.f;
 		else if (bRedSpawn && bBlueSpawn)
-			flCost += 100.f;
+			flCost += 60.f;
 		else
-			flCost += 100.f;
+			flCost += 40.f;
 	}
 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)

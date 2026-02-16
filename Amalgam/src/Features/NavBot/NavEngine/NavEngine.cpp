@@ -1,5 +1,4 @@
 #include "NavEngine.h"
-#include "NavMeshNormalizer.h"
 #include "../DangerManager/DangerManager.h"
 #include "../NavBotJobs/Engineer.h"
 #include "../../Ticks/Ticks.h"
@@ -60,6 +59,30 @@ bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFro
 	if (!pLocal)
 		return false;
 
+	static Timer tDoorLogTimer{};
+	auto LogDoorBlock = [&](const CGameTrace& tTrace)
+		{
+			if (!Vars::Debug::Logging.Value || !tTrace.m_pEnt || !tDoorLogTimer.Run(0.25f))
+				return;
+
+			auto pEnt = reinterpret_cast<CBaseEntity*>(tTrace.m_pEnt);
+			const auto nClassID = pEnt->GetClassID();
+			if (nClassID != ETFClassID::CBaseDoor && nClassID != ETFClassID::CBasePropDoor && nClassID != ETFClassID::CFuncRespawnRoomVisualizer)
+				return;
+
+			const int iTeamMask = pLocal->m_iTeamNum() == TF_TEAM_RED ? 0x800 : (pLocal->m_iTeamNum() == TF_TEAM_BLUE ? 0x1000 : CONTENTS_PLAYERCLIP);
+			const bool bSolid = pEnt->m_nSolidType() != SOLID_NONE && !(pEnt->m_usSolidFlags() & FSOLID_NOT_SOLID);
+			const bool bShouldCollide = bSolid && pEnt->ShouldCollide(8, iTeamMask);
+			const bool bPassableDoor = pEnt->m_CollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR;
+			const bool bFriendlyOrNeutralDoor = pEnt->m_iTeamNum() == pLocal->m_iTeamNum() || pEnt->m_iTeamNum() == TEAM_UNASSIGNED;
+			const bool bIgnoredPassableDoor = bShouldCollide && bPassableDoor && bFriendlyOrNeutralDoor;
+			const bool bActive = bShouldCollide && !bIgnoredPassableDoor;
+
+			const char* sKind = nClassID == ETFClassID::CBaseDoor ? "CBaseDoor" :
+				(nClassID == ETFClassID::CBasePropDoor ? "CBasePropDoor" : "CFuncRespawnRoomVisualizer");
+			SDK::Output("NavEngine", std::format("Nav blocked by {} ent#{} active={} ignored_passable={} frac={:.2f}", sKind, pEnt->entindex(), bActive ? 1 : 0, bIgnoredPassableDoor ? 1 : 0, tTrace.fraction).c_str(), { 255, 180, 120 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+		};
+
 	Vector vDelta = vTo - vFrom;
 	vDelta.z = 0.f;
 	if (vDelta.Length() < 16.f)
@@ -84,9 +107,14 @@ bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFro
 
 	SDK::Trace(vStart - vOffset, vEnd - vOffset, nMask, &tFilter, &tLeftTrace);
 	if (tLeftTrace.fraction < 1.0f)
+	{
+		LogDoorBlock(tLeftTrace);
 		return false;
+	}
 
 	SDK::Trace(vStart + vOffset, vEnd + vOffset, nMask, &tFilter, &tRightTrace);
+	if (tRightTrace.fraction < 1.0f)
+		LogDoorBlock(tRightTrace);
 	return tRightTrace.fraction >= 1.0f;
 }
 
@@ -724,21 +752,6 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 }
 
-void CNavEngine::NormalizeNavMesh(const char* sNavPath)
-{
-	if (!m_pMap)
-		return;
-
-	CNavMeshNormalizer normalizer;
-	if (normalizer.Normalize(&m_pMap->m_navfile))
-	{
-		if (Vars::Debug::Logging.Value)
-			SDK::Output("NavEngine", "Nav Mesh normalized, saving changes...", { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-
-		m_pMap->m_navfile.Save(sNavPath);
-	}
-}
-
 void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
@@ -764,7 +777,6 @@ void CNavEngine::Reset(bool bForced)
 			if (Vars::Debug::Logging.Value)
 				SDK::Output("NavEngine", std::format("Nav File location: {}", sNavPath).c_str(), { 50, 255, 50 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
 			m_pMap = std::make_unique<CMap>(sNavPath.c_str());
-			NormalizeNavMesh(sNavPath.c_str());
 			m_vRespawnRoomExitAreas.clear();
 			m_bUpdatedRespawnRooms = false;
 		}

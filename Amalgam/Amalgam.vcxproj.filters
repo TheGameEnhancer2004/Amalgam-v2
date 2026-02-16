@@ -210,7 +210,6 @@
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\Controller.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\MicroPather\micropather.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\NavEngine.cpp" />
-    <ClCompile Include="src\Features\NavBot\NavEngine\NavMeshNormalizer.cpp" />
     <ClCompile Include="src\Features\Misc\NamedPipe\NamedPipe.cpp" />
     <ClCompile Include="src\Hooks\CGameEventManager_FireEventClientSide.cpp" />
     <ClCompile Include="src\Hooks\CHudItemEffectMeter_Weapon_C_TFWeaponBase_IsEnabled.cpp" />
@@ -639,7 +638,6 @@
     <ClInclude Include="src\Features\NavBot\NavEngine\FileReader\nav.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\MicroPather\micropather.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\NavEngine.h" />
-    <ClInclude Include="src\Features\NavBot\NavEngine\NavMeshNormalizer.h" />
     <ClInclude Include="src\Features\Misc\NamedPipe\NamedPipe.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CBaseTeamObjectiveResource.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CServerBaseEntity.h" />

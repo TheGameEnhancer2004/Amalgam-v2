@@ -90,12 +90,17 @@ bool CNavBotSupplies::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::GetHealth)
 		return false;
 
+	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
+	bool bAlreadyGettingHealth = F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetHealth || F::NavEngine.m_eCurrentPriority == PriorityListEnum::LowPrioGetHealth;
+
+	if (bAlreadyGettingHealth)
+		return flHealthPercent < (bLowPrio ? 0.92f : 0.9f);
+
 	// Check if being gradually healed in any way
 	if (pLocal->m_nPlayerCond() & (1 << 21)/*TFCond_Healing*/)
 		return false;
 
 	// Get health when below 65%, or below 80% and just patrolling
-	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
 	return flHealthPercent < 0.64f || bLowPrio && (F::NavEngine.m_eCurrentPriority <= PriorityListEnum::Patrol || F::NavEngine.m_eCurrentPriority == PriorityListEnum::LowPrioGetHealth) && flHealthPercent <= 0.80f;
 }
 
@@ -108,6 +113,8 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::GetAmmo)
 		return false;
 
+	bool bAlreadyGettingAmmo = F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetAmmo;
+
 	for (int i = 0; i <= SLOT_MELEE; i++)
 	{
 		int iActualSlot = G::SavedWepSlots[i];
@@ -116,7 +123,7 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 
 		int iWeaponID = G::SavedWepIds[iActualSlot];
 		int iReserveAmmo = G::AmmoInSlot[iActualSlot].m_iReserve;
-		if (iReserveAmmo <= 5 &&
+		if (iReserveAmmo <= (bAlreadyGettingAmmo ? 10 : 5) &&
 			(iWeaponID == TF_WEAPON_SNIPERRIFLE ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP))
@@ -125,17 +132,24 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 		int iClip = G::AmmoInSlot[iActualSlot].m_iClip;
 		int iMaxClip = G::AmmoInSlot[iActualSlot].m_iMaxClip;
 		int iMaxReserveAmmo = G::AmmoInSlot[iActualSlot].m_iMaxReserve;
-
-		// If clip and reserve are both very low, definitely get ammo
-		if (iMaxClip > 0 && iClip <= iMaxClip * 0.25f && iReserveAmmo <= iMaxReserveAmmo * 0.25f)
-			return true;
-
-		// Don't search for ammo if we have more than 60% of max reserve
-		if (iReserveAmmo >= iMaxReserveAmmo * 0.6f)
+		if (!iMaxReserveAmmo)
 			continue;
 
-		// Search for ammo if we're below 33% of capacity
-		if (iReserveAmmo <= iMaxReserveAmmo / 3)
+		const float flClipThreshold = bAlreadyGettingAmmo ? 0.35f : 0.25f;
+		const float flReserveCriticalThreshold = bAlreadyGettingAmmo ? 0.35f : 0.25f;
+		const float flReserveSkipThreshold = bAlreadyGettingAmmo ? 0.75f : 0.6f;
+		const float flReserveSearchThreshold = bAlreadyGettingAmmo ? 0.45f : (1.f / 3.f);
+
+		// If clip and reserve are both very low, definitely get ammo
+		if (iMaxClip > 0 && iClip <= iMaxClip * flClipThreshold && iReserveAmmo <= iMaxReserveAmmo * flReserveCriticalThreshold)
+			return true;
+
+		// Don't search for ammo if we have enough reserve
+		if (iReserveAmmo >= iMaxReserveAmmo * flReserveSkipThreshold)
+			continue;
+
+		// Search for ammo if we're low on reserve
+		if (iReserveAmmo <= iMaxReserveAmmo * flReserveSearchThreshold)
 			return true;
 	}
 

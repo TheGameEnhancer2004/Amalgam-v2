@@ -207,9 +207,31 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 	if (nClassID == ETFClassID::CBaseEntity)
 		return true;
 
+	if (m_iTeam == -1)
+		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
+
 	if (nClassID == ETFClassID::CBaseDoor ||
-		nClassID == ETFClassID::CBasePropDoor ||
-		nClassID == ETFClassID::CDynamicProp ||
+		nClassID == ETFClassID::CBasePropDoor)
+	{
+		if (pEntity->m_nSolidType() == SOLID_NONE || (pEntity->m_usSolidFlags() & FSOLID_NOT_SOLID))
+			return false;
+
+		const int iTeamMask = m_iTeam == TF_TEAM_RED ? RED_CONTENTS_MASK :
+			(m_iTeam == TF_TEAM_BLUE ? BLU_CONTENTS_MASK : CONTENTS_PLAYERCLIP);
+		const bool bBlocksMovement = pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iTeamMask);
+		if (!bBlocksMovement)
+			return false;
+
+		const bool bPassableDoor = pEntity->m_CollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR;
+		const int iDoorTeam = pEntity->m_iTeamNum();
+		const bool bFriendlyOrNeutralDoor = iDoorTeam == m_iTeam || iDoorTeam == TEAM_UNASSIGNED;
+		if (bPassableDoor && bFriendlyOrNeutralDoor)
+			return false;
+
+		return true;
+	}
+
+	if (nClassID == ETFClassID::CDynamicProp ||
 		nClassID == ETFClassID::CPhysicsProp ||
 		nClassID == ETFClassID::CPhysicsPropMultiplayer)
 	{
@@ -218,9 +240,6 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 
 	if (nClassID == ETFClassID::CObjectTeleporter)
 		return (nContentsMask & CONTENTS_PLAYERCLIP) || m_iObject != OBJECT_NONE;
-
-	if (m_iTeam == -1) 
-		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
 
 	if (nClassID == ETFClassID::CTFPlayer)
 	{

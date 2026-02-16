@@ -1139,7 +1139,6 @@
     <ClCompile Include="src\Features\NavBot\NavEngine\Controllers\PLController\PLController.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\MicroPather\micropather.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\NavEngine.cpp" />
-    <ClCompile Include="src\Features\NavBot\NavEngine\NavMeshNormalizer.cpp" />
     <ClCompile Include="src\Features\NavBot\NavEngine\Map.cpp" />
     <ClCompile Include="src\Features\Output\Output.cpp" />
     <ClCompile Include="src\Features\Misc\AutoQueue\AutoQueue.cpp" />
@@ -1485,7 +1484,6 @@
     <ClInclude Include="src\Features\NavBot\NavEngine\FileReader\nav.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\MicroPather\micropather.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\NavEngine.h" />
-    <ClInclude Include="src\Features\NavBot\NavEngine\NavMeshNormalizer.h" />
     <ClInclude Include="src\Features\NavBot\NavEngine\Map.h" />
     <ClInclude Include="src\Features\Output\Output.h" />
     <ClInclude Include="src\Features\Misc\AutoQueue\AutoQueue.h" />

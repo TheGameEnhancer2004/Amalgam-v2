@@ -267,11 +267,23 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (tCandidate.m_bSoftBlocked)
 			flSafetyPenalty += 450.f;
 
-		float flSpeedScore = -flDist * 0.35f;
-		if (flDist < 350.f)
-			flSpeedScore -= 250.f;
-		if (flDist > 4200.f)
-			flSpeedScore -= 280.f;
+		constexpr float flPreferredPatrolDistance = 2200.f;
+		constexpr float flNearPenaltyStart = 800.f;
+		constexpr float flLongPenaltyStart = 4200.f;
+		constexpr float flLongPenaltyCap = 5600.f;
+
+		const float flDistanceDelta = std::fabs(flDist - flPreferredPatrolDistance);
+		const float flDistanceFit = 1.f - std::clamp(flDistanceDelta / flPreferredPatrolDistance, 0.f, 1.f);
+		float flDistanceScore = flDistanceFit * 650.f;
+
+		if (flDist < flNearPenaltyStart)
+			flDistanceScore -= (1.f - (flDist / flNearPenaltyStart)) * 450.f;
+
+		if (flDist > flLongPenaltyStart)
+		{
+			const float flLongFraction = std::clamp((flDist - flLongPenaltyStart) / (flLongPenaltyCap - flLongPenaltyStart), 0.f, 1.f);
+			flDistanceScore -= flLongFraction * 420.f;
+		}
 
 		float flVisitedPenalty = 0.f;
 		for (auto pVisited : vVisitedAreas)
@@ -283,7 +295,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 			}
 		}
 
-		float flScore = flObjectiveScore - flSafetyPenalty + flSpeedScore - flVisitedPenalty;
+		float flScore = flObjectiveScore - flSafetyPenalty + flDistanceScore - flVisitedPenalty;
 
 		vScoredAreas.emplace_back(pArea, flScore);
 	}
