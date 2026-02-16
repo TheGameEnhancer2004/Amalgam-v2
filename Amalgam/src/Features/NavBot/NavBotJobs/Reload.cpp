@@ -122,6 +122,9 @@ int CNavBotReload::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tCloses
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::ReloadWeapons))
 		return -1;
 
+	if (G::Reloading && F::BotUtils.m_iCurrentSlot >= SLOT_PRIMARY && F::BotUtils.m_iCurrentSlot <= SLOT_SECONDARY)
+		return F::BotUtils.m_iCurrentSlot;
+
 	// Priority too high
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Capture)
 		return -1;

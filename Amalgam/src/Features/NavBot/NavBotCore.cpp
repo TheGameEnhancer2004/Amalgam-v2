@@ -67,8 +67,9 @@ void CNavBotCore::UpdateSlot(CTFPlayer* pLocal, ClosestEnemy_t tClosestEnemy)
 		}
 	}
 
-	if (F::BotUtils.m_iCurrentSlot != F::BotUtils.m_iBestSlot)
-		F::BotUtils.SetSlot(pLocal, iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1);
+	const int iDesiredSlot = iReloadSlot != -1 ? iReloadSlot : Vars::Misc::Movement::BotUtils::WeaponSlot.Value ? F::BotUtils.m_iBestSlot : -1;
+	if (F::BotUtils.m_iCurrentSlot != iDesiredSlot)
+		F::BotUtils.SetSlot(pLocal, iDesiredSlot);
 }
 
 static bool FindClosestHidingSpotRecursive(CNavArea* pArea, const Vector& vVischeckPoint, int iRecursionCount, std::pair<CNavArea*, int>& tOut, bool bVischeck, int iRecursionIndex, std::vector<CNavArea*>& vVisited)
@@ -211,6 +212,27 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		return;
 	}
 
+	if (pLocal->m_iClass() == TF_CLASS_ENGINEER && pLocal->m_bCarryingObject() && !F::NavBotEngineer.IsEngieMode(pLocal))
+	{
+		if (F::NavEngine.IsPathing())
+			F::NavEngine.CancelPath();
+
+		static Timer tDropCarriedObjectTimer{};
+		if (tDropCarriedObjectTimer.Run(0.5f))
+		{
+			I::EngineClient->ClientCmd_Unrestricted("destroy 0");
+			I::EngineClient->ClientCmd_Unrestricted("destroy 1");
+			I::EngineClient->ClientCmd_Unrestricted("destroy 2");
+			I::EngineClient->ClientCmd_Unrestricted("destroy 3");
+		}
+
+		F::NavBotEngineer.Reset();
+		m_tIdleTimer.Update();
+		m_tAntiStuckTimer.Update();
+		UpdateRunReloadInput(false);
+		return;
+	}
+
 	F::NavBotGroup.UpdateLocalBotPositions(pLocal);
 
 	// Update our current nav area
@@ -291,7 +313,11 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotRoam.Run(pLocal, pWeapon);
 
-	UpdateRunReloadInput(bRunReload || bRunSafeReload);
+	bool bShouldHoldReload = bRunReload || bRunSafeReload;
+	if (bShouldHoldReload && F::NavBotReload.m_iLastReloadSlot != -1 && F::BotUtils.m_iCurrentSlot != F::NavBotReload.m_iLastReloadSlot)
+		bShouldHoldReload = false;
+
+	UpdateRunReloadInput(bShouldHoldReload);
 
 	if (bHasJob)
 	{
