@@ -201,10 +201,15 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 			const float flUpDelta = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
 			const float flPlanarDelta = tPoints.m_vCenter.DistTo2D(tPoints.m_vCenterNext);
+			const float flCenterPlanarDelta = pCurrentArea->m_vCenter.DistTo2D(pNextArea->m_vCenter);
 			const float flOverlapX = std::min(pCurrentArea->m_vSeCorner.x, pNextArea->m_vSeCorner.x) - std::max(pCurrentArea->m_vNwCorner.x, pNextArea->m_vNwCorner.x);
 			const float flOverlapY = std::min(pCurrentArea->m_vSeCorner.y, pNextArea->m_vSeCorner.y) - std::max(pCurrentArea->m_vNwCorner.y, pNextArea->m_vNwCorner.y);
-			const bool bStackedOverlap = flOverlapX > HALF_PLAYER_WIDTH && flOverlapY > HALF_PLAYER_WIDTH;
-			const bool bSuspiciousVerticalLink = !bIsOneWay && flUpDelta > 6.f && bStackedOverlap && flPlanarDelta < HALF_PLAYER_WIDTH;
+			const bool bStackedOverlap = flOverlapX > PLAYER_WIDTH * 1.2f && flOverlapY > PLAYER_WIDTH * 1.2f;
+			const bool bSuspiciousVerticalLink = !bIsOneWay
+				&& flUpDelta > std::max(PLAYER_CROUCHED_JUMP_HEIGHT * 0.8f, 36.f)
+				&& bStackedOverlap
+				&& flCenterPlanarDelta < PLAYER_WIDTH * 0.75f
+				&& flPlanarDelta < PLAYER_WIDTH * 0.4f;
 
 			if (!F::NavEngine.m_bIgnoreTraces && ((flUpDelta > PLAYER_CROUCHED_JUMP_HEIGHT) || bSuspiciousVerticalLink))
 			{
@@ -217,8 +222,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 			if (!F::NavEngine.m_bIgnoreTraces && pLocal)
 			{
-				const bool bNeedsExtraValidation = bSuspiciousVerticalLink || flUpDelta > 8.f || flPlanarDelta < HALF_PLAYER_WIDTH;
-				if (bNeedsExtraValidation)
+				if (bSuspiciousVerticalLink)
 				{
 					const bool bPassToMid = F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter);
 					const bool bPassToNext = bPassToMid && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext);

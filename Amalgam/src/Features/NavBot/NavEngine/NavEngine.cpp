@@ -117,9 +117,9 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			if (bIgnoreTraces)
 				return false;
 
-			constexpr float flSameDestinationRadiusSq = 250.f * 250.f;
-			constexpr float flFailWindow = 1.6f;
-			constexpr int iFallbackThreshold = 3;
+			constexpr float flSameDestinationRadiusSq = 650.f * 650.f;
+			constexpr float flFailWindow = 2.25f;
+			const int iFallbackThreshold = ePriority == PriorityListEnum::Patrol ? 1 : 2;
 
 			const int iNow = I::GlobalVars->tickcount;
 			const int iWindowTicks = TIME_TO_TICKS(flFailWindow);
@@ -210,7 +210,8 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 						tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 						if (IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCurrent, tPoints.m_vCenter) &&
-							IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCenter, tPoints.m_vNext))
+							(IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCenter, tPoints.m_vNext)
+								|| IsPlayerPassableNavigation(pLocalPlayer, tPoints.m_vCurrent, tPoints.m_vNext)))
 						{
 							bAnyPossible = true;
 							break;
@@ -1026,9 +1027,6 @@ void CNavEngine::CancelPath()
 	m_vCurrentPathDir = {};
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
-	m_iStrictFailCount = 0;
-	m_iStrictFailTick = 0;
-	m_vLastStrictFailDestination = {};
 	m_vLastLookTarget = {};
 }
 
