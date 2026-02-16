@@ -274,6 +274,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	// Fix dormant player blacklist not actually running
 
 	bool bRunReload = false;
+	bool bRunSafeReload = false;
 	const bool bHasJob = F::NavBotDanger.EscapeSpawn(pLocal)
 		|| F::NavBotDanger.EscapeProjectiles(pLocal)
 		|| F::NavBotDanger.EscapeDanger(pLocal)
@@ -284,13 +285,13 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo)
 		|| F::NavBotCapture.Run(pLocal, pWeapon)
 		|| F::NavBotSnipe.Run(pLocal)
-		|| F::NavBotReload.RunSafe(pLocal, pWeapon)
+		|| (bRunSafeReload = F::NavBotReload.RunSafe(pLocal, pWeapon))
 		|| F::NavBotStayNear.Run(pLocal, pWeapon)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health | GetSupplyEnum::LowPrio)
 		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
 		|| F::NavBotRoam.Run(pLocal, pWeapon);
 
-	UpdateRunReloadInput(bRunReload);
+	UpdateRunReloadInput(bRunReload || bRunSafeReload);
 
 	if (bHasJob)
 	{
