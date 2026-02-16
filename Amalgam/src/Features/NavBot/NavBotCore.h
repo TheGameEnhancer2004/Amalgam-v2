@@ -36,6 +36,7 @@ private:
 	float m_flNextStuckAngleChange = 0.f;
 	float m_flNextIdleTime = 0.f;
 	Vec3 m_vStuckAngles = {};
+	bool m_bHoldingRunReload = false;
 };
 
 ADD_FEATURE(CNavBotCore, NavBotCore);

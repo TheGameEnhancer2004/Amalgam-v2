@@ -132,11 +132,29 @@ static bool IsWeaponValidForDT(CTFWeaponBase* pWeapon)
 
 void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
+	auto UpdateRunReloadInput = [&](bool bShouldHold)
+		{
+			if (!pCmd)
+				return;
+
+			if (bShouldHold)
+			{
+				pCmd->buttons |= IN_RELOAD;
+				m_bHoldingRunReload = true;
+			}
+			else if (m_bHoldingRunReload)
+			{
+				pCmd->buttons &= ~IN_RELOAD;
+				m_bHoldingRunReload = false;
+			}
+		};
+
 	if (!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value ||
 		!pLocal->IsAlive() || F::NavEngine.m_eCurrentPriority == PriorityListEnum::Followbot || F::FollowBot.m_bActive || !F::NavEngine.IsReady())
 	{
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 		F::NavBotReload.m_iLastReloadSlot = -1;
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -161,6 +179,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::NavBotReload.m_iLastReloadSlot = -1;
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -171,6 +190,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	{
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -178,6 +198,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	{
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -186,6 +207,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
 		m_vStuckAngles = pCmd->viewangles;
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -200,6 +222,7 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		F::NavBotReload.m_iLastReloadSlot = -1;
 		m_tIdleTimer.Update();
 		m_tAntiStuckTimer.Update();
+		UpdateRunReloadInput(false);
 		return;
 	}
 
@@ -250,12 +273,13 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	// Make a better closest enemy logic
 	// Fix dormant player blacklist not actually running
 
-	if (F::NavBotDanger.EscapeSpawn(pLocal)
+	bool bRunReload = false;
+	const bool bHasJob = F::NavBotDanger.EscapeSpawn(pLocal)
 		|| F::NavBotDanger.EscapeProjectiles(pLocal)
 		|| F::NavBotDanger.EscapeDanger(pLocal)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health)
 		|| F::NavBotEngineer.Run(pCmd, pLocal, F::BotUtils.m_tClosestEnemy)
-		|| F::NavBotReload.Run(pLocal, pWeapon)
+		|| (bRunReload = F::NavBotReload.Run(pLocal, pWeapon))
 		|| F::NavBotMelee.Run(pCmd, pLocal, F::BotUtils.m_iCurrentSlot, F::BotUtils.m_tClosestEnemy)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Ammo)
 		|| F::NavBotCapture.Run(pLocal, pWeapon)
@@ -264,7 +288,11 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		|| F::NavBotStayNear.Run(pLocal, pWeapon)
 		|| F::NavBotSupplies.Run(pCmd, pLocal, GetSupplyEnum::Health | GetSupplyEnum::LowPrio)
 		|| F::NavBotGroup.Run(pLocal, pWeapon) // Move in formation
-		|| F::NavBotRoam.Run(pLocal, pWeapon))
+		|| F::NavBotRoam.Run(pLocal, pWeapon);
+
+	UpdateRunReloadInput(bRunReload);
+
+	if (bHasJob)
 	{
 		bool bIsPathing = F::NavEngine.IsPathing();
 		if (!bIsPathing)
@@ -337,6 +365,7 @@ void CNavBotCore::Reset()
 {
 	F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 	F::NavBotReload.m_iLastReloadSlot = -1;
+	m_bHoldingRunReload = false;
 	F::NavBotSnipe.m_iTargetIdx = -1;
 	F::NavBotSupplies.ResetTemp();
 	F::NavBotEngineer.Reset();
