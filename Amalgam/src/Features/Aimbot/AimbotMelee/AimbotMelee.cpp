@@ -493,7 +493,7 @@ bool CAimbotMelee::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 		bReturn = true;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
-		vOut = vCurAngle.LerpAngle(vToAngle, Vars::Aimbot::General::AssistStrength.Value / 100.f);
+		vOut = vCurAngle.LerpAngle(vToAngle, F::Aimbot.GetSmoothStrength(vCurAngle, vToAngle));
 		bReturn = true;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Assistive:

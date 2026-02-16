@@ -321,6 +321,7 @@ void CMenu::MenuAimbot(int iTab)
 					}
 					PopTransparent();
 					FSlider(Vars::Aimbot::General::AssistStrength, FSliderEnum::Left);
+					FDropdown(Vars::Aimbot::General::SmoothCurve, FDropdownEnum::Right);
 					PushTransparent(!(Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Unsimulated));
 					{
 						FSlider(Vars::Aimbot::General::TickTolerance, FSliderEnum::Right);
