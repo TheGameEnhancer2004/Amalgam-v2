@@ -457,11 +457,12 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	if (!pLocal)
 		return;
 
+	auto& tState = m_tLLAP;
+
 	if (SmoothAimHasPriority())
 	{
 		Vec3 vCurrent = I::EngineClient->GetViewAngles();
 		m_vLastAngles = vCurrent;
-		auto& tState = m_tLLAP;
 		if (tState.m_bInitialized)
 			tState.m_vAnchor = vCurrent;
 		return;
@@ -472,9 +473,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	bool bEnemyLock = false;
 
 	// 1. look at visible enemies
-	static int iLastTarget = -1;
-	static float flLastSeen = 0.f;
-	static Vec3 vLastPos = {};
 
 	CBaseEntity* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
@@ -549,15 +547,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		else
 			vLook = pBestEnemy->GetCenter();
 
-		iLastTarget = pBestEnemy->entindex();
-		flLastSeen = I::GlobalVars->curtime;
-		vLastPos = vLook;
+		tState.m_iLastTarget = pBestEnemy->entindex();
+		tState.m_flLastSeen = I::GlobalVars->curtime;
+		tState.m_vLastPos = vLook;
 		bEnemyLock = true;
 	}
-	else if ((I::GlobalVars->curtime - flLastSeen) < 1.2f && !vLastPos.IsZero())
+	else if ((I::GlobalVars->curtime - tState.m_flLastSeen) < 1.2f && !tState.m_vLastPos.IsZero())
 	{
 		// look at last known position for a bit
-		vLook = vLastPos;
+		vLook = tState.m_vLastPos;
 		bEnemyLock = true;
 	}
 	else
@@ -631,7 +629,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	Vec3 vDesired = Math::CalcAngle(vEye, vFocus);
 	Math::ClampAngles(vDesired);
 
-	auto& tState = m_tLLAP;
 	const float flTargetDelta = tState.m_vLastTarget.IsZero() ? FLT_MAX : tState.m_vLastTarget.DistToSqr(vFocus);
 	if (!tState.m_bInitialized || !std::isfinite(flTargetDelta) || flTargetDelta > 4096.f)
 	{
