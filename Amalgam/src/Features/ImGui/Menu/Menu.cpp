@@ -321,12 +321,12 @@ void CMenu::MenuAimbot(int iTab)
 					}
 					PopTransparent();
 					FSlider(Vars::Aimbot::General::AssistStrength, FSliderEnum::Left);
-					FDropdown(Vars::Aimbot::General::SmoothCurve, FDropdownEnum::Right);
 					PushTransparent(!(Vars::Aimbot::General::Ignore.Value & Vars::Aimbot::General::IgnoreEnum::Unsimulated));
 					{
 						FSlider(Vars::Aimbot::General::TickTolerance, FSliderEnum::Right);
 					}
 					PopTransparent();
+					FDropdown(Vars::Aimbot::General::SmoothCurve);
 					FColorPicker(Vars::Colors::FOVCircle);
 					FToggle(Vars::Aimbot::General::AutoShoot, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::FOVCircle, FToggleEnum::Right);

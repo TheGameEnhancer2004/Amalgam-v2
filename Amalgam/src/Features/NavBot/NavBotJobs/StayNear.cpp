@@ -2,11 +2,90 @@
 #include "../NavEngine/NavEngine.h"
 #include "../../Players/PlayerUtils.h"
 
-bool CNavBotStayNear::StayNearTarget(int iEntIndex)
+namespace
+{
+	float GetPreferredStalkRadius(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
+	{
+		if (!pLocal)
+			return 400.f;
+
+		switch (pLocal->m_iClass())
+		{
+		case TF_CLASS_SCOUT:
+			return 260.f;
+		case TF_CLASS_SOLDIER:
+			return 450.f;
+		case TF_CLASS_PYRO:
+			return 300.f;
+		case TF_CLASS_DEMOMAN:
+			return 470.f;
+		case TF_CLASS_HEAVY:
+			return 280.f;
+		case TF_CLASS_ENGINEER:
+			return pWeapon && pWeapon->m_iItemDefinitionIndex() == Engi_t_TheGunslinger ? 140.f : 260.f;
+		case TF_CLASS_MEDIC:
+			return 360.f;
+		case TF_CLASS_SNIPER:
+			return pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_COMPOUND_BOW ? 700.f : 1200.f;
+		case TF_CLASS_SPY:
+			return 220.f;
+		default:
+			return 420.f;
+		}
+	}
+
+	float GetStalkLeadTime(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, float flTargetDistance, float flTargetSpeed)
+	{
+		float flLeadTime = 0.15f;
+
+		if (!pLocal)
+			return flLeadTime;
+
+		switch (pLocal->m_iClass())
+		{
+		case TF_CLASS_SCOUT:
+		case TF_CLASS_PYRO:
+		case TF_CLASS_SPY:
+			flLeadTime = 0.14f;
+			break;
+		case TF_CLASS_SOLDIER:
+		case TF_CLASS_DEMOMAN:
+			flLeadTime = 0.2f;
+			break;
+		case TF_CLASS_SNIPER:
+			flLeadTime = pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_COMPOUND_BOW ? 0.28f : 0.38f;
+			break;
+		default:
+			flLeadTime = 0.18f;
+			break;
+		}
+
+		flLeadTime += std::clamp(flTargetDistance / 2500.f, 0.f, 0.2f);
+		if (flTargetSpeed < 25.f)
+			flLeadTime *= 0.6f;
+
+		return std::clamp(flLeadTime, 0.08f, 0.55f);
+	}
+
+	Vector Normalize2D(const Vector& v)
+	{
+		Vector vOut = v;
+		vOut.z = 0.f;
+		float flLength = vOut.Length();
+		if (flLength > 0.01f)
+			vOut /= flLength;
+		else
+			vOut = {};
+		return vOut;
+	}
+}
+
+bool CNavBotStayNear::StayNearTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex)
 {
 	auto pEntity = I::ClientEntityList->GetClientEntity(iEntIndex);
 	if (!pEntity)
 		return false;
+	auto pPlayer = pEntity->As<CTFPlayer>();
 
 	Vector vOrigin;
 
@@ -15,9 +94,35 @@ bool CNavBotStayNear::StayNearTarget(int iEntIndex)
 		return false;
 
 	auto pLocalArea = F::NavEngine.GetLocalNavArea();
+	if (!pLocalArea)
+		return false;
 
 	// Add the vischeck height
 	vOrigin.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+	Vector vTargetOrigin = vOrigin;
+
+	Vector vTargetVelocity{};
+	if (pPlayer && !pPlayer->IsDormant())
+		vTargetVelocity = pPlayer->GetAbsVelocity();
+	vTargetVelocity.z = 0.f;
+
+	const float flTargetDistance = vTargetOrigin.DistTo(pLocal->GetAbsOrigin());
+	const float flTargetSpeed = vTargetVelocity.Length2D();
+
+	const float flPreferredRadiusBase = GetPreferredStalkRadius(pLocal, pWeapon);
+	const float flPreferredRadius = std::clamp(flPreferredRadiusBase, F::NavBotCore.m_tSelectedConfig.m_flMinFullDanger, F::NavBotCore.m_tSelectedConfig.m_flMax);
+	const float flLeadTime = GetStalkLeadTime(pLocal, pWeapon, flTargetDistance, flTargetSpeed);
+	const Vector vPredictedOrigin = vTargetOrigin + vTargetVelocity * flLeadTime;
+
+	Vector vForward = Normalize2D(vTargetVelocity);
+	if (vForward.IsZero())
+		vForward = Normalize2D(vPredictedOrigin - pLocal->GetAbsOrigin());
+
+	Vector vSide(-vForward.y, vForward.x, 0.f);
+	const float flOutrunDistance = std::clamp(flPreferredRadius * 0.35f, 80.f, 450.f);
+	const float flSideDistance = std::clamp(flPreferredRadius * 0.28f, 70.f, 300.f);
+	const float flSideSign = (iEntIndex + pLocal->entindex()) % 2 ? 1.f : -1.f;
+	const Vector vAnchor = vPredictedOrigin + vForward * flOutrunDistance + vSide * (flSideDistance * flSideSign);
 
 	// Use std::pair to avoid using the distance functions more than once
 	std::vector<std::pair<CNavArea*, float>> vGoodAreas{};
@@ -30,14 +135,24 @@ bool CNavBotStayNear::StayNearTarget(int iEntIndex)
 		if (!IsAreaValidForStayNear(vOrigin, &tArea, false))
 			continue;
 
-		// Good area found
-		vGoodAreas.emplace_back(&tArea, (vOrigin).DistTo(vAreaOrigin));
+		const float flDistToPredicted = vAreaOrigin.DistTo(vPredictedOrigin);
+		const float flRangePenalty = std::fabs(flDistToPredicted - flPreferredRadius);
+		const float flAnchorPenalty = vAreaOrigin.DistTo(vAnchor);
+		const float flTravelPenalty = pLocalArea->m_vCenter.DistTo(vAreaOrigin);
+
+		float flAheadPenalty = 0.f;
+		if (!vForward.IsZero())
+		{
+			Vector vToArea = Normalize2D(vAreaOrigin - vPredictedOrigin);
+			float flAheadDot = std::clamp(vToArea.Dot(vForward), -1.f, 1.f);
+			flAheadPenalty = (1.f - flAheadDot) * 140.f;
+		}
+
+		const float flScore = flRangePenalty * 1.4f + flAnchorPenalty + flTravelPenalty * 0.15f + flAheadPenalty;
+		vGoodAreas.emplace_back(&tArea, flScore);
 	}
-	// Sort based on distance
-	if (F::NavBotCore.m_tSelectedConfig.m_bPreferFar)
-		std::sort(vGoodAreas.begin(), vGoodAreas.end(), [](std::pair<CNavArea*, float> a, std::pair<CNavArea*, float> b) { return a.second > b.second; });
-	else
-		std::sort(vGoodAreas.begin(), vGoodAreas.end(), [](std::pair<CNavArea*, float> a, std::pair<CNavArea*, float> b) { return a.second < b.second; });
+	// Sort based on score
+	std::sort(vGoodAreas.begin(), vGoodAreas.end(), [](std::pair<CNavArea*, float> a, std::pair<CNavArea*, float> b) { return a.second < b.second; });
 
 	// Try to path to all the good areas, based on distance
 	if (std::ranges::any_of(vGoodAreas, [&](std::pair<CNavArea*, float> pair) -> bool
@@ -131,7 +246,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		int iPriority = H::Entities.GetPriority(iStayNearTargetIdx);
 		if (iPriority > F::PlayerUtils.m_vTags[F::PlayerUtils.TagToIndex(DEFAULT_TAG)].m_iPriority)
 		{
-			if (StayNearTarget(iStayNearTargetIdx))
+			if (StayNearTarget(pLocal, pWeapon, iStayNearTargetIdx))
 				return true;
 		}
 
@@ -156,7 +271,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 				return true;
 		}
 		// Else we try to path again
-		if (StayNearTarget(iStayNearTargetIdx))
+		if (StayNearTarget(pLocal, pWeapon, iStayNearTargetIdx))
 			return true;
 
 	}
@@ -194,7 +309,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (!IsStayNearTargetValid(pLocal, pWeapon, iPlayerIdx))
 			continue;
 
-		if (StayNearTarget(iPlayerIdx))
+		if (StayNearTarget(pLocal, pWeapon, iPlayerIdx))
 		{
 			iStayNearTargetIdx = iPlayerIdx;
 			return true;
@@ -235,7 +350,7 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		for (auto [iIdx, _] : vSortedPlayers)
 		{
 			// Succeeded pathing
-			if (StayNearTarget(iIdx))
+			if (StayNearTarget(pLocal, pWeapon, iIdx))
 			{
 				iStayNearTargetIdx = iIdx;
 				return true;

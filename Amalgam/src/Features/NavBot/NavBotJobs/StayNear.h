@@ -4,7 +4,7 @@
 class CNavBotStayNear
 {
 private:
-	bool StayNearTarget(int iEntIndex);
+	bool StayNearTarget(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex);
 	bool IsAreaValidForStayNear(Vector vEntOrigin, CNavArea* pArea, bool bFixLocalZ = true);
 	int IsStayNearTargetValid(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, int iEntIndex);
 public:
