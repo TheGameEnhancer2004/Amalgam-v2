@@ -804,16 +804,15 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Off", "Plain", "Silent", "Legit", "Legit silent"),
 					Off, Plain, Silent, Legit, LegitSilent);
 
-				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
-				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
-				CVar(StuckDetectTime, "Stuck detect time", 2, NOSAVE | DEBUGVAR | SLIDER_MIN, 2, 26, 2, "%is");
-				CVar(StuckBlacklistTime, "Stuck blacklist time", 60, NOSAVE | DEBUGVAR | SLIDER_MIN, 20, 600, 20, "%is");
-				CVar(StuckExpireTime, "Stuck expire time", 5, NOSAVE | DEBUGVAR | SLIDER_MIN, 5, 100, 5, "%is");
-				CVar(StuckTime, "Stuck time", 0.2f, NOSAVE | DEBUGVAR | SLIDER_MIN, 0.25f, 0.9f, 0.05f, "%gs");
+				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | SLIDER_MIN, 15, 100, 5, "%is");
+				CVar(StuckDetectTime, "Stuck detect time", 2, NOSAVE | SLIDER_MIN, 2, 26, 2, "%is");
+				CVar(StuckBlacklistTime, "Stuck blacklist time", 60, NOSAVE | SLIDER_MIN, 20, 600, 20, "%is");
+				CVar(StuckExpireTime, "Stuck expire time", 5, NOSAVE | SLIDER_MIN, 5, 100, 5, "%is");
+				CVar(StuckTime, "Stuck time", 0.2f, NOSAVE | SLIDER_MIN, 0.25f, 0.9f, 0.05f, "%gs");
 
-				CVar(VischeckEnabled, "Vischeck enabled", false, NOSAVE | DEBUGVAR);
-				CVar(VischeckTime, "Vischeck time", 2.f, NOSAVE | DEBUGVAR | SLIDER_MIN, 0.005f, 3.f, 0.005f, "%gs");
-				CVar(VischeckCacheTime, "Vischeck cache time", 90, NOSAVE | DEBUGVAR | SLIDER_MIN, 10, 500, 10, "%is");
+				CVar(VischeckEnabled, "Vischeck enabled", false, NOSAVE);
+				CVar(VischeckTime, "Vischeck time", 2.f, NOSAVE | SLIDER_MIN, 0.005f, 3.f, 0.005f, "%gs");
+				CVar(VischeckCacheTime, "Vischeck cache time", 90, NOSAVE | SLIDER_MIN, 10, 500, 10, "%is");
 			SUBNAMESPACE_END(NavEngine);
 
 			SUBNAMESPACE_BEGIN(BotUtils)

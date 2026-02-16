@@ -1519,6 +1519,15 @@ void CMenu::MenuMisc(int iTab)
 						// FColorPicker(Vars::Colors::NavbotWalkablePath, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotArea, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 						FColorPicker(Vars::Colors::NavbotBlacklist, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
+
+						FSlider(Vars::Misc::Movement::NavEngine::StickyIgnoreTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckDetectTime, FSliderEnum::Right);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckBlacklistTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckExpireTime, FSliderEnum::Right);
+						FSlider(Vars::Misc::Movement::NavEngine::StuckTime, FSliderEnum::None);
+						FToggle(Vars::Misc::Movement::NavEngine::VischeckEnabled);
+						FSlider(Vars::Misc::Movement::NavEngine::VischeckTime, FSliderEnum::Left);
+						FSlider(Vars::Misc::Movement::NavEngine::VischeckCacheTime, FSliderEnum::Right);
 					}
 					PopTransparent();
 				} EndSection();
@@ -1630,15 +1639,6 @@ void CMenu::MenuMisc(int iTab)
 					} EndSection();
 					if (Section("##Debug Nav Engine"))
 					{
-						FToggle(Vars::Misc::Movement::NavEngine::SafePathing);
-						FSlider(Vars::Misc::Movement::NavEngine::StickyIgnoreTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckDetectTime, FSliderEnum::Right);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckBlacklistTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckExpireTime, FSliderEnum::Right);
-						FSlider(Vars::Misc::Movement::NavEngine::StuckTime, FSliderEnum::None);
-						FToggle(Vars::Misc::Movement::NavEngine::VischeckEnabled);
-						FSlider(Vars::Misc::Movement::NavEngine::VischeckTime, FSliderEnum::Left);
-						FSlider(Vars::Misc::Movement::NavEngine::VischeckCacheTime, FSliderEnum::Right);
 					} EndSection();
 				}
 			}

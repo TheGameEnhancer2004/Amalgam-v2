@@ -382,40 +382,6 @@ NavPoints_t CMap::DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, b
 		vClosest.z = pCurrentArea->GetNearestPoint(Vector2D(vNextClosest.x, vNextClosest.y)).z;
 	}
 
-	// If safepathing is enabled, adjust points to stay more centered and avoid corners
-	if (!bIsOneWay && Vars::Misc::Movement::NavEngine::SafePathing.Value)
-	{
-		// Move points more towards the center of the areas
-		//Vector vToNext = (vNextCenter - vCurrentCenter);
-		//vToNext.z = 0.0f;
-		//vToNext.Normalize();
-
-		// Calculate center point as a weighted average between area centers
-		// Use a 60/40 split to favor the current area more
-		vClosest = vCurrentCenter + (vNextCenter - vCurrentCenter) * 0.4f;
-
-		// Add extra safety margin near corners
-		float flCornerMargin = PLAYER_WIDTH * 0.75f;
-
-		// Check if we're near a corner by comparing distances to area edges
-		bool bNearCorner = false;
-		Vector vCurrentMins = pCurrentArea->m_vNwCorner; // Northwest corner
-		Vector vCurrentMaxs = pCurrentArea->m_vSeCorner; // Southeast corner
-
-		if (vClosest.x - vCurrentMins.x < flCornerMargin ||
-			vCurrentMaxs.x - vClosest.x < flCornerMargin ||
-			vClosest.y - vCurrentMins.y < flCornerMargin ||
-			vCurrentMaxs.y - vClosest.y < flCornerMargin)
-			bNearCorner = true;
-
-		// If near corner, move point more towards center
-		if (bNearCorner)
-			vClosest = vClosest + (vCurrentCenter - vClosest).Normalized() * flCornerMargin;
-
-		// Ensure the point is within the current area
-		vClosest = pCurrentArea->GetNearestPoint(Vector2D(vClosest.x, vClosest.y));
-	}
-
 	// Nearest point to center on "next", used for height checks
 	auto vCenterNext = pNextArea->GetNearestPoint(Vector2D(vClosest.x, vClosest.y));
 
