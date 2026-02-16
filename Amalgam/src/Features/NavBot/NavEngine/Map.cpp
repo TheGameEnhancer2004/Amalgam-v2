@@ -138,6 +138,9 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		if (!pNextArea || pNextArea == pCurrentArea)
 			continue;
 
+		if (!IsAreaValid(pCurrentArea) || !IsAreaValid(pNextArea) || !HasDirectConnection(pCurrentArea, pNextArea))
+			continue;
+
 		const auto tAreaBlockKey = std::pair<CNavArea*, CNavArea*>(pNextArea, pNextArea);
 		if (auto itBlocked = m_mVischeckCache.find(tAreaBlockKey); itBlocked != m_mVischeckCache.end())
 		{
@@ -297,6 +300,23 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			tEntry.m_iExpireTick = iCacheExpiry;
 		}
 	}
+}
+
+bool CMap::HasDirectConnection(CNavArea* pFrom, CNavArea* pTo) const
+{
+	if (!pFrom || !pTo)
+		return false;
+
+	if (pFrom == pTo)
+		return true;
+
+	for (const auto& tConnection : pFrom->m_vConnections)
+	{
+		if (tConnection.m_pArea == pTo)
+			return true;
+	}
+
+	return false;
 }
 
 DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay)

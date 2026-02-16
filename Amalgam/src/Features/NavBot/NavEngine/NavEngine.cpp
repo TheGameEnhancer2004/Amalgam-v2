@@ -164,6 +164,10 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 	if (!pLocalPlayer)
 		return false;
 
+	const Vector vPreviousDestination = m_vLastDestination;
+	const bool bPreviousNavToLocal = m_bCurrentNavToLocal;
+	const bool bPreviousIgnoreTraces = m_bIgnoreTraces;
+
 	m_vLastDestination = vDestination;
 	m_bCurrentNavToLocal = bNavToLocal;
 	m_bRepathOnFail = bShouldRepath;
@@ -235,6 +239,18 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		return false;
 	}
 
+	constexpr float flReuseDestinationRadiusSq = 160.f * 160.f;
+	const bool bCanReuseCurrentPath =
+		IsPathing() &&
+		!m_bRepathRequested &&
+		ePriority == m_eCurrentPriority &&
+		bNavToLocal == bPreviousNavToLocal &&
+		bIgnoreTraces == bPreviousIgnoreTraces &&
+		vPreviousDestination.DistToSqr(vDestination) <= flReuseDestinationRadiusSq;
+
+	if (bCanReuseCurrentPath)
+		return true;
+
 	int iPathResult = -1;
 	auto vPath = m_pMap->FindPath(m_pLocalArea, pDestArea, &iPathResult);
 	bool bSingleAreaPath = false;
@@ -297,6 +313,20 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			else
 			{
 				m_sLastFailureReason = "Path empty after trim";
+				return false;
+			}
+		}
+	}
+
+	if (!bSingleAreaPath && !vPath.empty())
+	{
+		for (size_t i = 0; i + 1 < vPath.size(); ++i)
+		{
+			auto pCurrentArea = reinterpret_cast<CNavArea*>(vPath[i]);
+			auto pNextArea = reinterpret_cast<CNavArea*>(vPath[i + 1]);
+			if (!pCurrentArea || !pNextArea || !m_pMap->IsAreaValid(pCurrentArea) || !m_pMap->IsAreaValid(pNextArea) || !m_pMap->HasDirectConnection(pCurrentArea, pNextArea))
+			{
+				m_sLastFailureReason = "Path contains disconnected areas";
 				return false;
 			}
 		}

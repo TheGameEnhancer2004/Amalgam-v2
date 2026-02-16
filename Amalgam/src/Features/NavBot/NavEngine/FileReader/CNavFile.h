@@ -207,26 +207,26 @@ public:
 			// Change the tolerance if you wish
 			tArea.m_flMinZ = std::min(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) - 18.f;
 			tArea.m_flMaxZ = std::max(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) + 18.f;
+			tArea.m_uConnectionCount = 0;
 
 			for (int iDir = 0; iDir < 4; iDir++)
 			{
-				file.read((char*)&tArea.m_uConnectionCount, sizeof(uint32_t));
-				for (size_t j = 0; j < tArea.m_uConnectionCount; j++)
+				uint32_t uDirConnectionCount = 0;
+				file.read((char*)&uDirConnectionCount, sizeof(uint32_t));
+				for (size_t j = 0; j < uDirConnectionCount; j++)
 				{
 					NavConnect_t tConnect;
 					file.read((char*)&tConnect.m_uId, sizeof(uint32_t));
 
 					// Connection to the same area?
 					if (tConnect.m_uId == tArea.m_uId)
-					{
-						tArea.m_uConnectionCount--;
 						continue;
-					}
 
 					// Note: If connection directions matter to you, uncomment
 					// this
 					tArea.m_vConnections /*[iDir]*/.push_back(tConnect);
 					tArea.m_vConnectionsDir[iDir].push_back(tConnect);
+					tArea.m_uConnectionCount++;
 				}
 			}
 

@@ -138,6 +138,7 @@ public:
 	DropdownHint_t HandleDropdown(const Vector& vCurrentPos, const Vector& vNextPos, bool bIsOneWay);
 	NavPoints_t DeterminePoints(CNavArea* pCurrentArea, CNavArea* pNextArea, bool bIsOneWay);
 	bool IsOneWay(CNavArea* pFrom, CNavArea* pTo) const;
+	bool HasDirectConnection(CNavArea* pFrom, CNavArea* pTo) const;
 	float GetBlacklistPenalty(const BlacklistReason_t& tReason) const;
 	void CollectAreasAround(const Vector& vOrigin, float flRadius, std::vector<CNavArea*>& vOutAreas);
 
