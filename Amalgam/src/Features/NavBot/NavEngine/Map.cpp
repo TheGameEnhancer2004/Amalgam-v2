@@ -323,27 +323,25 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 			tHint.m_flDropHeight = flDropDistance;
 			tHint.m_vApproachDir = vHorizontal / flHorizontalLength;
 
-			if (!bIsOneWay)
-			{
-				Vector vDirection = tHint.m_vApproachDir;
+			Vector vDirection = tHint.m_vApproachDir;
 
-				// Distance to move forward before dropping. Favour wider moves for larger drops.
-				const float desiredAdvance = std::clamp(flDropDistance * 0.5f, PLAYER_WIDTH * 0.85f, PLAYER_WIDTH * 2.5f);
-				const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
-				float flApproach = desiredAdvance;
-				if (flMaxAdvance > 0.f)
-					flApproach = std::min(flApproach, flMaxAdvance);
-				else
-					flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
+			const float desiredAdvance = std::clamp(flDropDistance * 0.5f, PLAYER_WIDTH * 0.85f, PLAYER_WIDTH * 2.5f);
+			const float flMaxAdvance = std::max(flHorizontalLength - kEdgePadding, 0.f);
+			float flApproach = desiredAdvance;
+			if (flMaxAdvance > 0.f)
+				flApproach = std::min(flApproach, flMaxAdvance);
+			else
+				flApproach = std::min(flApproach, flHorizontalLength * 0.8f);
 
-				const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(PLAYER_WIDTH * 0.75f, flHorizontalLength * 0.5f));
-				flApproach = std::max(flApproach, minAdvance);
-				flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
-				tHint.m_flApproachDistance = std::max(flApproach, 0.f);
+			const float flMinAdvanceRatio = bIsOneWay ? 0.35f : 0.5f;
+			const float flMinAdvanceWidth = bIsOneWay ? PLAYER_WIDTH * 0.5f : PLAYER_WIDTH * 0.75f;
+			const float minAdvance = std::min(flHorizontalLength * 0.95f, std::max(flMinAdvanceWidth, flHorizontalLength * flMinAdvanceRatio));
+			flApproach = std::max(flApproach, minAdvance);
+			flApproach = std::min(flApproach, flHorizontalLength * 0.95f);
+			tHint.m_flApproachDistance = std::max(flApproach, 0.f);
 
-				tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
-				tHint.m_vAdjustedPos.z = vCurrentPos.z;
-			}
+			tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
+			tHint.m_vAdjustedPos.z = vCurrentPos.z;
 		}
 	}
 	else if (!bIsOneWay && flHeightDiff > 0.f && flHorizontalLength > 1.f)

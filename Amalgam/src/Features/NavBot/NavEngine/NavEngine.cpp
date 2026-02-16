@@ -1204,6 +1204,30 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			flDirLen = vMoveDir.Length();
 		}
 
+		if (flDirLen < 0.01f && bDropCrumb)
+		{
+			if (!m_vCurrentPathDir.IsZero())
+			{
+				vMoveDir = m_vCurrentPathDir;
+				vMoveDir.z = 0.f;
+				flDirLen = vMoveDir.Length();
+			}
+
+			if (flDirLen < 0.01f && tActiveCrumb.m_pNavArea)
+			{
+				vMoveDir = tActiveCrumb.m_vPos - tActiveCrumb.m_pNavArea->m_vCenter;
+				vMoveDir.z = 0.f;
+				flDirLen = vMoveDir.Length();
+			}
+
+			if (flDirLen < 0.01f)
+			{
+				vMoveDir = tActiveCrumb.m_vPos - vLocalOrigin;
+				vMoveDir.z = 0.f;
+				flDirLen = vMoveDir.Length();
+			}
+		}
+
 		bHasMoveDir = flDirLen > 0.01f;
 		if (bHasMoveDir)
 		{
