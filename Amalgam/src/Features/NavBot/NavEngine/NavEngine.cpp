@@ -112,6 +112,39 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 	m_bIgnoreTraces = bIgnoreTraces;
 
 	m_sLastFailureReason = "";
+	auto ShouldUseEmergencyFallback = [&](const char* sReason) -> bool
+		{
+			if (bIgnoreTraces)
+				return false;
+
+			constexpr float flSameDestinationRadiusSq = 250.f * 250.f;
+			constexpr float flFailWindow = 1.6f;
+			constexpr int iFallbackThreshold = 3;
+
+			const int iNow = I::GlobalVars->tickcount;
+			const int iWindowTicks = TIME_TO_TICKS(flFailWindow);
+			const bool bSameDestination = m_vLastStrictFailDestination.DistToSqr(vDestination) <= flSameDestinationRadiusSq;
+			const bool bWithinWindow = m_iStrictFailTick > 0 && (iNow - m_iStrictFailTick) <= iWindowTicks;
+
+			if (bSameDestination && bWithinWindow)
+				m_iStrictFailCount++;
+			else
+				m_iStrictFailCount = 1;
+
+			m_vLastStrictFailDestination = vDestination;
+			m_iStrictFailTick = iNow;
+
+			if (m_iStrictFailCount < iFallbackThreshold)
+			{
+				m_sLastFailureReason = std::format("{} (strict {}/{})", sReason, m_iStrictFailCount, iFallbackThreshold);
+				return false;
+			}
+
+			m_iStrictFailCount = 0;
+			m_sLastFailureReason = std::format("{} (emergency fallback)", sReason);
+			return true;
+		};
+
 	if (F::Ticks.m_bWarp || F::Ticks.m_bDoubletap)
 	{
 		m_sLastFailureReason = "Warping/Doubletapping";
@@ -157,12 +190,8 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			{
 			case 1: // NO_SOLUTION
 			{
-				if (!bIgnoreTraces)
-				{
-					m_sLastFailureReason = "No solution found, attempting fallback";
-					// m_pMap->m_pather.Reset(); // Not needed with custom solver
+				if (ShouldUseEmergencyFallback("No solution found"))
 					return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
-				}
 
 				m_sLastFailureReason = "No solution found (disconnected)";
 				if (m_pLocalArea && pDestArea)
@@ -313,7 +342,8 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 		// Check if the path we just built is even valid with traces
 		// If not, we might want to try again with traces ignored if absolutely necessary
 		bool bValid = true;
-		const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+		const int iVischeckCacheSeconds = std::min(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value, 45);
+		const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(iVischeckCacheSeconds);
 
 		for (size_t i = 0; i < m_vCrumbs.size() - 1; i++)
 		{
@@ -361,13 +391,19 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 
 		if (!bValid)
 		{
-			// If the normal path is blocked, try to find a path ignoring costs and tracelines
-			// this shit is absolute fallback if everything fails
-			m_sLastFailureReason = "Path blocked by traces, attempting fallback";
+			if (ShouldUseEmergencyFallback("Path blocked by traces"))
+			{
+				m_vCrumbs.clear();
+				return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
+			}
+
 			m_vCrumbs.clear();
-			return NavTo(vDestination, ePriority, bShouldRepath, bNavToLocal, true);
+			return false;
 		}
 	}
+
+	if (!bIgnoreTraces)
+		m_iStrictFailCount = 0;
 
 	m_eCurrentPriority = ePriority;
 	return true;
@@ -415,7 +451,8 @@ void CNavEngine::VischeckPath()
 	if (!pLocal)
 		return;
 
-	const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+	const int iVischeckCacheSeconds = std::min(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value, 45);
+	const auto iVischeckCacheExpireTimestamp = TICKCOUNT_TIMESTAMP(iVischeckCacheSeconds);
 
 	// Iterate all the crumbs
 	for (auto it = m_vCrumbs.begin(), next = it + 1; next != m_vCrumbs.end(); it++, next++)
@@ -521,7 +558,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 			auto itVischeck = m_pMap->m_mVischeckCache.find(tAreaKey);
 			if (itVischeck != m_pMap->m_mVischeckCache.end() && !itVischeck->second.m_bPassable && (itVischeck->second.m_iExpireTick == 0 || itVischeck->second.m_iExpireTick > I::GlobalVars->tickcount))
 			{
-				if (!m_bIgnoreTraces || itVischeck->second.m_bStuckBlacklist)
+				if (itVischeck->second.m_bStuckBlacklist)
 				{
 					AbandonPath("Area blacklisted (stuck)");
 					return;
@@ -675,6 +712,9 @@ void CNavEngine::Reset(bool bForced)
 {
 	CancelPath();
 	m_bIgnoreTraces = false;
+	m_iStrictFailCount = 0;
+	m_iStrictFailTick = 0;
+	m_vLastStrictFailDestination = {};
 	m_pLocalArea = nullptr;
 	m_tOffMeshTimer.Update();
 	m_vOffMeshTarget = {};
@@ -986,6 +1026,9 @@ void CNavEngine::CancelPath()
 	m_vCurrentPathDir = {};
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
+	m_iStrictFailCount = 0;
+	m_iStrictFailTick = 0;
+	m_vLastStrictFailDestination = {};
 	m_vLastLookTarget = {};
 }
 

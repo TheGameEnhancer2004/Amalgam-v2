@@ -127,7 +127,8 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 	CNavArea* pCurrentArea = reinterpret_cast<CNavArea*>(pArea);
 	const int iNow = I::GlobalVars->tickcount;
-	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value);
+	const int iCacheExpirySeconds = std::min(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value, 45);
+	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(iCacheExpirySeconds);
 
 	auto pLocal = H::Entities.GetLocal();
 	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
@@ -149,7 +150,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			if (itBlocked->second.m_eVischeckState == VischeckStateEnum::NotVisible &&
 				(itBlocked->second.m_iExpireTick == 0 || itBlocked->second.m_iExpireTick > iNow))
 			{
-				if (!F::NavEngine.m_bIgnoreTraces || itBlocked->second.m_bStuckBlacklist)
+				if (itBlocked->second.m_bStuckBlacklist)
 					continue;
 			}
 		}
@@ -172,8 +173,10 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 
 		if (bValidCache && !tEntry.m_bPassable)
 		{
-			if (!F::NavEngine.m_bIgnoreTraces || tEntry.m_bStuckBlacklist)
+			if (tEntry.m_bStuckBlacklist)
 				continue;
+
+			bValidCache = false;
 		}
 
 		NavPoints_t tPoints{};
@@ -196,7 +199,14 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			tDropdown = HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
 			tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
-			if (!F::NavEngine.m_bIgnoreTraces && (tPoints.m_vCenterNext.z - tPoints.m_vCenter.z) > PLAYER_CROUCHED_JUMP_HEIGHT)
+			const float flUpDelta = tPoints.m_vCenterNext.z - tPoints.m_vCenter.z;
+			const float flPlanarDelta = tPoints.m_vCenter.DistTo2D(tPoints.m_vCenterNext);
+			const float flOverlapX = std::min(pCurrentArea->m_vSeCorner.x, pNextArea->m_vSeCorner.x) - std::max(pCurrentArea->m_vNwCorner.x, pNextArea->m_vNwCorner.x);
+			const float flOverlapY = std::min(pCurrentArea->m_vSeCorner.y, pNextArea->m_vSeCorner.y) - std::max(pCurrentArea->m_vNwCorner.y, pNextArea->m_vNwCorner.y);
+			const bool bStackedOverlap = flOverlapX > HALF_PLAYER_WIDTH && flOverlapY > HALF_PLAYER_WIDTH;
+			const bool bSuspiciousVerticalLink = !bIsOneWay && flUpDelta > 6.f && bStackedOverlap && flPlanarDelta < HALF_PLAYER_WIDTH;
+
+			if (!F::NavEngine.m_bIgnoreTraces && ((flUpDelta > PLAYER_CROUCHED_JUMP_HEIGHT) || bSuspiciousVerticalLink))
 			{
 				tEntry.m_iExpireTick = iCacheExpiry;
 				tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
@@ -205,9 +215,25 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 				continue;
 			}
 
-			Vector vStart = tPoints.m_vCurrent;
-			Vector vMid = tPoints.m_vCenter;
-			Vector vEnd = tPoints.m_vNext;
+			if (!F::NavEngine.m_bIgnoreTraces && pLocal)
+			{
+				const bool bNeedsExtraValidation = bSuspiciousVerticalLink || flUpDelta > 8.f || flPlanarDelta < HALF_PLAYER_WIDTH;
+				if (bNeedsExtraValidation)
+				{
+					const bool bPassToMid = F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter);
+					const bool bPassToNext = bPassToMid && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext);
+					if (!bPassToNext)
+					{
+						tEntry.m_iExpireTick = iCacheExpiry;
+						tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
+						tEntry.m_bPassable = false;
+						tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+						tEntry.m_tPoints = tPoints;
+						tEntry.m_tDropdown = tDropdown;
+						continue;
+					}
+				}
+			}
 
 			bPassable = true;
 			flBaseCost = EvaluateConnectionCost(pCurrentArea, pNextArea, tPoints, tDropdown, iTeam);

@@ -51,6 +51,9 @@ private:
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 	bool m_bRepathRequested = false;
+	Vector m_vLastStrictFailDestination = {};
+	int m_iStrictFailTick = 0;
+	int m_iStrictFailCount = 0;
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 
