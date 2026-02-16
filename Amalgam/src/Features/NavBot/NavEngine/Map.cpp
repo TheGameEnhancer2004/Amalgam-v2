@@ -261,39 +261,26 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 			tEntry.m_tDropdown = tDropdown;
 		}
 
-		float flFinalCost = flBaseCost;
+		float flFinalCost = std::max(tPoints.m_vCurrent.DistTo(tPoints.m_vNext), 1.f);
 		if (!F::NavEngine.m_bIgnoreTraces)
 		{
-			flFinalCost += F::DangerManager.GetCost(pNextArea);
-
 			if (!m_bFreeBlacklistBlocked && flBlacklistPenalty > 0.f && std::isfinite(flBlacklistPenalty))
-				flFinalCost += flBlacklistPenalty;
+				flFinalCost += std::clamp(flBlacklistPenalty * 0.2f, 0.f, 350.f);
+
+			const float flDangerPenalty = std::clamp(F::DangerManager.GetCost(pNextArea) * 0.02f, 0.f, 220.f);
+			flFinalCost += flDangerPenalty;
 
 			if (auto itStuck = m_mConnectionStuckTime.find(tKey); itStuck != m_mConnectionStuckTime.end())
 			{
 				if (itStuck->second.m_iExpireTick == 0 || itStuck->second.m_iExpireTick > iNow)
 				{
-					float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 35.f, 25.f, 400.f);
+					float flStuckPenalty = std::clamp(static_cast<float>(itStuck->second.m_iTimeStuck) * 18.f, 12.f, 160.f);
 					flFinalCost += flStuckPenalty;
 				}
 			}
 		}
 		else
-		{
-			// irronically, i made it run bilion traces before
-			float flDist = tPoints.m_vCurrent.DistTo2D(tPoints.m_vNext);
-			flFinalCost = flDist * 1.5f;
-
-			float flAreaWidth = pNextArea->m_vSeCorner.x - pNextArea->m_vNwCorner.x;
-			float flAreaHeight = pNextArea->m_vSeCorner.y - pNextArea->m_vNwCorner.y;
-			if (flAreaWidth < PLAYER_WIDTH || flAreaHeight < PLAYER_WIDTH)
-				flFinalCost *= 2.0f;
-
-			if (pNextArea->m_iAttributeFlags & NAV_MESH_AVOID)
-				flFinalCost += 100000.f;
-			if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
-				flFinalCost += 50.f;
-		}
+			flFinalCost *= 1.2f;
 
 		if (!std::isfinite(flFinalCost) || flFinalCost <= 0.f)
 			continue;

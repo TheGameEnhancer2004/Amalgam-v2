@@ -57,7 +57,37 @@ bool CNavEngine::IsVectorVisibleNavigation(const Vector vFrom, const Vector vTo,
 
 bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFrom, Vector vTo, unsigned int nMask)
 {
-	return F::BotUtils.IsWalkable(pLocal, vFrom, vTo);
+	if (!pLocal)
+		return false;
+
+	Vector vDelta = vTo - vFrom;
+	vDelta.z = 0.f;
+	if (vDelta.Length() < 16.f)
+		return true;
+
+	Vec3 vForward, vRight, vUp;
+	Math::AngleVectors(Math::VectorAngles(vDelta), &vForward, &vRight, &vUp);
+	vRight.z = 0.f;
+	const float flRightLen = vRight.Length();
+	if (flRightLen <= 0.001f)
+		return false;
+	vRight /= flRightLen;
+
+	Vector vStart = vFrom;
+	Vector vEnd = vTo;
+	vStart.z += PLAYER_JUMP_HEIGHT;
+	vEnd.z += PLAYER_JUMP_HEIGHT;
+
+	const Vector vOffset = vRight * (HALF_PLAYER_WIDTH * 0.8f);
+	CTraceFilterNavigation tFilter(pLocal);
+	CGameTrace tLeftTrace{}, tRightTrace{};
+
+	SDK::Trace(vStart - vOffset, vEnd - vOffset, nMask, &tFilter, &tLeftTrace);
+	if (tLeftTrace.fraction < 1.0f)
+		return false;
+
+	SDK::Trace(vStart + vOffset, vEnd + vOffset, nMask, &tFilter, &tRightTrace);
+	return tRightTrace.fraction >= 1.0f;
 }
 
 void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea)
@@ -922,30 +952,6 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable)
 	{
 		m_vDebugWalkablePaths.clear();
-		if (pArea)
-		{
-			// Collect nearby exit areas
-			std::vector<CNavArea*> vAreas;
-			m_pMap->CollectAreasAround(vLocalOrigin, 500.f, vAreas);
-			for (auto* pCurrentArea : vAreas)
-			{
-				for (auto& tConnection : pCurrentArea->m_vConnections)
-				{
-					if (!tConnection.m_pArea) continue;
-					bool bIsOneWay = m_pMap->IsOneWay(pCurrentArea, tConnection.m_pArea);
-					NavPoints_t tPoints = m_pMap->DeterminePoints(pCurrentArea, tConnection.m_pArea, bIsOneWay);
-					DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
-					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
-
-					F::BotUtils.IsWalkable(pLocal, tPoints.m_vCurrent, tPoints.m_vCenter);
-					for (auto& segment : F::BotUtils.m_vWalkableSegments)
-						m_vDebugWalkablePaths.push_back(segment);
-					F::BotUtils.IsWalkable(pLocal, tPoints.m_vCenter, tPoints.m_vNext);
-					for (auto& segment : F::BotUtils.m_vWalkableSegments)
-						m_vDebugWalkablePaths.push_back(segment);
-				}
-			}
-		}
 	}
 	else
 		m_vDebugWalkablePaths.clear();
