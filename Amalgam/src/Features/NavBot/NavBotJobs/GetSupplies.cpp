@@ -159,6 +159,7 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocalOrigin, SupplyData_t* pSupplyData, const int iPriority)
 {
 	float flDist = pSupplyData->m_vOrigin.DistTo(vLocalOrigin);
+	const auto ePriority = PriorityListEnum::PriorityListEnum(iPriority);
 	if (!pSupplyData->m_bDispenser)
 	{
 		// Check if we are close enough to the pack to pick it up
@@ -179,9 +180,17 @@ bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocal
 	}
 	// Stand still if we are close to a dispenser 
 	else if (flDist <= 150.f)
+	{
+		// Keep job priority alive while waiting for dispenser ticks.
+		if (F::NavEngine.m_eCurrentPriority != ePriority)
+		{
+			if (!F::NavEngine.NavTo(pSupplyData->m_vOrigin, ePriority, true, false))
+				F::NavEngine.m_eCurrentPriority = ePriority;
+		}
 		return true;
+	}
 
-	return F::NavEngine.NavTo(pSupplyData->m_vOrigin, PriorityListEnum::PriorityListEnum(iPriority), true, flDist > 200.f);
+	return F::NavEngine.NavTo(pSupplyData->m_vOrigin, ePriority, true, flDist > 200.f);
 }
 
 void CNavBotSupplies::UpdateTakenState()
@@ -211,21 +220,47 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	static bool bWasForce = false;
 	bool bShouldForce = iFlags & GetSupplyEnum::Forced;
 	bool bIsAmmo = ePriority == PriorityListEnum::GetAmmo;
+	const auto eCurrentPriority = F::NavEngine.m_eCurrentPriority;
+	const bool bActiveHealthJob = eCurrentPriority == PriorityListEnum::GetHealth || eCurrentPriority == PriorityListEnum::LowPrioGetHealth;
+	const bool bActiveSupplyJob = bIsAmmo ? eCurrentPriority == PriorityListEnum::GetAmmo : bActiveHealthJob;
+
+	static Timer tStickySupplyLock{};
+	const float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
+	const bool bNeedsHealthStill = flHealthPercent < (bLowPrio ? 0.92f : 0.9f);
+	const bool bCanKeepStickyLock = bIsAmmo ? true : bNeedsHealthStill;
+
+	// Keep trying the last known dispenser for a short while if dispenser scanning flickers.
+	static bool bHasRememberedDispenser = false;
+	static Vector vRememberedDispenser = {};
+	static Timer tRememberedDispenserTimer{};
 	if (!bShouldForce && !(bIsAmmo ? ShouldSearchAmmo(pLocal) : ShouldSearchHealth(pLocal, bLowPrio)))
 	{
+		if (!bIsAmmo && bHasRememberedDispenser && bNeedsHealthStill && !tRememberedDispenserTimer.Check(2.f))
+		{
+			SupplyData_t tRemembered{};
+			tRemembered.m_bDispenser = true;
+			tRemembered.m_vOrigin = vRememberedDispenser;
+			if (GetSupply(pCmd, pLocal, pLocal->GetAbsOrigin(), &tRemembered, ePriority))
+				return true;
+		}
+
 		// Cancel pathing if we no longer need to get anything
-		if (F::NavEngine.m_eCurrentPriority == ePriority && (!bIsAmmo || !bWasForce))
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLock.Check(1.25f))
+			return true;
+
+		if (bActiveSupplyJob && (!bIsAmmo || !bWasForce))
 			F::NavEngine.CancelPath();
 		return false;
 	}
+	tStickySupplyLock.Update();
 
 	static Timer tCooldownTimer{};
 	if (!bShouldForce && !tCooldownTimer.Check(1.f))
-		return F::NavEngine.m_eCurrentPriority == ePriority;
+		return bActiveSupplyJob;
 
 	// Already pathing, only try to repath every 2s
 	static Timer tRepathCooldownTimer{};
-	if (F::NavEngine.m_eCurrentPriority == ePriority && !tRepathCooldownTimer.Run(2.f))
+	if (bActiveSupplyJob && !tRepathCooldownTimer.Run(2.f))
 		return true;
 
 	UpdateTakenState();
@@ -233,8 +268,30 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	bool bClosestSupplyWasTaken = false;
 	bool bGotSupplies = GetSuppliesData(pLocal, bClosestSupplyWasTaken, bIsAmmo);
 	bool bGotDispensers = GetDispensersData(pLocal);
+	if (!bIsAmmo)
+	{
+		if (bGotDispensers && !m_vTempDispensers.empty())
+		{
+			bHasRememberedDispenser = true;
+			vRememberedDispenser = m_vTempDispensers.front().m_vOrigin;
+			tRememberedDispenserTimer.Update();
+		}
+		else if (bHasRememberedDispenser && bNeedsHealthStill && !tRememberedDispenserTimer.Check(2.f))
+		{
+			SupplyData_t tRemembered{};
+			tRemembered.m_bDispenser = true;
+			tRemembered.m_vOrigin = vRememberedDispenser;
+			if (GetSupply(pCmd, pLocal, pLocal->GetAbsOrigin(), &tRemembered, ePriority))
+				return true;
+		}
+		else if (bHasRememberedDispenser && (tRememberedDispenserTimer.Check(2.f) || !bNeedsHealthStill))
+			bHasRememberedDispenser = false;
+	}
 	if (!bGotSupplies && !bGotDispensers)
 	{
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLock.Check(1.25f))
+			return true;
+
 		tCooldownTimer.Update();
 		return false;
 	}
@@ -295,6 +352,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	if (pBest && GetSupply(pCmd, pLocal, vLocalOrigin, pBest, ePriority))
 	{
 		bWasForce = bShouldForce;
+		tStickySupplyLock.Update();
 		return true;
 	}
 
