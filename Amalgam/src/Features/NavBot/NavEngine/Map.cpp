@@ -207,13 +207,18 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 				&& bStackedOverlap
 				&& flCenterPlanarDelta < PLAYER_WIDTH * 0.75f
 				&& flPlanarDelta < PLAYER_WIDTH * 0.4f;
+			const bool bClearlyUnreachableJump = !bIsOneWay &&
+				(flUpDelta > (PLAYER_CROUCHED_JUMP_HEIGHT + 10.f) || (flUpDelta > PLAYER_JUMP_HEIGHT * 1.35f && flPlanarDelta < PLAYER_WIDTH * 1.1f));
+			const int iUnreachableCacheExpiry = TICKCOUNT_TIMESTAMP(90.f);
 
-			if (!F::NavEngine.m_bIgnoreTraces && ((flUpDelta > PLAYER_CROUCHED_JUMP_HEIGHT) || bSuspiciousVerticalLink))
+			if (!F::NavEngine.m_bIgnoreTraces && ((flUpDelta > PLAYER_CROUCHED_JUMP_HEIGHT) || bSuspiciousVerticalLink || bClearlyUnreachableJump))
 			{
-				tEntry.m_iExpireTick = iCacheExpiry;
+				tEntry.m_iExpireTick = bClearlyUnreachableJump ? iUnreachableCacheExpiry : iCacheExpiry;
 				tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
 				tEntry.m_bPassable = false;
 				tEntry.m_flCachedCost = std::numeric_limits<float>::max();
+				tEntry.m_tPoints = tPoints;
+				tEntry.m_tDropdown = tDropdown;
 				continue;
 			}
 
@@ -225,7 +230,7 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 					const bool bPassToNext = bPassToMid && F::NavEngine.IsPlayerPassableNavigation(pLocal, tPoints.m_vCenter, tPoints.m_vNext);
 					if (!bPassToNext)
 					{
-						tEntry.m_iExpireTick = iCacheExpiry;
+						tEntry.m_iExpireTick = iUnreachableCacheExpiry;
 						tEntry.m_eVischeckState = VischeckStateEnum::NotVisible;
 						tEntry.m_bPassable = false;
 						tEntry.m_flCachedCost = std::numeric_limits<float>::max();
@@ -698,18 +703,48 @@ void CMap::ApplyBlacklistAround(const Vector& vOrigin, float flRadius, const Bla
 CNavArea* CMap::FindClosestNavArea(const Vector& vPos, bool bLocalOrigin)
 {
 	std::lock_guard lock(m_mutex);
-	float flBestDist = FLT_MAX;
+	float flBestOverlapScore = FLT_MAX;
+	CNavArea* pBestOverlapArea = nullptr;
+
+	float flBestScore = FLT_MAX;
 	CNavArea* pBestArea = nullptr;
 
 	for (auto& tArea : m_navfile.m_vAreas)
 	{
-		float flDist = tArea.m_vCenter.DistToSqr(vPos);
-		if (flDist < flBestDist)
+		const bool bOverlapping = tArea.IsOverlapping(vPos);
+		const float flAreaZ = tArea.GetZ(vPos.x, vPos.y);
+		const float flVerticalToArea = std::fabs(flAreaZ - vPos.z);
+
+		if (bOverlapping)
 		{
-			flBestDist = flDist;
+			float flOverlapScore = flVerticalToArea;
+			if (bLocalOrigin)
+			{
+				if (vPos.z < (tArea.m_flMinZ - PLAYER_CROUCHED_JUMP_HEIGHT))
+					flOverlapScore += PLAYER_HEIGHT;
+				if (vPos.z > (tArea.m_flMaxZ + PLAYER_CROUCHED_JUMP_HEIGHT))
+					flOverlapScore += PLAYER_HEIGHT * 0.5f;
+			}
+
+			if (flOverlapScore < flBestOverlapScore)
+			{
+				flBestOverlapScore = flOverlapScore;
+				pBestOverlapArea = &tArea;
+			}
+		}
+
+		Vector vDelta = tArea.m_vCenter - vPos;
+		const float flPlanarDistSqr = vDelta.x * vDelta.x + vDelta.y * vDelta.y;
+		const float flScore = flPlanarDistSqr + (flVerticalToArea * flVerticalToArea * 6.f);
+		if (flScore < flBestScore)
+		{
+			flBestScore = flScore;
 			pBestArea = &tArea;
 		}
 	}
+
+	if (pBestOverlapArea)
+		return pBestOverlapArea;
 
 	return pBestArea;
 }

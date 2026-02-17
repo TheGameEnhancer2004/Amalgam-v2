@@ -67,6 +67,8 @@ private:
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 	bool m_bRepathRequested = false;
+	int m_iNextRepathTick = 0;
+	int m_iLastBlacklistAbandonTick = 0;
 	Vector m_vLastStrictFailDestination = {};
 	int m_iStrictFailTick = 0;
 	int m_iStrictFailCount = 0;

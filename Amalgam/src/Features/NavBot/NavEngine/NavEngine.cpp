@@ -896,7 +896,10 @@ float CNavEngine::GetPathCost(const Vector& vLocalOrigin, const Vector& vDestina
 CNavArea* CNavEngine::GetLocalNavArea(const Vector& pLocalOrigin)
 {
 	// Update local area only if our origin is no longer in its minmaxs
-	if (!m_pLocalArea || (!m_pLocalArea->IsOverlapping(pLocalOrigin) || pLocalOrigin.z < m_pLocalArea->m_flMinZ))
+	if (!m_pLocalArea ||
+		!m_pLocalArea->IsOverlapping(pLocalOrigin) ||
+		pLocalOrigin.z < (m_pLocalArea->m_flMinZ - 8.f) ||
+		pLocalOrigin.z > (m_pLocalArea->m_flMaxZ + PLAYER_CROUCHED_JUMP_HEIGHT))
 		m_pLocalArea = FindClosestNavArea(pLocalOrigin);
 	return m_pLocalArea;
 }
@@ -1002,8 +1005,29 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 	// thats dumb, we shouldnt generally do that but i will
 	m_pMap->m_bIgnoreSentryBlacklist = m_eCurrentPriority == PriorityListEnum::SnipeSentry || m_eCurrentPriority == PriorityListEnum::Capture;
 
-	for (auto& tCrumb : m_vCrumbs)
+	const int iNow = I::GlobalVars->tickcount;
+	const int iBlacklistRepathCooldown = TIME_TO_TICKS(0.4f);
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+
+	auto TryAbandonForBlacklist = [&](const char* sReason) -> bool
+		{
+			if (iNow - m_iLastBlacklistAbandonTick < iBlacklistRepathCooldown)
+				return false;
+
+			m_iLastBlacklistAbandonTick = iNow;
+			AbandonPath(sReason);
+			return true;
+		};
+
+	constexpr size_t kBlacklistScanMaxCrumbs = 20;
+	for (size_t i = 0; i < m_vCrumbs.size() && i < kBlacklistScanMaxCrumbs; ++i)
 	{
+		auto& tCrumb = m_vCrumbs[i];
+		Vector vAhead = tCrumb.m_vPos - vLocalOrigin;
+		vAhead.z = 0.f;
+		if (vAhead.LengthSqr() > (1800.f * 1800.f))
+			break;
+
 		auto itBlacklist = m_pMap->m_mFreeBlacklist.find(tCrumb.m_pNavArea);
 		if (itBlacklist != m_pMap->m_mFreeBlacklist.end())
 		{
@@ -1011,7 +1035,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 			float flThreshold = m_eCurrentPriority == PriorityListEnum::Capture ? 4000.f : 2500.f;
 			if (flPenalty >= flThreshold)
 			{
-				AbandonPath("Blacklisted area");
+				TryAbandonForBlacklist("Blacklisted area");
 				return;
 			}
 		}
@@ -1024,7 +1048,7 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 			{
 				if (itVischeck->second.m_bStuckBlacklist)
 				{
-					AbandonPath("Area blacklisted (stuck)");
+					TryAbandonForBlacklist("Area blacklisted (stuck)");
 					return;
 				}
 			}
@@ -1172,6 +1196,8 @@ void CNavEngine::Reset(bool bForced)
 	m_bIgnoreTraces = false;
 	m_iStrictFailCount = 0;
 	m_iStrictFailTick = 0;
+	m_iNextRepathTick = 0;
+	m_iLastBlacklistAbandonTick = 0;
 	m_vLastStrictFailDestination = {};
 	m_pLocalArea = nullptr;
 	m_tOffMeshTimer.Update();
@@ -1295,8 +1321,12 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	if (m_bRepathRequested)
 	{
-		m_bRepathRequested = false;
-		NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal, m_bIgnoreTraces);
+		if (I::GlobalVars->tickcount >= m_iNextRepathTick)
+		{
+			m_bRepathRequested = false;
+			if (!NavTo(m_vLastDestination, m_eCurrentPriority, true, m_bCurrentNavToLocal, m_bIgnoreTraces))
+				m_iNextRepathTick = std::max(m_iNextRepathTick, TICKCOUNT_TIMESTAMP(0.25f));
+		}
 	}
 
 	if ((m_eCurrentPriority == PriorityListEnum::Engineer && ((!Vars::Aimbot::AutoEngie::AutoRepair.Value && !Vars::Aimbot::AutoEngie::AutoUpgrade.Value) || pLocal->m_iClass() != TF_CLASS_ENGINEER)) ||
@@ -1431,6 +1461,10 @@ void CNavEngine::AbandonPath(const std::string& sReason)
 	if (m_bRepathOnFail)
 	{
 		m_bRepathRequested = true;
+		float flRepathDelay = 0.2f;
+		if (sReason.find("Blacklisted") != std::string::npos || sReason.find("Stuck") != std::string::npos)
+			flRepathDelay = 0.45f;
+		m_iNextRepathTick = std::max(m_iNextRepathTick, TICKCOUNT_TIMESTAMP(flRepathDelay));
 		m_bRepathOnFail = false;
 	}
 	else
@@ -1489,6 +1523,7 @@ void CNavEngine::CancelPath()
 	m_vCurrentPathDir = {};
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
+	m_iNextRepathTick = 0;
 	m_vLastLookTarget = {};
 }
 
@@ -1693,10 +1728,13 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		m_vCurrentPathDir = vMoveDir;
 
 		flReachRadius = bDropCrumb ? kDropReachRadius : kDefaultReachRadius;
-		Vector vCrumbCheck = vCrumbTarget;
-		vCrumbCheck.z = vLocalOrigin.z;
+		const Vector vCrumbDelta = vCrumbTarget - vLocalOrigin;
+		Vector vCrumbDeltaPlanar = vCrumbDelta;
+		vCrumbDeltaPlanar.z = 0.f;
+		const float flVerticalDelta = std::fabs(vCrumbDelta.z);
+		const float flVerticalTolerance = std::clamp(PLAYER_JUMP_HEIGHT * 0.75f, 26.f, 42.f);
 
-		if (!bDropCrumb && vCrumbCheck.DistToSqr(vLocalOrigin) < pow(flReachRadius, 2))
+		if (!bDropCrumb && vCrumbDeltaPlanar.LengthSqr() < (flReachRadius * flReachRadius) && flVerticalDelta <= flVerticalTolerance)
 		{
 			m_tLastCrumb = tActiveCrumb;
 			m_vCrumbs.erase(m_vCrumbs.begin());
@@ -1713,9 +1751,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 		if (!bDropCrumb && uCrumbsSize > 1)
 		{
-			Vector vNextCheck = m_vCrumbs[1].m_vPos;
-			vNextCheck.z = vLocalOrigin.z;
-			if (vNextCheck.DistToSqr(vLocalOrigin) < pow(50.0f, 2))
+			Vector vNextDelta = m_vCrumbs[1].m_vPos - vLocalOrigin;
+			const float flNextVerticalDelta = std::fabs(vNextDelta.z);
+			vNextDelta.z = 0.f;
+			if (vNextDelta.LengthSqr() < (50.0f * 50.0f) && flNextVerticalDelta <= PLAYER_JUMP_HEIGHT)
 			{
 				m_tLastCrumb = m_vCrumbs[1];
 				m_vCrumbs.erase(m_vCrumbs.begin(), std::next(m_vCrumbs.begin()));
