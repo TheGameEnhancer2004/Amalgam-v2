@@ -390,7 +390,7 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 			for (int i = 0; i <= iProbeCount; i++)
 			{
 				const float flT = iProbeCount > 0 ? static_cast<float>(i) / static_cast<float>(iProbeCount) : 0.f;
-				const float flDist = Math::RemapValClamped(flT, 0.f, 1.f, flEdgeSearchStart, flEdgeSearchEnd);
+				const float flDist = flEdgeSearchStart + (flEdgeSearchEnd - flEdgeSearchStart) * std::clamp(flT, 0.f, 1.f);
 
 				Vector vCandidate = vCurrentPos + vDirection * flDist;
 				vCandidate.z = vCurrentPos.z;
