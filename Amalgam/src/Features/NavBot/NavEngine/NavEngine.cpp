@@ -1,10 +1,13 @@
 #include "NavEngine.h"
 #include "../DangerManager/DangerManager.h"
 #include "../NavBotJobs/Engineer.h"
+#include "../../Configs/Configs.h"
 #include "../../Ticks/Ticks.h"
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
 #include "../../FollowBot/FollowBot.h"
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <limits>
 #include <algorithm>
 #include <cmath>
@@ -151,6 +154,285 @@ void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDesti
 		tCrumb.m_pNavArea = pArea;
 		tCrumb.m_vPos = vStart + vStep * static_cast<float>(i);
 		tCrumb.m_vApproachDir = vApproachDir;
+		m_vCrumbs.push_back(tCrumb);
+	}
+}
+
+void CNavEngine::BuildConnectionCrumbs(const Vector& vStart, const Vector& vEnd, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut, bool bMarkDrop, const DropdownHint_t* pDrop) const
+{
+	if (!pArea)
+		return;
+
+	Vector vDelta = vEnd - vStart;
+	Vector vPlanar = vDelta;
+	vPlanar.z = 0.f;
+	const float flPlanarDistance = vPlanar.Length();
+	const float flVerticalDistance = std::fabs(vDelta.z);
+	const float flEffectiveDistance = std::max(flPlanarDistance, flVerticalDistance);
+
+	Vector vApproachDir = vPlanar;
+	const float flApproachLen = vApproachDir.Length();
+	if (flApproachLen > 0.01f)
+		vApproachDir /= flApproachLen;
+	else
+		vApproachDir = {};
+
+	if (flEffectiveDistance > 1.f)
+	{
+		const int nIntermediate = std::clamp(static_cast<int>(std::ceil(flEffectiveDistance / kConnectionSegmentLength)), 1, kMaxConnectionIntermediateCrumbs);
+		const float flDivider = static_cast<float>(nIntermediate + 1);
+		const Vector vStep = vDelta / flDivider;
+		for (int i = 1; i <= nIntermediate; ++i)
+		{
+			CachedCrumb_t tCrumb{};
+			tCrumb.m_vPos = vStart + vStep * static_cast<float>(i);
+			tCrumb.m_vApproachDir = vApproachDir;
+			vOut.push_back(tCrumb);
+		}
+	}
+
+	CachedCrumb_t tEndCrumb{};
+	tEndCrumb.m_vPos = vEnd;
+	tEndCrumb.m_vApproachDir = vApproachDir;
+	if (bMarkDrop && pDrop)
+	{
+		tEndCrumb.m_bRequiresDrop = pDrop->m_bRequiresDrop;
+		tEndCrumb.m_flDropHeight = pDrop->m_flDropHeight;
+		tEndCrumb.m_flApproachDistance = pDrop->m_flApproachDistance;
+		tEndCrumb.m_vApproachDir = pDrop->m_vApproachDir;
+	}
+	vOut.push_back(tEndCrumb);
+}
+
+uint64_t CNavEngine::MakeConnectionKey(uint32_t uFromId, uint32_t uToId) const
+{
+	return (static_cast<uint64_t>(uFromId) << 32) | static_cast<uint64_t>(uToId);
+}
+
+std::string CNavEngine::BuildCrumbCachePath() const
+{
+	const std::string sLevelName = SDK::GetLevelName();
+	if (sLevelName.empty() || sLevelName == "None")
+		return "";
+
+	const std::string sCacheDir = F::Configs.m_sCorePath + "NavCache\\";
+	return sCacheDir + sLevelName + ".crumbs.v1.json";
+}
+
+bool CNavEngine::LoadCrumbCache()
+{
+	m_mConnectionCrumbCache.clear();
+	m_bCrumbCacheReady = false;
+	m_bCrumbCacheDirty = false;
+
+	if (!m_pMap || m_pMap->m_eState != NavStateEnum::Active)
+		return false;
+
+	m_sCrumbCachePath = BuildCrumbCachePath();
+	if (m_sCrumbCachePath.empty() || !std::filesystem::exists(m_sCrumbCachePath))
+		return false;
+
+	try
+	{
+		boost::property_tree::ptree tRoot;
+		boost::property_tree::read_json(m_sCrumbCachePath, tRoot);
+
+		const int iVersion = tRoot.get<int>("version", -1);
+		const std::string sMap = tRoot.get<std::string>("map", "");
+		const uint32_t uBspSize = tRoot.get<uint32_t>("bsp_size", 0);
+		const uint32_t uAreaCount = tRoot.get<uint32_t>("area_count", 0);
+
+		if (iVersion != kCrumbCacheVersion ||
+			sMap != SDK::GetLevelName() ||
+			uBspSize != m_pMap->m_navfile.m_uBspSize ||
+			uAreaCount != static_cast<uint32_t>(m_pMap->m_navfile.m_vAreas.size()))
+			return false;
+
+		std::unordered_map<uint32_t, CNavArea*> mAreaLookup;
+		mAreaLookup.reserve(m_pMap->m_navfile.m_vAreas.size());
+		for (auto& tArea : m_pMap->m_navfile.m_vAreas)
+			mAreaLookup[tArea.m_uId] = &tArea;
+
+		if (auto tConnections = tRoot.get_child_optional("connections"))
+		{
+			for (const auto& tConnectionNode : *tConnections)
+			{
+				const auto& tConnection = tConnectionNode.second;
+				const uint32_t uFrom = tConnection.get<uint32_t>("from", 0);
+				const uint32_t uTo = tConnection.get<uint32_t>("to", 0);
+				if (!mAreaLookup.contains(uFrom) || !mAreaLookup.contains(uTo))
+					continue;
+
+				std::vector<CachedCrumb_t> vCachedCrumbs;
+				if (auto tCrumbs = tConnection.get_child_optional("crumbs"))
+				{
+					for (const auto& tCrumbNode : *tCrumbs)
+					{
+						const auto& tCrumb = tCrumbNode.second;
+						CachedCrumb_t tCached{};
+						tCached.m_vPos.x = tCrumb.get<float>("x", 0.f);
+						tCached.m_vPos.y = tCrumb.get<float>("y", 0.f);
+						tCached.m_vPos.z = tCrumb.get<float>("z", 0.f);
+						tCached.m_bRequiresDrop = tCrumb.get<bool>("drop", false);
+						tCached.m_flDropHeight = tCrumb.get<float>("drop_height", 0.f);
+						tCached.m_flApproachDistance = tCrumb.get<float>("approach_distance", 0.f);
+						tCached.m_vApproachDir.x = tCrumb.get<float>("approach_x", 0.f);
+						tCached.m_vApproachDir.y = tCrumb.get<float>("approach_y", 0.f);
+						tCached.m_vApproachDir.z = tCrumb.get<float>("approach_z", 0.f);
+						vCachedCrumbs.push_back(tCached);
+					}
+				}
+
+				if (!vCachedCrumbs.empty())
+					m_mConnectionCrumbCache[MakeConnectionKey(uFrom, uTo)] = std::move(vCachedCrumbs);
+			}
+		}
+	}
+	catch (...)
+	{
+		return false;
+	}
+
+	m_bCrumbCacheReady = !m_mConnectionCrumbCache.empty();
+	return m_bCrumbCacheReady;
+}
+
+bool CNavEngine::SaveCrumbCache() const
+{
+	if (!m_pMap || m_pMap->m_eState != NavStateEnum::Active || m_mConnectionCrumbCache.empty())
+		return false;
+
+	const std::string sPath = m_sCrumbCachePath.empty() ? BuildCrumbCachePath() : m_sCrumbCachePath;
+	if (sPath.empty())
+		return false;
+
+	try
+	{
+		std::filesystem::path tPath(sPath);
+		if (const auto& tParent = tPath.parent_path(); !tParent.empty() && !std::filesystem::exists(tParent))
+			std::filesystem::create_directories(tParent);
+
+		boost::property_tree::ptree tRoot;
+		tRoot.put("version", kCrumbCacheVersion);
+		tRoot.put("map", SDK::GetLevelName());
+		tRoot.put("bsp_size", m_pMap->m_navfile.m_uBspSize);
+		tRoot.put("area_count", static_cast<uint32_t>(m_pMap->m_navfile.m_vAreas.size()));
+
+		boost::property_tree::ptree tConnections;
+		for (const auto& [uKey, vCachedCrumbs] : m_mConnectionCrumbCache)
+		{
+			boost::property_tree::ptree tConnection;
+			tConnection.put("from", static_cast<uint32_t>(uKey >> 32));
+			tConnection.put("to", static_cast<uint32_t>(uKey & 0xFFFFFFFFu));
+
+			boost::property_tree::ptree tCrumbs;
+			for (const auto& tCached : vCachedCrumbs)
+			{
+				boost::property_tree::ptree tCrumb;
+				tCrumb.put("x", tCached.m_vPos.x);
+				tCrumb.put("y", tCached.m_vPos.y);
+				tCrumb.put("z", tCached.m_vPos.z);
+				tCrumb.put("drop", tCached.m_bRequiresDrop);
+				tCrumb.put("drop_height", tCached.m_flDropHeight);
+				tCrumb.put("approach_distance", tCached.m_flApproachDistance);
+				tCrumb.put("approach_x", tCached.m_vApproachDir.x);
+				tCrumb.put("approach_y", tCached.m_vApproachDir.y);
+				tCrumb.put("approach_z", tCached.m_vApproachDir.z);
+				tCrumbs.push_back({ "", tCrumb });
+			}
+
+			tConnection.put_child("crumbs", tCrumbs);
+			tConnections.push_back({ "", tConnection });
+		}
+
+		tRoot.put_child("connections", tConnections);
+		boost::property_tree::write_json(sPath, tRoot);
+	}
+	catch (...)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+std::vector<CachedCrumb_t> CNavEngine::BuildConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea)
+{
+	if (!pArea || !pNextArea || !m_pMap)
+		return {};
+
+	bool bIsOneWay = m_pMap->IsOneWay(pArea, pNextArea);
+	NavPoints_t tPoints = m_pMap->DeterminePoints(pArea, pNextArea, bIsOneWay);
+	DropdownHint_t tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
+	tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+
+	std::vector<CachedCrumb_t> vOut;
+	vOut.reserve(12);
+
+	CachedCrumb_t tStartCrumb{};
+	tStartCrumb.m_vPos = tPoints.m_vCurrent;
+	vOut.push_back(tStartCrumb);
+
+	BuildConnectionCrumbs(tPoints.m_vCurrent, tPoints.m_vCenter, pArea, vOut, true, &tDropdown);
+	BuildConnectionCrumbs(tPoints.m_vCenter, tPoints.m_vNext, pArea, vOut, false, nullptr);
+
+	return vOut;
+}
+
+void CNavEngine::BuildCrumbCache()
+{
+	m_mConnectionCrumbCache.clear();
+	m_bCrumbCacheReady = false;
+	m_bCrumbCacheDirty = false;
+
+	if (!m_pMap || m_pMap->m_eState != NavStateEnum::Active)
+		return;
+
+	for (auto& tArea : m_pMap->m_navfile.m_vAreas)
+	{
+		for (const auto& tConnection : tArea.m_vConnections)
+		{
+			if (!tConnection.m_pArea || !m_pMap->IsAreaValid(tConnection.m_pArea))
+				continue;
+
+			auto vEntry = BuildConnectionCacheEntry(&tArea, tConnection.m_pArea);
+			if (!vEntry.empty())
+				m_mConnectionCrumbCache[MakeConnectionKey(tArea.m_uId, tConnection.m_pArea->m_uId)] = std::move(vEntry);
+		}
+	}
+
+	m_bCrumbCacheReady = !m_mConnectionCrumbCache.empty();
+	m_bCrumbCacheDirty = m_bCrumbCacheReady;
+}
+
+const std::vector<CachedCrumb_t>* CNavEngine::FindConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea) const
+{
+	if (!pArea || !pNextArea)
+		return nullptr;
+
+	if (auto it = m_mConnectionCrumbCache.find(MakeConnectionKey(pArea->m_uId, pNextArea->m_uId)); it != m_mConnectionCrumbCache.end())
+		return &it->second;
+
+	return nullptr;
+}
+
+void CNavEngine::AppendCachedCrumbs(CNavArea* pArea, const std::vector<CachedCrumb_t>& vCachedCrumbs)
+{
+	if (!pArea)
+		return;
+
+	for (const auto& tCached : vCachedCrumbs)
+	{
+		if (!m_vCrumbs.empty() && m_vCrumbs.back().m_vPos.DistToSqr(tCached.m_vPos) < 1.0f)
+			continue;
+
+		Crumb_t tCrumb{};
+		tCrumb.m_pNavArea = pArea;
+		tCrumb.m_vPos = tCached.m_vPos;
+		tCrumb.m_bRequiresDrop = tCached.m_bRequiresDrop;
+		tCrumb.m_flDropHeight = tCached.m_flDropHeight;
+		tCrumb.m_flApproachDistance = tCached.m_flApproachDistance;
+		tCrumb.m_vApproachDir = tCached.m_vApproachDir;
 		m_vCrumbs.push_back(tCrumb);
 	}
 }
@@ -353,36 +635,19 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			if (i != vPath.size() - 1)
 			{
 				auto pNextArea = reinterpret_cast<CNavArea*>(vPath.at(i + 1));
-
-				NavPoints_t tPoints{};
-				DropdownHint_t tDropdown{};
-				const std::pair<CNavArea*, CNavArea*> tKey(pArea, pNextArea);
-				if (auto itCache = m_pMap->m_mVischeckCache.find(tKey); itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_bPassable)
-				{
-					tPoints = itCache->second.m_tPoints;
-					tDropdown = itCache->second.m_tDropdown;
-				}
+				if (const auto* pCached = FindConnectionCacheEntry(pArea, pNextArea); pCached && !pCached->empty())
+					AppendCachedCrumbs(pArea, *pCached);
 				else
 				{
-					bool bIsOneWay = m_pMap->IsOneWay(pArea, pNextArea);
-					tPoints = m_pMap->DeterminePoints(pArea, pNextArea, bIsOneWay);
-					tDropdown = m_pMap->HandleDropdown(tPoints.m_vCenter, tPoints.m_vNext, bIsOneWay);
-					tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
+					auto vGenerated = BuildConnectionCacheEntry(pArea, pNextArea);
+					if (!vGenerated.empty())
+					{
+						auto& vStored = m_mConnectionCrumbCache[MakeConnectionKey(pArea->m_uId, pNextArea->m_uId)];
+						vStored = std::move(vGenerated);
+						m_bCrumbCacheDirty = true;
+						AppendCachedCrumbs(pArea, vStored);
+					}
 				}
-
-				Crumb_t tStartCrumb = {};
-				tStartCrumb.m_pNavArea = pArea;
-				tStartCrumb.m_vPos = tPoints.m_vCurrent;
-				m_vCrumbs.push_back(tStartCrumb);
-
-				Crumb_t tMidCrumb = {};
-				tMidCrumb.m_pNavArea = pArea;
-				tMidCrumb.m_vPos = tPoints.m_vCenter;
-				tMidCrumb.m_bRequiresDrop = tDropdown.m_bRequiresDrop;
-				tMidCrumb.m_flDropHeight = tDropdown.m_flDropHeight;
-				tMidCrumb.m_flApproachDistance = tDropdown.m_flApproachDistance;
-				tMidCrumb.m_vApproachDir = tDropdown.m_vApproachDir;
-				m_vCrumbs.push_back(tMidCrumb);
 			}
 			else
 			{
@@ -784,6 +1049,9 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 
 void CNavEngine::Reset(bool bForced)
 {
+	if (m_bCrumbCacheDirty)
+		SaveCrumbCache();
+
 	CancelPath();
 	m_bIgnoreTraces = false;
 	m_iStrictFailCount = 0;
@@ -809,7 +1077,30 @@ void CNavEngine::Reset(bool bForced)
 			m_pMap = std::make_unique<CMap>(sNavPath.c_str());
 			m_vRespawnRoomExitAreas.clear();
 			m_bUpdatedRespawnRooms = false;
+			m_mConnectionCrumbCache.clear();
+			m_bCrumbCacheReady = false;
+			m_bCrumbCacheDirty = false;
+			m_sCrumbCachePath = BuildCrumbCachePath();
+
+			if (m_pMap->m_eState == NavStateEnum::Active)
+			{
+				if (!LoadCrumbCache())
+				{
+					BuildCrumbCache();
+					SaveCrumbCache();
+					m_bCrumbCacheDirty = false;
+				}
+			}
 		}
+	}
+}
+
+void CNavEngine::FlushCrumbCache()
+{
+	if (m_bCrumbCacheDirty)
+	{
+		if (SaveCrumbCache())
+			m_bCrumbCacheDirty = false;
 	}
 }
 

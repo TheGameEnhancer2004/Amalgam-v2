@@ -1,5 +1,6 @@
 #pragma once
 #include "Map.h"
+#include <unordered_map>
 
 Enum(PriorityList, None,
 	Patrol = 5,
@@ -26,6 +27,15 @@ struct Crumb_t
 	Vector m_vApproachDir = {};
 };
 
+struct CachedCrumb_t
+{
+	Vector m_vPos = {};
+	bool m_bRequiresDrop = false;
+	float m_flDropHeight = 0.f;
+	float m_flApproachDistance = 0.f;
+	Vector m_vApproachDir = {};
+};
+
 struct RespawnRoom_t
 {
 	int m_iTeam = 0;
@@ -35,6 +45,10 @@ struct RespawnRoom_t
 class CNavEngine
 {
 private:
+	static constexpr int kCrumbCacheVersion = 1;
+	static constexpr float kConnectionSegmentLength = 95.f;
+	static constexpr int kMaxConnectionIntermediateCrumbs = 24;
+
 	std::unique_ptr<CMap> m_pMap;
 	std::vector<Crumb_t> m_vCrumbs;
 	std::vector<RespawnRoom_t> m_vRespawnRooms;
@@ -54,8 +68,21 @@ private:
 	Vector m_vLastStrictFailDestination = {};
 	int m_iStrictFailTick = 0;
 	int m_iStrictFailCount = 0;
+	std::unordered_map<uint64_t, std::vector<CachedCrumb_t>> m_mConnectionCrumbCache;
+	bool m_bCrumbCacheReady = false;
+	bool m_bCrumbCacheDirty = false;
+	std::string m_sCrumbCachePath = {};
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
+	void BuildConnectionCrumbs(const Vector& vStart, const Vector& vEnd, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut, bool bMarkDrop = false, const DropdownHint_t* pDrop = nullptr) const;
+	uint64_t MakeConnectionKey(uint32_t uFromId, uint32_t uToId) const;
+	std::string BuildCrumbCachePath() const;
+	bool LoadCrumbCache();
+	bool SaveCrumbCache() const;
+	void BuildCrumbCache();
+	std::vector<CachedCrumb_t> BuildConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea);
+	const std::vector<CachedCrumb_t>* FindConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea) const;
+	void AppendCachedCrumbs(CNavArea* pArea, const std::vector<CachedCrumb_t>& vCachedCrumbs);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath(const std::string& sReason);
@@ -150,6 +177,7 @@ public:
 
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);
+	void FlushCrumbCache();
 	void Render();
 };
 
