@@ -362,6 +362,62 @@ DropdownHint_t CMap::HandleDropdown(const Vector& vCurrentPos, const Vector& vNe
 
 			tHint.m_vAdjustedPos = vCurrentPos + vDirection * tHint.m_flApproachDistance;
 			tHint.m_vAdjustedPos.z = vCurrentPos.z;
+
+			auto GetGroundZ = [&](const Vector& vProbe, float& flGroundZ) -> bool
+			{
+				CTraceFilterNavigation tFilter;
+				CGameTrace tTrace{};
+
+				Vector vStart = vProbe;
+				vStart.z += PLAYER_CROUCHED_JUMP_HEIGHT;
+
+				Vector vEnd = vProbe;
+				vEnd.z -= std::max(flDropDistance + PLAYER_HEIGHT * 1.5f, PLAYER_HEIGHT * 2.f);
+
+				SDK::Trace(vStart, vEnd, MASK_PLAYERSOLID_BRUSHONLY, &tFilter, &tTrace);
+				if (!tTrace.DidHit())
+					return false;
+
+				flGroundZ = tTrace.endpos.z;
+				return true;
+			};
+
+			const float flEdgeSearchStart = std::min(flHorizontalLength * 0.95f, std::max(tHint.m_flApproachDistance, PLAYER_WIDTH * 0.8f));
+			const float flEdgeSearchEnd = std::max(PLAYER_WIDTH * 0.35f, flEdgeSearchStart - std::max(PLAYER_WIDTH * 2.2f, flHorizontalLength * 0.6f));
+			const float flProbeStep = std::clamp(PLAYER_WIDTH * 0.45f, 14.f, 28.f);
+			const int iProbeCount = 8;
+
+			for (int i = 0; i <= iProbeCount; i++)
+			{
+				const float flT = iProbeCount > 0 ? static_cast<float>(i) / static_cast<float>(iProbeCount) : 0.f;
+				const float flDist = Math::RemapValClamped(flT, 0.f, 1.f, flEdgeSearchStart, flEdgeSearchEnd);
+
+				Vector vCandidate = vCurrentPos + vDirection * flDist;
+				vCandidate.z = vCurrentPos.z;
+
+				Vector vAhead = vCurrentPos + vDirection * std::min(flDist + flProbeStep, flHorizontalLength * 0.99f);
+				vAhead.z = vCurrentPos.z;
+
+				float flGroundHere = 0.f;
+				if (!GetGroundZ(vCandidate, flGroundHere))
+					continue;
+
+				const float flLocalStepDown = vCurrentPos.z - flGroundHere;
+				if (flLocalStepDown > PLAYER_JUMP_HEIGHT)
+					continue;
+
+				float flGroundAhead = 0.f;
+				const bool bAheadGround = GetGroundZ(vAhead, flGroundAhead);
+				const bool bHoleAhead = !bAheadGround;
+				const bool bDropAhead = bAheadGround && (flGroundHere - flGroundAhead) >= std::max(16.f, flDropDistance * 0.35f);
+
+				if (bHoleAhead || bDropAhead)
+				{
+					tHint.m_flApproachDistance = flDist;
+					tHint.m_vAdjustedPos = vCandidate;
+					break;
+				}
+			}
 		}
 	}
 	else if (!bIsOneWay && flHeightDiff > 0.f && flHorizontalLength > 1.f)
