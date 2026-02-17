@@ -48,6 +48,8 @@ private:
 	static constexpr int kCrumbCacheVersion = 1;
 	static constexpr float kConnectionSegmentLength = 95.f;
 	static constexpr int kMaxConnectionIntermediateCrumbs = 24;
+	static constexpr float kMinAdaptiveSpacing = 72.f;
+	static constexpr float kMaxAdaptiveSpacing = 150.f;
 
 	std::unique_ptr<CMap> m_pMap;
 	std::vector<Crumb_t> m_vCrumbs;
@@ -74,7 +76,7 @@ private:
 	std::string m_sCrumbCachePath = {};
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
-	void BuildConnectionCrumbs(const Vector& vStart, const Vector& vEnd, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut, bool bMarkDrop = false, const DropdownHint_t* pDrop = nullptr) const;
+	void BuildAdaptiveAreaCrumbs(const NavPoints_t& tPoints, const DropdownHint_t& tDrop, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut) const;
 	uint64_t MakeConnectionKey(uint32_t uFromId, uint32_t uToId) const;
 	std::string BuildCrumbCachePath() const;
 	bool LoadCrumbCache();

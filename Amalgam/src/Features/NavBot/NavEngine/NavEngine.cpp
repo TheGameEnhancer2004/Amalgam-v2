@@ -12,6 +12,33 @@
 #include <algorithm>
 #include <cmath>
 
+static bool IsMovementLocked(CTFPlayer* pLocal)
+{
+	if (!pLocal || !pLocal->IsAlive())
+		return true;
+
+	if (pLocal->m_fFlags() & FL_FROZEN)
+		return true;
+
+	if (pLocal->InCond(TF_COND_STUNNED) && (pLocal->m_iStunFlags() & (TF_STUN_CONTROLS | TF_STUN_LOSER_STATE)))
+		return true;
+
+	if (pLocal->IsTaunting() && !pLocal->m_bAllowMoveDuringTaunt())
+		return true;
+
+	if (auto pGameRules = I::TFGameRules())
+	{
+		if (pGameRules->m_bInWaitingForPlayers())
+			return true;
+
+		const int iRoundState = pGameRules->m_iRoundState();
+		if (iRoundState == GR_STATE_PREROUND || iRoundState == GR_STATE_BETWEEN_RNDS)
+			return true;
+	}
+
+	return false;
+}
+
 bool CNavEngine::IsSetupTime()
 {
 	static Timer tCheckTimer{};
@@ -158,50 +185,134 @@ void CNavEngine::BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDesti
 	}
 }
 
-void CNavEngine::BuildConnectionCrumbs(const Vector& vStart, const Vector& vEnd, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut, bool bMarkDrop, const DropdownHint_t* pDrop) const
+void CNavEngine::BuildAdaptiveAreaCrumbs(const NavPoints_t& tPoints, const DropdownHint_t& tDrop, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut) const
 {
 	if (!pArea)
 		return;
 
-	Vector vDelta = vEnd - vStart;
-	Vector vPlanar = vDelta;
-	vPlanar.z = 0.f;
-	const float flPlanarDistance = vPlanar.Length();
-	const float flVerticalDistance = std::fabs(vDelta.z);
-	const float flEffectiveDistance = std::max(flPlanarDistance, flVerticalDistance);
-
-	Vector vApproachDir = vPlanar;
-	const float flApproachLen = vApproachDir.Length();
-	if (flApproachLen > 0.01f)
-		vApproachDir /= flApproachLen;
-	else
-		vApproachDir = {};
-
-	if (flEffectiveDistance > 1.f)
-	{
-		const int nIntermediate = std::clamp(static_cast<int>(std::ceil(flEffectiveDistance / kConnectionSegmentLength)), 1, kMaxConnectionIntermediateCrumbs);
-		const float flDivider = static_cast<float>(nIntermediate + 1);
-		const Vector vStep = vDelta / flDivider;
-		for (int i = 1; i <= nIntermediate; ++i)
+	auto SampleLerp = [](const Vector& a, const Vector& b, float t) -> Vector
 		{
-			CachedCrumb_t tCrumb{};
-			tCrumb.m_vPos = vStart + vStep * static_cast<float>(i);
-			tCrumb.m_vApproachDir = vApproachDir;
-			vOut.push_back(tCrumb);
+			return a + (b - a) * std::clamp(t, 0.f, 1.f);
+		};
+
+	auto HorizontalLength = [](const Vector& a, const Vector& b) -> float
+		{
+			Vector d = b - a;
+			d.z = 0.f;
+			return d.Length();
+		};
+
+	auto GetZOnNav = [&](const Vector& vPos) -> float
+		{
+			if (!pArea) return vPos.z;
+			return pArea->GetZ(vPos.x, vPos.y);
+		};
+
+	const Vector vA = tPoints.m_vCurrent;
+	const Vector vB = tPoints.m_vCenter;
+	const Vector vC = tPoints.m_vNext;
+
+	const float flSegAB = std::max(HorizontalLength(vA, vB), std::fabs((vB - vA).z));
+	const float flSegBC = std::max(HorizontalLength(vB, vC), std::fabs((vC - vB).z));
+	const float flTotal = flSegAB + flSegBC;
+
+	Vector vAreaExtent = pArea->m_vSeCorner - pArea->m_vNwCorner;
+	vAreaExtent.z = 0.f;
+	const float flAreaSize = std::max(vAreaExtent.Length(), 1.f);
+
+	Vector vDir1 = (vB - vA); vDir1.z = 0.f; vDir1.Normalize();
+	Vector vDir2 = (vC - vB); vDir2.z = 0.f; vDir2.Normalize();
+	const float flDot = vDir1.Dot(vDir2);
+	const bool bSharpTurn = flDot < 0.5f;
+
+	float flAdaptiveSpacing = 220.f - flAreaSize * 0.08f;
+	if (bSharpTurn) flAdaptiveSpacing *= 0.65f;
+	flAdaptiveSpacing = std::clamp(flAdaptiveSpacing, kMinAdaptiveSpacing, kMaxAdaptiveSpacing);
+
+	int nIntermediate = std::clamp(static_cast<int>(std::ceil(std::max(flTotal, 1.f) / flAdaptiveSpacing)), 1, kMaxConnectionIntermediateCrumbs);
+	const int nAreaMinimum = std::clamp(static_cast<int>(std::ceil(flAreaSize / 220.f)), 1, 10);
+	nIntermediate = std::max(nIntermediate, nAreaMinimum);
+	nIntermediate = std::min(nIntermediate, kMaxConnectionIntermediateCrumbs);
+
+	bool bUseCurve = !tDrop.m_bRequiresDrop && nIntermediate >= 3 && flSegAB > 32.f && flSegBC > 32.f;
+
+	for (int i = 1; i <= nIntermediate; ++i)
+	{
+		float t = static_cast<float>(i) / static_cast<float>(nIntermediate + 1);
+		
+		Vector vPoint{};
+		Vector vDir{};
+
+		if (bUseCurve)
+		{
+			// P0=A, P1=B, P2=C
+			float u = 1.f - t;
+			float tt = t * t;
+			float uu = u * u;
+
+			vPoint = (vA * uu) + (vB * 2 * u * t) + (vC * tt);
+			vDir = (vB - vA) * (2 * u) + (vC - vB) * (2 * t);
+			vPoint.z = GetZOnNav(vPoint);
 		}
+		else
+		{
+			const float flDist = flTotal * t;
+			if (flDist <= flSegAB || flSegBC <= 0.001f)
+			{
+				const float lerpT = flSegAB > 0.001f ? (flDist / flSegAB) : 1.f;
+				vPoint = SampleLerp(vA, vB, lerpT);
+				vDir = vB - vA;
+			}
+			else
+			{
+				const float lerpT = flSegBC > 0.001f ? ((flDist - flSegAB) / flSegBC) : 1.f;
+				vPoint = SampleLerp(vB, vC, lerpT);
+				vDir = vC - vB;
+			}
+			vPoint.z = GetZOnNav(vPoint);
+		}
+
+		vDir.z = 0.f;
+		const float flDirLen = vDir.Length();
+		if (flDirLen > 0.01f)
+			vDir /= flDirLen;
+		else
+			vDir = {};
+
+		CachedCrumb_t tCrumb{};
+		tCrumb.m_vPos = vPoint;
+		tCrumb.m_vApproachDir = vDir;
+		vOut.push_back(tCrumb);
 	}
 
 	CachedCrumb_t tEndCrumb{};
-	tEndCrumb.m_vPos = vEnd;
-	tEndCrumb.m_vApproachDir = vApproachDir;
-	if (bMarkDrop && pDrop)
-	{
-		tEndCrumb.m_bRequiresDrop = pDrop->m_bRequiresDrop;
-		tEndCrumb.m_flDropHeight = pDrop->m_flDropHeight;
-		tEndCrumb.m_flApproachDistance = pDrop->m_flApproachDistance;
-		tEndCrumb.m_vApproachDir = pDrop->m_vApproachDir;
-	}
+	tEndCrumb.m_vPos = vC;
+	Vector vFinalDir = vC - vB;
+	vFinalDir.z = 0.f;
+	if (const float flFinalLen = vFinalDir.Length(); flFinalLen > 0.01f)
+		tEndCrumb.m_vApproachDir = vFinalDir / flFinalLen;
 	vOut.push_back(tEndCrumb);
+
+	if (tDrop.m_bRequiresDrop && !vOut.empty())
+	{
+		size_t uClosestCenter = 0;
+		float flBest = std::numeric_limits<float>::max();
+		for (size_t i = 0; i < vOut.size(); ++i)
+		{
+			const float flDistToCenter = vOut[i].m_vPos.DistToSqr(tPoints.m_vCenter);
+			if (flDistToCenter < flBest)
+			{
+				flBest = flDistToCenter;
+				uClosestCenter = i;
+			}
+		}
+
+		auto& tDropCrumb = vOut[uClosestCenter];
+		tDropCrumb.m_bRequiresDrop = true;
+		tDropCrumb.m_flDropHeight = tDrop.m_flDropHeight;
+		tDropCrumb.m_flApproachDistance = tDrop.m_flApproachDistance;
+		tDropCrumb.m_vApproachDir = tDrop.m_vApproachDir;
+	}
 }
 
 uint64_t CNavEngine::MakeConnectionKey(uint32_t uFromId, uint32_t uToId) const
@@ -367,14 +478,13 @@ std::vector<CachedCrumb_t> CNavEngine::BuildConnectionCacheEntry(CNavArea* pArea
 	tPoints.m_vCenter = tDropdown.m_vAdjustedPos;
 
 	std::vector<CachedCrumb_t> vOut;
-	vOut.reserve(12);
+	vOut.reserve(16);
 
 	CachedCrumb_t tStartCrumb{};
 	tStartCrumb.m_vPos = tPoints.m_vCurrent;
 	vOut.push_back(tStartCrumb);
 
-	BuildConnectionCrumbs(tPoints.m_vCurrent, tPoints.m_vCenter, pArea, vOut, true, &tDropdown);
-	BuildConnectionCrumbs(tPoints.m_vCenter, tPoints.m_vNext, pArea, vOut, false, nullptr);
+	BuildAdaptiveAreaCrumbs(tPoints, tDropdown, pArea, vOut);
 
 	return vOut;
 }
@@ -972,6 +1082,12 @@ void CNavEngine::CheckBlacklist(CTFPlayer* pLocal)
 
 void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
+	if (IsMovementLocked(pLocal))
+	{
+		m_tInactivityTimer.Update();
+		return;
+	}
+
 	// No crumbs
 	if (m_vCrumbs.empty())
 		return;
@@ -1167,6 +1283,13 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (!pLocal->IsAlive() || F::FollowBot.m_bActive)
 	{
 		CancelPath();
+		return;
+	}
+
+	if (IsMovementLocked(pLocal))
+	{
+		CancelPath();
+		m_tInactivityTimer.Update();
 		return;
 	}
 
