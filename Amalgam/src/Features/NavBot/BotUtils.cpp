@@ -12,6 +12,7 @@ static bool SmoothAimHasPriority()
 {
 	const auto iAimType = Vars::Aimbot::General::AimType.Value;
 	if (iAimType != Vars::Aimbot::General::AimTypeEnum::Smooth &&
+		iAimType != Vars::Aimbot::General::AimTypeEnum::SmoothVelocity &&
 		iAimType != Vars::Aimbot::General::AimTypeEnum::Assistive)
 		return false;
 

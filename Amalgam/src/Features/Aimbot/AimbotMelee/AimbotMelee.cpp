@@ -450,6 +450,7 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 		else switch (Vars::Aimbot::General::AimType.Value)
 		{
 		case Vars::Aimbot::General::AimTypeEnum::Smooth:
+		case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 		case Vars::Aimbot::General::AimTypeEnum::Assistive:
 		case Vars::Aimbot::General::AimTypeEnum::Legit:
 		{
@@ -493,6 +494,7 @@ bool CAimbotMelee::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod)
 		bReturn = true;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
+	case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 		vOut = vCurAngle.LerpAngle(vToAngle, F::Aimbot.GetSmoothStrength(vCurAngle, vToAngle));
 		bReturn = true;
 		break;
@@ -521,6 +523,7 @@ void CAimbotMelee::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			break;
 		[[fallthrough]];
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
+		case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 	case Vars::Aimbot::General::AimTypeEnum::Assistive:
 		pCmd->viewangles = vAngle;
 		I::EngineClient->SetViewAngles(vAngle);

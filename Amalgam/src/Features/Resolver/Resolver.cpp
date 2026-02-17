@@ -253,7 +253,9 @@ void CResolver::CreateMove(CTFPlayer* pLocal)
 void CResolver::HitscanRan(CTFPlayer* pLocal, CTFPlayer* pTarget, CTFWeaponBase* pWeapon, int nHitbox)
 {
 	if (!Vars::Resolver::Enabled.Value || !Vars::Resolver::AutoResolve.Value
-		|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth || pLocal->m_iTeamNum() == pTarget->m_iTeamNum())
+		|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth
+		|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::SmoothVelocity
+		|| pLocal->m_iTeamNum() == pTarget->m_iTeamNum())
 		return;
 
 	if (Vars::Resolver::AutoResolveCheatersOnly.Value && !F::PlayerUtils.HasTag(pTarget->entindex(), CHEATER_TAG))

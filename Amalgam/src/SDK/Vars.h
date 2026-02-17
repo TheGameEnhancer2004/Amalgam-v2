@@ -282,8 +282,8 @@ namespace Vars
 	NAMESPACE_BEGIN(Aimbot)
 		SUBNAMESPACE_BEGIN(General, Aimbot)
 			CVarEnum(AimType, "Aim type", 0, NONE, nullptr,
-				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit"),
-				Off, Plain, Smooth, Silent, Locking, Assistive, Legit);
+				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit", "SmoothVelocity"),
+				Off, Plain, Smooth, Silent, Locking, Assistive, Legit, SmoothVelocity);
 			CVarEnum(TargetSelection, "Target selection", 0, NONE, nullptr,
 				VA_LIST("FOV", "Distance", "Hybrid"),
 				FOV, Distance, Hybrid);
@@ -304,6 +304,7 @@ namespace Vars
 			CVarEnum(SmoothCurve, "Smooth curve", 0, NONE, nullptr,
 				VA_LIST("Linear", "Fast start", "Fast end", "Slow start", "Slow end"),
 				Linear, FastStart, FastEnd, SlowStart, SlowEnd);
+			CVar(SmoothCurveAmount, "Smooth curve amount", 100.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 200.f, 5.f, "%g%%");
 			CVar(TickTolerance, "Tick tolerance", 4, SLIDER_CLAMP, 0, 21);
 			CVar(AutoShoot, "Auto shoot", true);
 			CVar(FOVCircle, "FOV Circle", true, VISUAL);
