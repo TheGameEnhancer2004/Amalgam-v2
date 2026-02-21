@@ -40,17 +40,20 @@ void CAutoQueue::Run()
 
 	if (Vars::Misc::Queueing::MapPopularizing.Value)
 	{
+
 		if (!bIsLoadingMapNow && bIsConnectedNow)
 		{
 			int nHumanCount = 0;
 			{
 				std::shared_lock lock(F::PlayerUtils.m_tMutex);
-				for (const auto& player : F::PlayerUtils.m_vPlayerCache)
+				for (const auto& tPlayer : F::PlayerUtils.m_vPlayerCache)
 				{
-					if (player.m_bFake)
+					if (tPlayer.m_bFake)
 						continue;
-					if (player.m_uAccountID && F::NamedPipe.IsLocalBot(player.m_uAccountID))
+#ifdef TEXTMODE
+					if (tPlayer.m_uAccountID && F::NamedPipe.IsLocalBot(tPlayer.m_uAccountID))
 						continue;
+#endif
 					nHumanCount++;
 				}
 			}
@@ -71,6 +74,7 @@ void CAutoQueue::Run()
 				bShouldAbandon = true;
 				sAbandonReason = "No new humans joined for 10 minutes";
 			}
+#ifdef TEXTMODE
 			else
 			{
 				const char* pszServerIP = I::EngineClient->GetNetChannelInfo() ? I::EngineClient->GetNetChannelInfo()->GetAddress() : "";
@@ -95,7 +99,7 @@ void CAutoQueue::Run()
 					}
 				}
 			}
-
+#endif
 			if (bShouldAbandon && !m_bMapPopularizingAbandonTriggered)
 			{
 				m_bMapPopularizingAbandonTriggered = true;

@@ -1,6 +1,5 @@
 #pragma once
 #include "Map.h"
-#include <unordered_map>
 
 Enum(PriorityList, None,
 	Patrol = 5,

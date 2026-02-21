@@ -6,11 +6,6 @@
 #include "../../Misc/Misc.h"
 #include "../BotUtils.h"
 #include "../../FollowBot/FollowBot.h"
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <limits>
-#include <algorithm>
-#include <cmath>
 
 static bool IsMovementLocked(CTFPlayer* pLocal)
 {

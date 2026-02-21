@@ -296,9 +296,11 @@ bool CNavBotStayNear::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 		const float flDistance = vOrigin.DistTo(pLocal->GetAbsOrigin());
 		if (H::Entities.GetPriority(iPlayerIdx) > iDefaultPriority)
+		{
 			vPriorityPlayers.push_back({ iPlayerIdx, flDistance });
-		else
-			vSortedPlayers.push_back({ iPlayerIdx, flDistance });
+			continue;
+		}
+		vSortedPlayers.push_back({ iPlayerIdx, flDistance });
 	}
 
 	if (!vPriorityPlayers.empty())

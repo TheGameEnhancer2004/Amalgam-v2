@@ -26,7 +26,7 @@ struct DangerData_t
 	int m_iLastUpdateTick = 0;
 	Vector m_vOrigin = {};
 	DangerType_t m_eType = DangerType_t::None;
-	BlacklistReason_t m_LegacyReason = {}; // legacy again
+	BlacklistReason_t m_tLegacyReason = {}; // legacy again
 };
 
 class CDangerManager
@@ -41,7 +41,7 @@ private:
 	void UpdatePlayers(CTFPlayer* pLocal);
 	void UpdateBuildings(CTFPlayer* pLocal);
 	void UpdateProjectiles(CTFPlayer* pLocal);
-	void UpdateStatic(CTFPlayer* pLocal);
+	//void UpdateStatic(CTFPlayer* pLocal);
 
 public:
 	void Update(CTFPlayer* pLocal);

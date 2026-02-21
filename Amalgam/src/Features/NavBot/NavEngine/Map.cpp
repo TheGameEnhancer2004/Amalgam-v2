@@ -1,9 +1,6 @@
 #include "NavEngine.h"
 #include "../BotUtils.h"
 #include "../DangerManager/DangerManager.h"
-#include <cmath>
-#include <queue>
-#include <algorithm>
 
 // 0 = Success, 1 = No Path, 2 = Start/End invalid
 int CMap::Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, float* cost)
@@ -25,14 +22,14 @@ int CMap::Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, floa
 	if (uStartIndex >= m_vPathNodes.size() || uEndIndex >= m_vPathNodes.size())
 		return 2;
 
-	PathNode_t& startNode = m_vPathNodes[uStartIndex];
-	startNode.m_g = 0.0f;
-	startNode.m_f = pStart->m_vCenter.DistTo(pEnd->m_vCenter);
-	startNode.m_pParent = nullptr;
-	startNode.m_iQueryId = m_iQueryId;
-	startNode.m_bInOpen = true;
+	PathNode_t& tStartNode = m_vPathNodes[uStartIndex];
+	tStartNode.m_g = 0.0f;
+	tStartNode.m_f = pStart->m_vCenter.DistTo(pEnd->m_vCenter);
+	tStartNode.m_pParent = nullptr;
+	tStartNode.m_iQueryId = m_iQueryId;
+	tStartNode.m_bInOpen = true;
 
-	openSet.push({ startNode.m_f, uStartIndex });
+	openSet.push({ tStartNode.m_f, uStartIndex });
 
 	std::vector<micropather::StateCost> vNeighbors;
 	vNeighbors.reserve(8);
@@ -60,10 +57,10 @@ int CMap::Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, floa
 			return 0;
 		}
 
-		PathNode_t& currentNode = m_vPathNodes[uCurrentIndex];
-		currentNode.m_bInOpen = false;
+		PathNode_t& tCurrentNode = m_vPathNodes[uCurrentIndex];
+		tCurrentNode.m_bInOpen = false;
 
-		if (fCurrentScore > currentNode.m_f)
+		if (fCurrentScore > tCurrentNode.m_f)
 			continue;
 
 		CNavArea* pCurrentArea = &m_navfile.m_vAreas[uCurrentIndex];
@@ -71,36 +68,36 @@ int CMap::Solve(CNavArea* pStart, CNavArea* pEnd, std::vector<void*>* path, floa
 		vNeighbors.clear();
 		GetDirectNeighbors(pCurrentArea, vNeighbors);
 
-		for (const auto& neighbor : vNeighbors)
+		for (const auto& tNeighbor : vNeighbors)
 		{
-			CNavArea* pNextArea = reinterpret_cast<CNavArea*>(neighbor.state);
-			float flCostToNext = neighbor.cost;
+			CNavArea* pNextArea = reinterpret_cast<CNavArea*>(tNeighbor.state);
+			float flCostToNext = tNeighbor.cost;
 			
 			size_t uNextIndex = pNextArea - &m_navfile.m_vAreas[0];
-			PathNode_t& nextNode = m_vPathNodes[uNextIndex];
+			PathNode_t& tNextNode = m_vPathNodes[uNextIndex];
 
-			if (nextNode.m_iQueryId != m_iQueryId)
+			if (tNextNode.m_iQueryId != m_iQueryId)
 			{
-				nextNode.m_g = std::numeric_limits<float>::max();
-				nextNode.m_f = std::numeric_limits<float>::max();
-				nextNode.m_pParent = nullptr;
-				nextNode.m_iQueryId = m_iQueryId;
-				nextNode.m_bInOpen = false;
+				tNextNode.m_g = std::numeric_limits<float>::max();
+				tNextNode.m_f = std::numeric_limits<float>::max();
+				tNextNode.m_pParent = nullptr;
+				tNextNode.m_iQueryId = m_iQueryId;
+				tNextNode.m_bInOpen = false;
 			}
 
-			float flNewG = currentNode.m_g + flCostToNext;
+			float flNewG = tCurrentNode.m_g + flCostToNext;
 
-			if (flNewG < nextNode.m_g)
+			if (flNewG < tNextNode.m_g)
 			{
-				nextNode.m_pParent = pCurrentArea;
-				nextNode.m_g = flNewG;
+				tNextNode.m_pParent = pCurrentArea;
+				tNextNode.m_g = flNewG;
 				float h = pNextArea->m_vCenter.DistTo(pEnd->m_vCenter);
-				nextNode.m_f = flNewG + h; 
+				tNextNode.m_f = flNewG + h;
 
-				if (!nextNode.m_bInOpen)
+				if (!tNextNode.m_bInOpen)
 				{
-					nextNode.m_bInOpen = true;
-					openSet.push({ nextNode.m_f, uNextIndex });
+					tNextNode.m_bInOpen = true;
+					openSet.push({ tNextNode.m_f, uNextIndex });
 				}
 			}
 		}
@@ -130,8 +127,8 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 	const int iCacheExpirySeconds = std::min(Vars::Misc::Movement::NavEngine::VischeckCacheTime.Value, 45);
 	const int iCacheExpiry = TICKCOUNT_TIMESTAMP(iCacheExpirySeconds);
 
-		auto pLocal = H::Entities.GetLocal();
-		const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
+	auto pLocal = H::Entities.GetLocal();
+	const int iTeam = pLocal ? pLocal->m_iTeamNum() : 0;
 	for (NavConnect_t& tConnection : pCurrentArea->m_vConnections)
 	{
 		CNavArea* pNextArea = tConnection.m_pArea;
@@ -291,6 +288,19 @@ void CMap::AdjacentCost(void* pArea, std::vector<micropather::StateCost>* pAdjac
 		{
 			// Deterministic randomization based on bot index and area address blah blah i dont know how it works
 			// ai made this im bad at math
+			
+			// This has nothing to do with 'bot index', entindex can get changed often 
+			// so if your intention was to make the bots have different pathing based on their 'botpanel index' this is not the approach.
+			// 
+			// Currently it takes into account area pointers and an entity id, using entindex here is not the best idea
+			// since area ptrs have a physical memory address which should already be different for each bot (unless im not understanding how virtual machines work in which case this logic makes even less sense).
+			// 
+			// So right now if my assumptions are correct the random here is not based on anything, its literally random based on less random
+			// 
+			// Also try not to use ai next time for something you dont understand. 
+			// Im fine with using it for repetitive tasks or discovering new ways of solving problems 
+			// but using it for adding something you have no understanding of is not only stupid but also dangerous because it could cause some issues later
+
 			uintptr_t uSeed = reinterpret_cast<uintptr_t>(pNextArea) ^ (pLocal ? pLocal->entindex() : 0);
 			uSeed = (uSeed ^ 0xDEADBEEF) * 1664525u + 1013904223u;
 			float flNoise = (uSeed & 0xFFFF) / 65536.0f;

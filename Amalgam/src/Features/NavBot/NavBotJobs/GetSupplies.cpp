@@ -224,10 +224,10 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	const bool bActiveHealthJob = eCurrentPriority == PriorityListEnum::GetHealth || eCurrentPriority == PriorityListEnum::LowPrioGetHealth;
 	const bool bActiveSupplyJob = bIsAmmo ? eCurrentPriority == PriorityListEnum::GetAmmo : bActiveHealthJob;
 
-	static Timer tStickySupplyLock{};
+	static Timer tStickySupplyLockTimer{};
 	const float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
 	const bool bNeedsHealthStill = flHealthPercent < (bLowPrio ? 0.92f : 0.9f);
-	const bool bCanKeepStickyLock = bIsAmmo ? true : bNeedsHealthStill;
+	const bool bCanKeepStickyLock = bIsAmmo || bNeedsHealthStill;
 
 	// Keep trying the last known dispenser for a short while if dispenser scanning flickers.
 	static bool bHasRememberedDispenser = false;
@@ -245,14 +245,14 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 		}
 
 		// Cancel pathing if we no longer need to get anything
-		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLock.Check(1.25f))
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLockTimer.Check(1.25f))
 			return true;
 
 		if (bActiveSupplyJob && (!bIsAmmo || !bWasForce))
 			F::NavEngine.CancelPath();
 		return false;
 	}
-	tStickySupplyLock.Update();
+	tStickySupplyLockTimer.Update();
 
 	static Timer tCooldownTimer{};
 	if (!bShouldForce && !tCooldownTimer.Check(1.f))
@@ -289,7 +289,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	}
 	if (!bGotSupplies && !bGotDispensers)
 	{
-		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLock.Check(1.25f))
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLockTimer.Check(1.25f))
 			return true;
 
 		tCooldownTimer.Update();
@@ -323,8 +323,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 				pSecondBest = &pSupplyData;
 				break;
 			}
-			else
-				pBest = &pSupplyData;
+			pBest = &pSupplyData;
 		}
 	}
 
@@ -352,7 +351,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	if (pBest && GetSupply(pCmd, pLocal, vLocalOrigin, pBest, ePriority))
 	{
 		bWasForce = bShouldForce;
-		tStickySupplyLock.Update();
+		tStickySupplyLockTimer.Update();
 		return true;
 	}
 

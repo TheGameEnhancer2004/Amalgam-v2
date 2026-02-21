@@ -417,6 +417,7 @@ void CNavBotCore::Reset()
 	F::NavBotSupplies.ResetTemp();
 	F::NavBotEngineer.Reset();
 	F::NavBotCapture.Reset();
+	F::NavBotRoam.Reset();
 	m_flNextIdleTime = SDK::RandomFloat(4.f, 10.f);
 }
 
@@ -548,14 +549,10 @@ void CNavBotCore::Draw(CTFPlayer* pLocal)
 
 	float flIdleTime = SDK::PlatFloatTime() - m_tIdleTimer.GetLastUpdate();
 	if (flIdleTime > 2.0f && F::NavEngine.IsPathing())
-	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Stuck: {:.1f}s", flIdleTime).c_str());
-	}
 
 	if (!F::NavEngine.IsPathing() && !F::NavEngine.m_sLastFailureReason.empty())
-	{
 		H::Draw.StringOutlined(fFont, x, y += nTall, Vars::Menu::Theme::Active.Value, Vars::Menu::Theme::Background.Value, align, std::format("Failed: {}", F::NavEngine.m_sLastFailureReason).c_str());
-	}
 
 	if (Vars::Debug::Info.Value)
 	{
