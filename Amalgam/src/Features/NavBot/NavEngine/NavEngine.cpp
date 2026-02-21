@@ -547,6 +547,20 @@ void CNavEngine::AppendCachedCrumbs(CNavArea* pArea, const std::vector<CachedCru
 	}
 }
 
+void CNavEngine::ConsumeFrontCrumbs(size_t nCount)
+{
+	if (!nCount || m_vCrumbs.empty())
+		return;
+
+	if (nCount >= m_vCrumbs.size())
+	{
+		m_vCrumbs.clear();
+		return;
+	}
+
+	m_vCrumbs.erase(m_vCrumbs.begin(), m_vCrumbs.begin() + nCount);
+}
+
 bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityListEnum ePriority, bool bShouldRepath, bool bNavToLocal, bool bIgnoreTraces)
 {
 	if (!m_pMap)
@@ -725,6 +739,11 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 	}
 
 	m_vCrumbs.clear();
+	if (!bSingleAreaPath && !vPath.empty())
+	{
+		const size_t nExpectedCrumbs = std::max<size_t>(vPath.size() * 5, 16);
+		m_vCrumbs.reserve(nExpectedCrumbs);
+	}
 	if (bSingleAreaPath)
 	{
 		Vector vStart = m_pLocalArea ? m_pLocalArea->m_vCenter : vDestination;
@@ -778,7 +797,7 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			if (m_tLastCrumb.m_pNavArea)
 			{
 				if (m_vCrumbs.front().m_vPos.DistToSqr(m_tLastCrumb.m_vPos) < 1.0f)
-					m_vCrumbs.erase(m_vCrumbs.begin());
+					ConsumeFrontCrumbs(1);
 			}
 
 			if (!m_vCrumbs.empty() && m_vCrumbs.size() >= 2)
@@ -795,7 +814,7 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 					float flDot = vToLocal.Dot(vToSecond);
 
 					if (flDot > 0.f)
-						m_vCrumbs.erase(m_vCrumbs.begin());
+						ConsumeFrontCrumbs(1);
 				}
 			}
 		}
@@ -816,18 +835,15 @@ bool CNavEngine::NavTo(const Vector& vDestination, PriorityListEnum::PriorityLis
 			const std::pair<CNavArea*, CNavArea*> tKey(tCrumb.m_pNavArea, tNextCrumb.m_pNavArea);
 
 			// Check if we have a valid cache entry
-			if (m_pMap->m_mVischeckCache.count(tKey))
+			auto itCache = m_pMap->m_mVischeckCache.find(tKey);
+			if (itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_iExpireTick > I::GlobalVars->tickcount)
 			{
-				auto& tEntry = m_pMap->m_mVischeckCache[tKey];
-				if (tEntry.m_iExpireTick > I::GlobalVars->tickcount)
+				if (!itCache->second.m_bPassable)
 				{
-					if (!tEntry.m_bPassable)
-					{
-						bValid = false;
-						break;
-					}
-					continue;
+					bValid = false;
+					break;
 				}
+				continue;
 			}
 
 			if (!IsPlayerPassableNavigation(pLocalPlayer, tCrumb.m_vPos, tNextCrumb.m_vPos))
@@ -932,18 +948,15 @@ void CNavEngine::VischeckPath()
 		auto vNextCenter = tNextCrumb.m_vPos;
 
 		// Check if we have a valid cache entry
-		if (m_pMap->m_mVischeckCache.count(tKey))
+		auto itCache = m_pMap->m_mVischeckCache.find(tKey);
+		if (itCache != m_pMap->m_mVischeckCache.end() && itCache->second.m_iExpireTick > I::GlobalVars->tickcount)
 		{
-			auto& tEntry = m_pMap->m_mVischeckCache[tKey];
-			if (tEntry.m_iExpireTick > I::GlobalVars->tickcount)
+			if (!itCache->second.m_bPassable)
 			{
-				if (!tEntry.m_bPassable)
-				{
-					AbandonPath("Traceline blocked (cached)");
-					break;
-				}
-				continue;
+				AbandonPath("Traceline blocked (cached)");
+				break;
 			}
+			continue;
 		}
 
 		// Check if we can pass, if not, abort pathing and mark as bad
@@ -1476,7 +1489,7 @@ void CNavEngine::UpdateRespawnRooms()
 	if (!m_vRespawnRooms.empty() && m_pMap)
 	{
 		std::unordered_set<CNavArea*> setSpawnRoomAreas;
-		for (auto tRespawnRoom : m_vRespawnRooms)
+		for (const auto& tRespawnRoom : m_vRespawnRooms)
 		{
 			static Vector vStepHeight(0.0f, 0.0f, 18.0f);
 			for (auto& tArea : m_pMap->m_navfile.m_vAreas)
@@ -1521,6 +1534,8 @@ void CNavEngine::CancelPath()
 	m_vCrumbs.clear();
 	m_tLastCrumb.m_pNavArea = nullptr;
 	m_vCurrentPathDir = {};
+	m_iRecentFallSpeedIndex = 0;
+	m_nRecentFallSpeedCount = 0;
 	m_eCurrentPriority = PriorityListEnum::None;
 	m_bIgnoreTraces = false;
 	m_iNextRepathTick = 0;
@@ -1613,18 +1628,21 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	}
 
 	// Ensure we do not try to walk downwards unless we are falling
-	static std::vector<float> vFallSpeeds;
 	Vector vLocalVelocity = pLocal->GetAbsVelocity();
 
-	vFallSpeeds.push_back(vLocalVelocity.z);
-	if (vFallSpeeds.size() > 10)
-		vFallSpeeds.erase(vFallSpeeds.begin());
+	m_flRecentFallSpeeds[m_iRecentFallSpeedIndex] = vLocalVelocity.z;
+	m_iRecentFallSpeedIndex = (m_iRecentFallSpeedIndex + 1) % m_flRecentFallSpeeds.size();
+	m_nRecentFallSpeedCount = std::min(m_nRecentFallSpeedCount + 1, m_flRecentFallSpeeds.size());
 
 	bool bResetHeight = true;
-	for (auto flFallSpeed : vFallSpeeds)
+	for (size_t i = 0; i < m_nRecentFallSpeedCount; ++i)
 	{
+		const float flFallSpeed = m_flRecentFallSpeeds[i];
 		if (!(flFallSpeed <= 0.01f && flFallSpeed >= -0.01f))
+		{
 			bResetHeight = false;
+			break;
+		}
 	}
 
 	if (bResetHeight && !F::Ticks.m_bWarp && !F::Ticks.m_bDoubletap)
@@ -1655,10 +1673,15 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 	bool bHasMoveTarget = false;
 	float flReachRadius = kDefaultReachRadius;
 	int iLoopLimit = 32;
+	size_t nConsumedCrumbs = 0;
 
 	while (iLoopLimit-- > 0)
 	{
-		auto& tActiveCrumb = m_vCrumbs[0];
+		uCrumbsSize = m_vCrumbs.size() - nConsumedCrumbs;
+		if (!uCrumbsSize)
+			break;
+
+		auto& tActiveCrumb = m_vCrumbs[nConsumedCrumbs];
 		if (m_tCurrentCrumb.m_pNavArea != tActiveCrumb.m_pNavArea)
 			m_tTimeSpentOnCrumbTimer.Update();
 		m_tCurrentCrumb = tActiveCrumb;
@@ -1678,7 +1701,7 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		float flDirLen = vMoveDir.Length();
 		if (flDirLen < 0.01f && uCrumbsSize > 1)
 		{
-			vMoveDir = m_vCrumbs[1].m_vPos - tActiveCrumb.m_vPos;
+			vMoveDir = m_vCrumbs[nConsumedCrumbs + 1].m_vPos - tActiveCrumb.m_vPos;
 			vMoveDir.z = 0.f;
 			flDirLen = vMoveDir.Length();
 		}
@@ -1737,12 +1760,12 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		if (!bDropCrumb && vCrumbDeltaPlanar.LengthSqr() < (flReachRadius * flReachRadius) && flVerticalDelta <= flVerticalTolerance)
 		{
 			m_tLastCrumb = tActiveCrumb;
-			m_vCrumbs.erase(m_vCrumbs.begin());
+			nConsumedCrumbs++;
 			m_tTimeSpentOnCrumbTimer.Update();
 			m_tInactivityTimer.Update();
-			uCrumbsSize = m_vCrumbs.size();
-			if (!uCrumbsSize)
+			if (m_vCrumbs.size() <= nConsumedCrumbs)
 			{
+				ConsumeFrontCrumbs(nConsumedCrumbs);
 				DoLook(Vec3{}, false);
 				return;
 			}
@@ -1751,17 +1774,17 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 		if (!bDropCrumb && uCrumbsSize > 1)
 		{
-			Vector vNextDelta = m_vCrumbs[1].m_vPos - vLocalOrigin;
+			Vector vNextDelta = m_vCrumbs[nConsumedCrumbs + 1].m_vPos - vLocalOrigin;
 			const float flNextVerticalDelta = std::fabs(vNextDelta.z);
 			vNextDelta.z = 0.f;
 			if (vNextDelta.LengthSqr() < (50.0f * 50.0f) && flNextVerticalDelta <= PLAYER_JUMP_HEIGHT)
 			{
-				m_tLastCrumb = m_vCrumbs[1];
-				m_vCrumbs.erase(m_vCrumbs.begin(), std::next(m_vCrumbs.begin()));
+				m_tLastCrumb = m_vCrumbs[nConsumedCrumbs + 1];
+				nConsumedCrumbs++;
 				m_tTimeSpentOnCrumbTimer.Update();
-				uCrumbsSize = m_vCrumbs.size();
-				if (!uCrumbsSize)
+				if (m_vCrumbs.size() <= nConsumedCrumbs)
 				{
+					ConsumeFrontCrumbs(nConsumedCrumbs);
 					DoLook(Vec3{}, false);
 					return;
 				}
@@ -1786,22 +1809,22 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 			if (!bDropCompleted && uCrumbsSize > 1)
 			{
-				Vector vNextCheck = m_vCrumbs[1].m_vPos;
+				Vector vNextCheck = m_vCrumbs[nConsumedCrumbs + 1].m_vPos;
 				vNextCheck.z = vLocalOrigin.z;
 				const float flNextReachRadius = std::max(kDefaultReachRadius, flReachRadius + 12.f);
-				if (vNextCheck.DistToSqr(vLocalOrigin) < pow(flNextReachRadius, 2))
+				if (vNextCheck.DistToSqr(vLocalOrigin) < (flNextReachRadius * flNextReachRadius))
 					bDropCompleted = true;
 			}
 
 			if (bDropCompleted)
 			{
 				m_tLastCrumb = tActiveCrumb;
-				m_vCrumbs.erase(m_vCrumbs.begin());
+				nConsumedCrumbs++;
 				m_tTimeSpentOnCrumbTimer.Update();
 				m_tInactivityTimer.Update();
-				uCrumbsSize = m_vCrumbs.size();
-				if (!uCrumbsSize)
+				if (m_vCrumbs.size() <= nConsumedCrumbs)
 				{
+					ConsumeFrontCrumbs(nConsumedCrumbs);
 					DoLook(Vec3{}, false);
 					return;
 				}
@@ -1810,6 +1833,17 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		}
 
 		break;
+	}
+
+	if (nConsumedCrumbs)
+	{
+		ConsumeFrontCrumbs(nConsumedCrumbs);
+		uCrumbsSize = m_vCrumbs.size();
+		if (!uCrumbsSize)
+		{
+			DoLook(Vec3{}, false);
+			return;
+		}
 	}
 
 	// If we make any progress at all, reset this
