@@ -1006,7 +1006,7 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 	static Timer tReloadTimer{};
 	auto EnsureChatLinesLoaded = [&]() -> bool
 		{
-			bool uSize = m_vChatSpamLines.size();
+			size_t uSize = m_vChatSpamLines.size();
 			if (uSize > 0 && !tReloadTimer.Run(5.0f))
 				return true;
 

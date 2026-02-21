@@ -40,6 +40,7 @@
 #include "Interfaces/CModelLoader.h"
 #include "Interfaces/IDemoPlayer.h"
 #include "Interfaces/IDemoRecorder.h"
+#include "Interfaces/IMDLCache.h"
 
 #ifndef TEXTMODE
 #include <d3d9.h>

@@ -1,42 +1,30 @@
-#include "../SDK/SDK.h"
+#include "Createmove.h"
 
-#include "../Features/Aimbot/Aimbot.h"
-#include "../Features/Backtrack/Backtrack.h"
-#include "../Features/CritHack/CritHack.h"
-#include "../Features/EnginePrediction/EnginePrediction.h"
-#include "../Features/Misc/Misc.h"
-#include "../Features/NoSpread/NoSpread.h"
-#include "../Features/NoSpread/NoSpreadHitscan/NoSpreadHitscan.h"
-#include "../Features/PacketManip/PacketManip.h"
-#include "../Features/Resolver/Resolver.h"
-#include "../Features/Ticks/Ticks.h"
-#include "../Features/Visuals/Visuals.h"
-#include "../Features/Visuals/FakeAngle/FakeAngle.h"
-#include "../Features/Spectate/Spectate.h"
-#include "../Features/NavBot/NavEngine/Controllers/Controller.h"
-#include "../Features/NavBot/NavBotCore.h"
-#include "../Features/NavBot/NavEngine/NavEngine.h"
-#include "../Features/FollowBot/FollowBot.h"
-#include "../Features/AutoJoin/AutoJoin.h"
-#include "../Features/Misc/AutoItem/AutoItem.h"
-
-#define MATH_EPSILON (1.f / 16)
-#define PSILENT_EPSILON (1.f - MATH_EPSILON)
-#define REAL_EPSILON (0.1f + MATH_EPSILON)
-#define SNAP_SIZE_EPSILON (10.f - MATH_EPSILON)
-#define SNAP_NOISE_EPSILON (0.5f + MATH_EPSILON)
+#include "../Aimbot/Aimbot.h"
+#include "../Backtrack/Backtrack.h"
+#include "../CritHack/CritHack.h"
+#include "../EnginePrediction/EnginePrediction.h"
+#include "../Misc/Misc.h"
+#include "../NoSpread/NoSpread.h"
+#include "../NoSpread/NoSpreadHitscan/NoSpreadHitscan.h"
+#include "../PacketManip/PacketManip.h"
+#include "../Resolver/Resolver.h"
+#include "../Ticks/Ticks.h"
+#include "../Visuals/Visuals.h"
+#include "../Visuals/FakeAngle/FakeAngle.h"
+#include "../Spectate/Spectate.h"
+#include "../NavBot/NavEngine/Controllers/Controller.h"
+#include "../NavBot/NavBotCore.h"
+#include "../NavBot/NavEngine/NavEngine.h"
+#include "../FollowBot/FollowBot.h"
+#include "../AutoJoin/AutoJoin.h"
+#include "../Misc/AutoItem/AutoItem.h"
 
 MAKE_SIGNATURE(IHasGenericMeter_GetMeterMultiplier, "client.dll", "F3 0F 10 81 ? ? ? ? C3 CC CC CC CC CC CC CC 48 85 D2", 0x0);
+MAKE_SIGNATURE(C_BaseAnimating_AutoAllowBoneAccess, "client.dll", "40 53 48 83 EC ? 41 0F B6 C0 44 0F B6 CA", 0x0);
+MAKE_SIGNATURE(C_BaseAnimating_AutoAllowBoneAccessOnDelete, "client.dll", "B9 ? ? ? ? E9 ? ? ? ? CC CC CC CC CC CC 48 89 5C 24", 0x0);
 
-struct CmdHistory_t
-{
-	Vec3 m_vAngle;
-	bool m_bAttack1;
-	bool m_bAttack2;
-	bool m_bSendingPacket;
-};
-
-static void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+void CCreateMove::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	G::PSilentAngles = G::SilentAngles = G::Attacking = G::Throwing = false;
 	G::LastUserCmd = G::CurrentUserCmd ? G::CurrentUserCmd : pCmd;
@@ -177,8 +165,9 @@ static void UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd
 	G::PrimaryWeaponType = SDK::GetWeaponType(pWeapon, &G::SecondaryWeaponType);
 	G::CanHeadshot = pWeapon->CanHeadshot() || pWeapon->AmbassadorCanHeadshot(TICKS_TO_TIME(pLocal->m_nTickBase()));
 }
+
 #ifndef TEXTMODE
-static void LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd)
+void CCreateMove::LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	static std::vector<Vec3> vAngles = {};
 	vAngles.push_back(pCmd->viewangles);
@@ -204,7 +193,15 @@ static void LocalAnimations(CTFPlayer* pLocal, CUserCmd* pCmd)
 	}
 }
 #endif
-static void AntiCheatCompatibility(CUserCmd* pCmd)
+
+
+#define MATH_EPSILON (1.f / 16)
+#define PSILENT_EPSILON (1.f - MATH_EPSILON)
+#define REAL_EPSILON (0.1f + MATH_EPSILON)
+#define SNAP_SIZE_EPSILON (10.f - MATH_EPSILON)
+#define SNAP_NOISE_EPSILON (0.5f + MATH_EPSILON)
+
+void CCreateMove::AntiCheatCompatibility(CUserCmd* pCmd)
 {
 	if (!Vars::Misc::Game::AntiCheatCompatibility.Value)
 		return;
@@ -262,53 +259,61 @@ static void AntiCheatCompatibility(CUserCmd* pCmd)
 	}
 }
 
-MAKE_HOOK(CHLClient_CreateMove, U::Memory.GetVirtual(I::Client, 21), void,
-	void* rcx, int sequence_number, float input_sample_frametime, bool active)
+
+
+void CCreateMove::Run(int nSequenceNum, float flInputSampleFrametime, bool bActive)
 {
+	{
+		char autoallow[16];
+		S::C_BaseAnimating_AutoAllowBoneAccess.Call<void>(autoallow, true, false);
+		I::MDLCache->BeginLock();
+		I::Input->CreateMove(nSequenceNum, flInputSampleFrametime, bActive);
+		I::MDLCache->EndLock();
+		S::C_BaseAnimating_AutoAllowBoneAccessOnDelete.Call<void>(autoallow);
+	}
+
 #ifdef DEBUG_HOOKS
 	if (!Vars::Hooks::CHLClient_CreateMove[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, sequence_number, input_sample_frametime, active);
+		return;
 #endif
-	
-	CALL_ORIGINAL(rcx, sequence_number, input_sample_frametime, active);
 
 	auto pLocal = H::Entities.GetLocal();
-	auto pWeapon = H::Entities.GetWeapon();
-	if (!pLocal || G::Unload)
+	if (!pLocal)
 		return;
 
-	CUserCmd* pCmd = &I::Input->m_pCommands[sequence_number % MULTIPLAYER_BACKUP];
+	auto pWeapon = H::Entities.GetWeapon();
+	CUserCmd* pCmd = &I::Input->m_pCommands[nSequenceNum % MULTIPLAYER_BACKUP];
 	I::Prediction->Update(I::ClientState->m_nDeltaTick, I::ClientState->m_nDeltaTick > 0, I::ClientState->last_command_ack, I::ClientState->lastoutgoingcommand + I::ClientState->chokedcommands);
 
 	UpdateInfo(pLocal, pWeapon, pCmd);
 #ifndef TEXTMODE
-		F::Spectate.CreateMove(pCmd);
+	F::Spectate.CreateMove(pCmd);
 #endif
-		F::Misc.RunPre(pLocal, pCmd);
-		F::AutoJoin.Run(pLocal);
-		F::AutoItem.Run(pLocal);
-		F::GameObjectiveController.Update();
+	F::Misc.RunPre(pLocal, pCmd);
+	F::AutoJoin.Run(pLocal);
+	F::AutoItem.Run(pLocal);
+	F::GameObjectiveController.Update();
 
-		F::BotUtils.Run(pLocal, pWeapon, pCmd);
+	F::BotUtils.Run(pLocal, pWeapon, pCmd);
 	F::Ticks.Start(pLocal, pCmd);
-		F::Aimbot.Run(pLocal, pWeapon, pCmd);
-		F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
+	F::Aimbot.Run(pLocal, pWeapon, pCmd);
+	F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
 	F::Ticks.End(pLocal, pCmd);
-		F::FollowBot.Run(pLocal, pWeapon, pCmd);
-		F::NavBotCore.Run(pLocal, pWeapon, pCmd);
-		F::NavEngine.Run(pLocal, pWeapon, pCmd);
-		F::BotUtils.HandleSmartJump(pLocal, pCmd);
-		F::CritHack.Run(pLocal, pWeapon, pCmd);
-		F::NoSpread.Run(pLocal, pWeapon, pCmd);
-		F::Resolver.CreateMove(pLocal);
-		F::Misc.RunPost(pLocal, pCmd);
-		F::PacketManip.Run(pLocal, pWeapon, pCmd);
+	F::FollowBot.Run(pLocal, pWeapon, pCmd);
+	F::NavBotCore.Run(pLocal, pWeapon, pCmd);
+	F::NavEngine.Run(pLocal, pWeapon, pCmd);
+	F::BotUtils.HandleSmartJump(pLocal, pCmd);
+	F::CritHack.Run(pLocal, pWeapon, pCmd);
+	F::NoSpread.Run(pLocal, pWeapon, pCmd);
+	F::Resolver.CreateMove(pLocal);
+	F::Misc.RunPost(pLocal, pCmd);
+	F::PacketManip.Run(pLocal, pWeapon, pCmd);
 #ifndef TEXTMODE
-		F::Visuals.CreateMove(pLocal, pWeapon);
+	F::Visuals.CreateMove(pLocal, pWeapon);
 #endif
-		F::Ticks.CreateMove(pLocal, pWeapon, pCmd);
-		F::AntiAim.Run(pLocal, pWeapon, pCmd);
-		F::NoSpreadHitscan.AskForPlayerPerf();
+	F::Ticks.CreateMove(pLocal, pWeapon, pCmd);
+	F::AntiAim.Run(pLocal, pWeapon, pCmd);
+	F::NoSpreadHitscan.AskForPlayerPerf();
 	F::EnginePrediction.End(pLocal, pCmd);
 
 	AntiCheatCompatibility(pCmd);

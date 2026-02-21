@@ -108,7 +108,6 @@
     <ClCompile Include="src\Hooks\CBasePlayer_CalcViewModelView.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_ItemPostFrame.cpp" />
     <ClCompile Include="src\Hooks\CBaseViewModel_ShouldFlipViewModel.cpp" />
-    <ClCompile Include="src\Hooks\CHLClient_CreateMove.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_DoPostScreenSpaceEffects.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_OverrideView.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_ShouldDrawViewModel.cpp" />
@@ -240,6 +239,7 @@
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
     <ClCompile Include="src\Features\Players\SteamProfileCache.cpp" />
+    <ClCompile Include="src\Features\Createmove\Createmove.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -480,7 +480,6 @@
     <ClInclude Include="src\SDK\Helpers\TraceFilters\TraceFilters.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IVModelRender.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IStudioRender.h" />
-    <ClInclude Include="src\SDK\Definitions\Misc\IMDLCache.h" />
     <ClInclude Include="src\SDK\Definitions\Steam\ISteamApps.h" />
     <ClInclude Include="src\SDK\Definitions\Steam\ISteamClient.h" />
     <ClInclude Include="src\SDK\Definitions\Steam\ISteamAppList.h" />
@@ -670,6 +669,8 @@
     <ClInclude Include="src\Features\Players\SteamProfileCache.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoPlayer.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoRecorder.h" />
+    <ClInclude Include="src\Features\Createmove\Createmove.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IMDLCache.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
