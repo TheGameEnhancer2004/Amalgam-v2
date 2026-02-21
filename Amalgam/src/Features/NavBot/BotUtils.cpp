@@ -145,7 +145,7 @@ ShouldTargetEnum::ShouldTargetEnum CBotUtils::ShouldTarget(CTFPlayer* pLocal, CT
 		switch (SDK::GetWeaponType(pWeapon))
 		{
 		case EWeaponType::HITSCAN:
-			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && SDK::AttribHookValue(0, "mod_pierce_resists_absorbs", pWeapon) != 0)
+			if (pPlayer->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && SDK::AttribHookValue(0, "mod_pierce_resists_absorbs", pWeapon) == 0)
 				return ShouldTargetEnum::DontTarget;
 			break;
 		case EWeaponType::PROJECTILE:

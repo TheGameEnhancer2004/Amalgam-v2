@@ -576,6 +576,7 @@ namespace Vars
 
 	NAMESPACE_BEGIN(ESP)
 		CVarValues(ActiveGroups, "Active groups", int(0b11111111111111111111111111111111), VISUAL | DROPDOWN_MULTI, nullptr);
+		CVar(IgnoreInvisibleSpies, "Ignore invisible spies", false, VISUAL);
 	NAMESPACE_END(ESP);
 
 	NAMESPACE_BEGIN(Visuals)
@@ -901,12 +902,205 @@ I dont think this is a good idea to disable simulations completely:
 				Off, Yaw, Pitch, Fake);
 			CVar(AcceptItemDrops, "Auto accept item drops", false);
 			CVar(AntiAFK, "Anti-AFK", false);
-			CVar(AntiAutobalance, "Anti-autobalance", false);
+			CVarEnum(AntiAutobalance, "Anti-autobalance", 0, NONE, nullptr,
+				VA_LIST("Off", "Retry", "Retry on death"),
+				Off, Retry, RetryOnDeath);
 			CVar(TauntControl, "Taunt control", false);
 			CVar(KartControl, "Kart control", false);
+			CVar(AutoDisguise, "Auto disguise", false);
 			CVar(AutoTaunt, "Auto taunt on kill", false);
 			CVar(AutoTauntChance, "Auto taunt chance", 100, SLIDER_CLAMP, 0, 100, 1, "%i%%");
 			CVar(AchievementSpam, "Achievement spam", false);
+			CVar(AchievementSpamID, "Achievement spam id", 2332);
+			struct AchievementSpamEntry_t
+			{
+				int m_iID;
+				const char* m_sName;
+			};
+			inline const std::vector<AchievementSpamEntry_t>& GetAchievementSpamEntries()
+			{
+				static const std::vector<AchievementSpamEntry_t> vEntries =
+				{
+					{127, "Sentry Gunner"}, {128, "Nemesis"}, {129, "Hard To Kill"}, {130, "Master of Disguise"},
+					{131, "With Friends Like These"}, {132, "Dynasty"}, {133, "Hardcore"}, {134, "Powerhouse Offense"},
+					{135, "Lightning Offense"}, {136, "Relentless Offense"}, {137, "Impenetrable Defense"}, {138, "Impossible Defense"},
+					{139, "Head of the Class"}, {140, "World Traveler"}, {141, "Team Doctor"}, {142, "Flamethrower"},
+					{145, "Grey Matter"}, {150, "Riftwalker"}, {152, "Escape the Heat"}, {154, "BFF2"},
+					{155, "Mass Hysteria"}, {156, "A Fresh Pair of Eyes"},
+
+					{1001, "First Blood"}, {1002, "First Blood, Part 2"}, {1003, "Quick Hook"}, {1004, "A Year to Remember"},
+					{1005, "The Cycle"}, {1006, "Closer"}, {1007, "If You Build it"}, {1008, "Gun Down"},
+					{1009, "Batter Up"}, {1010, "Doctoring the ball"}, {1011, "Dodgers 1, Giants 0"}, {1012, "Batting the Doctor"},
+					{1013, "I'm Bat Man"}, {1014, "Triple Steal"}, {1015, "Pop Fly"}, {1016, "Round-Tripper"},
+					{1017, "Artful Dodger"}, {1018, "Fall Classic"}, {1019, "Strike Zone"}, {1020, "Foul Territory"},
+					{1021, "The Big Hurt"}, {1022, "Brushback"}, {1023, "Moon Shot"}, {1024, "Beanball"},
+					{1025, "Retire the Runner"}, {1026, "Caught Napping"}, {1027, "Side Retired"}, {1028, "Triple Play"},
+					{1029, "Stealing Home"}, {1030, "Set the Table"}, {1031, "Block the Plate"}, {1032, "Belittled Beleaguer"},
+					{1033, "No-Hitter"}, {1034, "Race for the Pennant"}, {1035, "Out of the Park"}, {1036, "Scout Milestone 1"},
+					{1037, "Scout Milestone 2"}, {1038, "Scout Milestone 3"},
+
+					{1101, "Rode Hard, Put Away Wet"}, {1102, "Be polite"}, {1103, "Be Efficient"}, {1104, "Have a Plan"},
+					{1105, "Kill Everyone You Meet"}, {1106, "Triple Prey"}, {1107, "Self-Destruct Sequence"}, {1108, "De-sentry-lized"},
+					{1109, "Shoot the Breeze"}, {1110, "Dropped Dead"}, {1111, "the last wave"}, {1112, "australian rules"},
+					{1113, "Kook the Spook"}, {1114, "Socket to Him"}, {1115, "Jumper Stumper"}, {1116, "Not a Crazed Gunman, Dad"},
+					{1117, "Trust Your Feelings"}, {1118, "Uberectomy"}, {1119, "Consolation Prize"}, {1120, "Enemy at the Gate"},
+					{1121, "Parting Shot"}, {1122, "My Brilliant Career"}, {1123, "Shock Treatment"}, {1124, "Saturation Bombing"},
+					{1125, "Rain on Their Parade"}, {1126, "Jarring Transition"}, {1127, "Friendship is Golden"}, {1128, "William Tell Overkill"},
+					{1129, "Beaux and Arrows"}, {1130, "Robbin' Hood"}, {1131, "Pincushion"}, {1132, "Number One Assistant"},
+					{1133, "Jarate Chop"}, {1134, "Shafted"}, {1135, "Dead Reckoning"}, {1136, "Sniper Milestone 1"},
+					{1137, "Sniper Milestone 2"}, {1138, "Sniper Milestone 3"},
+
+					{1201, "Duty Bound"}, {1202, "The Boostie Boys"}, {1203, "Out, Damned Scot!"}, {1204, "Engineer to Eternity"},
+					{1205, "Backdraft Dodger"}, {1206, "Trench Warfare"}, {1207, "Bomb Squaddie"}, {1208, "Where Eagles Dare"},
+					{1209, "Ain't Got Time to Bleed"}, {1210, "Banner of Brothers"}, {1211, "Tri-Splatteral Damage"}, {1212, "Death from Above"},
+					{1213, "Spray of Defeat"}, {1214, "War Crime and Punishment"}, {1215, "Near Death Experience"}, {1216, "Wings of Glory"},
+					{1217, "For Whom the Shell Trolls"}, {1218, "Death From Below"}, {1219, "Mutually Assured Destruction"}, {1220, "Guns of the Navar0wned"},
+					{1221, "Brothers in Harms"}, {1222, "Medals of Honor"}, {1223, "S*M*A*S*H"}, {1224, "Crockets Are Such B.S."},
+					{1225, "Geneva Contravention"}, {1226, "Semper Fry"}, {1227, "Worth a Thousand Words"}, {1228, "Gore-a! Gore-a! Gore-a!"},
+					{1229, "War Crime Spybunal"}, {1230, "Frags of our Fathers"}, {1231, "Dominator"}, {1232, "Ride of the Valkartie"},
+					{1233, "Screamin' Eagle"}, {1234, "The Longest Daze"}, {1235, "Hamburger Hill"}, {1236, "Soldier Milestone 1"},
+					{1237, "Soldier Milestone 2"}, {1238, "Soldier Milestone 3"},
+
+					{1301, "Kilt in Action"}, {1302, "Tam O'Shatter"}, {1303, "Shorn Connery"}, {1304, "Laddy Macdeth"},
+					{1305, "Caber Toss"}, {1306, "Double Mauled Scotch"}, {1307, "Loch Ness Bombster"}, {1308, "Three Times a Laddy"},
+					{1309, "Blind Fire"}, {1310, "Brainspotting"}, {1311, "Left 4 Heads"}, {1312, "Well Plaid!"},
+					{1313, "The Scottish Play"}, {1314, "The Argyle Sap"}, {1315, "Slammy Slayvis Woundya"}, {1316, "There Can Be Only One"},
+					{1317, "Tartan Spartan"}, {1318, "Scotch Guard"}, {1319, "Bravehurt"}, {1320, "Cry Some Moor!"},
+					{1321, "The Stickening"}, {1322, "Glasg0wned"}, {1323, "Scotch Tap"}, {1324, "The Targe Charge"},
+					{1325, "Beat Me Up, Scotty"}, {1326, "Something Stickied This Way Comes"}, {1327, "The High Road"}, {1328, "Bloody Merry"},
+					{1329, "Second Eye"}, {1330, "He Who Celt It"}, {1331, "Robbed Royal"}, {1332, "Highland Fling"},
+					{1333, "Pipebagger"}, {1334, "Spynal Tap"}, {1335, "Sticky Thump"}, {1336, "Demoman Milestone 1"},
+					{1337, "Demoman Milestone 2"}, {1338, "Demoman Milestone 3"},
+
+					{1401, "First Do No Harm"}, {1402, "Quadruple Bypass"}, {1403, "Group Health"}, {1404, "Surgical Prep"},
+					{1405, "Trauma Queen"}, {1406, "Double Blind Trial"}, {1407, "Play Doctor"}, {1408, "Triage"},
+					{1409, "Preventative Medicine"}, {1410, "Consultation"}, {1411, "Does It Hurt When I Do This?"}, {1412, "Peer Review"},
+					{1413, "Big Pharma"}, {1414, "You'll Feel a Little Prick"}, {1415, "Autoclave"}, {1416, "Blunt Trauma"},
+					{1417, "Medical Breakthrough"}, {1418, "Blast Assist"}, {1419, "Midwife Crisis"}, {1420, "Ubi concordia, ibi victoria"},
+					{1421, "Grand Rounds"}, {1422, "Infernal Medicine"}, {1423, "Doctor Assisted Homicide"}, {1424, "Placebo Effect"},
+					{1425, "Sawbones"}, {1426, "Intern"}, {1427, "Specialist"}, {1428, "Chief of Staff"},
+					{1429, "Hypocritical Oath"}, {1430, "Medical Intervention"}, {1431, "Second Opinion"}, {1432, "Autopsy Report"},
+					{1433, "FYI I am A Medic"}, {1434, "Family Practice"}, {1435, "House Call"}, {1436, "Bedside Manner"},
+					{1437, "Medic Milestone 1"}, {1438, "Medic Milestone 2"}, {1439, "Medic Milestone 3"},
+
+					{1501, "Iron Kurtain"}, {1502, "Party Loyalty"}, {1503, "Division of Labor"}, {1504, "Red Oktoberfest"},
+					{1505, "Show Trial"}, {1506, "Crime and Punishment"}, {1507, "Class Struggle"}, {1508, "Soviet Block"},
+					{1509, "Stalin the Kart"}, {1510, "Supreme Soviet"}, {1511, "Factory Worker"}, {1512, "Soviet Union"},
+					{1513, "Own the Means of Production"}, {1514, "Krazy Ivan"}, {1515, "Rasputin"}, {1516, "Icing on the Cake"},
+					{1517, "Crock Block"}, {1518, "Kollectivization"}, {1519, "Spyalectical Materialism"}, {1520, "Permanent Revolution"},
+					{1521, "Heavy Industry"}, {1522, "Communist Mani-Fisto"}, {1523, "Redistribution of Health"}, {1524, "Rationing"},
+					{1525, "Vanguard Party"}, {1527, "Pushkin the Kart"}, {1528, "Marxman"}, {1529, "Gorky Parked"},
+					{1530, "Purge"}, {1531, "Lenin A Hand"}, {1532, "Five Second Plan"}, {1533, "Photostroika"},
+					{1534, "Konspicuous Konsumption"}, {1535, "Don't Touch Sandvich"}, {1536, "Borscht Belt"}, {1537, "Heavy Milestone 1"},
+					{1538, "Heavy Milestone 2"}, {1539, "Heavy Milestone 3"},
+
+					{1601, "Combined Fire"}, {1602, "Weenie Roast"}, {1603, "Baptism By Fire"}, {1604, "Fire and Forget"},
+					{1605, "Firewall"}, {1606, "Cooking the Books"}, {1607, "Spontaneous Combustion"}, {1608, "Trailblazer"},
+					{1609, "Camp Fire"}, {1610, "Lumberjack"}, {1611, "Clearcutter"}, {1612, "Hot on Your Heels"},
+					{1613, "I Fry"}, {1614, "Firewatch"}, {1615, "Burn Ward"}, {1616, "Hot Potato"},
+					{1617, "Makin' Bacon"}, {1618, "Plan B"}, {1619, "Pyrotechnics"}, {1620, "Arsonist"},
+					{1621, "Controlled Burn"}, {1622, "Firefighter"}, {1623, "Pyromancer"}, {1624, "Next of Kindling"},
+					{1625, "OMGWTFBBQ"}, {1626, "Second Degree Burn"}, {1627, "Got A Light?"}, {1628, "BarbeQueQ"},
+					{1629, "Hotshot"}, {1630, "Dance Dance Immolation"}, {1631, "Dead Heat"}, {1632, "Pilot Light"},
+					{1633, "Freezer Burn"}, {1634, "Fire Chief"}, {1635, "Attention Getter"}, {1637, "Pyro Milestone 1"},
+					{1638, "Pyro Milestone 2"}, {1639, "Pyro Milestone 3"},
+
+					{1701, "Triplecrossed"}, {1702, "For Your Eyes Only"}, {1703, "Counter Espionage"}, {1704, "Identity Theft"},
+					{1705, "The Man from P.U.N.C.T.U.R.E."}, {1706, "FYI I am a Spy"}, {1707, "The Man with the Broken Guns"}, {1708, "Sapsucker"},
+					{1709, "May I Cut In?"}, {1710, "Agent Provocateur"}, {1711, "The Melbourne Supremacy"}, {1712, "Spies Like Us"},
+					{1713, "A Cut Above"}, {1714, "Burn Notice"}, {1715, "Die Another Way"}, {1716, "Constructus Interruptus"},
+					{1717, "On Her Majesty's Secret Surface"}, {1718, "Insurance Fraud"}, {1719, "Point Breaker"}, {1720, "High Value Target"},
+					{1721, "Come in From the Cold"}, {1722, "Wetwork"}, {1723, "You Only Shiv Thrice"}, {1724, "Spymaster"},
+					{1725, "Sap Auteur"}, {1726, "Joint Operation"}, {1727, "Dr. Nooooo"}, {1728, "Is It Safe?"},
+					{1729, "Slash and Burn"}, {1730, "Biplomacy"}, {1731, "Skullpluggery"}, {1732, "Sleeper Agent"},
+					{1733, "Who's Your Daddy?"}, {1734, "Deep Undercover"}, {1735, "Spy Milestone 1"}, {1736, "Spy Milestone 2"},
+					{1737, "Spy Milestone 3"},
+
+					{1801, "Engineer Milestone 1"}, {1802, "Engineer Milestone 2"}, {1803, "Engineer Milestone 3"}, {1804, "Revengineering"},
+					{1805, "Battle Rustler"}, {1806, "The Extinguished Gentleman"}, {1807, "Search Engine"}, {1808, "Unforgiven"},
+					{1809, "Building Block"}, {1810, "Pownd on the Range"}, {1811, "Silent Pardner"}, {1812, "Doc Holiday"},
+					{1813, "Best Little Slaughterhouse In Texas"}, {1814, "Death Metal"}, {1815, "Trade Secrets"}, {1816, "The Wrench Connection"},
+					{1817, "Land Grab"}, {1818, "Six-String Stringer"}, {1819, "Uncivil Engineer"}, {1820, "Texas Two-Step"},
+					{1821, "Frontier Justice"}, {1822, "Doc, Stock, and Barrel"}, {1823, "No Man's Land"}, {1824, "Fistful of Sappers"},
+					{1825, "Quick Draw"}, {1826, "Get Along!"}, {1827, "Honky Tonky Man"}, {1828, "How the Pests Was Gunned"},
+					{1829, "Rio Grind"}, {1830, "Breaking Morant"}, {1831, "Patent Protection"}, {1832, "If You Build It, They Will Die"},
+					{1833, "Texas Ranger"}, {1834, "Deputized"}, {1835, "Drugstore Cowboy"}, {1836, "Circle the Wagons"},
+					{1837, "Build to Last"}, {1838, "(Not so) Lonely Are the Brave"},
+
+					{1901, "Candy Cornoner"}, {1902, "Ghastly Gibus Grab"}, {1903, "Scared Stiff"}, {1904, "Attack 'o Latern"},
+					{1905, "Costume Contest"}, {1906, "Sleepy Holl0WND"}, {1907, "Masked Mann"}, {1908, "Sackston Hale"},
+					{1909, "Gored!"}, {1910, "Optical Defusion"}, {1911, "Dive Into A Good Book"}, {1912, "A Lovely Vacation Spot"},
+					{1913, "Wizards Never Prosper"}, {1914, "Helltower: Hell's Spells"}, {1915, "Helltower: Competitive Spirit (+1)"},
+					{1916, "Helltower: Mine Games (+1)"}, {1917, "Helltower: Skeleton Coup (+1)"}, {1918, "HellTower: Spelling Spree (+1)"},
+					{1919, "Helltower: Hell on Wheels"}, {1920, "The Mann-tastic Four"}, {1921, "Hat Out of Hell"},
+
+					{2001, "That's a Wrap"}, {2002, "We Can Fix It In Post"}, {2003, "Time For Your Close-Up, Mr. Hale"}, {2004, "Star of My Own Show"},
+					{2005, "Home Movie"}, {2006, "Local Cinema Star"}, {2007, "Indie Film Sensation"}, {2008, "Blockbuster"},
+
+					{2101, "Gift Grab"},
+
+					{2201, "Cap Trap"}, {2202, "Foundry Force Five"}, {2203, "Two Minute Warring"}, {2204, "The Crucible"},
+					{2205, "Five the Fast Way"}, {2206, "Claim Jumper"}, {2207, "Terminated, Too"}, {2208, "Real Steal"},
+					{2209, "Classassin"}, {2210, "Raze the Roof"}, {2211, "Dead Heat"}, {2212, "Foundry Milestone"},
+
+					{2301, "Steel Fragnolias"}, {2302, "Wage Against the Machine"}, {2303, "Frags to Riches"}, {2304, "Fast Cache"},
+					{2305, "T-1000000"}, {2306, "Brotherhood of Steel"}, {2307, "Hack of All Trades"}, {2308, "Clockwork Carnage"},
+					{2309, "Balls-E"}, {2310, "Clockwork Conqueror"}, {2311, "Spam Blocker"}, {2312, ".executioner"},
+					{2313, "Deus Ex Machina"}, {2314, "Raid Array"}, {2315, "Ghost in the Machine"}, {2316, "Kritical Terror"},
+					{2317, "German Engineering"}, {2318, "Undelete"}, {2319, "Shell Extension"}, {2320, "System Upgrade"},
+					{2321, "Maximum Performance"}, {2322, "Engine Block"}, {2323, "Negative Charge"}, {2324, "Silicon Slaughter"},
+					{2325, "Metal Massacre"}, {2326, "Ctrl + Assault + Delete"}, {2327, "Sly Voltage"}, {2328, "Turbocharger"},
+					{2329, "Heavy Mettle"}, {2330, "Vial Sharing"}, {2331, "Tech Wrecker"}, {2332, "Do Androids Dream?"},
+					{2333, "Spark Plugger"}, {2334, "Hard Reset"}, {2335, "Real Steal"},
+
+					{2401, "Mission Control"}, {2402, "Flight Crew"}, {2403, "The Fight Stuff"}, {2404, "Plan Nine to Outer Space"},
+					{2405, "Failure to Launch"}, {2406, "Rocket Booster"}, {2407, "Best Case Scenario"}, {2408, "Cap-ogee"},
+					{2409, "Space Camp"}, {2410, "Lift-offed"}, {2411, "Escape Ferocity"}, {2412, "Doomsday Milestone"}
+				};
+				return vEntries;
+			}
+			inline const std::vector<const char*>& GetAchievementSpamDropdownEntries()
+			{
+				static std::vector<std::string> vAchievementSpamNames = {};
+				static std::vector<const char*> vAchievementSpamEntries = {};
+
+				if (vAchievementSpamEntries.empty())
+				{
+					const auto& vAchievements = GetAchievementSpamEntries();
+					vAchievementSpamNames.reserve(vAchievements.size());
+					vAchievementSpamEntries.reserve(vAchievements.size());
+
+					for (const auto& tAchievement : vAchievements)
+						vAchievementSpamNames.push_back(std::format("{} - {}", tAchievement.m_sName, tAchievement.m_iID));
+
+					for (const auto& sEntry : vAchievementSpamNames)
+						vAchievementSpamEntries.push_back(sEntry.c_str());
+				}
+				return vAchievementSpamEntries;
+			}
+			inline const std::vector<int>& GetAchievementSpamDropdownIDs()
+			{
+				static std::vector<int> vAchievementSpamIDs = {};
+				if (vAchievementSpamIDs.empty())
+				{
+					const auto& vAchievements = GetAchievementSpamEntries();
+					vAchievementSpamIDs.reserve(vAchievements.size());
+
+					for (const auto& tAchievement : vAchievements)
+						vAchievementSpamIDs.push_back(tAchievement.m_iID);
+				}
+				return vAchievementSpamIDs;
+			}
+			inline const std::vector<int>& GetItemAchievementIDs()
+			{
+				static const std::vector<int> vItemAchievementIDs =
+				{
+					1036, 1037, 1038, 1136, 1137, 1138, 1236, 1237, 1238, 1336, 1337, 1338, 1437, 1438, 1439, 1537,
+					1538, 1539, 156, 1637, 1638, 1639, 166, 167, 1735, 1736, 1737, 1801, 1802, 1803, 1901, 1902,
+					1906, 1909, 1910, 1911, 1912, 1928, 2006, 2212, 2412
+				};
+				return vItemAchievementIDs;
+			}
 			CVar(AutoF2Ignored, "Auto F2 ignored", false);
 			CVar(AutoF1Priority, "Auto F1 priority", false);
 			CVarEnum(AutoVotekick, "Auto votekick", 0, NONE, nullptr,
@@ -918,6 +1112,7 @@ I dont think this is a good idea to disable simulations completely:
 				Scout = 1 << 0, Sniper = 1 << 1, Soldier = 1 << 2, Demoman = 1 << 3, Medic = 1 << 4, Heavy = 1 << 5, Pyro = 1 << 6, Spy = 1 << 7, Engineer = 1 << 8);
 			CVar(RandomClassInterval, "Random class interval", FloatRange_t(3.f, 5.f), SLIDER_MIN | SLIDER_PRECISION, 0.5f, 30.f, 0.5f, "%g - %gm");
 			CVar(ForceClass, "Autojoin class", 0);
+			CVar(JoinSpam, "Join spam", false);
 			CVar(Micspam, "Micspam", false);
 			CVar(NoiseSpam, "Noise spam", false);
 			CVar(CallVoteSpam, "Callvote spam", false);

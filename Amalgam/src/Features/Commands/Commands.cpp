@@ -289,7 +289,86 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		FNV1A::Hash32Const("cat_achievement_unlock"), 
 		[](const std::deque<const char*>& vArgs)
 		{
-			F::Misc.UnlockAchievements();
+			if (vArgs.size() > 1)
+			{
+				SDK::Output("Usage:\n\tcat_achievement_unlock [all|item|weapon]");
+				return;
+			}
+
+			const uint32_t uMode = vArgs.empty() ? FNV1A::Hash32Const("all") : FNV1A::Hash32(vArgs[0]);
+			switch (uMode)
+			{
+			case FNV1A::Hash32Const("all"):
+			case FNV1A::Hash32Const("normal"):
+				F::Misc.UnlockAchievements();
+				break;
+			case FNV1A::Hash32Const("item"):
+			case FNV1A::Hash32Const("items"):
+			case FNV1A::Hash32Const("weapon"):
+			case FNV1A::Hash32Const("weapons"):
+				F::Misc.UnlockItemAchievements();
+				break;
+			default:
+				SDK::Output("Usage:\n\tcat_achievement_unlock [all|item|weapon]");
+				break;
+			}
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_unlock_item"),
+		[](const std::deque<const char*>&)
+		{
+			F::Misc.UnlockItemAchievements();
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_unlock_weapon"),
+		[](const std::deque<const char*>&)
+		{
+			F::Misc.UnlockItemAchievements();
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_lock"),
+		[](const std::deque<const char*>& vArgs)
+		{
+			if (vArgs.size() > 1)
+			{
+				SDK::Output("Usage:\n\tcat_achievement_lock [all|item|weapon]");
+				return;
+			}
+
+			const uint32_t uMode = vArgs.empty() ? FNV1A::Hash32Const("all") : FNV1A::Hash32(vArgs[0]);
+			switch (uMode)
+			{
+			case FNV1A::Hash32Const("all"):
+			case FNV1A::Hash32Const("normal"):
+				F::Misc.LockAchievements();
+				break;
+			case FNV1A::Hash32Const("item"):
+			case FNV1A::Hash32Const("items"):
+			case FNV1A::Hash32Const("weapon"):
+			case FNV1A::Hash32Const("weapons"):
+				F::Misc.LockItemAchievements();
+				break;
+			default:
+				SDK::Output("Usage:\n\tcat_achievement_lock [all|item|weapon]");
+				break;
+			}
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_lock_item"),
+		[](const std::deque<const char*>&)
+		{
+			F::Misc.LockItemAchievements();
+		}
+	},
+	{
+		FNV1A::Hash32Const("cat_achievement_lock_weapon"),
+		[](const std::deque<const char*>&)
+		{
+			F::Misc.LockItemAchievements();
 		}
 	},
 };

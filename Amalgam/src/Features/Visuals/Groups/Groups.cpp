@@ -45,6 +45,12 @@ static inline bool ShouldTargetPlayer(Group_t& tGroup, int iBit, CBaseEntity* pE
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (!pPlayer->IsAlive() || pPlayer->IsAGhost())
 		return false;
+	if (Vars::ESP::IgnoreInvisibleSpies.Value
+		&& pPlayer->m_iClass() == TF_CLASS_SPY
+		&& pPlayer->IsInvisible())
+	{
+		return false;
+	}
 
 	if (tGroup.m_iPlayers)
 	{
