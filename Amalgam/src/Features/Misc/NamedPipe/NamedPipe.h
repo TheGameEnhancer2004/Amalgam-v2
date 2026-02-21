@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef TEXTMODE
 #include "../../../SDK/SDK.h"
 #include <thread>
 #include <atomic>
@@ -42,17 +43,17 @@ private:
 	std::mutex m_localBotsMutex;
 	std::unordered_map<uint32_t, bool> m_mLocalBots;
 
-	struct OtherBotInfo
+	struct OtherBotInfo_t
 	{
 		std::string m_sServerIP;
 		int m_iBotId = -1;
 		double m_flLastUpdate = 0.0;
 	};
 	std::mutex m_otherBotsMutex;
-	std::unordered_map<uint32_t, OtherBotInfo> m_mOtherBots;
+	std::unordered_map<uint32_t, OtherBotInfo_t> m_mOtherBots;
 
 	std::shared_mutex m_infoMutex;
-	struct ClientInfo
+	struct ClientInfo_t
 	{
 		int m_iCurrentHealth = -1;
 		int m_iCurrentClass = TF_CLASS_UNDEFINED;
@@ -67,7 +68,7 @@ private:
 
 		bool m_bInGame = false;
 	};
-	ClientInfo tInfo;
+	ClientInfo_t tInfo;
 	bool m_bSetServerName = false;
 	bool m_bSetMapName = false;
 
@@ -111,3 +112,4 @@ public:
 };
 
 ADD_FEATURE(CNamedPipe, NamedPipe);
+#endif

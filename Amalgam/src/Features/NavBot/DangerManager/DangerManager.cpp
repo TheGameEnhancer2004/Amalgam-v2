@@ -49,7 +49,7 @@ void CDangerManager::Update(CTFPlayer* pLocal)
 	UpdatePlayers(pLocal);
 	UpdateBuildings(pLocal);
 	UpdateProjectiles(pLocal);
-	UpdateStatic(pLocal);
+	//UpdateStatic(pLocal);
 }
 
 void CDangerManager::Reset()
@@ -62,9 +62,8 @@ float CDangerManager::GetDanger(CNavArea* pArea)
 	if (!pArea) return 0.f;
 
 	if (auto it = m_mDangerMap.find(pArea); it != m_mDangerMap.end())
-	{
 		return it->second.m_flScore;
-	}
+
 	return 0.f;
 }
 
@@ -89,9 +88,8 @@ bool CDangerManager::IsBlacklisted(CNavArea* pArea)
 BlacklistReason_t CDangerManager::GetBlacklistReason(CNavArea* pArea)
 {
 	if (auto it = m_mDangerMap.find(pArea); it != m_mDangerMap.end())
-	{
-		return it->second.m_LegacyReason;
-	}
+		return it->second.m_tLegacyReason;
+
 	return {};
 }
 
@@ -142,17 +140,18 @@ void CDangerManager::UpdatePlayers(CTFPlayer* pLocal)
 			float flDistFactor = 1.0f - (flDist / flRadius);
 			float flFinalScore = flScore * (0.5f + (0.5f * flDistFactor));
 
+			// Are you intentionally disabling vischeck for dormant players here?
 			if (!bDormant && !F::NavEngine.IsVectorVisibleNavigation(vOrigin + Vector(0,0,60), pArea->m_vCenter + Vector(0,0,40)))
 				continue;
 			
-			DangerData_t& data = m_mDangerMap[pArea];
-			if (flFinalScore > data.m_flScore)
+			DangerData_t& tData = m_mDangerMap[pArea];
+			if (flFinalScore > tData.m_flScore)
 			{
-				data.m_flScore = flFinalScore;
-				data.m_iLastUpdateTick = m_iLastUpdateTick;
-				data.m_vOrigin = vOrigin;
-				data.m_eType = DangerType_t::Enemy;
-				data.m_LegacyReason = { eReason, 0 };
+				tData.m_flScore = flFinalScore;
+				tData.m_iLastUpdateTick = m_iLastUpdateTick;
+				tData.m_vOrigin = vOrigin;
+				tData.m_eType = DangerType_t::Enemy;
+				tData.m_tLegacyReason = { eReason, 0 };
 			}
 		}
 	}
@@ -205,14 +204,14 @@ void CDangerManager::UpdateBuildings(CTFPlayer* pLocal)
 			if (!F::NavEngine.IsVectorVisibleNavigation(vEyePos, pArea->m_vCenter + Vector(0, 0, 40), MASK_SHOT | CONTENTS_GRATE))
 				continue;
 
-			DangerData_t& data = m_mDangerMap[pArea];
-			if (flScore > data.m_flScore)
+			DangerData_t& tData = m_mDangerMap[pArea];
+			if (flScore > tData.m_flScore)
 			{
-				data.m_flScore = flScore;
-				data.m_iLastUpdateTick = m_iLastUpdateTick;
-				data.m_vOrigin = vOrigin;
-				data.m_eType = DangerType_t::Sentry;
-				data.m_LegacyReason = { BlacklistReasonEnum::Sentry, 0 };
+				tData.m_flScore = flScore;
+				tData.m_iLastUpdateTick = m_iLastUpdateTick;
+				tData.m_vOrigin = vOrigin;
+				tData.m_eType = DangerType_t::Sentry;
+				tData.m_tLegacyReason = { BlacklistReasonEnum::Sentry, 0 };
 			}
 		}
 	}
@@ -240,26 +239,29 @@ void CDangerManager::UpdateProjectiles(CTFPlayer* pLocal)
 
 		for (auto& pArea : vAreas)
 		{
-			DangerData_t& data = m_mDangerMap[pArea];
-			if (flScore > data.m_flScore)
+			DangerData_t& tData = m_mDangerMap[pArea];
+			if (flScore > tData.m_flScore)
 			{
-				data.m_flScore = flScore;
-				data.m_iLastUpdateTick = m_iLastUpdateTick;
-				data.m_vOrigin = pPipe->GetAbsOrigin();
-				data.m_eType = DangerType_t::Trap;
-				data.m_LegacyReason = { BlacklistReasonEnum::Sticky, 0 };
+				tData.m_flScore = flScore;
+				tData.m_iLastUpdateTick = m_iLastUpdateTick;
+				tData.m_vOrigin = pPipe->GetAbsOrigin();
+				tData.m_eType = DangerType_t::Trap;
+				tData.m_tLegacyReason = { BlacklistReasonEnum::Sticky, 0 };
 			}
 		}
 	}
 }
 
-void CDangerManager::UpdateStatic(CTFPlayer* pLocal)
-{
-	if (auto pLocalArea = F::NavEngine.GetLocalNavArea())
-	{
-		//uh
-	}
-}
+//
+// What was the idea behing the static danger?
+// 
+//void CDangerManager::UpdateStatic(CTFPlayer* pLocal)
+//{
+//	if (auto pLocalArea = F::NavEngine.GetLocalNavArea())
+//	{
+//		//uh
+//	}
+//}
 
 void CDangerManager::Render()
 {
@@ -268,38 +270,36 @@ void CDangerManager::Render()
 
 	if (Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Blacklist)
 	{
-		for (auto& [pArea, data] : m_mDangerMap)
+		for (auto& [pArea, tData] : m_mDangerMap)
 		{
-			if (data.m_flScore <= 0.f)
+			if (tData.m_flScore <= 0.f)
 				continue;
 
-			Color_t color = { 255, 255, 255, 255 };
+			Color_t tColor = { 255, 255, 255, 255 };
 			
-			switch (data.m_eType)
+			switch (tData.m_eType)
 			{
 			case DangerType_t::Sentry:
-				color = { 255, 0, 0, 255 }; // Red
+				tColor = { 255, 0, 0, 255 }; // Red
 				break;
 			case DangerType_t::Enemy:
-				color = { 255, 128, 0, 255 }; // Orange
+				tColor = { 255, 128, 0, 255 }; // Orange
 				break;
 			case DangerType_t::Trap:
-				color = { 255, 255, 0, 255 }; // Yellow
+				tColor = { 255, 255, 0, 255 }; // Yellow
 				break;
 			default:
-				color = Vars::Colors::NavbotBlacklist.Value;
+				tColor = Vars::Colors::NavbotBlacklist.Value;
 				break;
 			}
 
 			if (!F::NavEngine.GetNavMap() || !F::NavEngine.GetNavMap()->IsAreaValid(pArea))
 				continue;
 
-			H::Draw.RenderBox(pArea->m_vCenter, Vector(-6.0f, -6.0f, -6.0f), Vector(6.0f, 6.0f, 6.0f), Vector(0, 0, 0), color, false);
+			H::Draw.RenderBox(pArea->m_vCenter, Vector(-6.0f, -6.0f, -6.0f), Vector(6.0f, 6.0f, 6.0f), Vector(0, 0, 0), tColor, false);
 
-			if (data.m_flScore >= DANGER_SCORE_SENTRY * 0.9f)
-			{
-				H::Draw.RenderWireframeBox(pArea->m_vCenter, Vector(-6.0f, -6.0f, -6.0f), Vector(6.0f, 6.0f, 6.0f), Vector(0, 0, 0), color, false);
-			}
+			if (tData.m_flScore >= DANGER_SCORE_SENTRY * 0.9f)
+				H::Draw.RenderWireframeBox(pArea->m_vCenter, Vector(-6.0f, -6.0f, -6.0f), Vector(6.0f, 6.0f, 6.0f), Vector(0, 0, 0), tColor, false);
 		}
 	}
 }

@@ -8,120 +8,6 @@ class CNavFile
 public:
 	CNavFile() {}
 
-	bool Save(const char* szFilename)
-	{
-		std::ofstream file(szFilename, std::ios::binary);
-		if (!file.is_open())
-			return false;
-
-		uint32_t uMagic = 0xFEEDFACE;
-		file.write((char*)&uMagic, sizeof(uint32_t));
-
-		uint32_t uVersion = 16;
-		file.write((char*)&uVersion, sizeof(uint32_t));
-
-		uint32_t uSubVersion = 2;
-		file.write((char*)&uSubVersion, sizeof(uint32_t));
-
-		file.write((char*)&m_uBspSize, sizeof(uint32_t));
-		file.write((char*)&m_bAnalyzed, sizeof(unsigned char));
-
-		unsigned short uPlacesCount = (unsigned short)m_vPlaces.size();
-		file.write((char*)&uPlacesCount, sizeof(uint16_t));
-		for (const auto& place : m_vPlaces)
-		{
-			file.write((char*)&place.m_uLen, sizeof(uint16_t));
-			file.write(place.m_sName, place.m_uLen);
-		}
-
-		file.write((char*)&m_bHasUnnamedAreas, sizeof(unsigned char));
-
-		unsigned int uAreaCount = (unsigned int)m_vAreas.size();
-		file.write((char*)&uAreaCount, sizeof(uint32_t));
-
-		for (const auto& tArea : m_vAreas)
-		{
-			file.write((char*)&tArea.m_uId, sizeof(uint32_t));
-			file.write((char*)&tArea.m_iAttributeFlags, sizeof(uint32_t));
-			file.write((char*)&tArea.m_vNwCorner, sizeof(Vector));
-			file.write((char*)&tArea.m_vSeCorner, sizeof(Vector));
-			file.write((char*)&tArea.m_flNeZ, sizeof(float));
-			file.write((char*)&tArea.m_flSwZ, sizeof(float));
-
-			for (int iDir = 0; iDir < 4; iDir++)
-			{
-				uint32_t uConnCount = (uint32_t)tArea.m_vConnectionsDir[iDir].size();
-				file.write((char*)&uConnCount, sizeof(uint32_t));
-				for (const auto& conn : tArea.m_vConnectionsDir[iDir])
-				{
-					uint32_t uConnId = conn.m_pArea ? conn.m_pArea->m_uId : conn.m_uId;
-					file.write((char*)&uConnId, sizeof(uint32_t));
-				}
-			}
-
-			uint8_t uHidingSpotCount = (uint8_t)tArea.m_vHidingSpots.size();
-			file.write((char*)&uHidingSpotCount, sizeof(uint8_t));
-			for (const auto& spot : tArea.m_vHidingSpots)
-			{
-				file.write((char*)&spot.m_uId, sizeof(uint32_t));
-				file.write((char*)&spot.m_vPos, sizeof(Vector));
-				file.write((char*)&spot.m_fFlags, sizeof(unsigned char));
-			}
-
-			uint32_t uEncounterSpotCount = (uint32_t)tArea.m_vSpotEncounters.size();
-			file.write((char*)&uEncounterSpotCount, sizeof(uint32_t));
-			for (const auto& spot : tArea.m_vSpotEncounters)
-			{
-				uint32_t uFromId = spot.m_tFrom.m_pArea ? spot.m_tFrom.m_pArea->m_uId : spot.m_tFrom.m_uId;
-				file.write((char*)&uFromId, sizeof(uint32_t));
-				file.write((char*)&spot.m_iFromDir, sizeof(unsigned char));
-				
-				uint32_t uToId = spot.m_tTo.m_pArea ? spot.m_tTo.m_pArea->m_uId : spot.m_tTo.m_uId;
-				file.write((char*)&uToId, sizeof(uint32_t));
-				file.write((char*)&spot.m_iToDir, sizeof(unsigned char));
-				
-				file.write((char*)&spot.m_uSpotCount, sizeof(unsigned char));
-				for (const auto& order : spot.m_vSpots)
-				{
-					file.write((char*)&order.m_uId, sizeof(uint32_t));
-					file.write((char*)&order.flT, sizeof(unsigned char));
-				}
-			}
-			
-			file.write((char*)&tArea.m_uIndexType, sizeof(uint16_t));
-
-			for (int iDir = 0; iDir < 2; iDir++)
-			{
-				uint32_t uLadderCount = (uint32_t)tArea.m_vLadders[iDir].size();
-				file.write((char*)&uLadderCount, sizeof(uint32_t));
-				for (const auto& ladderId : tArea.m_vLadders[iDir])
-				{
-					file.write((char*)&ladderId, sizeof(uint32_t));
-				}
-			}
-
-			for (float j : tArea.m_flEarliestOccupyTime)
-				file.write((char*)&j, sizeof(float));
-
-			for (float j : tArea.m_flLightIntensity)
-				file.write((char*)&j, sizeof(float));
-
-			uint32_t uVisibleAreaCount = (uint32_t)tArea.m_vPotentiallyVisibleAreas.size();
-			file.write((char*)&uVisibleAreaCount, sizeof(uint32_t));
-			for (const auto& tInfo : tArea.m_vPotentiallyVisibleAreas)
-			{
-				file.write((char*)&tInfo.m_uId, sizeof(uint32_t));
-				file.write((char*)&tInfo.m_uAttributes, sizeof(unsigned char));
-			}
-
-			file.write((char*)&tArea.m_uInheritVisibilityFrom, sizeof(uint32_t));
-			file.write((char*)&tArea.m_iTFAttributeFlags, sizeof(uint32_t));
-		}
-		
-		file.close();
-		return true;
-	}
-
 	// Intended to use with engine->GetLevelName() or mapname from server_spawn GameEvent
 	// Change it if you get the nav file from elsewhere
 	explicit CNavFile(const char* szLevelname)
@@ -326,14 +212,14 @@ public:
 
 	// Im not sure why but it takes away last 4 bytes of the nav file
 	// Might be related to the fact that im not using CUtlBuffer for saving this
-	void Write()
+	bool Write(const char* szFilename = nullptr)
 	{
-		std::string sFilePath{ std::filesystem::current_path().string() + "\\Amalgam\\Nav\\" + SDK::GetLevelName() + ".nav" };
+		std::string sFilePath{ szFilename ? szFilename : std::filesystem::current_path().string() + "\\Amalgam\\Nav\\" + SDK::GetLevelName() + ".nav" };
 		std::ofstream file(sFilePath, std::ios::binary | std::ios::ate);
 		if (!file.is_open())
 		{
 			SDK::Output("CNavFile::Write", std::format("Couldn't open file {}", sFilePath).c_str(), { 200, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-			return;
+			return false;
 		}
 
 		uint32_t uMagic = 0xFEEDFACE;
@@ -430,6 +316,7 @@ public:
 		}
 
 		file.close();
+		return true;
 	}
 
 	std::vector<NavPlace_t> m_vPlaces;

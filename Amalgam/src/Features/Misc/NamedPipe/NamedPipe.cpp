@@ -1,4 +1,4 @@
-
+#ifdef TEXTMODE
 #include "NamedPipe.h"
 #include "../../../SDK/SDK.h"
 #include "../../Players/PlayerUtils.h"
@@ -161,7 +161,7 @@ void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
 void CNamedPipe::Reset()
 {
 	std::lock_guard lock(m_infoMutex);
-	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_sBotName, tInfo.m_uAccountID, false);
+	tInfo = ClientInfo_t(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_sBotName, tInfo.m_uAccountID, false);
 	m_bSetServerName = false;
 	m_bSetMapName = false;
 	ClearCaptureReservations();
@@ -729,10 +729,10 @@ void CNamedPipe::ProcessLocalBotMessage(std::string sContent)
 			if (vTokens.size() >= 3)
 			{
 				std::lock_guard lock(m_otherBotsMutex);
-				OtherBotInfo& info = m_mOtherBots[uAccountID];
-				info.m_sServerIP = vTokens[1];
-				info.m_iBotId = std::stoi(vTokens[2]);
-				info.m_flLastUpdate = GetNowSeconds();
+				OtherBotInfo_t& tInfo = m_mOtherBots[uAccountID];
+				tInfo.m_sServerIP = vTokens[1];
+				tInfo.m_iBotId = std::stoi(vTokens[2]);
+				tInfo.m_flLastUpdate = GetNowSeconds();
 			}
 
 			Log("Processed local bot message: " + sContent);
@@ -896,3 +896,4 @@ std::string CNamedPipe::GetPlayerClassName(int iPlayerClass)
 	default: return "N/A";
 	}
 }
+#endif

@@ -3,50 +3,32 @@
 #include "../DangerManager/DangerManager.h"
 #include "../NavEngine/NavEngine.h"
 #include "../NavEngine/Controllers/Controller.h"
-#include <unordered_set>
-#include <algorithm>
-#include <cmath>
 
 bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	static Timer tRoamTimer;
-	static std::vector<CNavArea*> vVisitedAreas; // Should be cleared when nav engine is off, currently it is not
 	static Timer tVisitedAreasClearTimer;
-	static CNavArea* pCurrentTargetArea = nullptr;
-	static int iConsecutiveFails = 0;
-	static CMap* pLastMap = nullptr;
-	static CNavArea* pLastConnectedSeed = nullptr;
-	static std::unordered_set<CNavArea*> sConnectedAreas;
 	static Timer tConnectedAreasRefreshTimer;
 
 	auto pMap = F::NavEngine.GetNavMap();
 	if (!pMap)
 	{
-		vVisitedAreas.clear();
-		pCurrentTargetArea = nullptr;
-		iConsecutiveFails = 0;
-		sConnectedAreas.clear();
-		pLastConnectedSeed = nullptr;
-		pLastMap = nullptr;
+		Reset();
 		return false;
 	}
 
-	if (pLastMap != pMap)
+	if (m_pLastMap != pMap)
 	{
-		vVisitedAreas.clear();
-		pCurrentTargetArea = nullptr;
-		iConsecutiveFails = 0;
-		sConnectedAreas.clear();
-		pLastConnectedSeed = nullptr;
+		Reset();
+		m_pLastMap = pMap;
 		tConnectedAreasRefreshTimer.Update();
-		pLastMap = pMap;
 	}
 
 	// Clear visited areas if they get too large or after some time
-	if (tVisitedAreasClearTimer.Run(60.f) || vVisitedAreas.size() > 40)
+	if (tVisitedAreasClearTimer.Run(60.f) || m_vVisitedAreas.size() > 40)
 	{
-		vVisitedAreas.clear();
-		iConsecutiveFails = 0;
+		m_vVisitedAreas.clear();
+		m_iConsecutiveFails = 0;
 	}
 
 	// Don't path constantly
@@ -144,12 +126,12 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 	m_bDefending = false;
-	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
+	if (m_pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
 	{
-		bool bCanKeepTarget = F::NavEngine.IsPathing() && pCurrentTargetArea->m_vCenter.DistTo(vLocalOrigin) <= 4200.f;
+		bool bCanKeepTarget = F::NavEngine.IsPathing() && m_pCurrentTargetArea->m_vCenter.DistTo(vLocalOrigin) <= 4200.f;
 		if (pMap)
 		{
-			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(pCurrentTargetArea, pCurrentTargetArea);
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(m_pCurrentTargetArea, m_pCurrentTargetArea);
 			auto it = pMap->m_mVischeckCache.find(tAreaKey);
 			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount) && it->second.m_bStuckBlacklist)
 				bCanKeepTarget = false;
@@ -158,11 +140,11 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		if (bCanKeepTarget)
 			return true;
 
-		pCurrentTargetArea = nullptr;
+		m_pCurrentTargetArea = nullptr;
 	}
 
 	// Reset current target if we are not pathing or it's invalid
-	pCurrentTargetArea = nullptr;
+	m_pCurrentTargetArea = nullptr;
 
 	struct RoamCandidate_t
 	{
@@ -177,27 +159,27 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	if (!pLocalArea)
 		return false;
 
-	if (pLastConnectedSeed != pLocalArea || sConnectedAreas.empty() || tConnectedAreasRefreshTimer.Run(2.f))
+	if (m_pLastConnectedSeed != pLocalArea || m_sConnectedAreas.empty() || tConnectedAreasRefreshTimer.Run(2.f))
 	{
 		std::vector<CNavArea*> vConnectedAreas;
 		if (pMap)
 			pMap->CollectAreasAround(vLocalOrigin, 100000.f, vConnectedAreas);
 
-		sConnectedAreas.clear();
+		m_sConnectedAreas.clear();
 		for (auto pArea : vConnectedAreas)
 			if (pArea)
-				sConnectedAreas.insert(pArea);
+				m_sConnectedAreas.insert(pArea);
 
-		if (sConnectedAreas.empty())
-			sConnectedAreas.insert(pLocalArea);
+		if (m_sConnectedAreas.empty())
+			m_sConnectedAreas.insert(pLocalArea);
 
-		pLastConnectedSeed = pLocalArea;
+		m_pLastConnectedSeed = pLocalArea;
 	}
 
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
 	{
-		if (!sConnectedAreas.contains(&tArea))
+		if (!m_sConnectedAreas.contains(&tArea))
 			continue;
 
 		float flBlacklistPenalty = 0.f;
@@ -286,7 +268,7 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 
 		float flVisitedPenalty = 0.f;
-		for (auto pVisited : vVisitedAreas)
+		for (auto pVisited : m_vVisitedAreas)
 		{
 			if (pVisited && pArea->m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
 			{
@@ -334,18 +316,28 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 			break;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
-			pCurrentTargetArea = pArea;
-			vVisitedAreas.push_back(pArea);
-			iConsecutiveFails = 0;
+			m_pCurrentTargetArea = pArea;
+			m_vVisitedAreas.push_back(pArea);
+			m_iConsecutiveFails = 0;
 			return true;
 		}
 	}
 
-	if (++iConsecutiveFails >= 3)
+	if (++m_iConsecutiveFails >= 3)
 	{
-		vVisitedAreas.clear();
-		iConsecutiveFails = 0;
+		m_vVisitedAreas.clear();
+		m_iConsecutiveFails = 0;
 	}
 
 	return false;
+}
+
+void CNavBotRoam::Reset()
+{
+	m_pCurrentTargetArea = nullptr;
+	m_pLastConnectedSeed = nullptr;
+	m_pLastMap = nullptr;
+	m_iConsecutiveFails = 0;
+	m_vVisitedAreas.clear();
+	m_sConnectedAreas.clear();
 }
