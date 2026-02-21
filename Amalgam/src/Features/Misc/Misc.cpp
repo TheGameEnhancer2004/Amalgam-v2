@@ -22,6 +22,7 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	JoinSpam(pLocal);
 	AchievementSpam(pLocal);
 	CallVoteSpam(pLocal);
+	AutoBanJoiner();
 	CheatsBypass();
 	WeaponSway();
 	AutoReport();
@@ -351,6 +352,49 @@ void CMisc::JoinSpam(CTFPlayer* pLocal)
 	I::EngineClient->ClientCmd_Unrestricted(pLocal->m_iTeamNum() == TF_TEAM_RED ? "jointeam blue" : "jointeam red");
 }
 
+void CMisc::AutoBanJoiner()
+{
+	static bool bApplied = false;
+	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
+	static auto fps_max = H::ConVars.FindVar("fps_max");
+	static auto host_timescale = H::ConVars.FindVar("host_timescale");
+
+	if (!sv_cheats || !fps_max || !host_timescale)
+		return;
+
+	const bool bShouldApply = Vars::Misc::Automation::AutoBanJoiner.Value && I::EngineClient->IsDrawingLoadingImage();
+	if (bShouldApply)
+	{
+		if (bApplied)
+			return;
+
+		sv_cheats->m_nValue = 1;
+		sv_cheats->m_fValue = 1.f;
+		fps_max->m_fValue = 0.3f;
+		fps_max->m_nValue = 0;
+		host_timescale->m_fValue = 40.f;
+		host_timescale->m_nValue = 40;
+
+		bApplied = true;
+		return;
+	}
+
+	if (!bApplied)
+		return;
+
+#ifdef TEXTMODE
+	fps_max->m_fValue = 30.f;
+	fps_max->m_nValue = 30;
+#else
+	fps_max->m_fValue = 500.f;
+	fps_max->m_nValue = 500;
+#endif
+	host_timescale->m_fValue = 1.f;
+	host_timescale->m_nValue = 1;
+
+	bApplied = false;
+}
+
 void CMisc::CallVoteSpam(CTFPlayer* pLocal)
 {
 	if (!Vars::Misc::Automation::CallVoteSpam.Value || !m_tCallVoteSpamTimer.Run(1.0f))
@@ -405,14 +449,15 @@ void CMisc::CheatsBypass()
 {
 	static bool bCheatSet = false;
 	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
-	if (Vars::Misc::Exploits::CheatsBypass.Value)
+	const bool bShouldBypass = Vars::Misc::Exploits::CheatsBypass.Value || Vars::Misc::Automation::AutoBanJoiner.Value;
+	if (bShouldBypass)
 	{
 		sv_cheats->m_nValue = 1;
+		sv_cheats->m_fValue = 1.f;
 		bCheatSet = true;
 	}
 	else if (bCheatSet)
 	{
-		sv_cheats->m_nValue = 0;
 		bCheatSet = false;
 	}
 }
