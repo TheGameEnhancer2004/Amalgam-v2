@@ -90,12 +90,17 @@ bool CNavBotSupplies::ShouldSearchHealth(CTFPlayer* pLocal, bool bLowPrio)
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::GetHealth)
 		return false;
 
+	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
+	bool bAlreadyGettingHealth = F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetHealth || F::NavEngine.m_eCurrentPriority == PriorityListEnum::LowPrioGetHealth;
+
+	if (bAlreadyGettingHealth)
+		return flHealthPercent < (bLowPrio ? 0.92f : 0.9f);
+
 	// Check if being gradually healed in any way
 	if (pLocal->m_nPlayerCond() & (1 << 21)/*TFCond_Healing*/)
 		return false;
 
 	// Get health when below 65%, or below 80% and just patrolling
-	float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
 	return flHealthPercent < 0.64f || bLowPrio && (F::NavEngine.m_eCurrentPriority <= PriorityListEnum::Patrol || F::NavEngine.m_eCurrentPriority == PriorityListEnum::LowPrioGetHealth) && flHealthPercent <= 0.80f;
 }
 
@@ -108,6 +113,8 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::GetAmmo)
 		return false;
 
+	bool bAlreadyGettingAmmo = F::NavEngine.m_eCurrentPriority == PriorityListEnum::GetAmmo;
+
 	for (int i = 0; i <= SLOT_MELEE; i++)
 	{
 		int iActualSlot = G::SavedWepSlots[i];
@@ -116,7 +123,7 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 
 		int iWeaponID = G::SavedWepIds[iActualSlot];
 		int iReserveAmmo = G::AmmoInSlot[iActualSlot].m_iReserve;
-		if (iReserveAmmo <= 5 &&
+		if (iReserveAmmo <= (bAlreadyGettingAmmo ? 10 : 5) &&
 			(iWeaponID == TF_WEAPON_SNIPERRIFLE ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
 			iWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP))
@@ -125,17 +132,24 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 		int iClip = G::AmmoInSlot[iActualSlot].m_iClip;
 		int iMaxClip = G::AmmoInSlot[iActualSlot].m_iMaxClip;
 		int iMaxReserveAmmo = G::AmmoInSlot[iActualSlot].m_iMaxReserve;
-
-		// If clip and reserve are both very low, definitely get ammo
-		if (iMaxClip > 0 && iClip <= iMaxClip * 0.25f && iReserveAmmo <= iMaxReserveAmmo * 0.25f)
-			return true;
-
-		// Don't search for ammo if we have more than 60% of max reserve
-		if (iReserveAmmo >= iMaxReserveAmmo * 0.6f)
+		if (!iMaxReserveAmmo)
 			continue;
 
-		// Search for ammo if we're below 33% of capacity
-		if (iReserveAmmo <= iMaxReserveAmmo / 3)
+		const float flClipThreshold = bAlreadyGettingAmmo ? 0.35f : 0.25f;
+		const float flReserveCriticalThreshold = bAlreadyGettingAmmo ? 0.35f : 0.25f;
+		const float flReserveSkipThreshold = bAlreadyGettingAmmo ? 0.75f : 0.6f;
+		const float flReserveSearchThreshold = bAlreadyGettingAmmo ? 0.45f : (1.f / 3.f);
+
+		// If clip and reserve are both very low, definitely get ammo
+		if (iMaxClip > 0 && iClip <= iMaxClip * flClipThreshold && iReserveAmmo <= iMaxReserveAmmo * flReserveCriticalThreshold)
+			return true;
+
+		// Don't search for ammo if we have enough reserve
+		if (iReserveAmmo >= iMaxReserveAmmo * flReserveSkipThreshold)
+			continue;
+
+		// Search for ammo if we're low on reserve
+		if (iReserveAmmo <= iMaxReserveAmmo * flReserveSearchThreshold)
 			return true;
 	}
 
@@ -145,6 +159,7 @@ bool CNavBotSupplies::ShouldSearchAmmo(CTFPlayer* pLocal)
 bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocalOrigin, SupplyData_t* pSupplyData, const int iPriority)
 {
 	float flDist = pSupplyData->m_vOrigin.DistTo(vLocalOrigin);
+	const auto ePriority = PriorityListEnum::PriorityListEnum(iPriority);
 	if (!pSupplyData->m_bDispenser)
 	{
 		// Check if we are close enough to the pack to pick it up
@@ -165,9 +180,17 @@ bool CNavBotSupplies::GetSupply(CUserCmd* pCmd, CTFPlayer* pLocal, Vector vLocal
 	}
 	// Stand still if we are close to a dispenser 
 	else if (flDist <= 150.f)
+	{
+		// Keep job priority alive while waiting for dispenser ticks.
+		if (F::NavEngine.m_eCurrentPriority != ePriority)
+		{
+			if (!F::NavEngine.NavTo(pSupplyData->m_vOrigin, ePriority, true, false))
+				F::NavEngine.m_eCurrentPriority = ePriority;
+		}
 		return true;
+	}
 
-	return F::NavEngine.NavTo(pSupplyData->m_vOrigin, PriorityListEnum::PriorityListEnum(iPriority), true, flDist > 200.f);
+	return F::NavEngine.NavTo(pSupplyData->m_vOrigin, ePriority, true, flDist > 200.f);
 }
 
 void CNavBotSupplies::UpdateTakenState()
@@ -197,21 +220,47 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	static bool bWasForce = false;
 	bool bShouldForce = iFlags & GetSupplyEnum::Forced;
 	bool bIsAmmo = ePriority == PriorityListEnum::GetAmmo;
+	const auto eCurrentPriority = F::NavEngine.m_eCurrentPriority;
+	const bool bActiveHealthJob = eCurrentPriority == PriorityListEnum::GetHealth || eCurrentPriority == PriorityListEnum::LowPrioGetHealth;
+	const bool bActiveSupplyJob = bIsAmmo ? eCurrentPriority == PriorityListEnum::GetAmmo : bActiveHealthJob;
+
+	static Timer tStickySupplyLockTimer{};
+	const float flHealthPercent = static_cast<float>(pLocal->m_iHealth()) / pLocal->GetMaxHealth();
+	const bool bNeedsHealthStill = flHealthPercent < (bLowPrio ? 0.92f : 0.9f);
+	const bool bCanKeepStickyLock = bIsAmmo || bNeedsHealthStill;
+
+	// Keep trying the last known dispenser for a short while if dispenser scanning flickers.
+	static bool bHasRememberedDispenser = false;
+	static Vector vRememberedDispenser = {};
+	static Timer tRememberedDispenserTimer{};
 	if (!bShouldForce && !(bIsAmmo ? ShouldSearchAmmo(pLocal) : ShouldSearchHealth(pLocal, bLowPrio)))
 	{
+		if (!bIsAmmo && bHasRememberedDispenser && bNeedsHealthStill && !tRememberedDispenserTimer.Check(2.f))
+		{
+			SupplyData_t tRemembered{};
+			tRemembered.m_bDispenser = true;
+			tRemembered.m_vOrigin = vRememberedDispenser;
+			if (GetSupply(pCmd, pLocal, pLocal->GetAbsOrigin(), &tRemembered, ePriority))
+				return true;
+		}
+
 		// Cancel pathing if we no longer need to get anything
-		if (F::NavEngine.m_eCurrentPriority == ePriority && (!bIsAmmo || !bWasForce))
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLockTimer.Check(1.25f))
+			return true;
+
+		if (bActiveSupplyJob && (!bIsAmmo || !bWasForce))
 			F::NavEngine.CancelPath();
 		return false;
 	}
+	tStickySupplyLockTimer.Update();
 
 	static Timer tCooldownTimer{};
 	if (!bShouldForce && !tCooldownTimer.Check(1.f))
-		return F::NavEngine.m_eCurrentPriority == ePriority;
+		return bActiveSupplyJob;
 
 	// Already pathing, only try to repath every 2s
 	static Timer tRepathCooldownTimer{};
-	if (F::NavEngine.m_eCurrentPriority == ePriority && !tRepathCooldownTimer.Run(2.f))
+	if (bActiveSupplyJob && !tRepathCooldownTimer.Run(2.f))
 		return true;
 
 	UpdateTakenState();
@@ -219,8 +268,30 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	bool bClosestSupplyWasTaken = false;
 	bool bGotSupplies = GetSuppliesData(pLocal, bClosestSupplyWasTaken, bIsAmmo);
 	bool bGotDispensers = GetDispensersData(pLocal);
+	if (!bIsAmmo)
+	{
+		if (bGotDispensers && !m_vTempDispensers.empty())
+		{
+			bHasRememberedDispenser = true;
+			vRememberedDispenser = m_vTempDispensers.front().m_vOrigin;
+			tRememberedDispenserTimer.Update();
+		}
+		else if (bHasRememberedDispenser && bNeedsHealthStill && !tRememberedDispenserTimer.Check(2.f))
+		{
+			SupplyData_t tRemembered{};
+			tRemembered.m_bDispenser = true;
+			tRemembered.m_vOrigin = vRememberedDispenser;
+			if (GetSupply(pCmd, pLocal, pLocal->GetAbsOrigin(), &tRemembered, ePriority))
+				return true;
+		}
+		else if (bHasRememberedDispenser && (tRememberedDispenserTimer.Check(2.f) || !bNeedsHealthStill))
+			bHasRememberedDispenser = false;
+	}
 	if (!bGotSupplies && !bGotDispensers)
 	{
+		if (bActiveSupplyJob && bCanKeepStickyLock && !tStickySupplyLockTimer.Check(1.25f))
+			return true;
+
 		tCooldownTimer.Update();
 		return false;
 	}
@@ -252,8 +323,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 				pSecondBest = &pSupplyData;
 				break;
 			}
-			else
-				pBest = &pSupplyData;
+			pBest = &pSupplyData;
 		}
 	}
 
@@ -281,6 +351,7 @@ bool CNavBotSupplies::Run(CUserCmd* pCmd, CTFPlayer* pLocal, int iFlags)
 	if (pBest && GetSupply(pCmd, pLocal, vLocalOrigin, pBest, ePriority))
 	{
 		bWasForce = bShouldForce;
+		tStickySupplyLockTimer.Update();
 		return true;
 	}
 

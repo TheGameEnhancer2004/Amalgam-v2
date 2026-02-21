@@ -1,7 +1,6 @@
 #pragma once
 
 #ifdef TEXTMODE
-
 #include "../../../SDK/SDK.h"
 #include <thread>
 #include <atomic>
@@ -44,8 +43,17 @@ private:
 	std::mutex m_localBotsMutex;
 	std::unordered_map<uint32_t, bool> m_mLocalBots;
 
+	struct OtherBotInfo_t
+	{
+		std::string m_sServerIP;
+		int m_iBotId = -1;
+		double m_flLastUpdate = 0.0;
+	};
+	std::mutex m_otherBotsMutex;
+	std::unordered_map<uint32_t, OtherBotInfo_t> m_mOtherBots;
+
 	std::shared_mutex m_infoMutex;
-	struct ClientInfo
+	struct ClientInfo_t
 	{
 		int m_iCurrentHealth = -1;
 		int m_iCurrentClass = TF_CLASS_UNDEFINED;
@@ -60,7 +68,7 @@ private:
 
 		bool m_bInGame = false;
 	};
-	ClientInfo tInfo;
+	ClientInfo_t tInfo;
 	bool m_bSetServerName = false;
 	bool m_bSetMapName = false;
 
@@ -92,6 +100,7 @@ public:
 	void Shutdown();
 
 	bool IsLocalBot(uint32_t uAccountID);
+	std::vector<int> GetOtherBotsOnServer(std::string sServerIP);
 	void AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx, const Vector& vSpot, float flDurationSeconds = 1.0f);
 	void AnnounceCaptureSpotRelease(const std::string& sMap, int iPointIdx);
 	std::vector<Vector> GetReservedCaptureSpots(const std::string& sMap, int iPointIdx, uint32_t uIgnoreAccountID = 0);
@@ -99,6 +108,7 @@ public:
 	void Store(CTFPlayer* pLocal = nullptr, bool bCreateMove = false);
 	void Event(IGameEvent* pEvent, uint32_t uHash);
 	void Reset();
+	int GetBotId() { return m_iBotId; }
 };
 
 ADD_FEATURE(CNamedPipe, NamedPipe);

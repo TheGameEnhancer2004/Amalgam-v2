@@ -1,21 +1,34 @@
 #include "Roam.h"
 #include "Capture.h"
+#include "../DangerManager/DangerManager.h"
 #include "../NavEngine/NavEngine.h"
 #include "../NavEngine/Controllers/Controller.h"
 
 bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	static Timer tRoamTimer;
-	static std::vector<CNavArea*> vVisitedAreas; // Should be cleared when nav engine is off, currently it is not
 	static Timer tVisitedAreasClearTimer;
-	static CNavArea* pCurrentTargetArea = nullptr;
-	static int iConsecutiveFails = 0;
+	static Timer tConnectedAreasRefreshTimer;
+
+	auto pMap = F::NavEngine.GetNavMap();
+	if (!pMap)
+	{
+		Reset();
+		return false;
+	}
+
+	if (m_pLastMap != pMap)
+	{
+		Reset();
+		m_pLastMap = pMap;
+		tConnectedAreasRefreshTimer.Update();
+	}
 
 	// Clear visited areas if they get too large or after some time
-	if (tVisitedAreasClearTimer.Run(60.f) || vVisitedAreas.size() > 40)
+	if (tVisitedAreasClearTimer.Run(60.f) || m_vVisitedAreas.size() > 40)
 	{
-		vVisitedAreas.clear();
-		iConsecutiveFails = 0;
+		m_vVisitedAreas.clear();
+		m_iConsecutiveFails = 0;
 	}
 
 	// Don't path constantly
@@ -24,6 +37,10 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Patrol)
 		return false;
+
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+	Vector vObjectiveAnchor = {};
+	bool bHasObjectiveAnchor = false;
 
 	// Defend our objective if possible
 	if (Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::DefendObjectives)
@@ -49,6 +66,12 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		default:
 			break;
 		}
+		if (bGotTarget)
+		{
+			vObjectiveAnchor = vTarget;
+			bHasObjectiveAnchor = true;
+		}
+
 		if (bGotTarget || F::NavBotCapture.m_bOverwriteCapture)
 		{
 			if (F::NavBotCapture.m_bOverwriteCapture)
@@ -103,114 +126,218 @@ bool CNavBotRoam::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 		}
 	}
 	m_bDefending = false;
-	if (pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
+	if (m_pCurrentTargetArea && F::NavEngine.m_eCurrentPriority == PriorityListEnum::Patrol)
 	{
-		auto pMap = F::NavEngine.GetNavMap();
+		bool bCanKeepTarget = F::NavEngine.IsPathing() && m_pCurrentTargetArea->m_vCenter.DistTo(vLocalOrigin) <= 4200.f;
 		if (pMap)
 		{
-			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(pCurrentTargetArea, pCurrentTargetArea);
+			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(m_pCurrentTargetArea, m_pCurrentTargetArea);
 			auto it = pMap->m_mVischeckCache.find(tAreaKey);
-			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
-				pCurrentTargetArea = nullptr;
+			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount) && it->second.m_bStuckBlacklist)
+				bCanKeepTarget = false;
 		}
 
-		if (pCurrentTargetArea)
+		if (bCanKeepTarget)
 			return true;
+
+		m_pCurrentTargetArea = nullptr;
 	}
 
 	// Reset current target if we are not pathing or it's invalid
-	pCurrentTargetArea = nullptr;
+	m_pCurrentTargetArea = nullptr;
 
-	std::vector<CNavArea*> vValidAreas;
-	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+	struct RoamCandidate_t
+	{
+		CNavArea* m_pArea = nullptr;
+		float m_flBlacklistPenalty = 0.f;
+		float m_flDangerCost = 0.f;
+		bool m_bSoftBlocked = false;
+	};
+
+	std::vector<RoamCandidate_t> vCandidates;
+	auto pLocalArea = F::NavEngine.GetLocalNavArea(vLocalOrigin);
+	if (!pLocalArea)
+		return false;
+
+	if (m_pLastConnectedSeed != pLocalArea || m_sConnectedAreas.empty() || tConnectedAreasRefreshTimer.Run(2.f))
+	{
+		std::vector<CNavArea*> vConnectedAreas;
+		if (pMap)
+			pMap->CollectAreasAround(vLocalOrigin, 100000.f, vConnectedAreas);
+
+		m_sConnectedAreas.clear();
+		for (auto pArea : vConnectedAreas)
+			if (pArea)
+				m_sConnectedAreas.insert(pArea);
+
+		if (m_sConnectedAreas.empty())
+			m_sConnectedAreas.insert(pLocalArea);
+
+		m_pLastConnectedSeed = pLocalArea;
+	}
 
 	// Get all nav areas
 	for (auto& tArea : F::NavEngine.GetNavFile()->m_vAreas)
 	{
-		// Skip if area is blacklisted
-		if (F::NavEngine.GetFreeBlacklist()->find(&tArea) != F::NavEngine.GetFreeBlacklist()->end())
+		if (!m_sConnectedAreas.contains(&tArea))
 			continue;
 
-		auto pMap = F::NavEngine.GetNavMap();
+		float flBlacklistPenalty = 0.f;
+		if (pMap)
+		{
+			auto itBlacklist = F::NavEngine.GetFreeBlacklist()->find(&tArea);
+			if (itBlacklist != F::NavEngine.GetFreeBlacklist()->end())
+			{
+				flBlacklistPenalty = pMap->GetBlacklistPenalty(itBlacklist->second);
+				if (!std::isfinite(flBlacklistPenalty) || flBlacklistPenalty >= 4000.f)
+					continue;
+			}
+		}
+
+		bool bSoftBlocked = false;
 		if (pMap)
 		{
 			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(&tArea, &tArea);
 			auto it = pMap->m_mVischeckCache.find(tAreaKey);
 			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
-				continue;
+			{
+				if (it->second.m_bStuckBlacklist)
+					continue;
+
+				bSoftBlocked = true;
+			}
 		}
 
 		// Dont run in spawn bitch
 		if (tArea.m_iTFAttributeFlags & (TF_NAV_SPAWN_ROOM_BLUE | TF_NAV_SPAWN_ROOM_RED))
 			continue;
 
-		// Skip if we recently visited this area or something near it
-		bool bTooCloseToVisited = false;
-		for (auto pVisited : vVisitedAreas)
-		{
-			if (tArea.m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
-			{
-				bTooCloseToVisited = true;
-				break;
-			}
-		}
-		if (bTooCloseToVisited)
-			continue;
-
-		// Skip areas that are too close to us
-		float flDist = tArea.m_vCenter.DistTo(vLocalOrigin);
-		if (flDist < 500.f)
-			continue;
-
-		vValidAreas.push_back(&tArea);
+		RoamCandidate_t tCandidate{};
+		tCandidate.m_pArea = &tArea;
+		tCandidate.m_flBlacklistPenalty = flBlacklistPenalty;
+		tCandidate.m_flDangerCost = F::DangerManager.GetCost(&tArea);
+		tCandidate.m_bSoftBlocked = bSoftBlocked;
+		vCandidates.push_back(tCandidate);
 	}
 
 	// No valid areas found
-	if (vValidAreas.empty())
-	{
-		// If we failed too many times in a row, clear visited areas
-		if (++iConsecutiveFails >= 3)
-		{
-			vVisitedAreas.clear();
-			iConsecutiveFails = 0;
-		}
+	if (vCandidates.empty())
 		return false;
+
+	std::vector<std::pair<CNavArea*, float>> vScoredAreas;
+	vScoredAreas.reserve(vCandidates.size());
+	const float flLocalToObjective = bHasObjectiveAnchor ? vLocalOrigin.DistTo(vObjectiveAnchor) : 0.f;
+
+	for (const auto& tCandidate : vCandidates)
+	{
+		auto pArea = tCandidate.m_pArea;
+		if (!pArea)
+			continue;
+
+		const float flDist = pArea->m_vCenter.DistTo(vLocalOrigin);
+
+		float flObjectiveScore = 0.f;
+		if (bHasObjectiveAnchor)
+		{
+			const float flAreaToObjective = pArea->m_vCenter.DistTo(vObjectiveAnchor);
+			const float flProgress = std::clamp((flLocalToObjective - flAreaToObjective) / 1200.f, -1.f, 1.f);
+			flObjectiveScore = flProgress * 900.f;
+		}
+
+		float flSafetyPenalty = std::clamp(tCandidate.m_flDangerCost, 0.f, 8000.f) * 0.08f;
+		flSafetyPenalty += std::min(tCandidate.m_flBlacklistPenalty, 2500.f) * 0.45f;
+		if (tCandidate.m_bSoftBlocked)
+			flSafetyPenalty += 450.f;
+
+		constexpr float flPreferredPatrolDistance = 2200.f;
+		constexpr float flNearPenaltyStart = 800.f;
+		constexpr float flLongPenaltyStart = 4200.f;
+		constexpr float flLongPenaltyCap = 5600.f;
+
+		const float flDistanceDelta = std::fabs(flDist - flPreferredPatrolDistance);
+		const float flDistanceFit = 1.f - std::clamp(flDistanceDelta / flPreferredPatrolDistance, 0.f, 1.f);
+		float flDistanceScore = flDistanceFit * 650.f;
+
+		if (flDist < flNearPenaltyStart)
+			flDistanceScore -= (1.f - (flDist / flNearPenaltyStart)) * 450.f;
+
+		if (flDist > flLongPenaltyStart)
+		{
+			const float flLongFraction = std::clamp((flDist - flLongPenaltyStart) / (flLongPenaltyCap - flLongPenaltyStart), 0.f, 1.f);
+			flDistanceScore -= flLongFraction * 420.f;
+		}
+
+		float flVisitedPenalty = 0.f;
+		for (auto pVisited : m_vVisitedAreas)
+		{
+			if (pVisited && pArea->m_vCenter.DistTo(pVisited->m_vCenter) < 750.f)
+			{
+				flVisitedPenalty += 500.f;
+				break;
+			}
+		}
+
+		float flScore = flObjectiveScore - flSafetyPenalty + flDistanceScore - flVisitedPenalty;
+
+		vScoredAreas.emplace_back(pArea, flScore);
 	}
 
-	// Reset fail counter since we found valid areas
-	iConsecutiveFails = 0;
-
-	// Sort by distance first (farthest first)
-	std::sort(vValidAreas.begin(), vValidAreas.end(), [&](CNavArea* a, CNavArea* b)
+	std::sort(vScoredAreas.begin(), vScoredAreas.end(), [](const auto& a, const auto& b)
 		{
-			return a->m_vCenter.DistToSqr(vLocalOrigin) > b->m_vCenter.DistToSqr(vLocalOrigin);
+			return a.second > b.second;
 		});
 
-	for (size_t i = 0; i < vValidAreas.size(); ++i)
+	const size_t uPathCostCandidates = std::min<size_t>(vScoredAreas.size(), 16);
+	for (size_t i = 0; i < uPathCostCandidates; i++)
 	{
-		if (SDK::RandomFloat(0.f, 1.f) < 0.2f)
-		{
-			size_t j = (i + 1 < vValidAreas.size()) ? i + 1 : (i > 0 ? i - 1 : i);
-			if (i != j)
-				std::swap(vValidAreas[i], vValidAreas[j]);
-		}
+		auto& tScoredArea = vScoredAreas[i];
+		const float flPathCost = F::NavEngine.GetPathCost(vLocalOrigin, tScoredArea.first->m_vCenter);
+		if (std::isfinite(flPathCost) && flPathCost < FLT_MAX)
+			tScoredArea.second -= flPathCost * 0.12f;
+		else
+			tScoredArea.second -= 1200.f;
+	}
+
+	if (uPathCostCandidates > 0)
+	{
+		std::sort(vScoredAreas.begin(), vScoredAreas.end(), [](const auto& a, const auto& b)
+			{
+				return a.second > b.second;
+			});
 	}
 
 	int iAttempts = 0;
-	for (auto pArea : vValidAreas)
+	for (auto& [pArea, _] : vScoredAreas)
 	{
 		if (!pArea)
 			continue;
 
-		if (iAttempts++ > 10)
+		if (iAttempts++ > 40)
 			break;
 		if (F::NavEngine.NavTo(pArea->m_vCenter, PriorityListEnum::Patrol))
 		{
-			pCurrentTargetArea = pArea;
-			vVisitedAreas.push_back(pArea);
+			m_pCurrentTargetArea = pArea;
+			m_vVisitedAreas.push_back(pArea);
+			m_iConsecutiveFails = 0;
 			return true;
 		}
 	}
 
+	if (++m_iConsecutiveFails >= 3)
+	{
+		m_vVisitedAreas.clear();
+		m_iConsecutiveFails = 0;
+	}
+
 	return false;
+}
+
+void CNavBotRoam::Reset()
+{
+	m_pCurrentTargetArea = nullptr;
+	m_pLastConnectedSeed = nullptr;
+	m_pLastMap = nullptr;
+	m_iConsecutiveFails = 0;
+	m_vVisitedAreas.clear();
+	m_sConnectedAreas.clear();
 }

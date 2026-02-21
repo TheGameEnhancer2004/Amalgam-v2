@@ -692,7 +692,7 @@ bool CNavBotCapture::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	}
 
 	// If priority is not capturing, or we have a new target, try to path there
-	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture || vTarget != vPreviousTarget)
+	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture || vTarget.DistToSqr(vPreviousTarget) > 256.f)
 	{
 		bool bNavOk = F::NavEngine.NavTo(vTarget, PriorityListEnum::Capture, true, !F::NavEngine.IsPathing());
 		if (bNavOk)

@@ -3,6 +3,7 @@
 #include "../Features/EnginePrediction/EnginePrediction.h"
 #include "../Features/Spectate/Spectate.h"
 #include "../Features/NavBot/NavEngine/NavEngine.h"
+#include "../Features/NavBot/DangerManager/DangerManager.h"
 #include "../Features/NavBot/NavBotJobs/GetSupplies.h"
 
 MAKE_HOOK(CHLClient_LevelShutdown, U::Memory.GetVirtual(I::Client, 7), void,
@@ -20,6 +21,8 @@ MAKE_HOOK(CHLClient_LevelShutdown, U::Memory.GetVirtual(I::Client, 7), void,
 	G::TriggerStorage.clear();
 #endif
 	F::NavEngine.ClearRespawnRooms();
+	F::NavEngine.FlushCrumbCache();
+	F::DangerManager.Reset();
 	F::NavBotSupplies.ResetCachedOrigins();
 
 	CALL_ORIGINAL(rcx);

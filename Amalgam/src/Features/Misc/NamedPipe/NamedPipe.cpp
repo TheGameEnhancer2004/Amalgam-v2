@@ -1,12 +1,4 @@
-//
-//
-//
-// TODO: REFACTOR THIS bad code
-//
-//
-//
 #ifdef TEXTMODE
-
 #include "NamedPipe.h"
 #include "../../../SDK/SDK.h"
 #include "../../Players/PlayerUtils.h"
@@ -169,7 +161,7 @@ void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
 void CNamedPipe::Reset()
 {
 	std::lock_guard lock(m_infoMutex);
-	tInfo = ClientInfo(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_sBotName, tInfo.m_uAccountID, false);
+	tInfo = ClientInfo_t(-1, TF_CLASS_UNDEFINED, -1, -1, -1, "N/A", "N/A", tInfo.m_sBotName, tInfo.m_uAccountID, false);
 	m_bSetServerName = false;
 	m_bSetMapName = false;
 	ClearCaptureReservations();
@@ -359,8 +351,9 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					uint32_t uAccountID = F::NamedPipe.tInfo.m_uAccountID;
 					if (F::NamedPipe.tInfo.m_uAccountID != 0)
 					{
-						F::NamedPipe.QueueMessage("LocalBot", std::to_string(F::NamedPipe.tInfo.m_uAccountID), true);
-						F::NamedPipe.Log("Queued local bot ID broadcast: " + std::to_string(F::NamedPipe.tInfo.m_uAccountID));
+						std::string sContent = std::format("{}|{}|{}", F::NamedPipe.tInfo.m_uAccountID, F::NamedPipe.tInfo.m_sCurrentServer, F::NamedPipe.m_iBotId);
+						F::NamedPipe.QueueMessage("LocalBot", sContent, true);
+						F::NamedPipe.Log("Queued local bot ID broadcast: " + sContent);
 
 						if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
 							F::NamedPipe.ProcessMessageQueue();
@@ -686,22 +679,63 @@ std::vector<Vector> CNamedPipe::GetReservedCaptureSpots(const std::string& sMap,
 	return vReserved;
 }
 
-void CNamedPipe::ProcessLocalBotMessage(std::string sAccountID)
+std::vector<int> CNamedPipe::GetOtherBotsOnServer(std::string sServerIP)
 {
-	if (!sAccountID.empty())
+	std::vector<int> vBotIds;
+	if (sServerIP == "N/A" || sServerIP.empty())
+		return vBotIds;
+
+	std::lock_guard lock(m_otherBotsMutex);
+	double flNow = GetNowSeconds();
+	for (auto it = m_mOtherBots.begin(); it != m_mOtherBots.end();)
+	{
+		if (flNow - it->second.m_flLastUpdate > 30.0) // 30 second timeout
+		{
+			it = m_mOtherBots.erase(it);
+			continue;
+		}
+
+		if (it->second.m_sServerIP == sServerIP)
+			vBotIds.push_back(it->second.m_iBotId);
+		++it;
+	}
+	return vBotIds;
+}
+
+void CNamedPipe::ProcessLocalBotMessage(std::string sContent)
+{
+	if (!sContent.empty())
 	{
 		try
 		{
-			uint32_t uAccountID = static_cast<uint32_t>(std::stoull(sAccountID));
+			std::vector<std::string> vTokens;
+			{
+				std::stringstream ss(sContent);
+				std::string sToken;
+				while (std::getline(ss, sToken, '|'))
+					vTokens.emplace_back(sToken);
+			}
 
-			// Don't skip messages from our own bot ID - we might have multiple instances
-			// with the same ID running
+			if (vTokens.empty())
+				return;
+
+			uint32_t uAccountID = static_cast<uint32_t>(std::stoull(vTokens[0]));
 
 			{
 				std::lock_guard lock(m_localBotsMutex);
 				m_mLocalBots[uAccountID] = true;
 			}
-			Log("Added local bot with friendsID: " + sAccountID);
+
+			if (vTokens.size() >= 3)
+			{
+				std::lock_guard lock(m_otherBotsMutex);
+				OtherBotInfo_t& tInfo = m_mOtherBots[uAccountID];
+				tInfo.m_sServerIP = vTokens[1];
+				tInfo.m_iBotId = std::stoi(vTokens[2]);
+				tInfo.m_flLastUpdate = GetNowSeconds();
+			}
+
+			Log("Processed local bot message: " + sContent);
 		}
 		catch (const std::exception& e)
 		{
@@ -862,5 +896,4 @@ std::string CNamedPipe::GetPlayerClassName(int iPlayerClass)
 	default: return "N/A";
 	}
 }
-
-#endif // TEXTMODE
+#endif

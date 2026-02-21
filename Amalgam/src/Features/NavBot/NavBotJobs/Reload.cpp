@@ -5,8 +5,10 @@ bool CNavBotReload::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	static Timer tReloadrunCooldown{};
 
-	// Not reloading, do not run
-	if (!G::Reloading && F::BotUtils.m_iCurrentSlot != SLOT_MELEE && G::AmmoInSlot[F::BotUtils.m_iCurrentSlot].m_iClip)
+	const bool bHasReloadTarget = m_iLastReloadSlot >= SLOT_PRIMARY && m_iLastReloadSlot <= SLOT_SECONDARY;
+
+	// Don't run unless we are actively reloading, or we have a valid weapon slot that should be reloaded.
+	if (!G::Reloading && !bHasReloadTarget)
 		return false;
 
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::StalkEnemies))
@@ -121,6 +123,9 @@ int CNavBotReload::GetReloadWeaponSlot(CTFPlayer* pLocal, ClosestEnemy_t tCloses
 {
 	if (!(Vars::Misc::Movement::NavBot::Preferences.Value & Vars::Misc::Movement::NavBot::PreferencesEnum::ReloadWeapons))
 		return -1;
+
+	if (G::Reloading && F::BotUtils.m_iCurrentSlot >= SLOT_PRIMARY && F::BotUtils.m_iCurrentSlot <= SLOT_SECONDARY)
+		return F::BotUtils.m_iCurrentSlot;
 
 	// Priority too high
 	if (F::NavEngine.m_eCurrentPriority > PriorityListEnum::Capture)

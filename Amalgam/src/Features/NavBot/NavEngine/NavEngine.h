@@ -26,6 +26,15 @@ struct Crumb_t
 	Vector m_vApproachDir = {};
 };
 
+struct CachedCrumb_t
+{
+	Vector m_vPos = {};
+	bool m_bRequiresDrop = false;
+	float m_flDropHeight = 0.f;
+	float m_flApproachDistance = 0.f;
+	Vector m_vApproachDir = {};
+};
+
 struct RespawnRoom_t
 {
 	int m_iTeam = 0;
@@ -35,6 +44,12 @@ struct RespawnRoom_t
 class CNavEngine
 {
 private:
+	static constexpr int kCrumbCacheVersion = 1;
+	static constexpr float kConnectionSegmentLength = 95.f;
+	static constexpr int kMaxConnectionIntermediateCrumbs = 24;
+	static constexpr float kMinAdaptiveSpacing = 72.f;
+	static constexpr float kMaxAdaptiveSpacing = 150.f;
+
 	std::unique_ptr<CMap> m_pMap;
 	std::vector<Crumb_t> m_vCrumbs;
 	std::vector<RespawnRoom_t> m_vRespawnRooms;
@@ -51,8 +66,26 @@ private:
 	bool m_bPathing = false;
 	bool m_bUpdatedRespawnRooms = false;
 	bool m_bRepathRequested = false;
+	int m_iNextRepathTick = 0;
+	int m_iLastBlacklistAbandonTick = 0;
+	Vector m_vLastStrictFailDestination = {};
+	int m_iStrictFailTick = 0;
+	int m_iStrictFailCount = 0;
+	std::unordered_map<uint64_t, std::vector<CachedCrumb_t>> m_mConnectionCrumbCache;
+	bool m_bCrumbCacheReady = false;
+	bool m_bCrumbCacheDirty = false;
+	std::string m_sCrumbCachePath = {};
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
+	void BuildAdaptiveAreaCrumbs(const NavPoints_t& tPoints, const DropdownHint_t& tDrop, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut) const;
+	uint64_t MakeConnectionKey(uint32_t uFromId, uint32_t uToId) const;
+	std::string BuildCrumbCachePath() const;
+	bool LoadCrumbCache();
+	bool SaveCrumbCache() const;
+	void BuildCrumbCache();
+	std::vector<CachedCrumb_t> BuildConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea);
+	const std::vector<CachedCrumb_t>* FindConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea) const;
+	void AppendCachedCrumbs(CNavArea* pArea, const std::vector<CachedCrumb_t>& vCachedCrumbs);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath(const std::string& sReason);
@@ -85,8 +118,10 @@ public:
 	std::vector<CNavArea*>* GetRespawnRoomExitAreas() { return &m_vRespawnRoomExitAreas; }
 
 	CNavArea* FindClosestNavArea(const Vector vOrigin, bool bLocalOrigin = true) { return m_pMap->FindClosestNavArea(vOrigin, bLocalOrigin); }
+	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavFile* GetNavFile() { return &m_pMap->m_navfile; }
 	CMap* GetNavMap() { return m_pMap.get(); }
+	CNavArea* GetLocalNavArea() { return m_pLocalArea; }
 
 	// Get the path nodes
 	std::vector<Crumb_t>* GetCrumbs() { return &m_vCrumbs; }
@@ -127,6 +162,7 @@ public:
 	Crumb_t m_tLastCrumb;
 	Vector m_vCurrentPathDir;
 	Vector m_vLastDestination;
+	Vector m_vLastLookTarget;
 
 public:
 	void FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
@@ -139,12 +175,12 @@ public:
 
 	float GetPathCost(const Vector& vLocalOrigin, const Vector& vDestination);
 
-	CNavArea* GetLocalNavArea() const { return m_pLocalArea; }
 	CNavArea* GetLocalNavArea(const Vector& vLocalOrigin);
 	const Vector& GetCurrentPathDir() const { return m_vCurrentPathDir; }
 
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset(bool bForced = false);
+	void FlushCrumbCache();
 	void Render();
 };
 

@@ -282,8 +282,8 @@ namespace Vars
 	NAMESPACE_BEGIN(Aimbot)
 		SUBNAMESPACE_BEGIN(General, Aimbot)
 			CVarEnum(AimType, "Aim type", 0, NONE, nullptr,
-				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit"),
-				Off, Plain, Smooth, Silent, Locking, Assistive, Legit);
+				VA_LIST("Off", "Plain", "Smooth", "Silent", "Locking", "Assistive", "Legit", "SmoothVelocity"),
+				Off, Plain, Smooth, Silent, Locking, Assistive, Legit, SmoothVelocity);
 			CVarEnum(TargetSelection, "Target selection", 0, NONE, nullptr,
 				VA_LIST("FOV", "Distance", "Hybrid"),
 				FOV, Distance, Hybrid);
@@ -301,6 +301,10 @@ namespace Vars
 			CVar(MaxTargets, "Max targets", 2, SLIDER_MIN, 1, 6);
 			CVar(IgnoreInvisible, "Ignore invisible", 50.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 10.f, "%g%%");
 			CVar(AssistStrength, "Assist strength", 25.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 100.f, 1.f, "%g%%");
+			CVarEnum(SmoothCurve, "Smooth curve", 0, NONE, nullptr,
+				VA_LIST("Linear", "Fast start", "Fast end", "Slow start", "Slow end"),
+				Linear, FastStart, FastEnd, SlowStart, SlowEnd);
+			CVar(SmoothCurveAmount, "Smooth curve amount", 100.f, SLIDER_CLAMP | SLIDER_PRECISION, 0.f, 200.f, 5.f, "%g%%");
 			CVar(TickTolerance, "Tick tolerance", 4, SLIDER_CLAMP, 0, 21);
 			CVar(AutoShoot, "Auto shoot", true);
 			CVar(FOVCircle, "FOV Circle", true, VISUAL);
@@ -794,6 +798,7 @@ I dont think this is a good idea to disable simulations completely:
 
 			SUBNAMESPACE_BEGIN(NavEngine)
 				CVar(Enabled, VA_LIST("Enabled", "Nav engine enabled"), false);
+				CVar(PathRandomization, "Path randomization", false);
 				CVar(DisableOnSpectate, "Disable on spectate", false);
 				CVar(PathInSetup, "Path in setup time", false);
 				CVarEnum(Draw, "Draw", 0b011, VISUAL | DROPDOWN_MULTI, nullptr,
@@ -803,16 +808,15 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Off", "Plain", "Silent", "Legit", "Legit silent"),
 					Off, Plain, Silent, Legit, LegitSilent);
 
-				CVar(SafePathing, "Safe pathing", false, NOSAVE | DEBUGVAR);
-				CVar(StickyIgnoreTime, "Sticky ignore time", 15, NOSAVE | DEBUGVAR | SLIDER_MIN, 15, 100, 5, "%is");
-				CVar(StuckDetectTime, "Stuck detect time", 2, NOSAVE | DEBUGVAR | SLIDER_MIN, 2, 26, 2, "%is");
-				CVar(StuckBlacklistTime, "Stuck blacklist time", 120, NOSAVE | DEBUGVAR | SLIDER_MIN, 20, 600, 20, "%is");
-				CVar(StuckExpireTime, "Stuck expire time", 5, NOSAVE | DEBUGVAR | SLIDER_MIN, 5, 100, 5, "%is");
-				CVar(StuckTime, "Stuck time", 0.2f, NOSAVE | DEBUGVAR | SLIDER_MIN, 0.25f, 0.9f, 0.05f, "%gs");
+				CVar(StickyIgnoreTime, "Sticky ignore time", 15, SLIDER_MIN, 15, 100, 5, "%is");
+				CVar(StuckDetectTime, "Stuck detect time", 2, SLIDER_MIN, 2, 26, 2, "%is");
+				CVar(StuckBlacklistTime, "Stuck blacklist time", 60, SLIDER_MIN, 20, 600, 20, "%is");
+				CVar(StuckExpireTime, "Stuck expire time", 5, SLIDER_MIN, 5, 100, 5, "%is");
+				CVar(StuckTime, "Stuck time", 0.2f, SLIDER_MIN, 0.25f, 0.9f, 0.05f, "%gs");
 
-				CVar(VischeckEnabled, "Vischeck enabled", false, NOSAVE | DEBUGVAR);
-				CVar(VischeckTime, "Vischeck time", 2.f, NOSAVE | DEBUGVAR | SLIDER_MIN, 0.005f, 3.f, 0.005f, "%gs");
-				CVar(VischeckCacheTime, "Vischeck cache time", 240, NOSAVE | DEBUGVAR | SLIDER_MIN, 10, 500, 10, "%is");
+				CVar(VischeckEnabled, "Vischeck enabled", false);
+				CVar(VischeckTime, "Vischeck time", 2.f, SLIDER_MIN, 0.005f, 3.f, 0.005f, "%gs");
+				CVar(VischeckCacheTime, "Vischeck cache time", 90, SLIDER_MIN, 10, 500, 10, "%is");
 			SUBNAMESPACE_END(NavEngine);
 
 			SUBNAMESPACE_BEGIN(BotUtils)
@@ -851,6 +855,8 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Get health", "Get ammo", "Reload weapons", "Stalk enemies", "Defend objectives", "Capture objectives", "Help capture objectives", "Escape danger", "Safe capping", "Target sentries", "Auto engie", "##Divider", "Target sentries low range", "Help capture objective friend only", "Dont escape danger with intel", "Group with others"),
 					SearchHealth = 1 << 0, SearchAmmo = 1 << 1, ReloadWeapons = 1 << 2, StalkEnemies = 1 << 3, DefendObjectives = 1 << 4, CaptureObjectives = 1 << 5, HelpCaptureObjectives = 1 << 6, EscapeDanger = 1 << 7, SafeCapping = 1 << 8, TargetSentries = 1 << 9, AutoEngie = 1 << 10, TargetSentriesLowRange = 1 << 11, HelpFriendlyCaptureObjectives = 1 << 12, DontEscapeDangerIntel = 1 << 13, GroupWithOthers = 1 << 14);
 				CVar(MeleeTargetRange, "Melee target range", 600, NONE, 150, 4000, 50);
+				CVar(DangerOverlay, "Danger overlay", false);
+				CVar(DangerOverlayMaxDist, "Danger overlay max distance", 2000.f, SLIDER_MIN, 500.f, 6000.f, 250.f, "%0.0f");
 
 				CVar(StickyDangerRange, "Sticky danger range", 600, NOSAVE | DEBUGVAR, 50, 1500, 50);
 				CVar(ProjectileDangerRange, "Projectile danger range", 600, NOSAVE | DEBUGVAR, 50, 1500, 50);
@@ -1010,6 +1016,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(FreezeQueue, "Freeze queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 			CVar(AutoCasualJoin, "Auto casual join", false);
+			CVar(MapPopularizing, "Map popularizing mode", false);
 			CVar(MapBarBoost, "Boost Playercount Visualizer", false);
 			CVar(AutoAbandonIfNoNavmesh, "Auto abandon if no navmesh", true);
 			CVar(AutoDumpProfiles, "Auto dump profiles", false);

@@ -23,6 +23,50 @@ bool CAimbot::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 	return true;
 }
 
+float CAimbot::GetSmoothStrength(const Vec3& vCurAngle, const Vec3& vToAngle) const
+{
+	float flStrength = std::clamp(Vars::Aimbot::General::AssistStrength.Value / 100.f, 0.f, 1.f);
+	if (!flStrength)
+		return 0.f;
+
+	float flAimFOV = std::max(Vars::Aimbot::General::AimFOV.Value, 1.f);
+	float flFovRatio = std::clamp(Math::CalcFov(vCurAngle, vToAngle) / flAimFOV, 0.f, 1.f);
+	float flCloseRatio = 1.f - flFovRatio;
+	float flCurve = 1.f;
+
+	switch (Vars::Aimbot::General::SmoothCurve.Value)
+	{
+	case Vars::Aimbot::General::SmoothCurveEnum::FastStart:
+		flCurve = 1.f - flCloseRatio * flCloseRatio;
+		break;
+	case Vars::Aimbot::General::SmoothCurveEnum::FastEnd:
+		flCurve = 1.f - flFovRatio * flFovRatio;
+		break;
+	case Vars::Aimbot::General::SmoothCurveEnum::SlowStart:
+		flCurve = flCloseRatio * flCloseRatio;
+		break;
+	case Vars::Aimbot::General::SmoothCurveEnum::SlowEnd:
+		flCurve = flFovRatio * flFovRatio;
+		break;
+	}
+
+	const float flCurveAmount = std::clamp(Vars::Aimbot::General::SmoothCurveAmount.Value / 100.f, 0.f, 2.f);
+	flCurve = 1.f - (1.f - flCurve) * flCurveAmount;
+
+	float flVelocityScale = 1.f;
+	if (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::SmoothVelocity && G::AimTarget.m_iEntIndex > 0)
+	{
+		if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
+		{
+			const float flSpeed = pTarget->GetAbsVelocity().Length2D();
+			const float flSpeedRatio = std::clamp(flSpeed / 320.f, 0.f, 1.75f);
+			flVelocityScale = std::clamp(0.65f + flSpeedRatio * 0.4f, 0.35f, 1.35f);
+		}
+	}
+
+	return std::clamp(flStrength * std::clamp(flCurve, 0.05f, 1.f) * flVelocityScale, 0.f, 1.f);
+}
+
 void CAimbot::RunAimbot(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, bool bSecondaryType)
 {
 	m_bRunningSecondary = bSecondaryType;

@@ -12,10 +12,59 @@ static bool SmoothAimHasPriority()
 {
 	const auto iAimType = Vars::Aimbot::General::AimType.Value;
 	if (iAimType != Vars::Aimbot::General::AimTypeEnum::Smooth &&
+		iAimType != Vars::Aimbot::General::AimTypeEnum::SmoothVelocity &&
 		iAimType != Vars::Aimbot::General::AimTypeEnum::Assistive)
 		return false;
 
 	return G::AimbotSteering;
+}
+
+static bool CanPrioritizeMeleeAsBest(CTFPlayer* pLocal)
+{
+	if (!pLocal)
+		return false;
+
+	if (pLocal->m_iClass() == TF_CLASS_ENGINEER)
+		return true;
+
+	// Demoknight: demoman without sticky launcher
+	if (pLocal->m_iClass() == TF_CLASS_DEMOMAN && G::SavedWepIds[SLOT_SECONDARY] != TF_WEAPON_PIPEBOMBLAUNCHER)
+		return true;
+
+	return false;
+}
+
+static int GetRangedFallbackSlot(CTFPlayer* pLocal)
+{
+	auto HasWeapon = [&](int iSlot)
+		{
+			return pLocal->GetWeaponFromSlot(iSlot) != nullptr;
+		};
+
+	auto HasUsableWeapon = [&](int iSlot)
+		{
+			if (!HasWeapon(iSlot))
+				return false;
+
+			if (!G::AmmoInSlot[iSlot].m_bUsesAmmo)
+				return true;
+
+			return G::AmmoInSlot[iSlot].m_iClip > 0 || G::AmmoInSlot[iSlot].m_iReserve > 0;
+		};
+
+	if (HasUsableWeapon(SLOT_PRIMARY))
+		return SLOT_PRIMARY;
+
+	if (HasUsableWeapon(SLOT_SECONDARY))
+		return SLOT_SECONDARY;
+
+	if (HasWeapon(SLOT_PRIMARY))
+		return SLOT_PRIMARY;
+
+	if (HasWeapon(SLOT_SECONDARY))
+		return SLOT_SECONDARY;
+
+	return SLOT_MELEE;
 }
 
 bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -332,6 +381,9 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 	default:
 		break;
 	}
+
+	if (m_iBestSlot == SLOT_MELEE && !CanPrioritizeMeleeAsBest(pLocal))
+		m_iBestSlot = GetRangedFallbackSlot(pLocal);
 }
 
 void CBotUtils::SetSlot(CTFPlayer* pLocal, int iSlot)
@@ -406,11 +458,12 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	if (!pLocal)
 		return;
 
+	auto& tState = m_tLLAP;
+
 	if (SmoothAimHasPriority())
 	{
 		Vec3 vCurrent = I::EngineClient->GetViewAngles();
 		m_vLastAngles = vCurrent;
-		auto& tState = m_tLLAP;
 		if (tState.m_bInitialized)
 			tState.m_vAnchor = vCurrent;
 		return;
@@ -421,9 +474,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	bool bEnemyLock = false;
 
 	// 1. look at visible enemies
-	static int iLastTarget = -1;
-	static float flLastSeen = 0.f;
-	static Vec3 vLastPos = {};
 
 	CBaseEntity* pBestEnemy = nullptr;
 	float flBestDist = FLT_MAX;
@@ -498,15 +548,15 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 		else
 			vLook = pBestEnemy->GetCenter();
 
-		iLastTarget = pBestEnemy->entindex();
-		flLastSeen = I::GlobalVars->curtime;
-		vLastPos = vLook;
+		tState.m_iLastTarget = pBestEnemy->entindex();
+		tState.m_flLastSeen = I::GlobalVars->curtime;
+		tState.m_vLastPos = vLook;
 		bEnemyLock = true;
 	}
-	else if ((I::GlobalVars->curtime - flLastSeen) < 1.2f && !vLastPos.IsZero())
+	else if ((I::GlobalVars->curtime - tState.m_flLastSeen) < 1.2f && !tState.m_vLastPos.IsZero())
 	{
 		// look at last known position for a bit
-		vLook = vLastPos;
+		vLook = tState.m_vLastPos;
 		bEnemyLock = true;
 	}
 	else
@@ -580,7 +630,6 @@ void CBotUtils::LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, 
 	Vec3 vDesired = Math::CalcAngle(vEye, vFocus);
 	Math::ClampAngles(vDesired);
 
-	auto& tState = m_tLLAP;
 	const float flTargetDelta = tState.m_vLastTarget.IsZero() ? FLT_MAX : tState.m_vLastTarget.DistToSqr(vFocus);
 	if (!tState.m_bInitialized || !std::isfinite(flTargetDelta) || flTargetDelta > 4096.f)
 	{
@@ -1006,129 +1055,6 @@ bool CBotUtils::IsSurfaceWalkable(const Vector& vNormal)
 	static const Vector vUp = { 0.f, 0.f, 1.f };
 	float flAngle = RAD2DEG(std::acos(vNormal.Dot(vUp)));
 	return flAngle < 50.f; // MAX_WALKABLE_ANGLE
-}
-
-bool CBotUtils::IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd)
-{
-	if (!pLocal) return false;
-
-	auto pMap = F::NavEngine.GetNavMap();
-	if (pMap)
-	{
-		auto pDestArea = F::NavEngine.FindClosestNavArea(vEnd);
-		if (pDestArea)
-		{
-			auto tAreaKey = std::pair<CNavArea*, CNavArea*>(pDestArea, pDestArea);
-			auto it = pMap->m_mVischeckCache.find(tAreaKey);
-			if (it != pMap->m_mVischeckCache.end() && !it->second.m_bPassable && (it->second.m_iExpireTick == 0 || it->second.m_iExpireTick > I::GlobalVars->tickcount))
-			{
-				if (!F::NavEngine.m_bIgnoreTraces || it->second.m_bStuckBlacklist)
-					return false;
-			}
-		}
-	}
-
-	const bool bDebug = Vars::Misc::Movement::NavEngine::Draw.Value & Vars::Misc::Movement::NavEngine::DrawEnum::Walkable;
-	if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 255, 255 }, "[IsWalkable] Testing path from (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)\n", vStart.x, vStart.y, vStart.z, vEnd.x, vEnd.y, vEnd.z);
-
-	m_vWalkableSegments.clear();
-	const float flStepHeight = pLocal->m_flStepSize();
-	const float flMaxFallDistance = 350.f;
-	const Vector vStepHeight = { 0.f, 0.f, flStepHeight };
-	const Vector vMaxFallDistance = { 0.f, 0.f, flMaxFallDistance };
-	const Vector vHullMin = { -20.f, -20.f, 0.f };
-	const Vector vHullMax = { 20.f, 20.f, 72.f };
-
-	auto PerformTraceHull = [&](const Vector& vS, const Vector& vE) -> CGameTrace
-		{
-			CGameTrace trace = {};
-			CTraceFilterNavigation filter(pLocal);
-			SDK::TraceHull(vS, vE, vHullMin, vHullMax, MASK_PLAYERSOLID, &filter, &trace);
-			return trace;
-		};
-
-	auto AdjustDirectionToSurface = [&](Vector vDir, const Vector& vNormal) -> Vector
-		{
-			vDir.Normalize();
-			if (!IsSurfaceWalkable(vNormal)) return vDir;
-
-			float flDot = vDir.Dot(vNormal);
-			vDir.z -= vNormal.z * flDot;
-			vDir.Normalize();
-			return vDir;
-		};
-
-	CGameTrace groundTrace = PerformTraceHull(vStart + vStepHeight, vStart - vMaxFallDistance);
-	if (groundTrace.fraction == 1.0f)
-	{
-		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] No ground at start\n");
-		return false;
-	}
-
-	Vector vCurrentPos = groundTrace.endpos;
-	Vector vLastPos = vCurrentPos;
-	Vector vGoalDir = vEnd - vCurrentPos;
-	Vector vLastDir = AdjustDirectionToSurface(vGoalDir, groundTrace.plane.normal);
-
-	float flMaxDist = vEnd.DistTo2D(vStart);
-	if (flMaxDist < 1.f) return true;
-
-	CGameTrace wallTrace = PerformTraceHull(vCurrentPos + vStepHeight, vEnd + vStepHeight);
-	if (wallTrace.startsolid)
-	{
-		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Start solid in wall\n");
-		return false;
-	}
-
-	if (wallTrace.fraction < 1.0f)
-	{
-		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Path blocked by wall/entity (fraction: %.2f)\n", wallTrace.fraction);
-		return false;
-	}
-
-	float flStepSize = 64.f;
-	int iNumSteps = std::max(1, static_cast<int>(std::ceil(flMaxDist / flStepSize)));
-	Vector vDir = (vEnd - vStart).Normalized();
-
-	for (int i = 1; i <= iNumSteps; i++)
-	{
-		Vector vCheckPos = vStart + vDir * std::min(flMaxDist, i * flStepSize);
-		CGameTrace groundCheck = PerformTraceHull(vCheckPos + vStepHeight, vCheckPos - vMaxFallDistance);
-
-		if (groundCheck.fraction == 1.0f)
-		{
-			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Pit/Ledge detected at step %d\n", i);
-			return false;
-		}
-
-		if (!IsSurfaceWalkable(groundCheck.plane.normal))
-		{
-			if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Surface too steep at step %d\n", i);
-			return false;
-		}
-
-		if (std::abs(groundCheck.endpos.z - vCurrentPos.z) > flStepHeight + 2.f)
-		{
-			CGameTrace granularCheck = PerformTraceHull(vCurrentPos + vStepHeight, groundCheck.endpos + vStepHeight);
-			if (granularCheck.fraction < 1.0f)
-			{
-				if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 0, 0, 255 }, "  [FAIL] Height gap not passable at step %d\n", i);
-				return false;
-			}
-		}
-
-		m_vWalkableSegments.push_back({ vCurrentPos, groundCheck.endpos });
-		vCurrentPos = groundCheck.endpos;
-	}
-
-	if (std::abs(vCurrentPos.z - vEnd.z) > flStepHeight + 2.f)
-	{
-		if (bDebug) I::CVar->ConsoleColorPrintf({ 255, 255, 0, 255 }, "  [FAIL] Final height mismatch (diff: %.1f)\n", std::abs(vCurrentPos.z - vEnd.z));
-		return false;
-	}
-
-	if (bDebug) I::CVar->ConsoleColorPrintf({ 0, 255, 0, 255 }, "  [SUCCESS] Path is walkable\n");
-	return true;
 }
 
 bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)

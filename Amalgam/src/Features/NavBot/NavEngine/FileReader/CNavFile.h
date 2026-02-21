@@ -93,26 +93,26 @@ public:
 			// Change the tolerance if you wish
 			tArea.m_flMinZ = std::min(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) - 18.f;
 			tArea.m_flMaxZ = std::max(tArea.m_vSeCorner.z, tArea.m_vNwCorner.z) + 18.f;
+			tArea.m_uConnectionCount = 0;
 
 			for (int iDir = 0; iDir < 4; iDir++)
 			{
-				file.read((char*)&tArea.m_uConnectionCount, sizeof(uint32_t));
-				for (size_t j = 0; j < tArea.m_uConnectionCount; j++)
+				uint32_t uDirConnectionCount = 0;
+				file.read((char*)&uDirConnectionCount, sizeof(uint32_t));
+				for (size_t j = 0; j < uDirConnectionCount; j++)
 				{
 					NavConnect_t tConnect;
 					file.read((char*)&tConnect.m_uId, sizeof(uint32_t));
 
 					// Connection to the same area?
 					if (tConnect.m_uId == tArea.m_uId)
-					{
-						tArea.m_uConnectionCount--;
 						continue;
-					}
 
 					// Note: If connection directions matter to you, uncomment
 					// this
 					tArea.m_vConnections /*[iDir]*/.push_back(tConnect);
 					tArea.m_vConnectionsDir[iDir].push_back(tConnect);
+					tArea.m_uConnectionCount++;
 				}
 			}
 
@@ -212,14 +212,14 @@ public:
 
 	// Im not sure why but it takes away last 4 bytes of the nav file
 	// Might be related to the fact that im not using CUtlBuffer for saving this
-	void Write()
+	bool Write(const char* szFilename = nullptr)
 	{
-		std::string sFilePath{ std::filesystem::current_path().string() + "\\Amalgam\\Nav\\" + SDK::GetLevelName() + ".nav" };
+		std::string sFilePath{ szFilename ? szFilename : std::filesystem::current_path().string() + "\\Amalgam\\Nav\\" + SDK::GetLevelName() + ".nav" };
 		std::ofstream file(sFilePath, std::ios::binary | std::ios::ate);
 		if (!file.is_open())
 		{
 			SDK::Output("CNavFile::Write", std::format("Couldn't open file {}", sFilePath).c_str(), { 200, 150, 150 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
-			return;
+			return false;
 		}
 
 		uint32_t uMagic = 0xFEEDFACE;
@@ -316,6 +316,7 @@ public:
 		}
 
 		file.close();
+		return true;
 	}
 
 	std::vector<NavPlace_t> m_vPlaces;

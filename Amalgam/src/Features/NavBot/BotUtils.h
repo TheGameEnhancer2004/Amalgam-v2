@@ -88,7 +88,6 @@ public:
 	void LookLegit(CTFPlayer* pLocal, CUserCmd* pCmd, const Vec3& vDest, bool bSilent);
 	void InvalidateLLAP();
 
-	bool IsWalkable(CTFPlayer* pLocal, const Vector& vStart, const Vector& vEnd);
 	bool IsSurfaceWalkable(const Vector& vNormal);
 	bool SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd);
 	void HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd);

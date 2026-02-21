@@ -1315,6 +1315,7 @@ bool CAimbotProjectile::TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Tar
 				// attempted to have a headshot check though this seems more detrimental than useful outside of smooth aimbot
 				if (tTarget.m_nAimedHitbox == HITBOX_HEAD && pProjectilePath &&
 					(Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Smooth
+					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::SmoothVelocity
 					|| Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Assistive))
 				{	// loop and see if closest hitbox is head
 					auto pHitboxInfos = F::Backtrack.GetHitboxInfos(tTarget.m_pEntity);
@@ -1532,6 +1533,7 @@ skipSplash:
 			else switch (Vars::Aimbot::General::AimType.Value)
 			{
 			case Vars::Aimbot::General::AimTypeEnum::Smooth:
+			case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 				if (Vars::Aimbot::General::AssistStrength.Value == 100.f)
 					break;
 				[[fallthrough]];
@@ -1628,7 +1630,8 @@ bool CAimbotProjectile::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMeth
 		bReturn = true;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
-		vOut = vCurAngle.LerpAngle(vToAngle, Vars::Aimbot::General::AssistStrength.Value / 100.f);
+	case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
+		vOut = vCurAngle.LerpAngle(vToAngle, F::Aimbot.GetSmoothStrength(vCurAngle, vToAngle));
 		bReturn = true;
 		break;
 	case Vars::Aimbot::General::AimTypeEnum::Assistive:
@@ -1636,7 +1639,7 @@ bool CAimbotProjectile::Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMeth
 		Vec3 vTargetDelta = vToAngle.DeltaAngle(G::LastUserCmd->viewangles);
 		float flMouseDelta = vMouseDelta.Length2D(), flTargetDelta = vTargetDelta.Length2D();
 		vTargetDelta = vTargetDelta.Normalized() * std::min(flMouseDelta, flTargetDelta);
-		vOut = vCurAngle - vMouseDelta + vMouseDelta.LerpAngle(vTargetDelta, Vars::Aimbot::General::AssistStrength.Value / 100.f);
+		vOut = vCurAngle - vMouseDelta + vMouseDelta.LerpAngle(vTargetDelta, F::Aimbot.GetSmoothStrength(vCurAngle, vToAngle));
 		bReturn = true;
 		break;
 	}
@@ -1656,6 +1659,7 @@ void CAimbotProjectile::Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod)
 			break;
 		[[fallthrough]];
 	case Vars::Aimbot::General::AimTypeEnum::Smooth:
+		case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 	case Vars::Aimbot::General::AimTypeEnum::Assistive:
 		pCmd->viewangles = vAngle;
 		I::EngineClient->SetViewAngles(vAngle);
