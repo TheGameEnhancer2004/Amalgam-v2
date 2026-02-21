@@ -1,5 +1,5 @@
 #pragma once
-#include "IAppSystem.h"
+#include "../Misc/IAppSystem.h"
 
 struct studiohdr_t;
 struct studiohwdata_t;
@@ -107,3 +107,5 @@ public:
 private:
 	IMDLCache* m_pCache;
 };
+
+MAKE_INTERFACE_VERSION(IMDLCache, MDLCache, "datacache.dll", "MDLCache004");

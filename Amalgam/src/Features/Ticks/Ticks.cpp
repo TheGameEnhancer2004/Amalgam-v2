@@ -4,6 +4,7 @@
 #include "../EnginePrediction/EnginePrediction.h"
 #include "../Aimbot/AutoRocketJump/AutoRocketJump.h"
 #include "../Backtrack/Backtrack.h"
+#include "../Createmove/Createmove.h"
 
 MAKE_SIGNATURE(Host_ShouldRun, "engine.dll", "48 83 EC ? 48 8B 05 ? ? ? ? 83 78 ? ? 74 ? 48 8B 05", 0x0);
 MAKE_SIGNATURE(net_time, "engine.dll", "F2 0F 10 05 ? ? ? ? 66 0F 2F 05 ? ? ? ? 72", 0x0);
@@ -236,7 +237,7 @@ void CTicks::MoveFunc(float accumulated_extra_samples, bool bFinalTick)
 	if (I::ClientState->m_nSignonState == SIGNONSTATE_FULL)
 	{
 		int nNextCommandNr = I::ClientState->lastoutgoingcommand + I::ClientState->chokedcommands + 1;
-		I::Client->CreateMove(nNextCommandNr, TICK_INTERVAL - accumulated_extra_samples, !I::ClientState->IsPaused());
+		F::CreateMove.Run(nNextCommandNr, TICK_INTERVAL - accumulated_extra_samples, !I::ClientState->IsPaused());
 
 		if (I::DemoRecorder->IsRecording())
 			I::DemoRecorder->RecordUserInput(nNextCommandNr);

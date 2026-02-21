@@ -1003,9 +1003,11 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 		return;
 	}
 
+	static Timer tReloadTimer{};
 	auto EnsureChatLinesLoaded = [&]() -> bool
 		{
-			if (!m_vChatSpamLines.empty())
+			size_t uSize = m_vChatSpamLines.size();
+			if (uSize > 0 && !tReloadTimer.Run(5.0f))
 				return true;
 
 			static const char* szDefaultContent =
@@ -1017,7 +1019,9 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 
 			if (LoadLines("cat_chatspam.txt", m_vChatSpamLines, szDefaultContent))
 			{
-				m_iCurrentChatSpamIndex = 0;
+				// Reset index if number of lines changed
+				if (uSize != m_vChatSpamLines.size())
+					m_iCurrentChatSpamIndex = 0;
 				return true;
 			}
 
@@ -1027,10 +1031,10 @@ void CMisc::ChatSpam(CTFPlayer* pLocal)
 				"[Amalgam] Chat Spam is working!"
 			};
 			m_iCurrentChatSpamIndex = 0;
-			return true;
+			return false;
 		};
 
-	if (!EnsureChatLinesLoaded() || m_vChatSpamLines.empty())
+	if (!EnsureChatLinesLoaded())
 		return;
 
 	float flSpamInterval = Vars::Misc::Automation::ChatSpam::Interval.Value;

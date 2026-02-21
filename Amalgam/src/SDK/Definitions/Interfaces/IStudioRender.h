@@ -1,7 +1,6 @@
 #pragma once
 #include "IMaterialSystem.h"
 #include "../Main/IMaterial.h"
-#include "../Misc/IMDLCache.h"
 #include "../Misc/Studio.h"
 #include "../Main/UtlVector.h"
 #include "../Types.h"
@@ -186,6 +185,8 @@ public:
 	virtual bool VerifyHeaders(studiohdr_t* pStudioHdr) = 0;
 	virtual vertexFileHeader_t* CacheVertexData(studiohdr_t* pStudioHdr) = 0;
 };
+
+typedef unsigned short MDLHandle_t;
 
 class IStudioRender : public IAppSystem
 {

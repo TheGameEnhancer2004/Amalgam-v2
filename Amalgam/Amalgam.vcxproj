@@ -1114,6 +1114,7 @@
     <ClCompile Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.cpp" />
     <ClCompile Include="src\Features\Aimbot\AutoHeal\AutoHeal.cpp" />
     <ClCompile Include="src\Features\AutoJoin\AutoJoin.cpp" />
+    <ClCompile Include="src\Features\Createmove\Createmove.cpp" />
     <ClCompile Include="src\Features\FollowBot\FollowBot.cpp" />
     <ClCompile Include="src\Features\Killstreak\Killstreak.cpp" />
     <ClCompile Include="src\Features\Misc\AutoItem\AutoItem.cpp" />
@@ -1212,7 +1213,6 @@
     <ClCompile Include="src\Hooks\CBasePlayer_ItemPostFrame.cpp" />
     <ClCompile Include="src\Hooks\CBaseViewModel_ShouldFlipViewModel.cpp" />
     <ClCompile Include="src\Hooks\Cbuf_ExecuteCommand.cpp" />
-    <ClCompile Include="src\Hooks\CHLClient_CreateMove.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_DoPostScreenSpaceEffects.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_OverrideView.cpp" />
     <ClCompile Include="src\Hooks\CClientModeShared_ShouldDrawViewModel.cpp" />
@@ -1457,6 +1457,7 @@
     <ClInclude Include="src\Features\Aimbot\AutoRocketJump\AutoRocketJump.h" />
     <ClInclude Include="src\Features\Aimbot\AutoHeal\AutoHeal.h" />
     <ClInclude Include="src\Features\AutoJoin\AutoJoin.h" />
+    <ClInclude Include="src\Features\Createmove\Createmove.h" />
     <ClInclude Include="src\Features\FollowBot\FollowBot.h" />
     <ClInclude Include="src\Features\Killstreak\Killstreak.h" />
     <ClInclude Include="src\Features\Misc\AutoItem\AutoItem.h" />
@@ -1534,6 +1535,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\IInput.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IKeyValuesSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\ILocalize.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\IMDLCache.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IMemAlloc.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IPanel.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IStudioRender.h" />
@@ -1574,7 +1576,6 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\IMoveHelper.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\dt_send.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\IMatchGroupDescription.h" />
-    <ClInclude Include="src\SDK\Definitions\Misc\IMDLCache.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\IPrediction.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\ISpatialPartition.h" />
     <ClInclude Include="src\SDK\Definitions\Misc\ServerClass.h" />
