@@ -86,14 +86,14 @@ bool CNoSpreadHitscan::ParsePlayerPerf(const std::string& sMsg)
 	if (!Vars::Aimbot::General::NoSpread.Value)
 		return false;
 
-	std::smatch match; std::regex_match(sMsg, match, std::regex(R"((\d+.\d+)\s\d+\s\d+\s\d+.\d+\s\d+.\d+\svel\s\d+.\d+)"));
+	std::smatch tMatch; std::regex_match(sMsg, tMatch, std::regex(R"((\d+.\d+)\s\d+\s\d+\s\d+.\d+\s\d+.\d+\svel\s\d+.\d+)"));
 
-	if (match.size() == 2)
+	if (tMatch.size() == 2)
 	{
 		m_bWaitingForPlayerPerf = false;
 
 		// credits to kgb for idea
-		float flNewServerTime = std::stof(match[1].str());
+		float flNewServerTime = std::stof(tMatch[1].str());
 		if (flNewServerTime < m_flServerTime)
 			return true;
 

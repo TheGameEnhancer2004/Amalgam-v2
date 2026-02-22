@@ -26,5 +26,6 @@ public:
 	VIRTUAL(CanBeSelected, bool, 233, this);
 	VIRTUAL(CheckReload, void, 278, this);
 	VIRTUAL(GetMaxClip1, int, 322, this);
+	VIRTUAL(GetMaxClip2, int, 323, this);
 	VIRTUAL(GetName, const char*, 334, this);
 };

@@ -2536,17 +2536,17 @@ namespace ImGui
 			if (IconButton(tBind.m_iVisibility == BindVisibilityEnum::Always ? ICON_MD_VISIBILITY : ICON_MD_VISIBILITY_OFF, H::Draw.Scale(24), { 1, 1, 1, -1 }, &bHovered))
 				tBind.m_iVisibility = (tBind.m_iVisibility + 1) % 3;
 			PopTransparent(1, 1);
-			bLastHovered = bLastHovered || bHovered;
+			bLastHovered |= bHovered;
 
 			SetCursorPos({ GetWindowWidth() - H::Draw.Scale(iOffset += 25), H::Draw.Scale(36) });
 			if (IconButton(!tBind.m_bNot ? ICON_MD_CODE : ICON_MD_CODE_OFF, H::Draw.Scale(24), { 1, 1, 1, -1 }, &bHovered))
 				tBind.m_bNot = !tBind.m_bNot;
-			bLastHovered = bLastHovered || bHovered;
+			bLastHovered |= bHovered;
 
 			SetCursorPos({ GetWindowWidth() - H::Draw.Scale(iOffset += 25), H::Draw.Scale(36) });
 			if (IconButton(!tBind.m_bEnabled ? ICON_MD_TOGGLE_OFF : ICON_MD_TOGGLE_ON, H::Draw.Scale(24), { 1, 1, 1, -1 }, &bHovered))
 				tBind.m_bEnabled = !tBind.m_bEnabled;
-			bLastHovered = bLastHovered || bHovered;
+			bLastHovered |= bHovered;
 
 			PopTransparent(1, 1);
 
@@ -2554,7 +2554,7 @@ namespace ImGui
 		}
 
 		FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left, 0, "None", &bHovered);
-		bLastHovered = bLastHovered || bHovered;
+		bLastHovered |= bHovered;
 		switch (tBind.m_iType)
 		{
 		case BindEnum::Key: FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
@@ -2563,12 +2563,12 @@ namespace ImGui
 		case BindEnum::ItemSlot: FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right, 0, "None", &bHovered); break;
 		case BindEnum::Misc: FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 		}
-		bLastHovered = bLastHovered || bHovered;
+		bLastHovered |= bHovered;
 
 		if (tBind.m_iType == BindEnum::Key)
 		{
 			FKeybind("Key", tBind.m_iKey, FKeybindEnum::None, { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] }, { 0, 30 }, 0, &bHovered);
-			bLastHovered = bLastHovered || bHovered;
+			bLastHovered |= bHovered;
 		}
 
 		if (!Disabled && iBind != DEFAULT_BIND && iBind < F::Binds.m_vBinds.size())
@@ -2623,7 +2623,7 @@ namespace ImGui
 				DrawBindInfo(var, staticVal, StripDoubleHash(sBind.c_str()), bNewPopup, bLastHovered); \
 				val = staticVal; \
 				function(std::format("{}## Bind", var.m_vNames.front()).c_str(), arguments, &bHovered); \
-				bLastHovered = bLastHovered || bHovered; \
+				bLastHovered |= bHovered; \
 				staticVal = val; \
 				PopTransparent(2); \
 				EndPopup(); \

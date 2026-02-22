@@ -89,8 +89,6 @@ static inline std::deque<Frame_t> StackTrace(PCONTEXT pContext)
 				tFrame.m_sName = symbol->Name;
 		}
 	}
-	//if (!vTrace.empty())
-	//	vTrace.pop_front();
 
 	SymCleanup(hProcess);
 

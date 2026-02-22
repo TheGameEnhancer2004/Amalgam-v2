@@ -17,7 +17,7 @@ MAKE_HOOK(CL_ProcessPacketEntities, S::CL_ProcessPacketEntities(), bool,
 	if (entmsg->m_bIsDelta) // we won't need to restore
 		return CALL_ORIGINAL(entmsg);
 
-	CTFPlayer* pLocal = H::Entities.GetLocal();
+	auto pLocal = H::Entities.GetLocal();
 	if (!pLocal || !pLocal->m_hMyWeapons())
 	{
 		SDK::Output("ProcessPacketEntities", "Failed to restore weapon crit data! (1)", { 255, 100, 100 });

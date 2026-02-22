@@ -158,17 +158,17 @@ void CMaterials::LoadMaterials()
 			"\n}",
 		true);
 	// user materials
-	for (auto& entry : std::filesystem::directory_iterator(F::Configs.m_sMaterialsPath))
+	for (auto& tEntry : std::filesystem::directory_iterator(F::Configs.m_sMaterialsPath))
 	{
 		// Ignore all non-material files
-		if (!entry.is_regular_file() || entry.path().extension() != std::string(".vmt"))
+		if (!tEntry.is_regular_file() || tEntry.path().extension() != std::string(".vmt"))
 			continue;
 
-		std::ifstream fStream(entry.path());
+		std::ifstream fStream(tEntry.path());
 		if (!fStream.good())
 			continue;
 
-		std::string sName = entry.path().filename().string();
+		std::string sName = tEntry.path().filename().string();
 		sName.erase(sName.end() - 4, sName.end());
 		std::string sVMT((std::istreambuf_iterator(fStream)), std::istreambuf_iterator<char>());
 

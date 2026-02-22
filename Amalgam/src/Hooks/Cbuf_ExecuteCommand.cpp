@@ -121,16 +121,16 @@ static std::vector<std::function<void()>> s_vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
-            if (match.size() != 4)
+            std::smatch tMatch; std::regex_search(s_sCmdString, tMatch, std::regex(sRegex));
+            if (tMatch.size() != 4)
                 break;
 
-            int r = !match[1].str().empty() ? std::stoi(match[1]) : 255;
-            int g = !match[2].str().empty() ? std::stoi(match[2]) : 255;
-            int b = !match[3].str().empty() ? std::stoi(match[3]) : 255;
+            int r = !tMatch[1].str().empty() ? std::stoi(tMatch[1]) : 255;
+            int g = !tMatch[2].str().empty() ? std::stoi(tMatch[2]) : 255;
+            int b = !tMatch[3].str().empty() ? std::stoi(tMatch[3]) : 255;
 
             Color_t tColor; tColor.SetRGB(r, g, b);
-            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
+            s_sCmdString = s_sCmdString.replace(tMatch.position(), tMatch.length(), std::format(PRE_STR"{}", tColor.ToHex()));
         }
     },
     [&]()
@@ -139,17 +139,17 @@ static std::vector<std::function<void()>> s_vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
-            if (match.size() != 5)
+            std::smatch tMatch; std::regex_search(s_sCmdString, tMatch, std::regex(sRegex));
+            if (tMatch.size() != 5)
                 break;
 
-            int r = !match[1].str().empty() ? std::stoi(match[1]) : 255;
-            int g = !match[2].str().empty() ? std::stoi(match[2]) : 255;
-            int b = !match[3].str().empty() ? std::stoi(match[3]) : 255;
-            int a = !match[4].str().empty() ? std::stoi(match[4]) : 255;
+            int r = !tMatch[1].str().empty() ? std::stoi(tMatch[1]) : 255;
+            int g = !tMatch[2].str().empty() ? std::stoi(tMatch[2]) : 255;
+            int b = !tMatch[3].str().empty() ? std::stoi(tMatch[3]) : 255;
+            int a = !tMatch[4].str().empty() ? std::stoi(tMatch[4]) : 255;
 
             Color_t tColor; tColor.SetRGB(r, g, b, a);
-            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
+            s_sCmdString = s_sCmdString.replace(tMatch.position(), tMatch.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
         }
     },
     [&]()
@@ -158,16 +158,16 @@ static std::vector<std::function<void()>> s_vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
-            if (match.size() != 4)
+            std::smatch tMatch; std::regex_search(s_sCmdString, tMatch, std::regex(sRegex));
+            if (tMatch.size() != 4)
                 break;
 
-            int h = !match[1].str().empty() ? std::stoi(match[1]) : 0;
-            int s = !match[2].str().empty() ? std::stoi(match[2]) : 100;
-            int v = !match[3].str().empty() ? std::stoi(match[3]) : 100;
+            int h = !tMatch[1].str().empty() ? std::stoi(tMatch[1]) : 0;
+            int s = !tMatch[2].str().empty() ? std::stoi(tMatch[2]) : 100;
+            int v = !tMatch[3].str().empty() ? std::stoi(tMatch[3]) : 100;
 
             Color_t tColor; tColor.SetHSV(h, s, v);
-            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHex()));
+            s_sCmdString = s_sCmdString.replace(tMatch.position(), tMatch.length(), std::format(PRE_STR"{}", tColor.ToHex()));
         }
     },
     [&]()
@@ -176,17 +176,17 @@ static std::vector<std::function<void()>> s_vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
-            if (match.size() != 5)
+            std::smatch tMatch; std::regex_search(s_sCmdString, tMatch, std::regex(sRegex));
+            if (tMatch.size() != 5)
                 break;
 
-            int h = !match[1].str().empty() ? std::stoi(match[1]) : 0;
-            int s = !match[2].str().empty() ? std::stoi(match[2]) : 100;
-            int v = !match[3].str().empty() ? std::stoi(match[3]) : 100;
-            int a = !match[4].str().empty() ? std::stoi(match[4]) : 255;
+            int h = !tMatch[1].str().empty() ? std::stoi(tMatch[1]) : 0;
+            int s = !tMatch[2].str().empty() ? std::stoi(tMatch[2]) : 100;
+            int v = !tMatch[3].str().empty() ? std::stoi(tMatch[3]) : 100;
+            int a = !tMatch[4].str().empty() ? std::stoi(tMatch[4]) : 255;
 
             Color_t tColor; tColor.SetHSV(h, s, v, a);
-            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
+            s_sCmdString = s_sCmdString.replace(tMatch.position(), tMatch.length(), std::format(PRE_STR"{}", tColor.ToHexA()));
         }
     },
     [&]()
@@ -195,18 +195,18 @@ static std::vector<std::function<void()>> s_vDynamic = {
 
         while (true)
         {
-            std::smatch match; std::regex_search(s_sCmdString, match, std::regex(sRegex));
-            if (match.size() != 3)
+            std::smatch tMatch; std::regex_search(s_sCmdString, tMatch, std::regex(sRegex));
+            if (tMatch.size() != 3)
                 break;
 
-            int n = std::stoi(match[1]);
-            auto str = match[2].str();
+            int n = std::stoi(tMatch[1]);
+            auto str = tMatch[2].str();
 
             std::stringstream ssStream;
             for (int i = 0; i < n; i++)
                 ssStream << str;
 
-            s_sCmdString = s_sCmdString.replace(match.position(), match.length(), ssStream.str());
+            s_sCmdString = s_sCmdString.replace(tMatch.position(), tMatch.length(), ssStream.str());
         }
     },
 };

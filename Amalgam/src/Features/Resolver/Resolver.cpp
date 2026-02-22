@@ -82,7 +82,7 @@ void CResolver::FrameStageNotify()
 	}
 }
 
-void CResolver::CreateMove(CTFPlayer* pLocal)
+void CResolver::CreateMove()
 {
 	if (m_iWaitingForTarget != -1 && m_flWaitingForDamage < I::GlobalVars->curtime)
 	{

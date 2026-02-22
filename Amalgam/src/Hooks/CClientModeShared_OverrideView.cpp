@@ -9,8 +9,7 @@ MAKE_HOOK(CClientModeShared_OverrideView, U::Memory.GetVirtual(I::ClientModeShar
 
 	CALL_ORIGINAL(rcx, pView);
 
-	auto pLocal = H::Entities.GetLocal();
-	if (pLocal && pView)
+	if (auto pLocal = H::Entities.GetLocal(); pLocal && pView)
 	{
 		F::Visuals.FOV(pLocal, pView);
 		F::Visuals.ThirdPerson(pLocal, pView);

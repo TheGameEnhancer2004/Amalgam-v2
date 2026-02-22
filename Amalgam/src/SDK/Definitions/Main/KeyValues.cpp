@@ -26,9 +26,9 @@ static int UTF8ToUnicode(const char* ansi, wchar_t* unicode, int unicodeBufferSi
 
 
 
-bool KeyValues::LoadFromBuffer(char const* resource_name, const char* buffer, void* file_system, const char* path_id)
+bool KeyValues::LoadFromBuffer(char const* resourceName, const char* pBuffer, void* pFileSystem, const char* pPathID)
 {
-	return S::KeyValues_LoadFromBuffer.Call<bool>(this, resource_name, buffer, file_system, path_id);
+	return S::KeyValues_LoadFromBuffer.Call<bool>(this, resourceName, pBuffer, pFileSystem, pPathID);
 }
 
 void KeyValues::Initialize(const char* name)

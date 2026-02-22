@@ -17,8 +17,7 @@ MAKE_HOOK(CBaseViewModel_CalcViewModelView, S::CBaseViewModel_CalcViewModelView(
 
 	if (Vars::Visuals::Viewmodel::ViewmodelAim.Value)
 	{
-		auto pLocal = H::Entities.GetLocal();
-		if (pLocal && pLocal->IsAlive() && G::AimPoint.m_iTickCount)
+		if (auto pLocal = H::Entities.GetLocal(); pLocal && pLocal->IsAlive() && G::AimPoint.m_iTickCount)
 		{
 			Vec3 vDiff = I::EngineClient->GetViewAngles() - Math::CalcAngle(eyePosition, G::AimPoint.m_vOrigin);
 			if (bFlip)

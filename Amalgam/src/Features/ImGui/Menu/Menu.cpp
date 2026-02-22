@@ -1395,7 +1395,7 @@ void CMenu::MenuLogs(int iTab)
 						}
 						SetCursorPos(vOriginalPos);
 						Button(std::format("##{}", tPlayer.m_iUserID).c_str(), { flWidth, flHeight });
-						bPopup = bPopup || IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
+						bPopup |= IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
 
 						// popups
 						if (bPopup)
@@ -2112,12 +2112,12 @@ void CMenu::MenuLogs(int iTab)
 					try
 					{
 						int iBackupCount = 0;
-						for (auto& entry : std::filesystem::directory_iterator(F::Configs.m_sCorePath))
+						for (auto& tEntry : std::filesystem::directory_iterator(F::Configs.m_sCorePath))
 						{
-							if (!entry.is_regular_file() || entry.path().extension() != F::Configs.m_sConfigExtension)
+							if (!tEntry.is_regular_file() || tEntry.path().extension() != F::Configs.m_sConfigExtension)
 								continue;
 
-							std::string sConfigName = entry.path().filename().string();
+							std::string sConfigName = tEntry.path().filename().string();
 							sConfigName.erase(sConfigName.end() - F::Configs.m_sConfigExtension.size(), sConfigName.end());
 							if (sConfigName.find("Backup") != std::string::npos)
 								iBackupCount++;
@@ -3138,7 +3138,6 @@ void CMenu::MenuSettings(int iTab)
 					EndPopup();
 				}
 			}
-
 		} EndSection();
 		if (Vars::Debug::Options.Value && I::EngineClient->IsConnected())
 		{

@@ -189,7 +189,7 @@ void CTicks::Move(float accumulated_extra_samples, bool bFinalTick)
 
 		while (m_iShiftedTicks > m_iShiftedGoal)
 		{
-			m_bShifting = m_bShifted = m_bShifted || m_iShiftedTicks - 1 != m_iShiftedGoal;
+			m_bShifting = m_bShifted |= m_iShiftedTicks - 1 != m_iShiftedGoal;
 			MoveFunc(accumulated_extra_samples, m_iShiftedTicks - 1 == m_iShiftedGoal);
 		}
 
