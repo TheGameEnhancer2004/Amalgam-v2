@@ -318,8 +318,9 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::SplashNormalSkip, FSliderEnum::Right);
 						FDropdown(Vars::Aimbot::Projectile::SplashMode, FDropdownEnum::Left);
 						FDropdown(Vars::Aimbot::Projectile::RocketSplashMode, FDropdownEnum::Right, 0, &Hovered); FTooltip("Special splash type for rockets, more expensive", Hovered);
-						FToggle(Vars::Aimbot::Projectile::SplashGrates, FSliderEnum::Left);
-						FSlider(Vars::Aimbot::Projectile::Out2NormalCheck, FSliderEnum::Right);
+						FToggle(Vars::Aimbot::Projectile::SplashGrates);
+						FSlider(Vars::Aimbot::Projectile::Out2NormalMin, FSliderEnum::Left);
+						FSlider(Vars::Aimbot::Projectile::Out2NormalMax, FSliderEnum::Right);
 
 						Divider();
 						FText("Misc");
@@ -1100,7 +1101,7 @@ void CMenu::MenuMisc(int iTab)
 				if (Section("Queueing"))
 				{
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
-					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::ExtendQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
 				} EndSection();
 				if (Section("Sound"))
@@ -1312,13 +1313,13 @@ void CMenu::MenuLogs(int iTab)
 
 						// text + icons
 						int lOffset = H::Draw.Scale(10);
-						if (tPlayer.m_bLocal || F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID || tPlayer.m_bFriend || tPlayer.m_bParty)
+						if (tPlayer.m_bLocal || F::Spectate.GetTarget(true) == tPlayer.m_iUserID || tPlayer.m_bFriend || tPlayer.m_bParty)
 						{
 							lOffset += H::Draw.Scale(19);
 							SetCursorPos({ vOriginalPos.x + H::Draw.Scale(7), vOriginalPos.y + H::Draw.Scale(6) });
 							if (tPlayer.m_bLocal)
 								IconImage(ICON_MD_PERSON);
-							else if (F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID)
+							else if (F::Spectate.GetTarget(true) == tPlayer.m_iUserID)
 								IconImage(ICON_MD_VISIBILITY);
 							else if (tPlayer.m_bFriend)
 								IconImage(ICON_MD_GROUP);
@@ -1412,7 +1413,7 @@ void CMenu::MenuLogs(int iTab)
 									I::SteamFriends->ActivateGameOverlayToWebPage(std::format("https://steamhistory.net/id/{}", CSteamID(tPlayer.m_uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64()).c_str());
 							}
 
-							if (FSelectable(F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID ? "Unspectate" : "Spectate"))
+							if (FSelectable(F::Spectate.GetTarget(true) == tPlayer.m_iUserID ? "Unspectate" : "Spectate"))
 								F::Spectate.SetTarget(tPlayer.m_iUserID);
 
 							if (!I::EngineClient->IsPlayingDemo() && FBeginMenu("Votekick"))

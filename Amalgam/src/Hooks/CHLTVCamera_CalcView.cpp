@@ -39,7 +39,7 @@ MAKE_HOOK(CHLTVCamera_GetPrimaryTarget, S::CHLTVCamera_GetPrimaryTarget(), CBase
 	auto pHLTVCamera = reinterpret_cast<CHLTVCamera*>(rcx);
 
 	if (F::Spectate.HasTarget())
-		pHLTVCamera->m_iTraget1 = I::EngineClient->GetPlayerForUserID(F::Spectate.m_iTarget), F::Spectate.m_iTarget = F::Spectate.m_iIntendedTarget = -1;
+		pHLTVCamera->m_iTraget1 = I::EngineClient->GetPlayerForUserID(F::Spectate.GetTarget()), F::Spectate.Reset();
 
 	return CALL_ORIGINAL(rcx);
 }

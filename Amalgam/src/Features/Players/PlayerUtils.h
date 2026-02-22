@@ -9,6 +9,13 @@
 #define F2P_TAG (PARTY_TAG-1)
 #define TAG_COUNT (-F2P_TAG)
 
+#define LOCAL "Local"
+#define FRIEND "Friend"
+#define PARTY "Party"
+#define ENEMY "Enemy"
+#define TEAMMATE "Teammate"
+#define PLAYER "Player"
+
 struct ListPlayer
 {
 	std::string m_sName;

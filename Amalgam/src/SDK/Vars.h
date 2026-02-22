@@ -796,7 +796,7 @@ NAMESPACE_BEGIN(Vars)
 				// Africa
 				JNB = 1 << 28, // Johannesburg
 			);
-			CVar(FreezeQueue, "Freeze queue", false);
+			CVar(ExtendQueue, "Extend queue", false);
 			CVar(AutoCasualQueue, "Auto casual queue", false);
 		NAMESPACE_END(Queueing)
 

@@ -1,5 +1,10 @@
 #include "Spectate.h"
 
+void CSpectate::Reset()
+{
+	m_iIntendedTarget = m_iTarget = -1;
+}
+
 void CSpectate::NetUpdateEnd(CTFPlayer* pLocal)
 {
 	if (!pLocal)
@@ -39,9 +44,6 @@ void CSpectate::NetUpdateEnd(CTFPlayer* pLocal)
 	}
 	pLocal->m_iObserverMode() = Vars::Visuals::Thirdperson::Enabled.Value ? OBS_MODE_THIRDPERSON : OBS_MODE_FIRSTPERSON;
 	Vars::Visuals::Thirdperson::Enabled.Value ? I::Input->CAM_ToThirdPerson() : I::Input->CAM_ToFirstPerson();
-
-	m_hTargetTarget = pLocal->m_hObserverTarget();
-	m_iTargetMode = pLocal->m_iObserverMode();
 }
 
 void CSpectate::NetUpdateStart(CTFPlayer* pLocal)
@@ -75,4 +77,9 @@ void CSpectate::CreateMove(CUserCmd* pCmd)
 void CSpectate::SetTarget(int iTarget)
 {
 	m_iIntendedTarget = m_iIntendedTarget == iTarget ? -1 : iTarget;
+}
+
+int CSpectate::GetTarget(bool bIntended)
+{
+	return bIntended ? m_iIntendedTarget : m_iTarget;
 }

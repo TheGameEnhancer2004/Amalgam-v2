@@ -200,6 +200,7 @@
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
     <ClCompile Include="src\Hooks\CTFPlayerShared_ShouldSuppressPrediction.cpp" />
     <ClCompile Include="src\Hooks\CHLTVCamera_CalcView.cpp" />
+    <ClCompile Include="src\Hooks\CTFPlayer_InSameDisguisedTeam.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Utils\UtlVector\UtlVector.h" />
@@ -585,6 +586,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\IMemAlloc.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CPredictionCopy.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CHLTVCamera.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CThirdPersonManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

@@ -1019,7 +1019,7 @@ struct Chams_t
 
 	inline bool operator()(bool bVisibleOnly = false) const
 	{
-		return bVisibleOnly ? !Visible.empty() : Visible != std::vector<std::pair<std::string, Color_t>>{ { "Original", Color_t() } } || !Occluded.empty();
+		return Visible != std::vector<std::pair<std::string, Color_t>>{ { "Original", Color_t() } } || !bVisibleOnly && !Occluded.empty();
 	}
 };
 

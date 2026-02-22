@@ -5,7 +5,7 @@
 #include "../FakeAngle/FakeAngle.h"
 #include "../../Backtrack/Backtrack.h"
 
-void CGlow::SetupBegin(IMatRenderContext* pRenderContext)
+void CGlow::Begin()
 {
 	m_tOriginalColor = I::RenderView->GetColorModulation();
 	m_flOriginalBlend = I::RenderView->GetBlend();
@@ -14,6 +14,17 @@ void CGlow::SetupBegin(IMatRenderContext* pRenderContext)
 	I::RenderView->SetBlend(0.f);
 	I::RenderView->SetColorModulation(1.f, 1.f, 1.f);
 	I::ModelRender->ForcedMaterialOverride(m_pMatGlowColor);
+}
+void CGlow::End()
+{
+	I::RenderView->SetColorModulation(m_tOriginalColor);
+	I::RenderView->SetBlend(m_flOriginalBlend);
+	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+}
+
+void CGlow::FirstBegin(IMatRenderContext* pRenderContext)
+{
+	Begin();
 
 	pRenderContext->SetStencilEnable(true);
 	pRenderContext->SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_ALWAYS);
@@ -24,9 +35,16 @@ void CGlow::SetupBegin(IMatRenderContext* pRenderContext)
 	pRenderContext->SetStencilWriteMask(0xFF);
 	pRenderContext->SetStencilTestMask(0x0);
 }
-void CGlow::SetupMid(IMatRenderContext* pRenderContext, int w, int h)
+void CGlow::FirstEnd(IMatRenderContext* pRenderContext)
 {
 	pRenderContext->SetStencilEnable(false);
+
+	End();
+}
+
+void CGlow::SecondBegin(IMatRenderContext* pRenderContext, int w, int h)
+{
+	Begin();
 
 	pRenderContext->PushRenderTargetAndViewport();
 	pRenderContext->SetRenderTarget(m_pRenderBuffer1);
@@ -34,7 +52,7 @@ void CGlow::SetupMid(IMatRenderContext* pRenderContext, int w, int h)
 	pRenderContext->ClearColor4ub(0, 0, 0, 0);
 	pRenderContext->ClearBuffers(true, false, false);
 }
-void CGlow::SetupEnd(Glow_t tGlow, IMatRenderContext* pRenderContext, int w, int h)
+void CGlow::SecondEnd(Glow_t tGlow, IMatRenderContext* pRenderContext, int w, int h)
 {
 	pRenderContext->PopRenderTargetAndViewport();
 
@@ -82,9 +100,7 @@ void CGlow::SetupEnd(Glow_t tGlow, IMatRenderContext* pRenderContext, int w, int
 
 	pRenderContext->SetStencilEnable(false);
 
-	I::RenderView->SetColorModulation(m_tOriginalColor);
-	I::RenderView->SetBlend(m_flOriginalBlend);
-	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+	End();
 }
 
 void CGlow::DrawModel(CBaseEntity* pEntity)
@@ -149,26 +165,35 @@ void CGlow::Store(CTFPlayer* pLocal)
 	}
 }
 
-void CGlow::RenderMain()
+void CGlow::RenderFirst()
 {
-	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
-	if (w < 1 || h < 1 || w > 4096 || h > 2160)
-		return;
-
 	auto pRenderContext = I::MaterialSystem->GetRenderContext();
 	if (!pRenderContext || !m_pMatGlowColor || !m_pMatBlurX || !m_pMatBlurY || !m_pMatHaloAddToScreen)
 		return F::Materials.ReloadMaterials();
 
+	FirstBegin(pRenderContext);
 	for (auto& [tGlow, vInfo] : m_mEntities)
 	{
-		SetupBegin(pRenderContext);
 		for (auto& tInfo : vInfo)
 		{
 			m_iFlags = tInfo.m_iFlags;
 			DrawModel(tInfo.m_pEntity);
 			m_iFlags = false;
 		}
-		SetupMid(pRenderContext, w, h);
+	}
+	FirstEnd(pRenderContext);
+}
+
+void CGlow::RenderSecond()
+{
+	auto pRenderContext = I::MaterialSystem->GetRenderContext();
+	if (!pRenderContext || !m_pMatGlowColor || !m_pMatBlurX || !m_pMatBlurY || !m_pMatHaloAddToScreen)
+		return F::Materials.ReloadMaterials();
+
+	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
+	for (auto& [tGlow, vInfo] : m_mEntities)
+	{
+		SecondBegin(pRenderContext, w, h);
 		for (auto& tInfo : vInfo)
 		{
 			I::RenderView->SetColorModulation(tInfo.m_cColor);
@@ -178,7 +203,7 @@ void CGlow::RenderMain()
 			DrawModel(tInfo.m_pEntity);
 			m_iFlags = false;
 		}
-		SetupEnd(tGlow, pRenderContext, w, h);
+		SecondEnd(tGlow, pRenderContext, w, h);
 	}
 }
 
@@ -187,8 +212,6 @@ void CGlow::RenderBacktrack(const DrawModelState_t& pState, const ModelRenderInf
 	auto pEntity = I::ClientEntityList->GetClientEntity(pInfo.entity_index)->As<CTFPlayer>();
 	if (!pEntity || !pEntity->IsPlayer())
 		return;
-
-
 
 	std::vector<TickRecord*> vRecords = {};
 	if (!F::Backtrack.GetRecords(pEntity, vRecords))
@@ -261,15 +284,9 @@ void CGlow::RenderViewmodel(void* ecx, int flags)
 	if (!F::Groups.GroupsActive())
 		return;
 
-	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
-	if (w < 1 || h < 1 || w > 4096 || h > 2160)
-		return;
-
 	auto pRenderContext = I::MaterialSystem->GetRenderContext();
 	if (!pRenderContext || !m_pMatGlowColor || !m_pMatBlurX || !m_pMatBlurY || !m_pMatHaloAddToScreen)
 		return F::Materials.ReloadMaterials();
-
-
 
 	Group_t* pGroup = nullptr;
 	if (!F::Groups.GetGroup(TargetsEnum::ViewmodelWeapon, pGroup) || !pGroup->m_tGlow())
@@ -277,14 +294,17 @@ void CGlow::RenderViewmodel(void* ecx, int flags)
 
 	static auto CBaseAnimating_InternalDrawModel = U::Hooks.m_mHooks["CBaseAnimating_InternalDrawModel"];
 
+	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
 	pRenderContext->CullMode(MATERIAL_CULLMODE_CCW); // glow won't work properly with MATERIAL_CULLMODE_CW
-	SetupBegin(pRenderContext);
+
+	FirstBegin(pRenderContext);
 	CBaseAnimating_InternalDrawModel->Call<int>(ecx, flags);
-	SetupMid(pRenderContext, w, h);
+	FirstEnd(pRenderContext);
+	SecondBegin(pRenderContext, w, h);
 	I::RenderView->SetColorModulation(pGroup->m_tColor);
 	I::RenderView->SetBlend(pGroup->m_tColor.a / 255.f);
 	CBaseAnimating_InternalDrawModel->Call<int>(ecx, flags);
-	SetupEnd(pGroup->m_tGlow, pRenderContext, w, h);
+	SecondEnd(pGroup->m_tGlow, pRenderContext, w, h);
 
 	pRenderContext->CullMode(G::FlipViewmodels ? MATERIAL_CULLMODE_CW : MATERIAL_CULLMODE_CCW);
 }
@@ -293,15 +313,9 @@ void CGlow::RenderViewmodel(const DrawModelState_t& pState, const ModelRenderInf
 	if (!F::Groups.GroupsActive())
 		return;
 
-	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
-	if (w < 1 || h < 1 || w > 4096 || h > 2160)
-		return;
-
 	auto pRenderContext = I::MaterialSystem->GetRenderContext();
 	if (!pRenderContext || !m_pMatGlowColor || !m_pMatBlurX || !m_pMatBlurY || !m_pMatHaloAddToScreen)
 		return F::Materials.ReloadMaterials();
-
-
 
 	Group_t* pGroup = nullptr;
 	if (!F::Groups.GetGroup(TargetsEnum::ViewmodelHands, pGroup) || !pGroup->m_tGlow())
@@ -309,14 +323,17 @@ void CGlow::RenderViewmodel(const DrawModelState_t& pState, const ModelRenderInf
 
 	static auto IVModelRender_DrawModelExecute = U::Hooks.m_mHooks["IVModelRender_DrawModelExecute"];
 
+	const int w = H::Draw.m_nScreenW, h = H::Draw.m_nScreenH;
 	pRenderContext->CullMode(MATERIAL_CULLMODE_CCW); // glow won't work properly with MATERIAL_CULLMODE_CW
-	SetupBegin(pRenderContext);
+
+	FirstBegin(pRenderContext);
 	IVModelRender_DrawModelExecute->Call<void>(I::ModelRender, pState, pInfo, pBoneToWorld);
-	SetupMid(pRenderContext, w, h);
+	FirstEnd(pRenderContext);
+	SecondBegin(pRenderContext, w, h);
 	I::RenderView->SetColorModulation(pGroup->m_tColor);
 	I::RenderView->SetBlend(pGroup->m_tColor.a / 255.f);
 	IVModelRender_DrawModelExecute->Call<void>(I::ModelRender, pState, pInfo, pBoneToWorld);
-	SetupEnd(pGroup->m_tGlow, pRenderContext, w, h);
+	SecondEnd(pGroup->m_tGlow, pRenderContext, w, h);
 
 	pRenderContext->CullMode(G::FlipViewmodels ? MATERIAL_CULLMODE_CW : MATERIAL_CULLMODE_CCW);
 }

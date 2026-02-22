@@ -306,9 +306,10 @@ void CMaterials::AddMaterial(const char* sName)
 	auto& tMaterial = m_mMaterials[uHash];
 
 	KeyValues* kv = new KeyValues(sName);
-	kv->LoadFromBuffer(sName, tMaterial.m_sVMT.c_str());
-	ModifyKeyValues(kv);
+	if (!kv->LoadFromBuffer(sName, tMaterial.m_sVMT.c_str()))
+		return;
 
+	ModifyKeyValues(kv);
 	tMaterial.m_pMaterial = Create(sName, kv);
 	//StoreVars(tMaterial);
 
@@ -334,9 +335,10 @@ void CMaterials::EditMaterial(const char* sName, const char* sVMT)
 		tMaterial.m_sVMT = sVMT;
 
 		KeyValues* kv = new KeyValues(sName);
-		kv->LoadFromBuffer(sName, sVMT);
-		ModifyKeyValues(kv);
+		if (!kv->LoadFromBuffer(sName, sVMT))
+			return;
 
+		ModifyKeyValues(kv);
 		tMaterial.m_pMaterial = Create(sName, kv);
 		//StoreVars(tMaterial);
 

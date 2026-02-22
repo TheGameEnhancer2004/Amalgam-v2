@@ -1055,6 +1055,7 @@
     <ClCompile Include="src\Hooks\NotificationQueue_Add.cpp" />
     <ClCompile Include="src\Hooks\RecvProxy_SimulationTime.cpp" />
     <ClCompile Include="src\Hooks\R_DrawSkyBox.cpp" />
+    <ClCompile Include="src\Hooks\CTFPlayer_InSameDisguisedTeam.cpp" />
     <ClCompile Include="src\Hooks\TF_IsHolidayActive.cpp" />
     <ClCompile Include="src\Hooks\VGuiMenuBuilder_AddMenuItem.cpp" />
     <ClCompile Include="src\SDK\Definitions\Main\CBaseAnimating.cpp" />
@@ -1255,6 +1256,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGameRules.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGCClientSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CHLClient.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CThirdPersonManager.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IFileSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IGameMovement.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IInput.h" />

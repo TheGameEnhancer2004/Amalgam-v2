@@ -382,17 +382,17 @@ const char* CPlayerlistUtils::GetPlayerName(int iIndex, const char* sDefault, in
 	switch (iType)
 	{
 	case NameTypeEnum::Local:
-		return "Local";
+		return LOCAL;
 	case NameTypeEnum::Friend:
-		return "Friend";
+		return FRIEND;
 	case NameTypeEnum::Party:
-		return "Party";
+		return PARTY;
 	case NameTypeEnum::Player:
 		if (auto pTag = GetSignificantTag(iIndex, 0))
 			return pTag->m_sName.c_str();
 		else if (auto pResource = H::Entities.GetResource(); pResource && pResource->m_bValid(iIndex))
-			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iIndex) ? "Enemy" : "Teammate";
-		return "Player";
+			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iIndex) ? ENEMY : TEAMMATE;
+		return PLAYER;
 	case NameTypeEnum::Custom:
 		if (auto sAlias = GetPlayerAlias(GetAccountID(iIndex)))
 			return sAlias->c_str();
@@ -408,17 +408,17 @@ const char* CPlayerlistUtils::GetPlayerName(uint32_t uAccountID, const char* sDe
 	switch (iType)
 	{
 	case NameTypeEnum::Local:
-		return "Local";
+		return LOCAL;
 	case NameTypeEnum::Friend:
-		return "Friend";
+		return FRIEND;
 	case NameTypeEnum::Party:
-		return "Party";
+		return PARTY;
 	case NameTypeEnum::Player:
 		if (auto pTag = GetSignificantTag(uAccountID, 0))
 			return pTag->m_sName.c_str();
 		else if (auto pResource = H::Entities.GetResource(); (iType = GetIndex(uAccountID)) && pResource && pResource->m_bValid(iType))
-			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iType) ? "Enemy" : "Teammate";
-		return "Player";
+			return pResource->m_iTeam(I::EngineClient->GetLocalPlayer()) != pResource->m_iTeam(iType) ? ENEMY : TEAMMATE;
+		return PLAYER;
 	case NameTypeEnum::Custom:
 		if (auto sAlias = GetPlayerAlias(uAccountID))
 			return sAlias->c_str();

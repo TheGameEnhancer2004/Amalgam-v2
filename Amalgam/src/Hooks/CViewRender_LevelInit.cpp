@@ -22,7 +22,7 @@ MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	F::NoSpreadHitscan.Reset();
 	F::CheaterDetection.Reset();
 	F::Resolver.Reset();
-	F::Spectate.m_iIntendedTarget = -1;
+	F::Spectate.Reset();
 
 	CALL_ORIGINAL(rcx);
 }

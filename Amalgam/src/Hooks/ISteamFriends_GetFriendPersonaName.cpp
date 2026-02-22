@@ -16,9 +16,9 @@ MAKE_HOOK(ISteamFriends_GetFriendPersonaName, U::Memory.GetVirtual(I::SteamFrien
 	{
 		switch (F::PlayerUtils.GetNameType(steamIDFriend.GetAccountID()))
 		{
-		case NameTypeEnum::Local: return "Local";
-		case NameTypeEnum::Friend: return "Friend";
-		case NameTypeEnum::Party: return "Party";
+		case NameTypeEnum::Local: return LOCAL;
+		case NameTypeEnum::Friend: return FRIEND;
+		case NameTypeEnum::Party: return PARTY;
 		}
 	}
 

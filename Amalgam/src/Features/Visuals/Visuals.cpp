@@ -42,32 +42,35 @@ static std::vector<Vec3> SplashTrace(Vec3 vOrigin, float flRadius, Vec3 vNormal 
 	return vPoints;
 }
 
-void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const bool bQuick)
+void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const bool bInterp)
 {
-	if (bQuick)
+	if (bInterp)
 		F::CameraWindow.m_bShouldDraw = false;
-	if (bQuick ? !Vars::Visuals::Simulation::TrajectoryPath.Value && !Vars::Visuals::Simulation::ProjectileCamera.Value : !Vars::Visuals::Simulation::ShotPath.Value)
+	if (bInterp ? !Vars::Visuals::Simulation::TrajectoryPath.Value && !Vars::Visuals::Simulation::ProjectileCamera.Value : !Vars::Visuals::Simulation::ShotPath.Value)
 		return;
 
-	Vec3 vAngles = bQuick ? I::EngineClient->GetViewAngles() : G::CurrentUserCmd->viewangles;
-	int iFlags = bQuick ? ProjSimEnum::Trace | ProjSimEnum::InitCheck | ProjSimEnum::Quick : ProjSimEnum::Trace | ProjSimEnum::InitCheck;
-	if (bQuick && F::Spectate.HasTarget())
+	Vec3 vAngles = bInterp ? I::EngineClient->GetViewAngles() : G::CurrentUserCmd->viewangles;
+	int iFlags = bInterp ? ProjSimEnum::Trace | ProjSimEnum::InitCheck | ProjSimEnum::Interp : ProjSimEnum::Trace | ProjSimEnum::InitCheck;
+	if (F::Spectate.HasTarget() && bInterp && pPlayer && pPlayer->m_hObserverTarget())
 	{
-		pPlayer = I::ClientEntityList->GetClientEntity(I::EngineClient->GetPlayerForUserID(F::Spectate.m_iTarget))->As<CTFPlayer>();
+		bool bThirdperson = pPlayer->m_iObserverMode() != OBS_MODE_FIRSTPERSON;
+		pPlayer = pPlayer->m_hObserverTarget()->As<CTFPlayer>();
 		if (!pPlayer || pPlayer->IsDormant())
 			return;
 
 		pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();
-		if (I::Input->CAM_IsThirdPerson())
-			vAngles = pPlayer->GetEyeAngles();
+		if (!pWeapon || pWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER)
+			return;
 
 		pPlayer->m_vecViewOffset() = pPlayer->GetViewOffset();
+		if (bThirdperson)
+			vAngles = pPlayer->GetEyeAngles();
 	}
-	if (!pPlayer || !pWeapon || pWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER)
+	else if (!pPlayer || !pWeapon || pWeapon->GetWeaponID() == TF_WEAPON_FLAMETHROWER)
 		return;
 
 	ProjectileInfo tProjInfo = {};
-	if (!F::ProjSim.GetInfo(pPlayer, pWeapon, vAngles, tProjInfo, iFlags, (bQuick && Vars::Aimbot::Projectile::AutoRelease.Value) ? Vars::Aimbot::Projectile::AutoRelease.Value / 100 : -1.f)
+	if (!F::ProjSim.GetInfo(pPlayer, pWeapon, vAngles, tProjInfo, iFlags, (bInterp && Vars::Aimbot::Projectile::AutoRelease.Value) ? Vars::Aimbot::Projectile::AutoRelease.Value / 100 : -1.f)
 		|| !F::ProjSim.Initialize(tProjInfo))
 		return;
 
@@ -75,8 +78,12 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 	CTraceFilterCollideable filter = {};
 	filter.pSkip = pPlayer;
 	int nMask = MASK_SOLID;
-	F::ProjSim.SetupTrace(filter, nMask, pWeapon, 0, bQuick);
+	F::ProjSim.SetupTrace(filter, nMask, pWeapon, 0, bInterp);
 	Vec3* pNormal = nullptr;
+
+	SDK::TraceHull(F::ProjSim.GetOrigin(), F::ProjSim.GetOrigin(), tProjInfo.m_vHull * -1, tProjInfo.m_vHull, nMask, &filter, &trace);
+	if (trace.startsolid)
+		return;
 
 	int iTicks = TIME_TO_TICKS(std::min(tProjInfo.m_flLifetime, 10.f));
 	for (int n = 1; n <= iTicks; n++)
@@ -86,16 +93,13 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 		Vec3 New = F::ProjSim.GetOrigin();
 
 		SDK::TraceHull(Old, New, tProjInfo.m_vHull * -1, tProjInfo.m_vHull, nMask, &filter, &trace);
-		F::ProjSim.SetupTrace(filter, nMask, pWeapon, n, bQuick);
+		F::ProjSim.SetupTrace(filter, nMask, pWeapon, n, bInterp);
 		if (trace.DidHit())
 		{
 			pNormal = &trace.plane.normal;
-			if (trace.startsolid)
-				*pNormal = F::ProjSim.GetVelocity().Normalized();
 			break;
 		}
 	}
-	
 	if (tProjInfo.m_vPath.empty())
 		return;
 
@@ -103,7 +107,7 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 
 	float flRadius = 0.f;
 	Vec3 vEndPos = trace.endpos;
-	if ((bQuick ? Vars::Visuals::Simulation::TrajectoryPath.Value : Vars::Visuals::Simulation::ShotPath.Value) && Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::Enabled)
+	if ((bInterp ? Vars::Visuals::Simulation::TrajectoryPath.Value : Vars::Visuals::Simulation::ShotPath.Value) && Vars::Visuals::Simulation::SplashRadius.Value & Vars::Visuals::Simulation::SplashRadiusEnum::Enabled)
 	{
 		switch (pWeapon->GetWeaponID())
 		{
@@ -143,7 +147,7 @@ void CVisuals::ProjectileTrace(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, const
 		}
 	}
 
-	if (bQuick)
+	if (bInterp)
 	{
 		if (Vars::Visuals::Simulation::ProjectileCamera.Value && !I::EngineVGui->IsGameUIVisible() && pPlayer->m_vecOrigin().DistTo(trace.endpos) > 500.f)
 		{
@@ -603,13 +607,13 @@ void CVisuals::DrawHitboxes(int iStore)
 			break;
 
 		auto pLocal = H::Entities.GetLocal();
-		if (pLocal && pLocal->SetupBones(F::Backtrack.m_tRecord.m_aBones, MAXSTUDIOBONES, BONE_USED_BY_ANYTHING, pLocal->m_flSimulationTime()))
-		{
-			auto vBoxes = GetHitboxes(F::Backtrack.m_tRecord.m_aBones, pLocal);
-			for (auto& tBox : vBoxes)
-				tBox.m_tColorEdge = { 255, 255, 255, 255 };
-			s_vLocalHitboxes.insert(s_vLocalHitboxes.end(), vBoxes.begin(), vBoxes.end());
-		}
+		if (!pLocal || !pLocal->SetupBones(F::Backtrack.m_tRecord.m_aBones, MAXSTUDIOBONES, BONE_USED_BY_ANYTHING, pLocal->m_flSimulationTime()))
+			break;
+
+		auto vBoxes = GetHitboxes(F::Backtrack.m_tRecord.m_aBones, pLocal);
+		for (auto& tBox : vBoxes)
+			tBox.m_tColorEdge = { 255, 255, 255, 255 };
+		s_vLocalHitboxes.insert(s_vLocalHitboxes.end(), vBoxes.begin(), vBoxes.end());
 	}
 	}
 }

@@ -10,7 +10,7 @@ MAKE_HOOK(CHLClient_LevelShutdown, U::Memory.GetVirtual(I::Client, 7), void,
 
 	H::Entities.Clear(true);
 	F::EnginePrediction.Unload();
-	F::Spectate.m_iIntendedTarget = -1;
+	F::Spectate.Reset();
 
 	CALL_ORIGINAL(rcx);
 }

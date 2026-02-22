@@ -6,7 +6,7 @@
 
 bool CProjectileSimulation::GetInfoMain(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, Vec3 vAngles, ProjectileInfo& tProjInfo, int iFlags, float flAutoCharge)
 {
-	if (!pPlayer || !pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->IsTaunting() || !pWeapon)
+	if (!pWeapon || !pPlayer->IsAlive() || pPlayer->IsAGhost() || pPlayer->IsTaunting())
 		return false;
 
 	static auto sv_gravity = H::ConVars.FindVar("sv_gravity");
@@ -287,11 +287,17 @@ bool CProjectileSimulation::GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, 
 {
 	bool bInitCheck = iFlags & ProjSimEnum::InitCheck;
 	bool bInterp = iFlags & ProjSimEnum::Interp;
+	bool bReturn = false;
 
-	const float flOldCurrentTime = I::GlobalVars->curtime;
-	I::GlobalVars->curtime = TICKS_TO_TIME(pPlayer->m_nTickBase());
-	bool bReturn = GetInfoMain(pPlayer, pWeapon, vAngles, tProjInfo, iFlags, flAutoCharge);
-	I::GlobalVars->curtime = flOldCurrentTime;
+	if (auto pLocal = bInterp ? H::Entities.GetLocal() : nullptr)
+	{
+		const float flOldCurrentTime = I::GlobalVars->curtime;
+		I::GlobalVars->curtime = TICKS_TO_TIME(pLocal->m_nTickBase());
+		bReturn = GetInfoMain(pPlayer, pWeapon, vAngles, tProjInfo, iFlags, flAutoCharge);
+		I::GlobalVars->curtime = flOldCurrentTime;
+	}
+	else
+		bReturn = GetInfoMain(pPlayer, pWeapon, vAngles, tProjInfo, iFlags, flAutoCharge);
 	tProjInfo.m_iFlags = iFlags;
 
 	if (!bReturn || !bInitCheck)
@@ -627,6 +633,9 @@ Vec3 CProjectileSimulation::GetVelocity()
 
 float CProjectileSimulation::GetDesync()
 {
+	if (I::EngineClient->IsPlayingDemo())
+		return 0.f;
+
 	return I::GlobalVars->curtime - TICKS_TO_TIME(I::ClientState->m_ClockDriftMgr.m_nServerTick) - F::Backtrack.GetReal();
 }
 

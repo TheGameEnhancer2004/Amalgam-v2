@@ -48,7 +48,7 @@ MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
 			s_sPlayerName = pResource->GetName(s_iPlayerIndex);
 
 			CALL_ORIGINAL(rcx, "History", "history", "profile");
-			CALL_ORIGINAL(rcx, I::EngineClient->GetPlayerForUserID(F::Spectate.m_iIntendedTarget) == s_iPlayerIndex ? "Unspectate" : "Spectate", "specplayer", "profile");
+			CALL_ORIGINAL(rcx, I::EngineClient->GetPlayerForUserID(F::Spectate.GetTarget(true)) == s_iPlayerIndex ? "Unspectate" : "Spectate", "specplayer", "profile");
 
 			CALL_ORIGINAL(rcx, std::format("Tags for {}", s_sPlayerName).c_str(), "listtags", "tags");
 			for (auto it = F::PlayerUtils.m_vTags.begin(); it != F::PlayerUtils.m_vTags.end(); it++)
@@ -77,7 +77,7 @@ MAKE_HOOK(CTFClientScoreBoardDialog_OnCommand, S::CTFClientScoreBoardDialog_OnCo
 {
 	DEBUG_RETURN(CTFClientScoreBoardDialog_OnCommand, rcx, command);
 
-	if (!Vars::Visuals::UI::ScoreboardUtility.Value && !command)
+	if (!Vars::Visuals::UI::ScoreboardUtility.Value || !command)
 		return CALL_ORIGINAL(rcx, command);
 
 	auto uHash = FNV1A::Hash32(command);

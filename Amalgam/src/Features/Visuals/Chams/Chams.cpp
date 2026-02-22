@@ -5,15 +5,25 @@
 #include "../FakeAngle/FakeAngle.h"
 #include "../../Backtrack/Backtrack.h"
 
+void CChams::Begin()
+{
+	m_tOriginalColor = I::RenderView->GetColorModulation();
+	m_flOriginalBlend = I::RenderView->GetBlend();
+	I::ModelRender->GetMaterialOverride(&m_pOriginalMaterial, &m_iOriginalOverride);
+}
+void CChams::End()
+{
+	I::RenderView->SetColorModulation(m_tOriginalColor);
+	I::RenderView->SetBlend(m_flOriginalBlend);
+	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+}
+
 void CChams::DrawModel(CBaseEntity* pEntity, Chams_t& tChams, IMatRenderContext* pRenderContext, bool bTwoModels)
 {
 	const auto& vVisibleMaterials = !tChams.Visible.empty() ? tChams.Visible : std::vector<std::pair<std::string, Color_t>> { { "None", {} } };
 	const auto& vOccludedMaterials = !tChams.Occluded.empty() ? tChams.Occluded : std::vector<std::pair<std::string, Color_t>> { { "None", {} } };
 
-	m_tOriginalColor = I::RenderView->GetColorModulation();
-	m_flOriginalBlend = I::RenderView->GetBlend();
-	I::ModelRender->GetMaterialOverride(&m_pOriginalMaterial, &m_iOriginalOverride);
-
+	Begin();
 	if (bTwoModels)
 	{
 		pRenderContext->SetStencilEnable(true);
@@ -77,10 +87,7 @@ void CChams::DrawModel(CBaseEntity* pEntity, Chams_t& tChams, IMatRenderContext*
 
 		m_mEntities[pEntity->entindex()];
 	}
-
-	I::RenderView->SetColorModulation(m_tOriginalColor);
-	I::RenderView->SetBlend(m_flOriginalBlend);
-	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+	End();
 }
 
 
@@ -161,8 +168,6 @@ void CChams::RenderBacktrack(const DrawModelState_t& pState, const ModelRenderIn
 	if (!pEntity || !pEntity->IsPlayer())
 		return;
 
-
-
 	std::vector<TickRecord*> vRecords = {};
 	if (!F::Backtrack.GetRecords(pEntity, vRecords))
 		return;
@@ -214,11 +219,9 @@ void CChams::RenderBacktrack(const DrawModelState_t& pState, const ModelRenderIn
 }
 void CChams::RenderFakeAngle(const DrawModelState_t& pState, const ModelRenderInfo_t& pInfo)
 {
-	auto pRenderContext = I::MaterialSystem->GetRenderContext();
-	if (!pRenderContext)
-		return;
-
-
+	//auto pRenderContext = I::MaterialSystem->GetRenderContext();
+	//if (!pRenderContext)
+	//	return;
 
 	//pRenderContext->DepthRange(0.f, Vars::Chams::FakeAngle::IgnoreZ.Value ? 0.2f : 1.f);
 
@@ -252,16 +255,11 @@ bool CChams::RenderViewmodel(void* ecx, int flags, int* iReturn)
 	if (!pRenderContext)
 		return false;
 
-
-
 	Group_t* pGroup = nullptr;
 	if (!F::Groups.GetGroup(TargetsEnum::ViewmodelWeapon, pGroup) || !pGroup->m_tChams(true))
 		return false;
 
-	m_tOriginalColor = I::RenderView->GetColorModulation();
-	m_flOriginalBlend = I::RenderView->GetBlend();
-	I::ModelRender->GetMaterialOverride(&m_pOriginalMaterial, &m_iOriginalOverride);
-
+	Begin();
 	for (auto& [sName, tColor] : pGroup->m_tChams.Visible)
 	{
 		auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
@@ -278,10 +276,7 @@ bool CChams::RenderViewmodel(void* ecx, int flags, int* iReturn)
 		if (pMaterial && pMaterial->m_bInvertCull)
 			pRenderContext->CullMode(G::FlipViewmodels ? MATERIAL_CULLMODE_CW : MATERIAL_CULLMODE_CCW);
 	}
-
-	I::RenderView->SetColorModulation(m_tOriginalColor);
-	I::RenderView->SetBlend(m_flOriginalBlend);
-	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+	End();
 
 	return true;
 }
@@ -294,16 +289,11 @@ bool CChams::RenderViewmodel(const DrawModelState_t& pState, const ModelRenderIn
 	if (!pRenderContext)
 		return false;
 
-
-
 	Group_t* pGroup = nullptr;
 	if (!F::Groups.GetGroup(TargetsEnum::ViewmodelHands, pGroup) || !pGroup->m_tChams(true))
 		return false;
 
-	m_tOriginalColor = I::RenderView->GetColorModulation();
-	m_flOriginalBlend = I::RenderView->GetBlend();
-	I::ModelRender->GetMaterialOverride(&m_pOriginalMaterial, &m_iOriginalOverride);
-
+	Begin();
 	for (auto& [sName, tColor] : pGroup->m_tChams.Visible)
 	{
 		auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
@@ -320,10 +310,7 @@ bool CChams::RenderViewmodel(const DrawModelState_t& pState, const ModelRenderIn
 		if (pMaterial && pMaterial->m_bInvertCull)
 			pRenderContext->CullMode(G::FlipViewmodels ? MATERIAL_CULLMODE_CW : MATERIAL_CULLMODE_CCW);
 	}
-
-	I::RenderView->SetColorModulation(m_tOriginalColor);
-	I::RenderView->SetBlend(m_flOriginalBlend);
-	I::ModelRender->ForcedMaterialOverride(m_pOriginalMaterial, m_iOriginalOverride);
+	End();
 
 	return true;
 }

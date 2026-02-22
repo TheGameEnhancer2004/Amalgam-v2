@@ -9,6 +9,7 @@
 #include "Interfaces/CHLTVCamera.h"
 #include "Interfaces/CTFGameRules.h"
 #include "Interfaces/CTFGCClientSystem.h"
+#include "Interfaces/CThirdPersonManager.h"
 #include "Interfaces/CTFPartyClient.h"
 #include "Interfaces/IClientEntityList.h"
 #include "Interfaces/ICVar.h"
