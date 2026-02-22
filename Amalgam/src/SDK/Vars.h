@@ -740,6 +740,7 @@ NAMESPACE_BEGIN(Vars)
 		NAMESPACE_BEGIN(Exploits)
 			CVar(PureBypass, "Pure bypass", false);
 			CVar(CheatsBypass, "Cheats bypass", false);
+			CVar(UnlockCVars, "Unlock CVars", false);
 			CVar(EquipRegionUnlock, "Equip region unlock", false);
 			CVar(BackpackExpander, "Backpack expander", false);
 			CVar(NoisemakerSpam, "Noisemaker spam", false);

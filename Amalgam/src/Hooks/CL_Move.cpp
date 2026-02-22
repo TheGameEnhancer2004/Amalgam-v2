@@ -25,11 +25,13 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 		F::Backtrack.m_iTickCount--;
 
 	F::Binds.Run();
-	F::PlayerCore.Run();
+	H::ConVars.Modify(Vars::Misc::Exploits::UnlockCVars.Value);
 	F::Backtrack.SendLerp();
 	F::Misc.PingReducer();
-	F::AutoQueue.Run();
 
 	F::Ticks.Move(accumulated_extra_samples, bFinalTick);
+
+	F::PlayerCore.Run();
+	F::AutoQueue.Run();
 	F::Visuals.Tick();
 }

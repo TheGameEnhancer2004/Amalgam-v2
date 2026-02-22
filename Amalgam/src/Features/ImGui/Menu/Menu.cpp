@@ -1072,13 +1072,14 @@ void CMenu::MenuMisc(int iTab)
 				{
 					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
 					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
-					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
-					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Right);
-					FToggle(Vars::Misc::Exploits::PingReducer, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::UnlockCVars, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Right);
+					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Left);
 					FToggle(Vars::Misc::Exploits::NoisemakerSpam, FToggleEnum::Right);
+					FToggle(Vars::Misc::Exploits::PingReducer, FToggleEnum::Left);
 					PushTransparent(!Vars::Misc::Exploits::PingReducer.Value);
 					{
-						FSlider(Vars::Misc::Exploits::PingTarget);
+						FSlider(Vars::Misc::Exploits::PingTarget, FSliderEnum::Right);
 					}
 					PopTransparent();
 				} EndSection();

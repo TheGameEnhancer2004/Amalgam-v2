@@ -34,6 +34,17 @@ bool CConVars::Restore()
 	return false;
 }
 
+bool CConVars::Modify(bool bUnlock)
+{
+	if (bUnlock == m_bUnlocked)
+		return false;
+
+	if (bUnlock)
+		return Unlock();
+	else
+		return Restore();
+}
+
 ConVar* CConVars::FindVar(const char* sCVar)
 {
 	auto uHash = FNV1A::Hash32(sCVar);

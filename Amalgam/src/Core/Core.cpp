@@ -112,7 +112,6 @@ void CCore::Load()
 	if (m_bUnload = m_bFailed2 = !U::Hooks.Initialize() || !U::BytePatches.Initialize() || !H::Events.Initialize())
 		return;
 	F::Materials.LoadMaterials();
-	H::ConVars.Unlock();
 
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
 
