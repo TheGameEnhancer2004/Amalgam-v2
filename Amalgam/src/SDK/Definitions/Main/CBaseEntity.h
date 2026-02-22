@@ -291,6 +291,7 @@ public:
 	}
 
 	int GetIntermediateDataSize();
+	Vec3 GetOrigin(float flCompression);
 	Vec3 GetSize();
 	Vec3 GetOffset();
 	Vec3 GetCenter();

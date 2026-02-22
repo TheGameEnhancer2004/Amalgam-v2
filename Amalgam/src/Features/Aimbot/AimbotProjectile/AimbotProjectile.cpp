@@ -12,7 +12,7 @@
 //#define SPLASH_DEBUG5 // trace count
 
 #ifdef SPLASH_DEBUG5
-static std::unordered_map<std::string, int> s_mTraceCount = {};
+static std::map<std::string, int> s_mTraceCount = {};
 #endif
 
 static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -445,7 +445,7 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 	{
 		SDK::TraceHull(vTargetEye, vPoint, tInfo.m_vHull * -1, tInfo.m_vHull, MASK_SOLID, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-		s_mTraceCount["Splash regular"]++;
+		s_mTraceCount["Splash out"]++;
 #endif
 
 		if (checkPoint(trace, bErase, bNormal))
@@ -471,16 +471,15 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 		size_t iOriginalSize = vPoints.size();
 
 		{
-			// necessary performance wise?
-			//if (bNormal = (tInfo.m_vLocalEye - vTargetEye).Dot(vTargetEye - vPoint) > 0.f)
-			if (bNormal = (tInfo.m_vLocalEye - vTargetEye).DotNormalized(vTargetEye - vPoint) > Vars::Aimbot::Projectile::Out2NormalCheck.Value)
+			float flNormal = (tInfo.m_vLocalEye - vTargetEye).DotNormalized(vTargetEye - vPoint);
+			if (bNormal = Vars::Aimbot::Projectile::Out2NormalMin.Value > flNormal || flNormal > Vars::Aimbot::Projectile::Out2NormalMax.Value)
 				goto breakOutExtra;
 
 			if (!(iOriginalType & PointTypeEnum::Out)) // don't do the same trace over again
 			{
 				SDK::Trace(vTargetEye, vPoint, MASK_SOLID, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-				s_mTraceCount["Splash rocket (2)"]++;
+				s_mTraceCount["Splash out 1"]++;
 #endif
 				bNormal = !trace.m_pEnt || trace.fraction == 1.f;
 #ifdef SPLASH_DEBUG2
@@ -490,13 +489,21 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 					goto breakOutExtra;
 			}
 
-			filter.pSkip = trace.m_pEnt->GetClassID() != ETFClassID::CWorld || trace.hitbox ? trace.m_pEnt : nullptr; // make sure we get past entity or prop
-			SDK::Trace(trace.endpos - (vTargetEye - vPoint).Normalized(), vPoint, MASK_SOLID | CONTENTS_NOSTARTSOLID, &filter, &trace);
-			filter.pSkip = nullptr;
+			switch (trace.m_pEnt->GetClassID())
+			{	// make sure we get past entity or prop
+			case ETFClassID::CWorld:
+				if (trace.hitbox) filter.iTeam = trace.hitbox - 1;
+				filter.pSkip = nullptr;
+				break;
+			default:
+				filter.pSkip = trace.m_pEnt;
+			}
+			SDK::Trace(trace.endpos - (vTargetEye - vPoint).Normalized(), vPoint, MASK_SOLID | CONTENTS_NOSKIP, &filter, &trace);
+			filter.pSkip = nullptr, filter.iTeam = -1;
 #ifdef SPLASH_DEBUG5
-			s_mTraceCount["Splash rocket (2, 2)"]++;
+			s_mTraceCount["Splash out 2"]++;
 #endif
-			bNormal = trace.fraction == 1.f || trace.allsolid || (trace.startpos - trace.endpos).IsZero() || trace.surface.flags & (/*SURF_NODRAW |*/ SURF_SKY);
+			bNormal = trace.fraction == 1.f || !trace.fraction || trace.fraction == trace.fractionleftsolid || trace.allsolid || trace.surface.flags & (/*SURF_NODRAW |*/ SURF_SKY);
 #ifdef SPLASH_DEBUG2
 			drawTrace(!bNormal, Vars::Colors::IndicatorTextBad.Value, trace);
 #endif
@@ -507,7 +514,7 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 			{
 				SDK::Trace(trace.endpos + trace.plane.normal, vTargetEye, MASK_SHOT, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-				s_mTraceCount["Splash rocket check (2)"]++;
+				s_mTraceCount["Splash out rocket check"]++;
 #endif
 #ifdef SPLASH_DEBUG2
 				drawTrace(trace.fraction >= 1.f, Vars::Colors::IndicatorTextMisc.Value, trace);
@@ -535,7 +542,7 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 		{
 			SDK::Trace(vPoint, vTargetEye, MASK_SHOT, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-			s_mTraceCount["Splash grate check"]++;
+			s_mTraceCount["Splash in check"]++;
 #endif
 			bNormal = trace.DidHit();
 #ifdef SPLASH_DEBUG2
@@ -546,7 +553,7 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 
 			SDK::TraceHull(vPoint, vTargetEye, tInfo.m_vHull * -1, tInfo.m_vHull, MASK_SOLID, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-			s_mTraceCount["Splash grate"]++;
+			s_mTraceCount["Splash in"]++;
 #endif
 
 			checkPoint(trace, bErase, bNormal);
@@ -556,11 +563,11 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 		}
 		else // currently experimental, there may be a more efficient way to do this?
 		{
-			SDK::Trace(vPoint, vTargetEye, MASK_SOLID | CONTENTS_NOSTARTSOLID, &filter, &trace);
+			SDK::Trace(vPoint, vTargetEye, MASK_SOLID | CONTENTS_NOSKIP, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-			s_mTraceCount["Splash rocket (1)"]++;
+			s_mTraceCount["Splash in 1"]++;
 #endif
-			bNormal = trace.fraction == 1.f || trace.allsolid || trace.surface.flags & SURF_SKY;
+			bNormal = trace.fraction == 1.f || !trace.fraction || trace.allsolid || trace.surface.flags & SURF_SKY;
 #ifdef SPLASH_DEBUG2
 			drawTrace(!bNormal, Vars::Colors::IndicatorMid.Value, trace);
 #endif
@@ -570,11 +577,11 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 					goto breakOut;
 
 				CGameTrace trace2 = {};
-				SDK::Trace(trace.endpos - (vPoint - vTargetEye).Normalized(), vTargetEye, MASK_SOLID | CONTENTS_NOSTARTSOLID, &filter, &trace2);
+				SDK::Trace(trace.endpos - (vPoint - vTargetEye).Normalized(), vTargetEye, MASK_SOLID | CONTENTS_NOSKIP, &filter, &trace2);
 #ifdef SPLASH_DEBUG5
-				s_mTraceCount["Splash rocket (1, 2)"]++;
+				s_mTraceCount["Splash in 2"]++;
 #endif
-				bNormal = trace2.fraction == 1.f || trace.allsolid || (trace2.startpos - trace2.endpos).IsZero() || trace2.surface.flags & (SURF_NODRAW | SURF_SKY);
+				bNormal = trace2.fraction == 1.f || !trace2.fraction || trace2.fraction == trace2.fractionleftsolid || trace2.allsolid || trace2.surface.flags & (SURF_NODRAW | SURF_SKY);
 #ifdef SPLASH_DEBUG2
 				drawTrace(!bNormal, Vars::Colors::IndicatorBad.Value, trace2);
 #endif
@@ -588,7 +595,7 @@ static inline void TracePoint(Vec3& vPoint, int& iType, Vec3& vTargetEye, Info_t
 			{
 				SDK::Trace(trace.endpos + trace.plane.normal, vTargetEye, MASK_SHOT, &filter, &trace);
 #ifdef SPLASH_DEBUG5
-				s_mTraceCount["Splash rocket check (1)"]++;
+				s_mTraceCount["Splash in rocket check"]++;
 #endif
 #ifdef SPLASH_DEBUG2
 				drawTrace(!bNormal, Vars::Colors::IndicatorMisc.Value, trace);
@@ -1098,10 +1105,10 @@ bool CAimbotProjectile::TestAngle(const Vec3& vPoint, const Vec3& vAngles, int i
 		case TF_WEAPON_SHOTGUN_BUILDING_RESCUE:
 		case TF_WEAPON_SYRINGEGUN_MEDIC:
 		case TF_WEAPON_FLAME_BALL:
-			s_mTraceCount["Setup trace test"]++;
+			s_mTraceCount["Setup trace"]++;
 		}
 	}
-	s_mTraceCount["Trace init check test"]++;
+	s_mTraceCount["Trace init check"]++;
 #endif
 	m_tProjInfo = {};
 	if (!F::ProjSim.GetInfo(pLocal, pWeapon, vAngles, m_tProjInfo, iFlags)

@@ -15,7 +15,7 @@ void CAutoDetonate::PredictPlayers(CTFPlayer* pLocal, float flLatency, bool bLoc
 
 		m_mRestore[pPlayer] = pPlayer->GetAbsOrigin();
 
-		pPlayer->SetAbsOrigin(SDK::PredictOrigin(pPlayer->m_vecOrigin(), pPlayer->m_vecVelocity(), flLatency, true, pPlayer->m_vecMins() + 0.125f, pPlayer->m_vecMaxs() - 0.125f, pPlayer->SolidMask()));
+		pPlayer->SetAbsOrigin(SDK::PredictOrigin(pPlayer->m_vecOrigin(), pPlayer->m_vecVelocity(), flLatency, true, pPlayer->m_vecMins() + PLAYER_ORIGIN_COMPRESSION, pPlayer->m_vecMaxs() - PLAYER_ORIGIN_COMPRESSION, pPlayer->SolidMask()));
 	}
 }
 
@@ -82,9 +82,9 @@ Vec3 CAutoDetonate::GetOrigin(CBaseEntity* pProjectile, EntityEnum::EntityEnum i
 
 bool CAutoDetonate::CheckEntity(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd, CBaseEntity* pProjectile, float flRadius, Vec3 vOrigin)
 {
-		// CEntitySphereQuery actually does a box test so we need to make sure the distance is less than the radius first
-		Vec3 vPos; pEntity->m_Collision()->CalcNearestPoint(vOrigin, &vPos);
-		if (vOrigin.DistTo(vPos) > flRadius)
+	// CEntitySphereQuery actually does a box test so we need to make sure the distance is less than the radius first
+	Vec3 vPos; pEntity->m_Collision()->CalcNearestPoint(vOrigin, &vPos);
+	if (vOrigin.DistTo(vPos) > flRadius)
 		return false;
 
 	if (pEntity != pLocal
@@ -92,13 +92,13 @@ bool CAutoDetonate::CheckEntity(CBaseEntity* pEntity, CTFPlayer* pLocal, CTFWeap
 		: !SDK::VisPosWorld(pProjectile, pEntity, vOrigin, pEntity->GetAbsOrigin() + pEntity->As<CTFPlayer>()->m_vecViewOffset(), MASK_SHOT))
 		return false;
 
-		if (pCmd && pWeapon->GetWeaponID() == TF_WEAPON_PIPEBOMBLAUNCHER && pWeapon->As<CTFPipebombLauncher>()->GetDetonateType() == TF_DETONATE_MODE_DOT)
-		{
-			Vec3 vAngleTo = Math::CalcAngle(pLocal->GetShootPos(), vOrigin);
-			SDK::FixMovement(pCmd, vAngleTo);
-			pCmd->viewangles = vAngleTo;
-			G::PSilentAngles = true;
-		}
+	if (pCmd && pWeapon->GetWeaponID() == TF_WEAPON_PIPEBOMBLAUNCHER && pWeapon->As<CTFPipebombLauncher>()->GetDetonateType() == TF_DETONATE_MODE_DOT)
+	{
+		Vec3 vAngleTo = Math::CalcAngle(pLocal->GetShootPos(), vOrigin);
+		SDK::FixMovement(pCmd, vAngleTo);
+		pCmd->viewangles = vAngleTo;
+		G::PSilentAngles = true;
+	}
 	return true;
 }
 
@@ -120,7 +120,7 @@ bool CAutoDetonate::CheckEntities(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUs
 			continue;
 
 		if (CheckEntity(pEntity, pLocal, pWeapon, pCmd, pProjectile, flRadius, vOrigin))
-		return true;
+			return true;
 	}
 
 	return false;
@@ -198,4 +198,4 @@ void CAutoDetonate::Run(CTFPlayer* pLocal, CUserCmd* pCmd)
 	if (Check(pLocal, pCmd, EntityEnum::LocalStickies, Vars::Aimbot::Projectile::AutoDetonateEnum::Stickies)
 		|| Check(pLocal, pCmd, EntityEnum::LocalFlares, Vars::Aimbot::Projectile::AutoDetonateEnum::Flares))
 		pCmd->buttons |= IN_ATTACK2;
-	}
+}

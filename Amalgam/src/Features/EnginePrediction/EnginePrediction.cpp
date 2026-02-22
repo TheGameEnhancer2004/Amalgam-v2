@@ -16,8 +16,8 @@ void CEnginePrediction::AdjustPlayers(CBaseEntity* pLocal)
 		m_mRestore[pPlayer] = { pPlayer->GetAbsOrigin(), pPlayer->m_vecMins(), pPlayer->m_vecMaxs() };
 
 		pPlayer->SetAbsOrigin(pPlayer->m_vecOrigin());
-		pPlayer->m_vecMins() += 0.125f;
-		pPlayer->m_vecMaxs() -= 0.125f;
+		pPlayer->m_vecMins() += PLAYER_ORIGIN_COMPRESSION;
+		pPlayer->m_vecMaxs() -= PLAYER_ORIGIN_COMPRESSION;
 	}
 }
 void CEnginePrediction::RestorePlayers()

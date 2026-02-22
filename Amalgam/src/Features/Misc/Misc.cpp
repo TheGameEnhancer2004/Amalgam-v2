@@ -488,7 +488,7 @@ int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd, bool bSendPacket)
 		{
 			auto TargetIsBehind = [&]()
 				{
-					const float flCompDist = 0.0625f;
+					const float flCompDist = PLAYER_ORIGIN_COMPRESSION / 2;
 					const float flSqCompDist = 0.0884f;
 
 					Vec3 vToTarget = (pLocal->m_vecOrigin() - pTargetPos.first).To2D();

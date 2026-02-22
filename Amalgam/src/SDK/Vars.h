@@ -375,7 +375,8 @@ NAMESPACE_BEGIN(Vars)
 				VA_LIST("Regular", "Special light", "Special heavy"),
 				Regular, SpecialLight, SpecialHeavy);
 			CVar(SplashGrates, "Splash grates", true, NOSAVE | DEBUGVAR);
-			CVar(Out2NormalCheck, "Out2 normal check", 0.7f, NOSAVE | DEBUGVAR | SLIDER_CLAMP | SLIDER_PRECISION, -1.f, 1.f, 0.1f);
+			CVar(Out2NormalMin, "Out2 normal min", -0.7f, NOSAVE | DEBUGVAR | SLIDER_CLAMP | SLIDER_PRECISION, -1.f, 1.f, 0.1f);
+			CVar(Out2NormalMax, "Out2 normal max", 0.7f, NOSAVE | DEBUGVAR | SLIDER_CLAMP | SLIDER_PRECISION, -1.f, 1.f, 0.1f);
 
 			CVar(DeltaCount, "Delta count", 5, NOSAVE | DEBUGVAR, 1, 5);
 			CVarEnum(DeltaMode, "Delta mode", 0, NOSAVE | DEBUGVAR, nullptr,

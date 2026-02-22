@@ -2,6 +2,8 @@
 #include "../../../SDK/SDK.h"
 #include <functional>
 
+Enum(Move, Ground, Air, Swim)
+
 struct MoveStorage
 {
 	CTFPlayer* m_pPlayer = nullptr;

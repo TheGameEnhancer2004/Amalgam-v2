@@ -34,6 +34,67 @@ void CMovementSimulation::Reset(MoveStorage& tMoveStorage)
 	}
 }
 
+static inline void HandleMovement(CTFPlayer* pPlayer, MoveData* pLastRecord, MoveData& tCurRecord, std::deque<MoveData>& vRecords)
+{
+	bool bLocal = pPlayer->entindex() == I::EngineClient->GetLocalPlayer();
+
+	if (pLastRecord)
+	{
+		/*
+		if (tRecord.m_iMode != pLastRecord->m_iMode)
+		{
+			pLastRecord = nullptr;
+			vRecords.clear();
+		}
+		else */
+		{	// does this eat up fps? i can't tell currently
+			CGameTrace trace = {};
+			CTraceFilterWorldAndPropsOnly filter = {};
+			SDK::TraceHull(pLastRecord->m_vOrigin, pLastRecord->m_vOrigin + pLastRecord->m_vVelocity * TICK_INTERVAL, pPlayer->m_vecMins() + PLAYER_ORIGIN_COMPRESSION, pPlayer->m_vecMaxs() - PLAYER_ORIGIN_COMPRESSION, pPlayer->SolidMask(), &filter, &trace);
+			if (trace.DidHit() && trace.plane.normal.z < 0.707f)
+			{
+				pLastRecord = nullptr;
+				vRecords.clear();
+			}
+		}
+	}
+	if (!pLastRecord)
+		return;
+
+	if (pPlayer->InCond(TF_COND_SHIELD_CHARGE))
+	{
+		s_tDummyCmd.forwardmove = 450.f;
+		s_tDummyCmd.sidemove = 0.f;
+		SDK::FixMovement(&s_tDummyCmd, bLocal ? F::EnginePrediction.m_vAngles : pPlayer->GetEyeAngles(), {});
+		tCurRecord.m_vDirection.x = s_tDummyCmd.forwardmove;
+		tCurRecord.m_vDirection.y = -s_tDummyCmd.sidemove;
+		return;
+	}
+
+	switch (tCurRecord.m_iMode)
+	{
+	case MoveEnum::Ground:
+	{
+		if (bLocal && Vars::Misc::Movement::Bunnyhop.Value && G::OriginalCmd.buttons & IN_JUMP)
+		{
+			float flMaxSpeed = SDK::MaxSpeed(pPlayer, true);
+			tCurRecord.m_vDirection = tCurRecord.m_vVelocity.Normalized2D() * flMaxSpeed;
+		}
+		break;
+	}
+	case MoveEnum::Air:
+	{
+		float flMaxSpeed = SDK::MaxSpeed(pPlayer, true);
+		tCurRecord.m_vDirection = tCurRecord.m_vVelocity.Normalized2D() * flMaxSpeed;
+		break;
+	}
+	case MoveEnum::Swim:
+	{
+		tCurRecord.m_vDirection *= 2;
+	}
+	}
+}
+
 void CMovementSimulation::Store()
 {
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
@@ -58,7 +119,7 @@ void CMovementSimulation::Store()
 		vRecords.emplace_front(
 			vDirection,
 			pPlayer->m_flSimulationTime(),
-			pPlayer->IsSwimming() ? 2 : pPlayer->IsOnGround() ? 0 : 1,
+			pPlayer->IsSwimming() ? MoveEnum::Swim : pPlayer->IsOnGround() ? MoveEnum::Ground : MoveEnum::Air,
 			vVelocity,
 			vOrigin
 		);
@@ -66,45 +127,7 @@ void CMovementSimulation::Store()
 		if (vRecords.size() > 66)
 			vRecords.pop_back();
 
-		float flMaxSpeed = SDK::MaxSpeed(pPlayer);
-		if (pLastRecord)
-		{
-			/*
-			if (tRecord.m_iMode != pLastRecord->m_iMode)
-				vRecords.clear();
-			else // does this eat up fps? i can't tell currently
-			*/
-			{
-				CGameTrace trace = {};
-				CTraceFilterWorldAndPropsOnly filter = {};
-				SDK::TraceHull(pLastRecord->m_vOrigin, pLastRecord->m_vOrigin + pLastRecord->m_vVelocity * TICK_INTERVAL, pPlayer->m_vecMins() + 0.125f, pPlayer->m_vecMaxs() - 0.125f, pPlayer->SolidMask(), &filter, &trace);
-				if (trace.DidHit() && trace.plane.normal.z < 0.707f)
-					vRecords.clear();
-			}
-		}
-		if (pPlayer->InCond(TF_COND_SHIELD_CHARGE))
-		{
-			s_tDummyCmd.forwardmove = 450.f;
-			s_tDummyCmd.sidemove = 0.f;
-			SDK::FixMovement(&s_tDummyCmd, bLocal ? F::EnginePrediction.m_vAngles : pPlayer->GetEyeAngles(), {});
-			tCurRecord.m_vDirection.x = s_tDummyCmd.forwardmove;
-			tCurRecord.m_vDirection.y = -s_tDummyCmd.sidemove;
-		}
-		else
-		{
-			switch (tCurRecord.m_iMode)
-			{
-			case 0:
-				if (bLocal && Vars::Misc::Movement::Bunnyhop.Value && G::OriginalCmd.buttons & IN_JUMP)
-					tCurRecord.m_vDirection = vVelocity.Normalized2D() * flMaxSpeed;
-				break;
-			case 1:
-				tCurRecord.m_vDirection = vVelocity.Normalized2D() * flMaxSpeed;
-				break;
-			case 2:
-				tCurRecord.m_vDirection *= 2;
-			}
-		}
+		HandleMovement(pPlayer, pLastRecord, tCurRecord, vRecords);
 	}
 
 	for (auto pEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
@@ -165,7 +188,7 @@ bool CMovementSimulation::Initialize(CBaseEntity* pEntity, MoveStorage& tMoveSto
 		pPlayer->m_bInDuckJump() = false;
 	}
 
-	if (pPlayer != H::Entities.GetLocal())
+	if (pPlayer->entindex() != I::EngineClient->GetLocalPlayer())
 	{
 		pPlayer->m_vecBaseVelocity() = Vec3(); // residual basevelocity causes issues
 		if (pPlayer->IsOnGround())
@@ -341,7 +364,7 @@ static inline void VisualizeRecords(MoveData& tRecord1, MoveData& tRecord2, Colo
 	{
 		Vec3 vVelocity = tRecord1.m_vVelocity.Normalized2D() * 5;
 		vVelocity = Math::RotatePoint(vVelocity, {}, { 0, flYaw > 0 ? 90.f : -90.f, 0 });
-		if (Vars::Aimbot::Projectile::MovesimFrictionFlags.Value & Vars::Aimbot::Projectile::MovesimFrictionFlagsEnum::CalculateIncrease && tRecord1.m_iMode == 1)
+		if (Vars::Aimbot::Projectile::MovesimFrictionFlags.Value & Vars::Aimbot::Projectile::MovesimFrictionFlagsEnum::CalculateIncrease && tRecord1.m_iMode == MoveEnum::Air)
 			vVelocity /= GetFrictionScale(tRecord1.m_vVelocity.Length2D(), flYaw, tRecord1.m_vVelocity.z + GetGravity() * TICK_INTERVAL, 0.f, 56.f);
 		G::LineStorage.emplace_back(std::pair<Vec3, Vec3>(tRecord1.m_vOrigin, tRecord1.m_vOrigin + vVelocity), I::GlobalVars->curtime + 5.f, tColor);
 	}
@@ -355,7 +378,7 @@ static inline bool GetYawDifference(MoveData& tRecord1, MoveData& tRecord2, bool
 	const int iTicks = std::max(TIME_TO_TICKS(flTime1 - flTime2), 1);
 
 	*pYaw = Math::NormalizeAngle(flYaw1 - flYaw2);
-	if (flMaxSpeed && tRecord1.m_iMode != 1)
+	if (flMaxSpeed && tRecord1.m_iMode != MoveEnum::Air)
 		*pYaw *= std::clamp(tRecord1.m_vVelocity.Length2D() / flMaxSpeed, 0.f, 1.f);
 	if (Vars::Aimbot::Projectile::MovesimFrictionFlags.Value & Vars::Aimbot::Projectile::MovesimFrictionFlagsEnum::CalculateIncrease && tRecord1.m_iMode == 1)
 		*pYaw /= GetFrictionScale(tRecord1.m_vVelocity.Length2D(), *pYaw, tRecord1.m_vVelocity.z + GetGravity() * TICK_INTERVAL, 0.f, 56.f);
@@ -416,7 +439,7 @@ void CMovementSimulation::GetAverageYaw(MoveStorage& tMoveStorage, int iSamples)
 			continue;
 		}
 
-		bGround = tRecord1.m_iMode != 1;
+		bGround = tRecord1.m_iMode != MoveEnum::Air;
 		float flStraightFuzzyValue = bGround ? Vars::Aimbot::Projectile::GroundStraightFuzzyValue.Value : Vars::Aimbot::Projectile::AirStraightFuzzyValue.Value;
 		int iMaxChanges = bGround ? Vars::Aimbot::Projectile::GroundMaxChanges.Value : Vars::Aimbot::Projectile::AirMaxChanges.Value;
 		int iMaxChangeTime = bGround ? Vars::Aimbot::Projectile::GroundMaxChangeTime.Value : Vars::Aimbot::Projectile::AirMaxChangeTime.Value;
@@ -531,10 +554,10 @@ void CMovementSimulation::SetBounds(CTFPlayer* pPlayer)
 	{
 		if (auto pViewVectors = pGameRules->GetViewVectors())
 		{
-			pViewVectors->m_vHullMin = Vec3(-24, -24, 0) + 0.125f;
-			pViewVectors->m_vHullMax = Vec3(24, 24, 82) - 0.125f;
-			pViewVectors->m_vDuckHullMin = Vec3(-24, -24, 0) + 0.125f;
-			pViewVectors->m_vDuckHullMax = Vec3(24, 24, 62) - 0.125f;
+			pViewVectors->m_vHullMin = Vec3(-24, -24, 0) + PLAYER_ORIGIN_COMPRESSION;
+			pViewVectors->m_vHullMax = Vec3(24, 24, 82) - PLAYER_ORIGIN_COMPRESSION;
+			pViewVectors->m_vDuckHullMin = Vec3(-24, -24, 0) + PLAYER_ORIGIN_COMPRESSION;
+			pViewVectors->m_vDuckHullMax = Vec3(24, 24, 62) - PLAYER_ORIGIN_COMPRESSION;
 		}
 	}
 }
