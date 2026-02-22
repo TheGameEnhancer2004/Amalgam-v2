@@ -9,10 +9,7 @@ MAKE_SIGNATURE(CHLTVCamera_GetMode, "client.dll", "40 53 48 83 EC ? 48 8B D9 8B 
 MAKE_HOOK(CHLTVCamera_CalcView, S::CHLTVCamera_CalcView(), void,
 	void* rcx, Vector& origin, QAngle& angles, float& fov)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CHLTVCamera_CalcView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, origin, angles, fov);
-#endif
+	DEBUG_RETURN(CHLTVCamera_CalcView, rcx, origin, angles, fov);
 
 	auto pHLTVCamera = reinterpret_cast<CHLTVCamera*>(rcx);
 
@@ -37,10 +34,7 @@ MAKE_HOOK(CHLTVCamera_CalcView, S::CHLTVCamera_CalcView(), void,
 MAKE_HOOK(CHLTVCamera_GetPrimaryTarget, S::CHLTVCamera_GetPrimaryTarget(), CBaseEntity*,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CHLTVCamera_GetPrimaryTarget[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CHLTVCamera_GetPrimaryTarget, rcx);
 
 	auto pHLTVCamera = reinterpret_cast<CHLTVCamera*>(rcx);
 
@@ -53,10 +47,7 @@ MAKE_HOOK(CHLTVCamera_GetPrimaryTarget, S::CHLTVCamera_GetPrimaryTarget(), CBase
 MAKE_HOOK(CHLTVCamera_GetMode, S::CHLTVCamera_GetMode(), int,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CHLTVCamera_GetMode[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CHLTVCamera_GetMode, rcx);
 
 	auto pHLTVCamera = reinterpret_cast<CHLTVCamera*>(rcx);
 

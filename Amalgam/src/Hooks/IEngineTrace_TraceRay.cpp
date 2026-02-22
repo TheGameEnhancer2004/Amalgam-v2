@@ -4,10 +4,7 @@
 MAKE_HOOK(IEngineTrace_TraceRay, U::Memory.GetVirtual(I::EngineTrace, 4), void,
 	void* rcx, const Ray_t& ray, unsigned int fMask, ITraceFilter* pTraceFilter, trace_t* pTrace)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IEngineTrace_TraceRay[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, ray, fMask, pTraceFilter, pTrace);
-#endif
+	DEBUG_RETURN(IEngineTrace_TraceRay, rcx, ray, fMask, pTraceFilter, pTrace);
 
 	CALL_ORIGINAL(rcx, ray, fMask, pTraceFilter, pTrace);
 	if (Vars::Debug::VisualizeTraces.Value)

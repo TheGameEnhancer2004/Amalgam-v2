@@ -23,10 +23,7 @@ MAKE_SIGNATURE(CTFPlayer_FireEvent_IsHolidayActive_Call, "client.dll", "84 C0 74
 MAKE_HOOK(TF_IsHolidayActive, S::TF_IsHolidayActive(), bool,
 	int eHoliday)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::TF_IsHolidayActive[DEFAULT_BIND])
-		return CALL_ORIGINAL(eHoliday);
-#endif
+	DEBUG_RETURN(TF_IsHolidayActive, eHoliday);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFPlayer_FireEvent_IsHolidayActive_Call();

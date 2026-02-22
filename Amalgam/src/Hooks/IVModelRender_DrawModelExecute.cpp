@@ -12,10 +12,7 @@ MAKE_SIGNATURE(CBaseAnimating_InternalDrawModel, "client.dll", "48 8B C4 55 56 4
 MAKE_HOOK(IVModelRender_DrawModelExecute, U::Memory.GetVirtual(I::ModelRender, 19), void,
 	void* rcx, const DrawModelState_t& pState, const ModelRenderInfo_t& pInfo, matrix3x4* pBoneToWorld)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IVModelRender_DrawModelExecute[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pState, pInfo, pBoneToWorld);
-#endif
+	DEBUG_RETURN(IVModelRender_DrawModelExecute, rcx, pState, pInfo, pBoneToWorld);
 
 	if (I::EngineVGui->IsGameUIVisible() || SDK::CleanScreenshot()
 		|| F::CameraWindow.m_bDrawing || !F::Materials.m_bLoaded || G::Unload)
@@ -46,10 +43,7 @@ static bool s_bDrawingViewmodel = false;
 MAKE_HOOK(CBaseAnimating_DrawModel, S::CBaseAnimating_DrawModel(), int,
 	void* rcx, int flags)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_DrawModel[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, flags);
-#endif
+	DEBUG_RETURN(CBaseAnimating_DrawModel, rcx, flags);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CEconEntity_DrawOverriddenViewmodel_DrawModel_Call();
@@ -67,10 +61,7 @@ MAKE_HOOK(CBaseAnimating_DrawModel, S::CBaseAnimating_DrawModel(), int,
 MAKE_HOOK(CBaseAnimating_InternalDrawModel, S::CBaseAnimating_InternalDrawModel(), int,
 	void* rcx, int flags)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_InternalDrawModel[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, flags);
-#endif
+	DEBUG_RETURN(CBaseAnimating_InternalDrawModel, rcx, flags);
 
 	if (!s_bDrawingViewmodel || !(flags & STUDIO_RENDER))
 		return CALL_ORIGINAL(rcx, flags);

@@ -12,10 +12,7 @@ static Vec3 s_vEyeAngles;
 MAKE_HOOK(CSniperDot_GetRenderingPositions, S::CSniperDot_GetRenderingPositions(), bool,
 	void* rcx, CTFPlayer* pPlayer, Vec3& vecAttachment, Vec3& vecEndPos, float& flSize)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CSniperDot_GetRenderingPositions[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pPlayer, vecAttachment, vecEndPos, flSize);
-#endif
+	DEBUG_RETURN(CSniperDot_GetRenderingPositions, rcx, pPlayer, vecAttachment, vecEndPos, flSize);
 
 	if (pPlayer && pPlayer->entindex() != I::EngineClient->GetLocalPlayer())
 	{
@@ -31,10 +28,7 @@ MAKE_HOOK(CSniperDot_GetRenderingPositions, S::CSniperDot_GetRenderingPositions(
 MAKE_HOOK(CBasePlayer_EyePosition, S::CBasePlayer_EyePosition(), Vec3*,
 	void* rcx, void* rdx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_EyePosition[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, rdx);
-#endif
+	DEBUG_RETURN(CBasePlayer_EyePosition, rcx, rdx);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyePosition_Call();
@@ -48,10 +42,7 @@ MAKE_HOOK(CBasePlayer_EyePosition, S::CBasePlayer_EyePosition(), Vec3*,
 MAKE_HOOK(CTFPlayer_EyeAngles, S::CTFPlayer_EyeAngles(), Vec3*,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_EyeAngles[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFPlayer_EyeAngles, rcx);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CSniperDot_GetRenderingPositions_EyeAngles_Call();

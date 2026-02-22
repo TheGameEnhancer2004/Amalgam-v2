@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CMatchInviteNotification_OnTick, "client.dll", "40 53 48 83 EC ? 
 MAKE_HOOK(CMatchInviteNotification_OnTick, S::CMatchInviteNotification_OnTick(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CMatchInviteNotification_OnTick[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CMatchInviteNotification_OnTick, rcx);
 
 	if (Vars::Misc::Queueing::FreezeQueue.Value)
 		*reinterpret_cast<double*>(uintptr_t(rcx) + 616) = 0.0;

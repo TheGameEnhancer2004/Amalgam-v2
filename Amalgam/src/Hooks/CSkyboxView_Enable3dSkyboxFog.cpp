@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CSkyboxView_Enable3dSkyboxFog, "client.dll", "40 57 48 83 EC ? E8
 MAKE_HOOK(CSkyboxView_Enable3dSkyboxFog, S::CSkyboxView_Enable3dSkyboxFog(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CSkyboxView_Enable3dSkyboxFog[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CSkyboxView_Enable3dSkyboxFog, rcx);
 
 	if (!(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Fog) || SDK::CleanScreenshot())
 		return CALL_ORIGINAL(rcx);

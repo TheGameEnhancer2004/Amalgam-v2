@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CTFPlayer_DoAnimationEvent, "client.dll", "48 89 6C 24 ? 48 89 74
 MAKE_HOOK(CTFPlayer_DoAnimationEvent, S::CTFPlayer_DoAnimationEvent(), void,
 	void* rcx, PlayerAnimEvent_t event, int nData)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_DoAnimationEvent[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, event, nData);
-#endif
+	DEBUG_RETURN(CTFPlayer_DoAnimationEvent, rcx, event, nData);
 
 	auto pPlayer = reinterpret_cast<CTFPlayer*>(rcx);
 	if (pPlayer->entindex() != I::EngineClient->GetLocalPlayer())

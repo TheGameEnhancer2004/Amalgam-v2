@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CHudCrosshair_GetDrawPosition, "client.dll", "48 8B C4 55 53 56 4
 MAKE_HOOK(CHudCrosshair_GetDrawPosition, S::CHudCrosshair_GetDrawPosition(), void,
 	float* pX, float* pY, bool* pbBehindCamera, Vec3 angleCrosshairOffset)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CHudCrosshair_GetDrawPosition[DEFAULT_BIND])
-		return CALL_ORIGINAL(pX, pY, pbBehindCamera, angleCrosshairOffset);
-#endif
+	DEBUG_RETURN(CHudCrosshair_GetDrawPosition, pX, pY, pbBehindCamera, angleCrosshairOffset);
 
 	if (!Vars::Visuals::Viewmodel::CrosshairAim.Value && !Vars::Visuals::Thirdperson::Crosshair.Value || SDK::CleanScreenshot())
 		return CALL_ORIGINAL(pX, pY, pbBehindCamera, angleCrosshairOffset);

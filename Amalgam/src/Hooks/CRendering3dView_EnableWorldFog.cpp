@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CRendering3dView_EnableWorldFog, "client.dll", "40 53 48 83 EC ? 
 MAKE_HOOK(CRendering3dView_EnableWorldFog, S::CRendering3dView_EnableWorldFog(), void,
 	)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CRendering3dView_EnableWorldFog[DEFAULT_BIND])
-		return CALL_ORIGINAL();
-#endif
+	DEBUG_RETURN(CRendering3dView_EnableWorldFog);
 
 	if (!(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Fog) || SDK::CleanScreenshot())
 		return CALL_ORIGINAL();

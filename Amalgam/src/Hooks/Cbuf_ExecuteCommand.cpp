@@ -214,10 +214,7 @@ static std::vector<std::function<void()>> s_vDynamic = {
 MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
 	CCommand& args, cmd_source_t source)
 {
-#ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::Cbuf_ExecuteCommand[DEFAULT_BIND])
-        return CALL_ORIGINAL(args, source);
-#endif
+    DEBUG_RETURN(Cbuf_ExecuteCommand, args, source);
 
 	if (args.ArgC())
 	{

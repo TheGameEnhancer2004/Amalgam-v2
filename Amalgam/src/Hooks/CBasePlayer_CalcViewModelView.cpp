@@ -6,10 +6,7 @@ MAKE_SIGNATURE(CBasePlayer_CalcViewModelView, "client.dll", "48 89 5C 24 ? 48 89
 MAKE_HOOK(CBaseViewModel_CalcViewModelView, S::CBaseViewModel_CalcViewModelView(), void,
 	void* rcx, CBasePlayer* owner, /*const*/ Vector& eyePosition, /*const*/ QAngle& eyeAngles)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseViewModel_CalcViewModelView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, owner, eyePosition, eyeAngles);
-#endif
+	DEBUG_RETURN(CBaseViewModel_CalcViewModelView, rcx, owner, eyePosition, eyeAngles);
 
 	Vec3 vOffset = { Vars::Visuals::Viewmodel::OffsetX.Value, Vars::Visuals::Viewmodel::OffsetY.Value, Vars::Visuals::Viewmodel::OffsetZ.Value };
 	Vec3 vAngles = { Vars::Visuals::Viewmodel::Pitch.Value, Vars::Visuals::Viewmodel::Yaw.Value, Vars::Visuals::Viewmodel::Roll.Value };
@@ -50,10 +47,7 @@ MAKE_HOOK(CBaseViewModel_CalcViewModelView, S::CBaseViewModel_CalcViewModelView(
 MAKE_HOOK(CBasePlayer_CalcViewModelView, S::CBasePlayer_CalcViewModelView(), void,
 	void* rcx, /*const*/ Vector& eyeOrigin, /*const*/ QAngle& eyeAngles)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcViewModelView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles);
-#endif
+	DEBUG_RETURN(CBasePlayer_CalcViewModelView, rcx, eyeOrigin, eyeAngles);
 
 	Vector vOldEyeOrigin = eyeOrigin, vOldEyeAngles = eyeAngles;
 	CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles);

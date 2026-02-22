@@ -15,10 +15,7 @@
 MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bool,
 	void* rcx, UserMessageType type, bf_read& msgData)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CHLClient_DispatchUserMessage[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, type, msgData);
-#endif
+	DEBUG_RETURN(CHLClient_DispatchUserMessage, rcx, type, msgData);
 
 	auto bufData = reinterpret_cast<const char*>(msgData.m_pData);
 	msgData.SetAssertOnOverflow(false);

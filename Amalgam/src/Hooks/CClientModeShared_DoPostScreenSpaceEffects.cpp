@@ -9,10 +9,7 @@
 MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::ClientModeShared, 39), bool,
 	void* rcx, const CViewSetup* pSetup)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CClientModeShared_DoPostScreenSpaceEffects[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pSetup);
-#endif
+	DEBUG_RETURN(CClientModeShared_DoPostScreenSpaceEffects, rcx, pSetup);
 
 	if (SDK::CleanScreenshot())
 		return CALL_ORIGINAL(rcx, pSetup);

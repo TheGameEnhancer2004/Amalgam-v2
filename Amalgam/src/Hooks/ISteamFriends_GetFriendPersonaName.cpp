@@ -7,10 +7,7 @@ MAKE_SIGNATURE(GetPlayerNameForSteamID_GetFriendPersonaName_Call, "client.dll", 
 MAKE_HOOK(ISteamFriends_GetFriendPersonaName, U::Memory.GetVirtual(I::SteamFriends, 7), const char*,
 	void* rcx, CSteamID steamIDFriend)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::ISteamFriends_GetFriendPersonaName[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, steamIDFriend);
-#endif
+	DEBUG_RETURN(ISteamFriends_GetFriendPersonaName, rcx, steamIDFriend);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::GetPlayerNameForSteamID_GetFriendPersonaName_Call();

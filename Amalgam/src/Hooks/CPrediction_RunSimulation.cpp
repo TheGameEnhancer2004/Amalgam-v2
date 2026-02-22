@@ -16,10 +16,7 @@ static std::vector<TickbaseFix_t> s_vTickbaseFixes = {};
 MAKE_HOOK(CPrediction_RunSimulation, S::CPrediction_RunSimulation(), void,
 	void* rcx, int current_command, float curtime, CUserCmd* cmd, CTFPlayer* localPlayer)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CPrediction_RunSimulation[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, current_command, curtime, cmd, localPlayer);
-#endif
+	DEBUG_RETURN(CPrediction_RunSimulation, rcx, current_command, curtime, cmd, localPlayer);
 
 	if (F::Ticks.m_bShifting && F::Ticks.m_iShiftedTicks + 1 == F::Ticks.m_iShiftStart)
 	{

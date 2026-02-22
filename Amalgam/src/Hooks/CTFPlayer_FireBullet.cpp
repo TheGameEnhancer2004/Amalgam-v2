@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CTFPlayer_FireBullet, "client.dll", "48 89 74 24 ? 55 57 41 55 41
 MAKE_HOOK(CTFPlayer_FireBullet, S::CTFPlayer_FireBullet(), void,
 	void* rcx, CBaseCombatWeapon* pWeapon, const FireBulletsInfo_t& info, bool bDoEffects, int nDamageType, int nCustomDamageType)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_FireBullet[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pWeapon, info, nDamageType, nDamageType, nCustomDamageType);
-#endif
+	DEBUG_RETURN(CTFPlayer_FireBullet, rcx, pWeapon, info, nDamageType, nDamageType, nCustomDamageType);
 
 	auto pLocal = reinterpret_cast<CTFPlayer*>(rcx);
 	if (pLocal != H::Entities.GetLocal() || !pWeapon)

@@ -5,10 +5,7 @@ MAKE_SIGNATURE(NotificationQueue_Add, "client.dll", "48 89 5C 24 ? 57 48 83 EC ?
 MAKE_HOOK(NotificationQueue_Add, S::NotificationQueue_Add(), int,
 	CEconNotification* pNotification)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::NotificationQueue_Add[DEFAULT_BIND])
-		return CALL_ORIGINAL(pNotification);
-#endif
+	DEBUG_RETURN(NotificationQueue_Add, pNotification);
 
 	if (Vars::Misc::Automation::AcceptItemDrops.Value && FNV1A::Hash32(pNotification->m_pText) == FNV1A::Hash32Const("TF_HasNewItems"))
 	{

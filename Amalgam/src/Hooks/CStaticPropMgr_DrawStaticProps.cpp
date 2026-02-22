@@ -7,10 +7,7 @@ static bool s_bDrawingProps = false;
 MAKE_HOOK(CStaticPropMgr_DrawStaticProps, S::CStaticPropMgr_DrawStaticProps(), void,
 	void* rcx, IClientRenderable** pProps, int count, bool bShadowDepth, bool drawVCollideWireframe)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CStaticPropMgr_DrawStaticProps[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pProps, count, bShadowDepth, drawVCollideWireframe);
-#endif
+	DEBUG_RETURN(CStaticPropMgr_DrawStaticProps, rcx, pProps, count, bShadowDepth, drawVCollideWireframe);
 
 	s_bDrawingProps = true;
 	CALL_ORIGINAL(rcx, pProps, count, bShadowDepth, drawVCollideWireframe);
@@ -20,10 +17,7 @@ MAKE_HOOK(CStaticPropMgr_DrawStaticProps, S::CStaticPropMgr_DrawStaticProps(), v
 MAKE_HOOK(CStudioRender_SetColorModulation, U::Memory.GetVirtual(I::StudioRender, 27), void,
 	void* rcx, const float* pColor)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CStudioRender_SetColorModulation[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pColor);
-#endif
+	DEBUG_RETURN(CStudioRender_SetColorModulation, rcx, pColor);
 
 	if (!s_bDrawingProps || !(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Prop) || SDK::CleanScreenshot())
 		return CALL_ORIGINAL(rcx, pColor);
@@ -39,10 +33,7 @@ MAKE_HOOK(CStudioRender_SetColorModulation, U::Memory.GetVirtual(I::StudioRender
 MAKE_HOOK(CStudioRender_SetAlphaModulation, U::Memory.GetVirtual(I::StudioRender, 28), void,
 	void* rcx, float flAlpha)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CStudioRender_SetAlphaModulation[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, flAlpha);
-#endif
+	DEBUG_RETURN(CStudioRender_SetAlphaModulation, rcx, flAlpha);
 
 	if (!s_bDrawingProps || !(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Prop) || SDK::CleanScreenshot())
 		return CALL_ORIGINAL(rcx, flAlpha);

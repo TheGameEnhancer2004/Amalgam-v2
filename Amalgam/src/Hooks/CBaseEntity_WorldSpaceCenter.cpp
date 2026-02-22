@@ -7,10 +7,7 @@ MAKE_SIGNATURE(MainViewOrigin, "client.dll", "48 8D 05 ? ? ? ? C3 CC CC CC CC CC
 MAKE_HOOK(CBaseEntity_WorldSpaceCenter, S::CBaseEntity_WorldSpaceCenter(), const Vec3&,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseEntity_WorldSpaceCenter[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CBaseEntity_WorldSpaceCenter, rcx);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_WorldSpaceCenter_Call();

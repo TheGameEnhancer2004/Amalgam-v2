@@ -582,6 +582,8 @@ static void* s_pCTFGameStats = nullptr;
 MAKE_HOOK(CTFGameStats_FindPlayerStats, S::CTFGameStats_FindPlayerStats(), void*,
 	void* rcx, CBasePlayer* pPlayer)
 {
+	DEBUG_RETURN(CTFGameStats_FindPlayerStats, rcx, pPlayer);
+
 	s_pCTFGameStats = rcx;
 	return CALL_ORIGINAL(rcx, pPlayer);
 }

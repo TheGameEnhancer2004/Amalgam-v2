@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CBaseHudChatLine_InsertAndColorizeText, "client.dll", "44 89 44 2
 MAKE_HOOK(CBaseHudChatLine_InsertAndColorizeText, S::CBaseHudChatLine_InsertAndColorizeText(), void,
 	void* rcx, wchar_t* buf, int clientIndex)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseHudChatLine_InsertAndColorizeText[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, buf, clientIndex);
-#endif
+	DEBUG_RETURN(CBaseHudChatLine_InsertAndColorizeText, rcx, buf, clientIndex);
 
 	auto pResource = H::Entities.GetResource();
 	if (!pResource || !pResource->IsValid(clientIndex))

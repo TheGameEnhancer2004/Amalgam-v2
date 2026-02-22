@@ -14,10 +14,7 @@ MAKE_SIGNATURE(CBasePlayer_BuildFirstPersonMeathookTransformations_ShouldDrawThi
 MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_ShouldDraw[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFPlayer_ShouldDraw, rcx);
 
 	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
@@ -35,10 +32,7 @@ MAKE_HOOK(CTFPlayer_ShouldDraw, S::CTFPlayer_ShouldDraw(), bool,
 MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_ShouldDrawThisPlayer[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CBasePlayer_ShouldDrawThisPlayer, rcx);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	//const auto dwDesired = S::CTFWeaponBase_PostDataUpdate_ShouldDrawThisPlayer_Call();
@@ -66,10 +60,7 @@ MAKE_HOOK(CBasePlayer_ShouldDrawThisPlayer, S::CBasePlayer_ShouldDrawThisPlayer(
 MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlayer(), bool,
 	/*void* rcx*/)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_ShouldDrawLocalPlayer[DEFAULT_BIND])
-		return CALL_ORIGINAL(/*rcx*/);
-#endif
+	DEBUG_RETURN(CBasePlayer_ShouldDrawThisPlayer, /*rcx*/);
 
 	//const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	//const auto dwDesired = S::CBaseCombatWeapon_CalcOverrideModelIndex_ShouldDrawLocalPlayer_Call();
@@ -90,10 +81,7 @@ MAKE_HOOK(CBasePlayer_ShouldDrawLocalPlayer, S::CBasePlayer_ShouldDrawLocalPlaye
 MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseCombatWeapon_ShouldDraw[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CBaseCombatWeapon_ShouldDraw, rcx);
 
 	if (F::Spectate.HasTarget() && !I::EngineClient->IsHLTV())
 	{
@@ -108,10 +96,7 @@ MAKE_HOOK(CBaseCombatWeapon_ShouldDraw, S::CBaseCombatWeapon_ShouldDraw(), bool,
 MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 	void* rcx, const CViewSetup& viewRender, bool drawViewmodel)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CViewRender_DrawViewModels[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, viewRender, drawViewmodel);
-#endif
+	DEBUG_RETURN(CViewRender_DrawViewModels, rcx, viewRender, drawViewmodel);
 
 	CALL_ORIGINAL(rcx, viewRender, F::Spectate.HasTarget() && !I::EngineClient->IsHLTV() ? false : drawViewmodel);
 }

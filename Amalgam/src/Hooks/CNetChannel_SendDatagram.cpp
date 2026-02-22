@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CNetChannel_SendDatagram, "engine.dll", "40 55 57 41 56 48 8D AC 
 MAKE_HOOK(CNetChannel_SendDatagram, S::CNetChannel_SendDatagram(), int,
 	CNetChannel* pNetChan, bf_write* datagram)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CNetChannel_SendDatagram[DEFAULT_BIND])
-		return CALL_ORIGINAL(pNetChan, datagram);
-#endif
+	DEBUG_RETURN(CNetChannel_SendDatagram, pNetChan, datagram);
 
 	if (datagram)
 		return CALL_ORIGINAL(pNetChan, datagram);

@@ -18,10 +18,7 @@ static const char* s_sPlayerName;
 MAKE_HOOK(CPlayerResource_IsFakePlayer, S::CPlayerResource_IsFakePlayer(), bool,
 	void* rcx, int index)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CPlayerResource_IsFakePlayer[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, index);
-#endif
+	DEBUG_RETURN(CPlayerResource_IsFakePlayer, rcx, index);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_IsFakePlayer_Call();
@@ -35,10 +32,7 @@ MAKE_HOOK(CPlayerResource_IsFakePlayer, S::CPlayerResource_IsFakePlayer(), bool,
 MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
 	void* rcx, const char* pszButtonText, const char* pszCommand, const char* pszCategoryName)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::VGuiMenuBuilder_AddMenuItem[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pszButtonText, pszCommand, pszCategoryName);
-#endif
+	DEBUG_RETURN(VGuiMenuBuilder_AddMenuItem, rcx, pszButtonText, pszCommand, pszCategoryName);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired1 = S::CTFClientScoreBoardDialog_OnScoreBoardMouseRightRelease_AddMenuItem_CallProfile();
@@ -81,10 +75,7 @@ MAKE_HOOK(VGuiMenuBuilder_AddMenuItem, S::VGuiMenuBuilder_AddMenuItem(), void*,
 MAKE_HOOK(CTFClientScoreBoardDialog_OnCommand, S::CTFClientScoreBoardDialog_OnCommand(), void,
 	void* rcx, const char* command)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFClientScoreBoardDialog_OnCommand[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, command);
-#endif
+	DEBUG_RETURN(CTFClientScoreBoardDialog_OnCommand, rcx, command);
 
 	if (!Vars::Visuals::UI::ScoreboardUtility.Value && !command)
 		return CALL_ORIGINAL(rcx, command);

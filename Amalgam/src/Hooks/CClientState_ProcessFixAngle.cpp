@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CClientState_ProcessFixAngle, "engine.dll", "40 53 48 83 EC ? F3 
 MAKE_HOOK(CClientState_ProcessFixAngle, S::CClientState_ProcessFixAngle(), bool,
 	CClientState* rcx, SVC_FixAngle* msg)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CClientState_ProcessFixAngle[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, msg);
-#endif
+	DEBUG_RETURN(CClientState_ProcessFixAngle, rcx, msg);
 
 	if (Vars::Visuals::Removals::AngleForcing.Value)
 		return false;

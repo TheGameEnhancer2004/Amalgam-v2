@@ -617,10 +617,7 @@ void CVisuals::DrawHitboxes(int iStore)
 MAKE_HOOK(CBaseAnimating_DrawServerHitboxes, S::CBaseAnimating_DrawServerHitboxes(), void,
 	void* rcx, float duration, bool monocolor)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_DrawServerHitboxes[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, duration, monocolor);
-#endif
+	DEBUG_RETURN(CBaseAnimating_DrawServerHitboxes, rcx, duration, monocolor);
 
 	if (s_bBoxesHeadOnly)
 		monocolor = false;
@@ -631,10 +628,7 @@ MAKE_HOOK(CBaseAnimating_DrawServerHitboxes, S::CBaseAnimating_DrawServerHitboxe
 MAKE_HOOK(NDebugOverlay_BoxAngles, S::NDebugOverlay_BoxAngles(), void,
 	Vector& origin, Vector& mins, Vector& maxs, QAngle& angles, int r, int g, int b, int a, float duration)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::NDebugOverlay_BoxAngles[DEFAULT_BIND])
-		return CALL_ORIGINAL(origin, mins, maxs, angles, r, g, b, a, duration);
-#endif
+	DEBUG_RETURN(NDebugOverlay_BoxAngles, origin, mins, maxs, angles, r, g, b, a, duration);
 
 	if (s_bBoxesHeadOnly)
 	{

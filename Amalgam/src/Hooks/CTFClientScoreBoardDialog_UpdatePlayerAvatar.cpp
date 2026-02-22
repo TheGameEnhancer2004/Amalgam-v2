@@ -41,10 +41,7 @@ static inline void SetScoreboardColor(int iIndex, Color_t& tColor)
 MAKE_HOOK(CAvatarImage_SetAvatarSteamID, S::CAvatarImage_SetAvatarSteamID(), bool,
 	void* rcx, CSteamID steamIDUser, EAvatarSize avatarSize)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CAvatarImage_SetAvatarSteamID[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, steamIDUser, avatarSize);
-#endif
+	DEBUG_RETURN(CAvatarImage_SetAvatarSteamID, rcx, steamIDUser, avatarSize);
 
 	if (!(F::PlayerUtils.GetNameType(steamIDUser.GetAccountID()) & NameTypeEnum::Privacy))
 		return CALL_ORIGINAL(rcx, steamIDUser, avatarSize);
@@ -55,10 +52,7 @@ MAKE_HOOK(CAvatarImage_SetAvatarSteamID, S::CAvatarImage_SetAvatarSteamID(), boo
 MAKE_HOOK(CAvatarImagePanel_SetPlayer, S::CAvatarImagePanel_SetPlayer(), void,
 	void* rcx, CSteamID steamIDForPlayer, EAvatarSize avatarSize)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CAvatarImagePanel_SetPlayer[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, steamIDForPlayer, avatarSize);
-#endif
+	DEBUG_RETURN(CAvatarImagePanel_SetPlayer, rcx, steamIDForPlayer, avatarSize);
 
 	if (!(F::PlayerUtils.GetNameType(steamIDForPlayer.GetAccountID()) & NameTypeEnum::Privacy))
 		return CALL_ORIGINAL(rcx, steamIDForPlayer, avatarSize);
@@ -69,10 +63,7 @@ MAKE_HOOK(CAvatarImagePanel_SetPlayer, S::CAvatarImagePanel_SetPlayer(), void,
 MAKE_HOOK(CTFClientScoreBoardDialog_UpdatePlayerAvatar, S::CTFClientScoreBoardDialog_UpdatePlayerAvatar(), void,
 	void* rcx, int playerIndex, KeyValues* kv)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFClientScoreBoardDialog_UpdatePlayerAvatar[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, playerIndex, kv);
-#endif
+	DEBUG_RETURN(CTFClientScoreBoardDialog_UpdatePlayerAvatar, rcx, playerIndex, kv);
 
 	s_iPlayerIndex = playerIndex;
 
@@ -83,10 +74,7 @@ MAKE_HOOK(CTFClientScoreBoardDialog_UpdatePlayerAvatar, S::CTFClientScoreBoardDi
 MAKE_HOOK(CTFMatchSummary_UpdatePlayerAvatar, S::CTFMatchSummary_UpdatePlayerAvatar(), void,
 	void* rcx, int playerIndex, KeyValues* kv)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFMatchSummary_UpdatePlayerAvatar[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, playerIndex, kv);
-#endif
+	DEBUG_RETURN(CTFMatchSummary_UpdatePlayerAvatar, rcx, playerIndex, kv);
 
 	if (!(F::PlayerUtils.GetNameType(playerIndex) & NameTypeEnum::Privacy))
 		CALL_ORIGINAL(rcx, playerIndex, kv);
@@ -95,10 +83,7 @@ MAKE_HOOK(CTFMatchSummary_UpdatePlayerAvatar, S::CTFMatchSummary_UpdatePlayerAva
 MAKE_HOOK(CTFHudMannVsMachineScoreboard_UpdatePlayerAvatar, S::CTFHudMannVsMachineScoreboard_UpdatePlayerAvatar(), void,
 	void* rcx, int playerIndex, KeyValues* kv)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFHudMannVsMachineScoreboard_UpdatePlayerAvatar[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, playerIndex, kv);
-#endif
+	DEBUG_RETURN(CTFHudMannVsMachineScoreboard_UpdatePlayerAvatar, rcx, playerIndex, kv);
 
 	if (!(F::PlayerUtils.GetNameType(playerIndex) & NameTypeEnum::Privacy))
 		CALL_ORIGINAL(rcx, playerIndex, kv);
@@ -107,10 +92,7 @@ MAKE_HOOK(CTFHudMannVsMachineScoreboard_UpdatePlayerAvatar, S::CTFHudMannVsMachi
 MAKE_HOOK(CTFHudMatchStatus_UpdatePlayerAvatar, S::CTFHudMatchStatus_UpdatePlayerAvatar(), void,
 	void* rcx, int playerIndex, KeyValues* kv)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFHudMatchStatus_UpdatePlayerAvatar[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, playerIndex, kv);
-#endif
+	DEBUG_RETURN(CTFHudMatchStatus_UpdatePlayerAvatar, rcx, playerIndex, kv);
 
 	if (!(F::PlayerUtils.GetNameType(playerIndex) & NameTypeEnum::Privacy))
 		CALL_ORIGINAL(rcx, playerIndex, kv);
@@ -119,10 +101,7 @@ MAKE_HOOK(CTFHudMatchStatus_UpdatePlayerAvatar, S::CTFHudMatchStatus_UpdatePlaye
 MAKE_HOOK(SectionedListPanel_SetItemFgColor, S::SectionedListPanel_SetItemFgColor(), void,
 	void* rcx, int itemID, Color_t color)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::SectionedListPanel_SetItemFgColor[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, itemID, color);
-#endif
+	DEBUG_RETURN(SectionedListPanel_SetItemFgColor, rcx, itemID, color);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_SetItemFgColor_Call();

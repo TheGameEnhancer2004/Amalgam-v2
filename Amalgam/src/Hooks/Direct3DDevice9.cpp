@@ -9,6 +9,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 MAKE_HOOK(Direct3DDevice9_Present, U::Memory.GetVirtual(I::DirectXDevice, 17), HRESULT,
 	IDirect3DDevice9* pDevice, const RECT* pSource, const RECT* pDestination, const RGNDATA* pDirtyRegion)
 {
+	DEBUG_RETURN(Direct3DDevice9_Present, pDevice, pSource, pDestination, pDirtyRegion);
+
 	if (!G::Unload)
 		F::Render.Render(pDevice);
 
@@ -18,6 +20,8 @@ MAKE_HOOK(Direct3DDevice9_Present, U::Memory.GetVirtual(I::DirectXDevice, 17), H
 MAKE_HOOK(Direct3DDevice9_Reset, U::Memory.GetVirtual(I::DirectXDevice, 16), HRESULT,
 	LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+	DEBUG_RETURN(Direct3DDevice9_Reset, pDevice, pPresentationParameters);
+
 	ImGui_ImplDX9_InvalidateDeviceObjects();
 	const HRESULT Original = CALL_ORIGINAL(pDevice, pPresentationParameters);
 	ImGui_ImplDX9_CreateDeviceObjects();
@@ -46,6 +50,8 @@ LONG __stdcall WndProc::Func(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 MAKE_HOOK(VGuiSurface_LockCursor, U::Memory.GetVirtual(I::MatSystemSurface, 62), void,
 	void* rcx)
 {
+	DEBUG_RETURN(VGuiSurface_LockCursor, rcx);
+
 	if (F::Menu.m_bIsOpen)
 		return I::MatSystemSurface->UnlockCursor();
 
@@ -55,6 +61,8 @@ MAKE_HOOK(VGuiSurface_LockCursor, U::Memory.GetVirtual(I::MatSystemSurface, 62),
 MAKE_HOOK(VGuiSurface_SetCursor, U::Memory.GetVirtual(I::MatSystemSurface, 51), void,
 	void* rcx, HCursor cursor)
 {
+	DEBUG_RETURN(VGuiSurface_SetCursor, rcx, cursor);
+
 	if (F::Menu.m_bIsOpen)
 	{
 		switch (F::Render.Cursor)

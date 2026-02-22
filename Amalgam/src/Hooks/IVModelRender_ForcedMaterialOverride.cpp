@@ -7,10 +7,7 @@
 MAKE_HOOK(IVModelRender_ForcedMaterialOverride, U::Memory.GetVirtual(I::ModelRender, 1), void,
 	IVModelRender* rcx, IMaterial* mat, OverrideType_t type)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::IVModelRender_ForcedMaterialOverride[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, mat, type);
-#endif
+	DEBUG_RETURN(IVModelRender_ForcedMaterialOverride, rcx, mat, type);
 
 	if (F::Chams.m_bRendering || F::Glow.m_bRendering)
 		return;

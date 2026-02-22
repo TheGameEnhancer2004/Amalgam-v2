@@ -133,10 +133,7 @@ static inline bool ShouldBlockSound(const char* pSound)
 MAKE_HOOK(CSoundEmitterSystem_EmitSound, S::CSoundEmitterSystem_EmitSound(), void,
 	void* rcx, IRecipientFilter& filter, int entindex, const EmitSound_t& ep)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CSoundEmitterSystem_EmitSound[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, filter, entindex, ep);
-#endif
+	DEBUG_RETURN(CSoundEmitterSystem_EmitSound, rcx, filter, entindex, ep);
 
 	if (ShouldBlockSound(ep.m_pSoundName))
 		return;
@@ -148,10 +145,7 @@ MAKE_HOOK(CSoundEmitterSystem_EmitSound, S::CSoundEmitterSystem_EmitSound(), voi
 MAKE_HOOK(S_StartDynamicSound, S::S_StartDynamicSound(), int,
 	StartSoundParams_t& params)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::S_StartDynamicSound[DEFAULT_BIND])
-		return CALL_ORIGINAL(params);
-#endif
+	DEBUG_RETURN(S_StartDynamicSound, params);
 
 	H::Entities.ManualNetwork(params);
 	if (params.pSfx && ShouldBlockSound(params.pSfx->getname()))
@@ -164,10 +158,7 @@ MAKE_HOOK(S_StartDynamicSound, S::S_StartDynamicSound(), int,
 MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 	StartSoundParams_t& params)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::S_StartSound[DEFAULT_BIND])
-		return CALL_ORIGINAL(params);
-#endif
+	DEBUG_RETURN(S_StartSound, params);
 
 	if (!params.staticsound)
 		H::Entities.ManualNetwork(params);
@@ -180,6 +171,8 @@ MAKE_HOOK(S_StartSound, S::S_StartSound(), int,
 MAKE_HOOK(CBaseEntity_EmitSound, S::CBaseEntity_EmitSound(), void,
 	void* rcx, const char* soundname, float soundtime, float* duration)
 {
+	DEBUG_RETURN(CBaseEntity_EmitSound, rcx, soundname, soundtime, duration);
+
 	if (soundname)
 	{
 		switch (FNV1A::Hash32(soundname))

@@ -73,10 +73,7 @@ struct ParticleRenderData_t
 MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
     void* rcx, IMatRenderContext* pRenderContext, CParticleCollection* pParticles, void* pContext)
 {
-#ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::COPRenderSprites_Render[DEFAULT_BIND])
-        return CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
-#endif
+    DEBUG_RETURN(COPRenderSprites_Render, rcx, pRenderContext, pParticles, pContext);
 
     if (!Vars::Visuals::Effects::DrawIconsThroughWalls.Value || SDK::CleanScreenshot())
         return CALL_ORIGINAL(rcx, pRenderContext, pParticles, pContext);
@@ -166,10 +163,7 @@ MAKE_HOOK(COPRenderSprites_Render, S::COPRenderSprites_Render(), void,
 MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, ParticleRenderData_t* pSortList, void* pCamera)
 {
-#ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::COPRenderSprites_RenderSpriteCard[DEFAULT_BIND])
-        return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
-#endif
+    DEBUG_RETURN(COPRenderSprites_RenderSpriteCard, rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
 
     if (!(Vars::Visuals::World::Modulations.Value & Vars::Visuals::World::ModulationsEnum::Particle) || SDK::CleanScreenshot())
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
@@ -185,10 +179,7 @@ MAKE_HOOK(COPRenderSprites_RenderSpriteCard, S::COPRenderSprites_RenderSpriteCar
 MAKE_HOOK(COPRenderSprites_RenderTwoSequenceSpriteCard, S::COPRenderSprites_RenderTwoSequenceSpriteCard(), void,
     void* rcx, void* meshBuilder, void* pCtx, SpriteRenderInfo_t& info, int hParticle, ParticleRenderData_t* pSortList, void* pCamera)
 {
-#ifdef DEBUG_HOOKS
-    if (!Vars::Hooks::COPRenderSprites_RenderTwoSequenceSpriteCard[DEFAULT_BIND])
-        return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
-#endif
+    DEBUG_RETURN(COPRenderSprites_RenderTwoSequenceSpriteCard, rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);
 
     if (!(Vars::Visuals::World::Modulations.Value &Vars::Visuals::World::ModulationsEnum::Particle) || SDK::CleanScreenshot())
         return CALL_ORIGINAL(rcx, meshBuilder, pCtx, info, hParticle, pSortList, pCamera);

@@ -6,10 +6,7 @@ MAKE_SIGNATURE(CDamageAccountPanel_DisplayDamageFeedback_IsPlayerClass_Call, "cl
 MAKE_HOOK(CTFPlayer_IsPlayerClass, S::CTFPlayer_IsPlayerClass(), bool,
 	void* rcx, int iClass)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_IsPlayerClass[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, iClass);
-#endif
+	DEBUG_RETURN(CTFPlayer_IsPlayerClass, rcx, iClass);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	static const auto dwDesired = S::CDamageAccountPanel_DisplayDamageFeedback_IsPlayerClass_Call();

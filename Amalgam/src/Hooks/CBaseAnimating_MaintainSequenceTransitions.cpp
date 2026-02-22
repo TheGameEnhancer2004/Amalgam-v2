@@ -5,8 +5,5 @@ MAKE_SIGNATURE(CBaseAnimating_MaintainSequenceTransitions, "client.dll", "4C 89 
 MAKE_HOOK(CBaseAnimating_MaintainSequenceTransitions, S::CBaseAnimating_MaintainSequenceTransitions(), void,
 	void* rcx, void* boneSetup, float flCycle, Vec3 pos[], Vector4D q[])
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_MaintainSequenceTransitions[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, boneSetup, flCycle, pos, q);
-#endif
+	DEBUG_RETURN(CBaseAnimating_MaintainSequenceTransitions, rcx, boneSetup, flCycle, pos, q);
 }

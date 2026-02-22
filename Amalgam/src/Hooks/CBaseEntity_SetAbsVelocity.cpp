@@ -57,10 +57,7 @@ MAKE_SIGNATURE(CBasePlayer_PostDataUpdate_SetAbsVelocity_Call, "client.dll", "0F
 MAKE_HOOK(CBaseEntity_SetAbsVelocity, S::CBaseEntity_SetAbsVelocity(), void,
 	void* rcx, const Vec3& vecAbsVelocity)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseEntity_SetAbsVelocity[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, vecAbsVelocity);
-#endif
+	DEBUG_RETURN(CBaseEntity_SetAbsVelocity, rcx, vecAbsVelocity);
 
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CBasePlayer_PostDataUpdate_SetAbsVelocity_Call();

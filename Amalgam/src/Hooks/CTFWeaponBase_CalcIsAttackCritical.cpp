@@ -7,10 +7,7 @@ static int s_iCurrentSeed = -1;
 MAKE_HOOK(CTFWeaponBase_CalcIsAttackCritical, S::CTFWeaponBase_CalcIsAttackCritical(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFWeaponBase_CalcIsAttackCritical[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFWeaponBase_CalcIsAttackCritical, rcx);
 
 	auto pWeapon = reinterpret_cast<CTFWeaponBase*>(rcx);
 
