@@ -166,7 +166,7 @@ template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const 
 				if (uHash == uHash2)
 					i++;
 			}
-			bValid = bValid && i <= 1;
+			bValid = i <= 1;
 		}
 
 		if (bValid)
@@ -368,7 +368,7 @@ static inline void SaveMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 	boost::property_tree::ptree tMap;
 	for (auto& [iBind, tValue] : pVar->Map)
 		F::Configs.SaveJson(tMap, std::to_string(iBind), tValue);
-	tTree.put_child(pVar->m_sName, tMap);
+	tTree.put_child(pVar->Name(), tMap);
 }
 #define Save(t, j) if (IsType(t)) SaveMain<t>(pBase, j);
 
@@ -378,7 +378,7 @@ static inline void LoadMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 	auto pVar = pBase->As<T>();
 
 	pVar->Map = { { DEFAULT_BIND, pVar->Default } };
-	if (auto tMap = tTree.get_child_optional(pVar->m_sName))
+	if (auto tMap = tTree.get_child_optional(pVar->Name()))
 	{
 		for (auto& [sKey, _] : *tMap)
 		{
@@ -392,7 +392,7 @@ static inline void LoadMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 		}
 	}
 	else if (!(pVar->m_iFlags & NOSAVE))
-		SDK::Output("Amalgam", std::format("{} not found", pVar->m_sName).c_str(), ALTERNATE_COLOR, OUTPUT_CONSOLE | OUTPUT_MENU | OUTPUT_DEBUG);
+		SDK::Output("Amalgam", std::format("{} not found", pVar->Name()).c_str(), ALTERNATE_COLOR, OUTPUT_CONSOLE | OUTPUT_MENU | OUTPUT_DEBUG);
 }
 #define Load(t, j) if (IsType(t)) LoadMain<t>(pBase, j);
 
@@ -617,14 +617,14 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 template <class T>
 static inline void SaveMiscMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 {
-	F::Configs.SaveJson(tTree, pBase->m_sName, pBase->As<T>()->Map[DEFAULT_BIND]);
+	F::Configs.SaveJson(tTree, pBase->Name(), pBase->As<T>()->Map[DEFAULT_BIND]);
 }
 #define SaveMisc(t, j) if (IsType(t)) SaveMiscMain<t>(pBase, j);
 
 template <class T>
 static inline void LoadMiscMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 {
-	F::Configs.LoadJson(tTree, pBase->m_sName, pBase->As<T>(), DEFAULT_BIND);
+	F::Configs.LoadJson(tTree, pBase->Name(), pBase->As<T>(), DEFAULT_BIND);
 }
 #define LoadMisc(t, j) if (IsType(t)) LoadMiscMain<t>(pBase, j);
 

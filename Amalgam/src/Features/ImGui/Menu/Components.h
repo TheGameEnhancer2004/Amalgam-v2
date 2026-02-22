@@ -2153,7 +2153,7 @@ namespace ImGui
 	}
 	inline void FKeybind(ConfigVar<int>& var, int iFlags = FKeybindEnum::None, std::vector<int> vIgnore = { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] }, ImVec2 vSize = { 0, 30 }, int iSizeOffset = 0, bool* pHovered = nullptr)
 	{
-		FKeybind(var.m_vTitle.front(), var[DEFAULT_BIND], iFlags, vIgnore, vSize, iSizeOffset, pHovered);
+		FKeybind(var.m_vNames.front(), var[DEFAULT_BIND], iFlags, vIgnore, vSize, iSizeOffset, pHovered);
 	}
 
 	// dropdown for materials
@@ -2588,48 +2588,48 @@ namespace ImGui
 		DebugDummy({ 0, GetStyle().WindowPadding.y });
 	}
 
-	#define WRAPPER(function, type, parameters, arguments)\
-	inline bool function(ConfigVar<type>& var, parameters, bool* pHovered = nullptr, int iBindOverride = -1, int iLabelOverride = -1)\
-	{\
-		const char* sLabel = iLabelOverride != -1 ? var.m_vTitle[iLabelOverride] : var.m_vTitle.front();\
-		int iVarFlags = var.m_iFlags & ~(VISUAL | NOSAVE | NOBIND | DEBUGVAR);\
-		iFlags |= iVarFlags;\
-		auto val = FGet(var, true);\
-		bool bHovered = false;\
-		bool bReturn = function(std::format("{}## {}", sLabel, var.m_sName).c_str(), arguments, &bHovered);\
-		FSet(var, val);\
-		if (pHovered)\
-			*pHovered = bHovered;\
-		if (!(var.m_iFlags & (NOBIND | NOSAVE)) && !Disabled && CurrentBind == DEFAULT_BIND)\
-		{	/*probably a better way to do this*/\
-			static auto staticVal = val;\
-			bool bNewPopup = bHovered && IsMouseReleased(ImGuiMouseButton_Right) && !IsMouseDown(ImGuiMouseButton_Left) && !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);\
-			if (bNewPopup)\
-			{\
-				OpenPopup(var.m_sName.c_str());\
-				staticVal = val;\
-			}\
-			SetNextWindowSize({ H::Draw.Scale(300), 0 });\
-			bool bPopup = FBeginPopup(var.m_sName.c_str());\
-			if (bPopup)\
-			{\
-				std::string sBind = iBindOverride != -1 ? var.m_vTitle[iBindOverride] : var.m_vTitle.back();\
-				std::transform(sBind.begin(), sBind.end(), sBind.begin(), ::tolower);\
-				iFlags = iVarFlags; /*get rid of any visual flags*/\
-				if (FNV1A::Hash32Const(#function) == FNV1A::Hash32Const("FColorPicker"))\
-					iFlags |= FColorPickerEnum::Full | FColorPickerEnum::RemoveVisuals;\
-				PushTransparent(false);\
-				static bool bLastHovered = false;\
-				DrawBindInfo(var, staticVal, StripDoubleHash(sBind.c_str()), bNewPopup, bLastHovered);\
-				val = staticVal;\
-				function(std::format("{}## Bind", var.m_vTitle.front()).c_str(), arguments, &bHovered);\
-				bLastHovered = bLastHovered || bHovered;\
-				staticVal = val;\
-				PopTransparent(2);\
-				EndPopup();\
-			}\
-		}\
-		return bReturn;\
+	#define WRAPPER(function, type, parameters, arguments) \
+	inline bool function(ConfigVar<type>& var, parameters, bool* pHovered = nullptr, int iBindOverride = -1, int iLabelOverride = -1) \
+	{ \
+		const char* sLabel = iLabelOverride != -1 ? var.m_vNames[iLabelOverride] : var.m_vNames.front(); \
+		int iVarFlags = var.m_iFlags & ~(VISUAL | NOSAVE | NOBIND | DEBUGVAR); \
+		iFlags |= iVarFlags; \
+		auto val = FGet(var, true); \
+		bool bHovered = false; \
+		bool bReturn = function(std::format("{}## {}", sLabel, var.Name()).c_str(), arguments, &bHovered); \
+		FSet(var, val); \
+		if (pHovered) \
+			*pHovered = bHovered; \
+		if (!(var.m_iFlags & (NOBIND | NOSAVE)) && !Disabled && CurrentBind == DEFAULT_BIND) \
+		{	/*probably a better way to do this*/ \
+			static auto staticVal = val; \
+			bool bNewPopup = bHovered && IsMouseReleased(ImGuiMouseButton_Right) && !IsMouseDown(ImGuiMouseButton_Left) && !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId); \
+			if (bNewPopup) \
+			{ \
+				OpenPopup(var.Name()); \
+				staticVal = val; \
+			} \
+			SetNextWindowSize({ H::Draw.Scale(300), 0 }); \
+			bool bPopup = FBeginPopup(var.Name()); \
+			if (bPopup) \
+			{ \
+				std::string sBind = iBindOverride != -1 ? var.m_vNames[iBindOverride] : var.m_vNames.back(); \
+				std::transform(sBind.begin(), sBind.end(), sBind.begin(), ::tolower); \
+				iFlags = iVarFlags; /*get rid of any visual flags*/ \
+				if (FNV1A::Hash32Const(#function) == FNV1A::Hash32Const("FColorPicker")) \
+					iFlags |= FColorPickerEnum::Full | FColorPickerEnum::RemoveVisuals; \
+				PushTransparent(false); \
+				static bool bLastHovered = false; \
+				DrawBindInfo(var, staticVal, StripDoubleHash(sBind.c_str()), bNewPopup, bLastHovered); \
+				val = staticVal; \
+				function(std::format("{}## Bind", var.m_vNames.front()).c_str(), arguments, &bHovered); \
+				bLastHovered = bLastHovered || bHovered; \
+				staticVal = val; \
+				PopTransparent(2); \
+				EndPopup(); \
+			} \
+		} \
+		return bReturn; \
 	}
 
 	WRAPPER(FToggle, bool, VA_LIST(int iFlags = 0), VA_LIST(&val, iFlags))

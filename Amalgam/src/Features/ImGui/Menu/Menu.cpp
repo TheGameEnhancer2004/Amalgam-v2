@@ -3195,7 +3195,7 @@ void CMenu::MenuSettings(int iTab)
 		{
 			int i = 0; for (auto& pBase : G::Vars)
 			{
-				if (pBase->m_sName.find("Vars::Hooks::") == std::string::npos)
+				if (std::string(pBase->Name()).find("Vars::Hooks::") == std::string::npos)
 					continue;
 
 				FToggle(*pBase->As<bool>(), !(i % 2) ? FToggleEnum::Left : FToggleEnum::Right);
@@ -3230,8 +3230,8 @@ void CMenu::MenuSearch(std::string sSearch)
 			if (!Vars::Debug::Options[DEFAULT_BIND] && pBase->m_iFlags & DEBUGVAR)
 				continue;
 
-			std::vector<const char*> vSearch = { pBase->m_sName.c_str(), pBase->m_sSection };
-			vSearch.insert(vSearch.end(), pBase->m_vTitle.begin(), pBase->m_vTitle.end());
+			std::vector<const char*> vSearch = { pBase->Name(), pBase->Section() };
+			vSearch.insert(vSearch.end(), pBase->m_vNames.begin(), pBase->m_vNames.end());
 			vSearch.insert(vSearch.end(), pBase->m_vValues.begin(), pBase->m_vValues.end());
 			for (auto pSearch : vSearch)
 			{
@@ -3264,7 +3264,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		else if (auto pVar = pBase->As<int>())
 		{
 			if (!pVar->m_vValues.empty()
-				|| FNV1A::Hash32(pVar->m_sName.c_str()) == FNV1A::Hash32Const("Vars::ESP::ActiveGroups"))
+				|| FNV1A::Hash32(pVar->Name()) == FNV1A::Hash32Const("Vars::ESP::ActiveGroups"))
 				iWidgetEnum = iTypeEnum = WidgetEnum::FDropdown;
 			else if (pVar->m_sExtra)
 				iWidgetEnum = WidgetEnum::FISlider, iTypeEnum = WidgetEnum::FSlider;
@@ -3288,12 +3288,12 @@ void CMenu::MenuSearch(std::string sSearch)
 		else
 			continue;
 
-		uint32_t uSection = FNV1A::Hash32(pBase->m_sSection);
+		uint32_t uSection = FNV1A::Hash32(pBase->Section());
 		if (uSection != uLastSection)
 		{
 			if (uLastSection)
 				EndSection();
-			Section(std::format("{}## {}", pBase->m_sSection, pBase->m_sName).c_str());
+			Section(std::format("{}## {}", pBase->Section(), pBase->Name()).c_str());
 			i = 0;
 		}
 		uLastSection = uSection;
@@ -3341,7 +3341,7 @@ void CMenu::MenuSearch(std::string sSearch)
 			auto pVar = pBase->As<bool>();
 			if (FToggle(*pVar, !(i % 2) ? FToggleEnum::Left : FToggleEnum::Right, nullptr, iOverride/*, iOverride*/))
 			{
-				if (FNV1A::Hash32(pVar->m_sName.c_str()) == FNV1A::Hash32Const("Vars::Debug::Options"))
+				if (FNV1A::Hash32(pVar->Name()) == FNV1A::Hash32Const("Vars::Debug::Options"))
 					uStaticHash = 0;
 			}
 			break;
@@ -3356,7 +3356,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		{
 			auto pVar = pBase->As<float>();
 			const char* sFormat = pVar->m_sExtra;
-			switch (FNV1A::Hash32(pVar->m_sName.c_str()))
+			switch (FNV1A::Hash32(pVar->Name()))
 			{
 			case FNV1A::Hash32Const("Vars::Aimbot::Projectile::SplashRotateX"):
 			case FNV1A::Hash32Const("Vars::Aimbot::Projectile::SplashRotateY"):
@@ -3413,7 +3413,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		{
 			auto pVar = pBase->As<int>();
 			std::vector<int> vIgnore;
-			switch (FNV1A::Hash32(pVar->m_sName.c_str()))
+			switch (FNV1A::Hash32(pVar->Name()))
 			{
 			case FNV1A::Hash32Const("Vars::Menu::PrimaryKey"):
 				vIgnore = { Vars::Menu::SecondaryKey[DEFAULT_BIND], VK_LBUTTON, VK_RBUTTON };
@@ -3424,7 +3424,7 @@ void CMenu::MenuSearch(std::string sSearch)
 			default:
 				vIgnore = { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] };
 			}
-			FKeybind(iOverride != -1 ? pVar->m_vTitle[iOverride] : pVar->m_vTitle.front(), pVar->Map[DEFAULT_BIND], !(i % 2) ? FButtonEnum::Left : FButtonEnum::Right | FButtonEnum::SameLine, vIgnore);
+			FKeybind(iOverride != -1 ? pVar->m_vNames[iOverride] : pVar->m_vNames.front(), pVar->Map[DEFAULT_BIND], !(i % 2) ? FButtonEnum::Left : FButtonEnum::Right | FButtonEnum::SameLine, vIgnore);
 			break;
 		}
 		}
