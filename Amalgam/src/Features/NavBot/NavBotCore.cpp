@@ -210,12 +210,6 @@ void CNavBotCore::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		}
 	}
 
-	if (Vars::Misc::Movement::NavBot::DisableOnSpectate.Value && H::Entities.IsSpectated())
-	{
-		ResetNavBot();
-		return;
-	}
-
 	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::StayNear)
 		F::NavBotStayNear.m_iStayNearTargetIdx = -1;
 

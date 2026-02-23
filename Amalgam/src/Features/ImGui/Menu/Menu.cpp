@@ -336,7 +336,6 @@ void CMenu::MenuAimbot(int iTab)
 						FColorPicker(Vars::Colors::FOVCircle, FColorPickerEnum::Right);
 					}
 					PopTransparent();
-					FToggle(Vars::Aimbot::General::DisableOnSpectate, FToggleEnum::Left);
 					FToggle(Vars::CritHack::ForceCrits, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::General::PrioritizeNavbot, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::PrioritizeFollowbot, FToggleEnum::Right);
@@ -1338,7 +1337,6 @@ void CMenu::MenuHvH(int iTab)
 					FToggle(Vars::AntiAim::MinWalk, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::AntiOverlap, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::InvalidShootPitch, FToggleEnum::Right);
-					FToggle(Vars::AntiAim::DisableOnSpectate, FToggleEnum::Left);
 				} EndSection();
 			}
 			/* Column 2 */
@@ -1530,10 +1528,9 @@ void CMenu::MenuMisc(int iTab)
 				if (Section("Nav Engine"))
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
-				FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
-				FToggle(Vars::Misc::Movement::NavEngine::PathRandomization, FToggleEnum::Left);
-				FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Right);
-				FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::NavEngine::PathRandomization, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
@@ -1561,7 +1558,6 @@ void CMenu::MenuMisc(int iTab)
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FToggle(Vars::Misc::Movement::NavBot::Enabled, FToggleEnum::Left);
-						FToggle(Vars::Misc::Movement::NavBot::DisableOnSpectate, FToggleEnum::Right);
 						PushTransparent(!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value);
 						{
 							FDropdown(Vars::Misc::Movement::NavBot::RechargeDT);

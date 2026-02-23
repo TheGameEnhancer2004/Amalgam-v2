@@ -1310,9 +1310,6 @@ void CNavEngine::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		Reset(true);
 	}
 
-	if (Vars::Misc::Movement::NavEngine::DisableOnSpectate.Value && H::Entities.IsSpectated())
-		return;
-
 	if (!m_bUpdatedRespawnRooms)
 		UpdateRespawnRooms();
 
