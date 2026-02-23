@@ -1796,6 +1796,8 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 	}
 	iStaticAimType = Vars::Aimbot::General::AimType.Value;
 
+	m_iMethod = Vars::Aimbot::General::AimType.Value;
+
 	if (F::AimbotGlobal.ShouldHoldAttack(pWeapon))
 		pCmd->buttons |= IN_ATTACK;
 	if (!Vars::Aimbot::General::AimType.Value
@@ -1953,7 +1955,6 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 void CAimbotProjectile::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	m_iWeaponID = pWeapon->GetWeaponID();
-	m_iMethod = Vars::Aimbot::General::AimType.Value;
 	const bool bSuccess = RunMain(pLocal, pWeapon, pCmd);
 #ifdef SPLASH_DEBUG5
 	if (Vars::Aimbot::General::AimType.Value && !s_mTraceCount.empty())
