@@ -562,7 +562,6 @@ void CMenu::MenuVisuals(int iTab)
 			}
 			PopDisabled();
 
-			FToggle(Vars::ESP::IgnoreInvisibleSpies, FToggleEnum::Left);
 			FDropdown(Vars::ESP::ActiveGroups, FDropdownEnum::Right | FDropdownEnum::Multi);
 
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
@@ -759,6 +758,8 @@ void CMenu::MenuVisuals(int iTab)
 						vEntries.insert(vEntries.end(), { "Intel return time" });
 						vValues.insert(vValues.end(), { ESPEnum::IntelReturnTime });
 					}
+
+					FToggle(Vars::ESP::IgnoreInvisibleSpies, FToggleEnum::Left);
 
 					PushTransparent(tGroup.m_iTargets && !(tGroup.m_iTargets & TargetsEnum::ESP));
 					{
