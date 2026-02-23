@@ -1317,7 +1317,12 @@ void CMenu::MenuHvH(int iTab)
 						FSlider(Vars::AntiAim::FakeYawValue, FSliderEnum::Right);
 					}
 					PopTransparent();
-					PushTransparent(Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Spin && Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Spin);
+					PushTransparent(Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Spin
+						&& Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Tornado
+						&& Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Helix
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Spin
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Tornado
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Helix);
 					{
 						FSlider(Vars::AntiAim::SpinSpeed, FSliderEnum::Left);
 					}
