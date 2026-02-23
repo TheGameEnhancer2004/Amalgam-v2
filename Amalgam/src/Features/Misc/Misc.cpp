@@ -354,7 +354,7 @@ void CMisc::JoinSpam(CTFPlayer* pLocal)
 
 void CMisc::AutoBanJoiner()
 {
-	static bool bApplied = false;
+	static bool bApplied = false, bRestore = false;
 	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
 	static auto fps_max = H::ConVars.FindVar("fps_max");
 	static auto host_timescale = H::ConVars.FindVar("host_timescale");
@@ -362,6 +362,12 @@ void CMisc::AutoBanJoiner()
 	static float m_fOldFPSValue = 30.f;
 	static int m_nOldFPSValue = 30;
 	static int m_nOldCheatsValue = 1;
+
+	if (bRestore)
+	{
+		sv_cheats->m_nValue = m_nOldCheatsValue;
+		bRestore = false;
+	}
 
 	const bool bShouldApply = Vars::Misc::Automation::AutoBanJoiner.Value && I::EngineClient->IsDrawingLoadingImage();
 	if (bShouldApply)
@@ -396,8 +402,7 @@ void CMisc::AutoBanJoiner()
 	host_timescale->m_fValue = 1.f;
 	host_timescale->m_nValue = 1;
 
-	sv_cheats->m_nValue = m_nOldCheatsValue;
-
+	bRestore = true;
 	bApplied = false;
 }
 
