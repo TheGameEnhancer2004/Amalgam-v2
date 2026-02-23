@@ -92,10 +92,10 @@ bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFro
 
 			auto pEnt = reinterpret_cast<CBaseEntity*>(tTrace.m_pEnt);
 			const auto nClassID = pEnt->GetClassID();
-			if (nClassID != ETFClassID::CBaseDoor && nClassID != ETFClassID::CBasePropDoor && nClassID != ETFClassID::CFuncRespawnRoomVisualizer)
+			if (/*nClassID != ETFClassID::CBaseDoor && nClassID != ETFClassID::CBasePropDoor && */nClassID != ETFClassID::CFuncRespawnRoomVisualizer)
 				return;
 
-			const int iTeamMask = pLocal->m_iTeamNum() == TF_TEAM_RED ? 0x800 : (pLocal->m_iTeamNum() == TF_TEAM_BLUE ? 0x1000 : CONTENTS_PLAYERCLIP);
+			const int iTeamMask = pLocal->m_iTeamNum() == TF_TEAM_RED ? 0x1000 : (pLocal->m_iTeamNum() == TF_TEAM_BLUE ? 0x800 : CONTENTS_PLAYERCLIP);
 			const bool bSolid = pEnt->m_nSolidType() != SOLID_NONE && !(pEnt->m_usSolidFlags() & FSOLID_NOT_SOLID);
 			const bool bShouldCollide = bSolid && pEnt->ShouldCollide(8, iTeamMask);
 			const bool bPassableDoor = pEnt->m_CollisionGroup() == COLLISION_GROUP_PASSABLE_DOOR;
@@ -103,9 +103,11 @@ bool CNavEngine::IsPlayerPassableNavigation(CTFPlayer* pLocal, const Vector vFro
 			const bool bIgnoredPassableDoor = bShouldCollide && bPassableDoor && bFriendlyOrNeutralDoor;
 			const bool bActive = bShouldCollide && !bIgnoredPassableDoor;
 
+			/*
 			const char* sKind = nClassID == ETFClassID::CBaseDoor ? "CBaseDoor" :
-				(nClassID == ETFClassID::CBasePropDoor ? "CBasePropDoor" : "CFuncRespawnRoomVisualizer");
-			SDK::Output("NavEngine", std::format("Nav blocked by {} ent#{} active={} ignored_passable={} frac={:.2f}", sKind, pEnt->entindex(), bActive ? 1 : 0, bIgnoredPassableDoor ? 1 : 0, tTrace.fraction).c_str(), { 255, 180, 120 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+				(nClassID == ETFClassID::CBasePropDoor ? "CBasePropDoor" :"CFuncRespawnRoomVisualizer");
+			*/ 
+			SDK::Output("NavEngine", std::format("Nav blocked by {} ent#{} active={} ignored_passable={} frac={:.2f}", "CFuncRespawnRoomVisualizer"/*sKind*/, pEnt->entindex(), bActive ? 1 : 0, bIgnoredPassableDoor ? 1 : 0, tTrace.fraction).c_str(), { 255, 180, 120 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
 		};
 
 	Vector vDelta = vTo - vFrom;

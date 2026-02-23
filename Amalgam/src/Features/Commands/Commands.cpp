@@ -156,6 +156,13 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 		}
 	},
 	{
+		FNV1A::Hash32Const("cat_cancel_path"),
+		[](const std::deque<const char*>& vArgs)
+		{
+			F::NavEngine.CancelPath();
+		}
+	},
+	{
 		FNV1A::Hash32Const("cat_save_nav_mesh"), 
 		[](const std::deque<const char*>& vArgs)
 		{

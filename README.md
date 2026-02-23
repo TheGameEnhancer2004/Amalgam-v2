@@ -57,6 +57,9 @@
   - Backtrack to crosshair (Performs `tick_count` manipulations on manual shots allowing to hit backtrack records)
   - Auto engineer building repair/upgrade
   - Auto class select
+  - Auto disguise (disguises as a random class if not disguised already)
+  - Auto ban joiner (if your account has an active ban, it makes you able to join vac secured servers, works better with high ping)
+  - Anti-autobalance option to try avoiding an autobalance on death if enemy team has more than 2 missing players
   - Changes to auto queue allowing for more customization:
     - Search community servers
     - Auto re-queue (if kicked, players less/greater than <...>)
@@ -69,25 +72,37 @@
     - Auto ready up
   - Ping reducer now uses target ping value instead of `cl_cmdrate`
   - Added option for auto detonation to wait for sufficient damage before detonating (Not recommended to use it as it's far from being perfect)
-  - 360 aim FOV and allow aiming with active ui
+  - Aimbot:
+	- 360 aim FOV and allow aiming with active ui
+	- Smooth curve (assist strength changes dynamically depending on this option and a curve percentage var)
+	- Smooth+velocity aim type (same smooth aim type but also takes into account target's velocity for smooth curve)
+	- Legit aim type for bots with legit look at path enabled (WIP)
   - Spam features:
     - Voice command spam
     - Chat spam
     - Voice chat spam
     - Achievement spam
     - Vote spam
+	- Join spam (constantly changes team to spam the chat)
   - New commands (all commands now use `cat_` prefix):
     - cat_criteria: Loads casual criteria
     - cat_abandon: Abandons current match
     - cat_load: Loads specified config
     - cat_path_to: Walks to given xyz coordinates using `Nav engine`
+	- cat_cancel_path: Cancels current path and job
     - cat_save_nav_mesh: Saves currenly loaded nav mesh into the .nav file located at `Amalgam\Nav`
     - cat_ignore: Adds/Removes specified tag for given steamid32
     - cat_dump: Dumps names + avatars for players present on the currently connected server
     - cat_rent_item: Automatically rents an item with given item definition index
-    - cat_achievement_unlock: Unlocks all in-game achievements
+    - cat_achievement_unlock: Unlocks item only or all in-game achievements depending on the given argument
+	- cat_achievement_unlock_item: Unlocks item achievements
+	- cat_achievement_unlock_weapon: Same as `cat_achievement_unlock_item`
+	- cat_achievement_lock: Locks achievements, works the same way as `cat_achievement_unlock`
+	- cat_achievement_lock_item: Locks item achievements
+	- cat_achievement_lock_weapon: Same as `cat_achievement_lock_item`
 - **Visual**
   - Added option to turn on weapon killstreak count
+  - Added option to reverse invisible condition in groups (`Invisible -> Not invisible`)
   - Esp, glow and chams:
     - Min and max draw/render distance
     - Distance to alpha (Transparency changes depending on current distance and minmax values of render distance)
@@ -100,7 +115,6 @@
   - Import/export-able cheaterlist
 - **Other**
   - Added debug var automatic loading (`Load debug settings` in menu)
-  - Auto accept item drops now removes the notification from ui aswell
+  - Auto accept item drops now removes the notification from ui aswell (actually it doesnt but i remember it did some time ago)
   - Changed loading process allowing for early injection (e.g. Xenos manual launch)
   - Added signature generator for crash log call trace
-  - Fixed menu tooltips not accounting for newlines (also fixed on the official repo since [this commit](https://github.com/rei-2/Amalgam/commit/68c1d0530f37554cdd84dbefb6eb475f13b45b07))

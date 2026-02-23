@@ -1646,9 +1646,6 @@ void CMenu::MenuMisc(int iTab)
 						FSlider(Vars::Misc::Movement::NavBot::StickyDangerRange);
 						FSlider(Vars::Misc::Movement::NavBot::ProjectileDangerRange);
 					} EndSection();
-					if (Section("##Debug Nav Engine"))
-					{
-					} EndSection();
 				}
 			}
 
