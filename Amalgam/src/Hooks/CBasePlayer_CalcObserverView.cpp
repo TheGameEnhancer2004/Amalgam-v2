@@ -8,12 +8,9 @@ MAKE_SIGNATURE(CBasePlayer_CalcObserverView, "client.dll", "48 89 5C 24 ? 48 89 
 MAKE_HOOK(CBasePlayer_CalcObserverView, S::CBasePlayer_CalcObserverView(), void,
 	void* rcx, Vector& eyeOrigin, QAngle& eyeAngles, float& fov)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_CalcObserverView[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
-#endif
+	DEBUG_RETURN(CBasePlayer_CalcObserverView, rcx, eyeOrigin, eyeAngles, fov);
 
-	if (F::Spectate.m_iTarget == -1)
+	if (!F::Spectate.HasTarget())
 		return CALL_ORIGINAL(rcx, eyeOrigin, eyeAngles, fov);
 
 	auto pPlayer = reinterpret_cast<CBasePlayer*>(rcx);

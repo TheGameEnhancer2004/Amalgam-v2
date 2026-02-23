@@ -31,24 +31,17 @@ static inline bool GetDistanceThing(Vector vTargetPos, Vector vLocalPos, Group_t
 static inline void StorePlayer(CTFPlayer* pPlayer, CTFPlayer* pLocal, Group_t* pGroup, std::unordered_map<CBaseEntity*, PlayerCache_t>& mCache)
 {
 	int iIndex = pPlayer->entindex();
-	auto pResource = H::Entities.GetResource();
 
-	int iObserverTarget = pLocal->m_hObserverTarget().GetEntryIndex();
-	int iObserverMode = pLocal->m_iObserverMode();
-	if (F::Spectate.m_iTarget != -1)
-	{
-		iObserverTarget = F::Spectate.m_hTargetTarget.GetEntryIndex();
-		iObserverMode = F::Spectate.m_iTargetMode;
-	}
-	bool bSpectate = iObserverMode == OBS_MODE_FIRSTPERSON || iObserverMode == OBS_MODE_THIRDPERSON;
-
-	bool bLocal = iIndex == I::EngineClient->GetLocalPlayer();
-	bool bTarget = bSpectate && iObserverTarget == iIndex;
-	if (!bSpectate ? !I::Input->CAM_IsThirdPerson() && bLocal : iObserverMode == OBS_MODE_FIRSTPERSON && bTarget)
+	if (int iObserverMode = pLocal->m_iObserverMode();
+		iObserverMode == OBS_MODE_FIRSTPERSON || iObserverMode == OBS_MODE_THIRDPERSON
+		? !I::Input->CAM_IsThirdPerson() && iIndex == I::EngineClient->GetLocalPlayer()
+		: iObserverMode == OBS_MODE_FIRSTPERSON && pLocal->m_hObserverTarget().GetEntryIndex() == iIndex)
 		return;
 
-	int iClassNum = pPlayer->m_iClass();
 	auto pWeapon = pPlayer->m_hActiveWeapon()->As<CTFWeaponBase>();
+	auto pResource = H::Entities.GetResource();
+	bool bLocal = pPlayer->entindex() == I::EngineClient->GetLocalPlayer();
+	int iClassNum = pPlayer->m_iClass();
 
 	float flAlpha;
 	if (!GetDistanceThing(pPlayer->m_vecOrigin(), pLocal->m_vecOrigin(), pGroup, flAlpha)) 

@@ -293,27 +293,31 @@ void CCreateMove::Run(int nSequenceNum, float flInputSampleFrametime, bool bActi
 	F::AutoJoin.Run(pLocal);
 	F::AutoItem.Run(pLocal);
 	F::GameObjectiveController.Update();
-
 	F::BotUtils.Run(pLocal, pWeapon, pCmd);
+
 	F::Ticks.Start(pLocal, pCmd);
-	F::Aimbot.Run(pLocal, pWeapon, pCmd);
-	F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
+	{
+		F::Aimbot.Run(pLocal, pWeapon, pCmd);
+		F::Backtrack.CreateMove(pLocal, pWeapon, pCmd);
+	}
 	F::Ticks.End(pLocal, pCmd);
-	F::FollowBot.Run(pLocal, pWeapon, pCmd);
-	F::NavBotCore.Run(pLocal, pWeapon, pCmd);
-	F::NavEngine.Run(pLocal, pWeapon, pCmd);
-	F::BotUtils.HandleSmartJump(pLocal, pCmd);
-	F::CritHack.Run(pLocal, pWeapon, pCmd);
-	F::NoSpread.Run(pLocal, pWeapon, pCmd);
-	F::Resolver.CreateMove(pLocal);
-	F::Misc.RunPost(pLocal, pCmd);
-	F::PacketManip.Run(pLocal, pWeapon, pCmd);
+	{
+		F::FollowBot.Run(pLocal, pWeapon, pCmd);
+		F::NavBotCore.Run(pLocal, pWeapon, pCmd);
+		F::NavEngine.Run(pLocal, pWeapon, pCmd);
+		F::BotUtils.HandleSmartJump(pLocal, pCmd);
+		F::CritHack.Run(pLocal, pWeapon, pCmd);
+		F::NoSpread.Run(pLocal, pWeapon, pCmd);
+		F::Resolver.CreateMove();
+		F::Misc.RunPost(pLocal, pCmd);
+		F::PacketManip.Run(pLocal, pWeapon, pCmd);
 #ifndef TEXTMODE
-	F::Visuals.CreateMove(pLocal, pWeapon);
+		F::Visuals.CreateMove(pLocal, pWeapon);
 #endif
-	F::Ticks.CreateMove(pLocal, pWeapon, pCmd);
-	F::AntiAim.Run(pLocal, pWeapon, pCmd);
-	F::NoSpreadHitscan.AskForPlayerPerf();
+		F::Ticks.CreateMove(pLocal, pWeapon, pCmd);
+		F::AntiAim.Run(pLocal, pWeapon, pCmd);
+		F::NoSpreadHitscan.AskForPlayerPerf();
+	}
 	F::EnginePrediction.End(pLocal, pCmd);
 
 	AntiCheatCompatibility(pCmd);

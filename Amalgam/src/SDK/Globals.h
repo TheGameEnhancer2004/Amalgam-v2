@@ -157,9 +157,9 @@ namespace G
 	inline int SavedWepSlots[3] = {-1,-1,-1};
 	inline WeaponAmmoInfo_t AmmoInSlot[2] = {WeaponAmmoInfo_t(), WeaponAmmoInfo_t()};
 	
-	inline int* RandomSeed()
+	inline int& RandomSeed()
 	{
-		static auto pRandomSeed = reinterpret_cast<int*>(U::Memory.RelToAbs(S::RandomSeed()));
+		static auto& pRandomSeed = *reinterpret_cast<int*>(U::Memory.RelToAbs(S::RandomSeed()));
 		return pRandomSeed;
 	}
 };

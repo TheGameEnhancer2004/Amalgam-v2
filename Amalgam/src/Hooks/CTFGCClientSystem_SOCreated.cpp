@@ -12,6 +12,8 @@ MAKE_SIGNATURE(CTFGCClientSystem_SOCreated, "client.dll", "49 8B D0 48 81 C1 ? ?
 MAKE_HOOK(CTFGCClientSystem_SOCreated, S::CTFGCClientSystem_SOCreated(), void,
 	void* rcx, void* not_used, void** pObject)
 {
+	DEBUG_RETURN(CTFGCClientSystem_SOCreated, rcx, not_used, pObject);
+
 	if (pObject)
 	{
 		auto uType = reinterpret_cast<unsigned int(*)(void*)>(U::Memory.GetVirtual(pObject, 1))(pObject);

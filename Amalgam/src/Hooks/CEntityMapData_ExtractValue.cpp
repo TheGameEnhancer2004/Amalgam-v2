@@ -91,6 +91,8 @@ static bool ParseTrigger(CEntityMapData* pData, TriggerTypeEnum::TriggerTypeEnum
 MAKE_HOOK(CEntityMapData_ExtractValue, S::CEntityMapData_ExtractValue(), bool,
 	CEntityMapData* rcx, const char* keyName, char* Value)
 {
+	DEBUG_RETURN(CEntityMapData_ExtractValue, rcx, keyName, Value);
+
 	static const auto dwParseEnt = S::C_PhysPropClientside_ParseEntity_ExtractValue_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 

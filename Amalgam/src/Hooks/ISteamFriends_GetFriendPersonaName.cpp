@@ -8,21 +8,18 @@ MAKE_SIGNATURE(GetPlayerNameForSteamID_GetFriendPersonaName_Call, "client.dll", 
 MAKE_HOOK(ISteamFriends_GetFriendPersonaName, U::Memory.GetVirtual(I::SteamFriends, 7), const char*,
 	void* rcx, CSteamID steamIDFriend)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::ISteamFriends_GetFriendPersonaName[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, steamIDFriend);
-#endif
+	DEBUG_RETURN(ISteamFriends_GetFriendPersonaName, rcx, steamIDFriend);
 
-	const auto dwDesired = S::GetPlayerNameForSteamID_GetFriendPersonaName_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::GetPlayerNameForSteamID_GetFriendPersonaName_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Visuals::UI::StreamerMode.Value)
 	{
 		switch (F::PlayerUtils.GetNameType(steamIDFriend.GetAccountID()))
 		{
-		case NameTypeEnum::Local: return "Local";
-		case NameTypeEnum::Friend: return "Friend";
-		case NameTypeEnum::Party: return "Party";
+		case NameTypeEnum::Local: return LOCAL;
+		case NameTypeEnum::Friend: return FRIEND;
+		case NameTypeEnum::Party: return PARTY;
 		}
 	}
 

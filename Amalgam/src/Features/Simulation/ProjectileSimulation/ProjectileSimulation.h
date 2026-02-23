@@ -5,7 +5,7 @@ Enum(ProjSim,
 	None = 0,
 	Trace = 1 << 0, // trace when doing GetProjectileFireSetup
 	InitCheck = 1 << 1, // validate starting position
-	Quick = 1 << 2, // use interpolation
+	Interp = 1 << 2, // use interpolation
 	NoRandomAngles = 1 << 3, // don't do angle stuff for aimbot, nospread will pick that up
 	PredictCmdNum = 1 << 4, // use crithack to predict command number
 	MaxSpeed = 1 << 5 // default projectile speeds to their maximum
@@ -53,7 +53,7 @@ private:
 
 public:
 	bool GetInfo(CTFPlayer* pPlayer, CTFWeaponBase* pWeapon, Vec3 vAngles, ProjectileInfo& tProjInfo, int iFlags = ProjSimEnum::Trace | ProjSimEnum::InitCheck, float flAutoCharge = -1.f);
-	void SetupTrace(CTraceFilterCollideable& filter, int& nMask, CTFWeaponBase* pWeapon, int nTick = 0, bool bQuick = false);
+	void SetupTrace(CTraceFilterCollideable& filter, int& nMask, CTFWeaponBase* pWeapon, int nTick = 0, bool bInterp = false);
 
 	void GetInfo(CBaseEntity* pProjectile, ProjectileInfo& tProjInfo);
 	void SetupTrace(CTraceFilterCollideable& filter, int& nMask, CBaseEntity* pProjectile);

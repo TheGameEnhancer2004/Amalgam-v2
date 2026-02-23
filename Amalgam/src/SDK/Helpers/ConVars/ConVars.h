@@ -15,6 +15,8 @@ private:
 public:
 	bool Unlock();
 	bool Restore();
+	bool Modify(bool bUnlock);
+
 	ConVar* FindVar(const char* sCVar);
 };
 

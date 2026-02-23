@@ -5,7 +5,7 @@
 void COffscreenArrows::DrawArrowTo(const Vec3& vFromPos, const Vec3& vToPos, Color_t tColor, int iOffset, float flMaxDistance)
 {
 	float flMap = Math::RemapVal(vFromPos.DistTo(vToPos), flMaxDistance, flMaxDistance * 0.9f, 0.f, 1.f);
-	tColor.a = byte(flMap * 255.f);
+	tColor.a *= flMap;
 	if (!tColor.a)
 		return;
 

@@ -2,6 +2,8 @@
 #include "../../../SDK/SDK.h"
 #include <functional>
 
+Enum(Move, Ground, Air, Swim)
+
 struct MoveStorage
 {
 	CTFPlayer* m_pPlayer = nullptr;
@@ -37,12 +39,12 @@ struct MoveData
 class CMovementSimulation
 {
 private:
-	void Store(MoveStorage& tStorage);
-	void Reset(MoveStorage& tStorage);
+	void Store(MoveStorage& tMoveStorage);
+	void Reset(MoveStorage& tMoveStorage);
 
-	bool SetupMoveData(MoveStorage& tStorage);
-	void GetAverageYaw(MoveStorage& tStorage, int iSamples);
-	bool StrafePrediction(MoveStorage& tStorage, int iSamples);
+	bool SetupMoveData(MoveStorage& tMoveStorage);
+	void GetAverageYaw(MoveStorage& tMoveStorage, int iSamples);
+	bool StrafePrediction(MoveStorage& tMoveStorage, int iSamples);
 
 	void SetBounds(CTFPlayer* pPlayer);
 	void RestoreBounds(CTFPlayer* pPlayer);
@@ -57,11 +59,11 @@ private:
 public:
 	void Store();
 
-	bool Initialize(CBaseEntity* pEntity, MoveStorage& tStorage, bool bHitchance = true, bool bStrafe = true);
-	bool SetDuck(MoveStorage& tStorage, bool bDuck);
-	void RunTick(MoveStorage& tStorage, bool bPath = true, std::function<void(CMoveData&)>* pCallback = nullptr);
-	void RunTick(MoveStorage& tStorage, bool bPath, std::function<void(CMoveData&)> fCallback);
-	void Restore(MoveStorage& tStorage);
+	bool Initialize(CBaseEntity* pEntity, MoveStorage& tMoveStorage, bool bHitchance = true, bool bStrafe = true);
+	bool SetDuck(MoveStorage& tMoveStorage, bool bDuck);
+	void RunTick(MoveStorage& tMoveStorage, bool bPath = true, std::function<void(CMoveData&)>* pCallback = nullptr);
+	void RunTick(MoveStorage& tMoveStorage, bool bPath, std::function<void(CMoveData&)> fCallback);
+	void Restore(MoveStorage& tMoveStorage);
 
 	float GetPredictedDelta(CBaseEntity* pEntity);
 };

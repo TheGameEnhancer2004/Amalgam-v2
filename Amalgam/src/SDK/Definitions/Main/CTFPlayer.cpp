@@ -7,53 +7,41 @@ Vec3 CTFPlayer::GetEyeAngles()
 	return { m_angEyeAnglesX(), m_angEyeAnglesY(), 0.f };
 }
 
-Vec3 CTFPlayer::GetViewOffset()
+Vec3 CTFPlayer::GetViewOffset(bool bScale)
 {
+	Vec3 vOffset = GetOffset() / 2;
+
 	if (!IsPlayer())
-		return GetOffset() / 2;
+		return vOffset;
 
-	auto getMainOffset = [this]() -> Vec3
+	if (IsDucking())
+		vOffset = { 0.f, 0.f, 45.f };
+	else switch (m_iClass())
 		{
-			if (IsDucking())
-				return { 0.f, 0.f, 45.f };
+		case TF_CLASS_SCOUT: vOffset = { 0.f, 0.f, 65.f }; break;
+		case TF_CLASS_SOLDIER: vOffset = { 0.f, 0.f, 68.f }; break;
+		case TF_CLASS_PYRO: vOffset = { 0.f, 0.f, 68.f }; break;
+		case TF_CLASS_DEMOMAN: vOffset = { 0.f, 0.f, 68.f }; break;
+		case TF_CLASS_HEAVY: vOffset = { 0.f, 0.f, 75.f }; break;
+		case TF_CLASS_ENGINEER: vOffset = { 0.f, 0.f, 68.f }; break;
+		case TF_CLASS_MEDIC: vOffset = { 0.f, 0.f, 75.f }; break;
+		case TF_CLASS_SNIPER: vOffset = { 0.f, 0.f, 75.f }; break;
+		case TF_CLASS_SPY: vOffset = { 0.f, 0.f, 75.f }; break;
+		default: vOffset = m_vecViewOffset().z ? m_vecViewOffset() : Vec3(0.f, 0.f, 72.f);
+		}
 
-			switch (m_iClass())
-			{
-			case TF_CLASS_SCOUT: return { 0.f, 0.f, 65.f };
-			case TF_CLASS_SOLDIER: return { 0.f, 0.f, 68.f };
-			case TF_CLASS_PYRO: return { 0.f, 0.f, 68.f };
-			case TF_CLASS_DEMOMAN: return { 0.f, 0.f, 68.f };
-			case TF_CLASS_HEAVY: return { 0.f, 0.f, 75.f };
-			case TF_CLASS_ENGINEER: return { 0.f, 0.f, 68.f };
-			case TF_CLASS_MEDIC: return { 0.f, 0.f, 75.f };
-			case TF_CLASS_SNIPER: return { 0.f, 0.f, 75.f };
-			case TF_CLASS_SPY: return { 0.f, 0.f, 75.f };
-			}
-
-			const Vec3 vOffset = m_vecViewOffset();
-			if (vOffset.z)
-				return vOffset;
-
-			return { 0.f, 0.f, 68.f };
-		};
-
-	return getMainOffset() * m_flModelScale();
+	return bScale ? vOffset * m_flModelScale() : vOffset;
 }
 
 bool CTFPlayer::InCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		return m_nPlayerCond() & (1 << eCond) || _condition_bits() & (1 << eCond);
-	case 1:
-		return m_nPlayerCondEx() & (1 << (eCond - 32));
-	case 2:
-		return m_nPlayerCondEx2() & (1 << (eCond - 64));
-	case 3:
-		return m_nPlayerCondEx3() & (1 << (eCond - 96));
-	case 4:
-		return m_nPlayerCondEx4() & (1 << (eCond - 128));
+	case 0: return m_nPlayerCond() & (1 << eCond) || _condition_bits() & (1 << eCond);
+	case 1: return m_nPlayerCondEx() & (1 << (eCond - 32));
+	case 2: return m_nPlayerCondEx2() & (1 << (eCond - 64));
+	case 3: return m_nPlayerCondEx3() & (1 << (eCond - 96));
+	case 4: return m_nPlayerCondEx4() & (1 << (eCond - 128));
 	}
 	return false;
 }
@@ -62,16 +50,11 @@ void CTFPlayer::AddCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		m_nPlayerCond() |= (1 << eCond), _condition_bits() |= (1 << eCond); break;
-	case 1:
-		m_nPlayerCondEx() |= (1 << (eCond - 32)); break;
-	case 2:
-		m_nPlayerCondEx2() |= (1 << (eCond - 64)); break;
-	case 3:
-		m_nPlayerCondEx3() |= (1 << (eCond - 96)); break;
-	case 4:
-		m_nPlayerCondEx4() |= (1 << (eCond - 128)); break;
+	case 0: m_nPlayerCond() |= (1 << eCond), _condition_bits() |= (1 << eCond); break;
+	case 1: m_nPlayerCondEx() |= (1 << (eCond - 32)); break;
+	case 2: m_nPlayerCondEx2() |= (1 << (eCond - 64)); break;
+	case 3: m_nPlayerCondEx3() |= (1 << (eCond - 96)); break;
+	case 4: m_nPlayerCondEx4() |= (1 << (eCond - 128)); break;
 	}
 }
 
@@ -79,16 +62,11 @@ void CTFPlayer::RemoveCond(ETFCond eCond)
 {
 	switch (eCond / 32)
 	{
-	case 0:
-		m_nPlayerCond() &= ~(1 << eCond), _condition_bits() &= ~(1 << eCond); break;
-	case 1:
-		m_nPlayerCondEx() &= ~(1 << (eCond - 32)); break;
-	case 2:
-		m_nPlayerCondEx2() &= ~(1 << (eCond - 64)); break;
-	case 3:
-		m_nPlayerCondEx3() &= ~(1 << (eCond - 96)); break;
-	case 4:
-		m_nPlayerCondEx4() &= ~(1 << (eCond - 128)); break;
+	case 0: m_nPlayerCond() &= ~(1 << eCond), _condition_bits() &= ~(1 << eCond); break;
+	case 1: m_nPlayerCondEx() &= ~(1 << (eCond - 32)); break;
+	case 2: m_nPlayerCondEx2() &= ~(1 << (eCond - 64)); break;
+	case 3: m_nPlayerCondEx3() &= ~(1 << (eCond - 96)); break;
+	case 4: m_nPlayerCondEx4() &= ~(1 << (eCond - 128)); break;
 	}
 }
 

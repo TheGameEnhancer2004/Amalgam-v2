@@ -159,14 +159,14 @@ bool CTraceFilterWorldAndPropsOnly::ShouldHitEntity(IHandleEntity* pServerEntity
 	if (!pServerEntity || pServerEntity == m_pSkip)
 		return false;
 	if (pServerEntity->GetRefEHandle().GetSerialNumber() == (1 << 15))
-		return I::ClientEntityList->GetClientEntity(0) != m_pSkip;
+		return pServerEntity->GetRefEHandle().GetEntryIndex() != m_iTeam; // just use team variable since cliententitylist can give us nullptrs for some props for whatever reason
 
 	auto pEntity = reinterpret_cast<CBaseEntity*>(pServerEntity);
 	const auto nClassID = pEntity->GetClassID();
-
+	
 	if (m_iTeam == -1) 
 		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
-
+	
 	switch (pEntity->GetClassID())
 	{
 	case ETFClassID::CBaseEntity:

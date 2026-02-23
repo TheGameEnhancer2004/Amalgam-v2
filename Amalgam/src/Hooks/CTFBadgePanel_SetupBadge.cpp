@@ -7,12 +7,9 @@ MAKE_SIGNATURE(CTFBadgePanel_SetupBadge, "client.dll", "48 85 D2 0F 84 ? ? ? ? 4
 MAKE_HOOK(CTFBadgePanel_SetupBadge, S::CTFBadgePanel_SetupBadge(), void,
 	void* rcx, const IMatchGroupDescription* pMatchDesc, /*const*/ LevelInfo_t& levelInfo, const CSteamID& steamID)
 {
-#ifndef TEXTMODE
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFBadgePanel_SetupBadge[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pMatchDesc, levelInfo, steamID);
-#endif
+	DEBUG_RETURN(CTFBadgePanel_SetupBadge, rcx, pMatchDesc, levelInfo, steamID);
 
+#ifndef TEXTMODE
 	int nOldLevelNum = levelInfo.m_nLevelNum;
 
 	switch (F::PlayerUtils.GetNameType(steamID.GetAccountID()))

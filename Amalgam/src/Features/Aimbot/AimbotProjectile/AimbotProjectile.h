@@ -2,26 +2,18 @@
 #include "../../../SDK/SDK.h"
 
 #include "../AimbotGlobal/AimbotGlobal.h"
+#include "../../Simulation/MovementSimulation/MovementSimulation.h"
+#include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 
-Enum(PointType, None = 0, Regular = 1 << 0, Obscured = 1 << 1, ObscuredExtra = 1 << 2, ObscuredMulti = 1 << 3)
+Enum(PointType, None = 0, Out = 1 << 0, In = 1 << 1, Out2 = 1 << 2, In2 = 1 << 3)
 Enum(Calculated, Pending, Good, Time, Bad)
 
-struct Solution_t
-{
-	float m_flPitch = 0.f;
-	float m_flYaw = 0.f;
-	float m_flTime = 0.f;
-	int m_iCalculated = CalculatedEnum::Pending;
-};
-struct Point_t
-{
-	Vec3 m_vPoint = {};
-	Solution_t m_tSolution = {};
-};
 struct Info_t
 {
 	CTFPlayer* m_pLocal = nullptr;
 	CTFWeaponBase* m_pWeapon = nullptr;
+	Target_t* m_pTarget = nullptr;
+	CBaseEntity* m_pProjectile = nullptr;
 
 	Vec3 m_vLocalEye = {};
 	Vec3 m_vTargetEye = {};
@@ -39,31 +31,67 @@ struct Info_t
 	float m_flOffsetTime = 0.f;
 	int m_iSplashCount = 0;
 	int m_iSplashMode = 0;
-	float m_flPrimeTime = 0;
-	int m_iPrimeTime = 0;
+	int m_iArmTime = 0;
+};
+
+struct Solution_t
+{
+	float m_flPitch = 0.f;
+	float m_flYaw = 0.f;
+	float m_flTime = 0.f;
+	int m_iCalculated = CalculatedEnum::Pending;
+};
+struct Point_t
+{
+	Vec3 m_vPoint = {};
+	Solution_t m_tSolution = {};
+};
+
+struct History_t
+{
+	Vec3 m_vOrigin;
+	int m_iSimtime;
+};
+struct Direct_t : History_t
+{
+	float m_flPitch;
+	float m_flYaw;
+	float m_flTime;
+	Vec3 m_vPoint;
+	int m_iPriority;
+};
+struct Splash_t : History_t
+{
+	float m_flTimeTo;
 };
 
 class CAimbotProjectile
 {
 private:
-	std::unordered_map<int, Vec3> GetDirectPoints(Target_t& tTarget, CBaseEntity* pProjectile = nullptr);
-	std::vector<Point_t> GetSplashPoints(Target_t& tTarget, std::vector<std::pair<Vec3, int>>& vSpherePoints, int iSimTime);
-	void SetupSplashPoints(Target_t& tTarget, std::vector<std::pair<Vec3, int>>& vSpherePoints, std::vector<std::pair<Vec3, Vec3>>& vSimplePoints);
-	std::vector<Point_t> GetSplashPointsSimple(Target_t& tTarget, std::vector<std::pair<Vec3, Vec3>>& vSpherePoints, int iSimTime);
+	std::unordered_map<int, Vec3> GetDirectPoints();
+	std::vector<Point_t> GetSplashPoints(Vec3 vOrigin, std::vector<std::pair<Vec3, int>>& vSpherePoints, int iSimTime);
+	void SetupSplashPoints(Vec3& vPos, std::vector<std::pair<Vec3, int>>& vSpherePoints, std::vector<Vec3>& vSimplePoints);
+	std::vector<Point_t> GetSplashPointsSimple(Vec3 vOrigin, std::vector<Vec3>& vSpherePoints, int iSimTime);
 
-	void CalculateAngle(const Vec3& vLocalPos, const Vec3& vTargetPos, int iSimTime, Solution_t& out, bool bAccuracy = true);
-	bool TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, Target_t& tTarget, Vec3& vPoint, Vec3& vAngles, int iSimTime, bool bSplash, bool* pHitSolid = nullptr, std::vector<Vec3>* pProjectilePath = nullptr);
+	void CalculateAngle(const Vec3& vLocalPos, const Vec3& vTargetPos, int iSimTime, Solution_t& tOut, bool bAccuracy = true, int iTolerance = -1);
+	bool TestAngle(const Vec3& vPoint, const Vec3& vAngles, int iSimTime, bool bSplash, bool bSecondTest = false);
 
-	int CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bVisuals = true, int iMethod = Vars::Aimbot::General::AimType.Value);
+	bool HandlePoint(const Vec3& vOrigin, int iSimTime, float flPitch, float flYaw, float flTime, const Vec3& vPoint, bool bSplash = false);
+	bool HandleDirect(std::vector<Direct_t>& vDirectHistory);
+	bool HandleSplash(std::vector<Splash_t>& vSplashHistory);
+
+	int CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, bool bVisuals = true);
 	bool RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 
 	bool CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pProjectile);
-	bool TestAngle(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pProjectile, Target_t& tTarget, Vec3& vPoint, Vec3& vAngles, int iSimTime, bool bSplash, std::vector<Vec3>* pProjectilePath = nullptr);
+	bool TestAngle(CBaseEntity* pProjectile, const Vec3& vPoint, Vec3& vAngles, int iSimTime, bool bSplash);
 
-	bool Aim(Vec3 vCurAngle, Vec3 vToAngle, Vec3& vOut, int iMethod = Vars::Aimbot::General::AimType.Value);
-	void Aim(CUserCmd* pCmd, Vec3& vAngle, int iMethod = Vars::Aimbot::General::AimType.Value);
+	bool Aim(const Vec3& vCurAngle, const Vec3& vToAngle, Vec3& vOut);
+	void Aim(CUserCmd* pCmd, Vec3& vAngle);
 
 	Info_t m_tInfo = {};
+	MoveStorage m_tMoveStorage = {};
+	ProjectileInfo m_tProjInfo = {};
 
 	bool m_bLastTickHeld = false;
 
@@ -71,8 +99,14 @@ private:
 	std::vector<Vec3> m_vPlayerPath = {};
 	std::vector<Vec3> m_vProjectilePath = {};
 	std::vector<DrawBox_t> m_vBoxes = {};
+	Vec3 m_vAngleTo = {};
+	Vec3 m_vPredicted = {};
+	Vec3 m_vTarget = {};
 
 	int m_iWeaponID = -1;
+	int m_iMethod = -1;
+	int m_iResult = false;
+	bool m_bVisuals = true;
 	
 	struct GrappleInfo_t
 	{

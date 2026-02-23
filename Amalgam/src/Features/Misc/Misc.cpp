@@ -645,6 +645,10 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		ResetBuyBot();
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
+	{
+		if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid")) != I::EngineClient->GetLocalPlayer())
+			return;
+
 		m_bPeekPlaced = false;
 		break;
 	case FNV1A::Hash32Const("player_death"):
@@ -721,6 +725,7 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		}
 		break;
 	}
+	}
 }
 
 int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd)
@@ -782,7 +787,7 @@ int CMisc::AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd)
 		{
 			auto TargetIsBehind = [&]()
 				{
-					const float flCompDist = 0.0625f;
+					const float flCompDist = PLAYER_ORIGIN_COMPRESSION / 2;
 					const float flSqCompDist = 0.0884f;
 
 					Vec3 vToTarget = (pLocal->m_vecOrigin() - pTargetPos.first).To2D();

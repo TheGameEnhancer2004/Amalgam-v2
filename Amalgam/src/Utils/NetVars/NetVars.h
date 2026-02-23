@@ -32,7 +32,7 @@ ADD_FEATURE_CUSTOM(CNetVars, NetVars, U);
 	return reinterpret_cast<type>(uintptr_t(this) + nOffset); \
 }
 
-#define NETVAR_EMBED_OFF(_name, type, table, name, offset) inline type _name() \
+#define NETVAR_OFF_EMBED(_name, type, table, name, offset) inline type _name() \
 { \
 	static int nOffset = U::NetVars.GetNetVar(table, name) + offset; \
 	return reinterpret_cast<type>(uintptr_t(this) + nOffset); \

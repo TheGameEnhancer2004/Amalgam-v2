@@ -7,6 +7,8 @@ MAKE_SIGNATURE(CHudTournamentSetup_OnTick, "client.dll", "40 57 48 83 EC ? 48 8B
 MAKE_HOOK(CHudTournamentSetup_OnTick, S::CHudTournamentSetup_OnTick(), void,
 	void* rcx)
 {
+	DEBUG_RETURN(CHudTournamentSetup_OnTick, rcx);
+
 	CALL_ORIGINAL(rcx);
 
 	F::Misc.AutoMvmReadyUp();

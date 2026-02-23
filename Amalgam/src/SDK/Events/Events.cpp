@@ -65,20 +65,27 @@ void CEventListener::FireGameEvent(IGameEvent* pEvent)
 	switch (uHash)
 	{
 	case FNV1A::Hash32Const("player_hurt"):
+	{
 		F::Resolver.PlayerHurt(pEvent);
 		F::CheaterDetection.ReportDamage(pEvent);
-		break;
+		return;
+	}
 	case FNV1A::Hash32Const("player_spawn"):
-		F::Backtrack.SetLerp(pEvent);
+	{
+		if (I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid")) != I::EngineClient->GetLocalPlayer())
+			return;
+
+		F::Backtrack.SetLerp();
 #ifndef TEXTMODE
 		F::Killstreak.PlayerSpawn(pEvent);
 #endif
 		F::NavEngine.CancelPath();
-		break;
+		return;
+	}
 	case FNV1A::Hash32Const("revive_player_notify"):
 	{
 		if (!Vars::Misc::MannVsMachine::InstantRevive.Value || pEvent->GetInt("entindex") != I::EngineClient->GetLocalPlayer())
-			break;
+			return;
 
 		KeyValues* kv = new KeyValues("MVM_Revive_Response");
 		kv->SetBool("accepted", true);

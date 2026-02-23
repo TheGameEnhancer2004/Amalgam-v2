@@ -418,7 +418,7 @@ void CCritHack::Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal)
 	case FNV1A::Hash32Const("player_hurt"):
 	{
 		if (!pLocal)
-			break;
+			return;
 
 		int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
 		int iAttacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
@@ -456,7 +456,7 @@ void CCritHack::Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal)
 			StoreHealthHistory(iVictim, iHealth);
 
 		if (iVictim == iAttacker || iAttacker != I::EngineClient->GetLocalPlayer())
-			break;
+			return;
 
 		if (auto pGameRules = I::TFGameRules())
 		{
@@ -498,16 +498,33 @@ void CCritHack::Event(IGameEvent* pEvent, uint32_t uHash, CTFPlayer* pLocal)
 		else
 			m_iMeleeDamage += iDamage;
 
-		break;
+		return;
+	}
+	case FNV1A::Hash32Const("player_spawn"):
+	{
+		int iIndex = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+
+		if (m_mHealthHistory.contains(iIndex))
+		{
+			auto& tHistory = m_mHealthHistory[iIndex];
+
+			tHistory.m_iSpawnCounter = -1;
+		}
+
+		return;
 	}
 	case FNV1A::Hash32Const("scorestats_accumulated_update"):
 	case FNV1A::Hash32Const("mvm_reset_stats"):
+	{
 		m_iRangedDamage = m_iCritDamage = m_iMeleeDamage = 0;
-		break;
+		return;
+	}
 	case FNV1A::Hash32Const("client_beginconnect"):
 	case FNV1A::Hash32Const("client_disconnect"):
 	case FNV1A::Hash32Const("game_newmap"):
+	{
 		Reset();
+	}
 	}
 }
 
@@ -533,7 +550,7 @@ void CCritHack::StoreHealthHistory(int iIndex, int iHealth, CTFPlayer* pPlayer)
 		else if (tHistory.m_iSpawnCounter == -1)
 			tHistory.m_iSpawnCounter = pPlayer->m_iSpawnCounter();
 		else if (tHistory.m_iSpawnCounter != pPlayer->m_iSpawnCounter())
-			return; // wait for event
+			return; // wait for spawn
 	}
 
 	if (!bContains)
@@ -565,6 +582,8 @@ static void* s_pCTFGameStats = nullptr;
 MAKE_HOOK(CTFGameStats_FindPlayerStats, S::CTFGameStats_FindPlayerStats(), void*,
 	void* rcx, CBasePlayer* pPlayer)
 {
+	DEBUG_RETURN(CTFGameStats_FindPlayerStats, rcx, pPlayer);
+
 	s_pCTFGameStats = rcx;
 	return CALL_ORIGINAL(rcx, pPlayer);
 }

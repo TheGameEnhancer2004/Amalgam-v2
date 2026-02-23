@@ -65,11 +65,9 @@ void CKillstreak::PlayerSpawn(IGameEvent* pEvent)
 	if (!Vars::Visuals::Other::KillstreakWeapons.Value)
 		return;
 
-	const int userid = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
 	int iLocalPlayerIdx = I::EngineClient->GetLocalPlayer();
-	if (userid == iLocalPlayerIdx)
-		Reset();
 
+	Reset();
 	ApplyKillstreak(iLocalPlayerIdx);
 }
 

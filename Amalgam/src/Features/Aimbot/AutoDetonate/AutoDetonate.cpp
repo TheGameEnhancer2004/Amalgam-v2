@@ -532,7 +532,7 @@ bool CAutoDetonate::StickyCheck(CTFPlayer* pLocal, CUserCmd* pCmd)
 	return false;
 }
 
-void CAutoDetonate::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+void CAutoDetonate::Run(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	if (!Vars::Aimbot::Projectile::AutoDetonate.Value)
 		return;

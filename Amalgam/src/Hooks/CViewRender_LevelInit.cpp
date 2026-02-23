@@ -17,16 +17,13 @@
 MAKE_HOOK(CViewRender_LevelInit, U::Memory.GetVirtual(I::ViewRender, 1), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CViewRender_LevelInit[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CViewRender_LevelInit, rcx);
 
 #ifndef TEXTMODE
 	F::Materials.ReloadMaterials();
 	F::Visuals.OverrideWorldTextures();
 	F::Killstreak.Reset();
-	F::Spectate.m_iIntendedTarget = -1;
+	F::Spectate.Reset();
 #endif
 
 	F::Backtrack.Reset();

@@ -24,7 +24,7 @@ private:
 
 	std::optional<Vector> m_vRestore;
 public:
-	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
+	void Run(CTFPlayer* pLocal, CUserCmd* pCmd);
 };
 
 ADD_FEATURE(CAutoDetonate, AutoDetonate);

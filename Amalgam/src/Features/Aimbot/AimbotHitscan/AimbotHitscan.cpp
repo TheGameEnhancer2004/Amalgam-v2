@@ -10,7 +10,6 @@
 static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	std::vector<Target_t> vTargets;
-	const auto iSort = Vars::Aimbot::General::TargetSelection.Value;
 
 	Vec3 vLocalPos = F::Ticks.GetShootPos();
 	Vec3 vLocalAngles = I::EngineClient->GetViewAngles();
@@ -315,17 +314,17 @@ int CAimbotHitscan::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* 
 			tTarget.m_vPos = tTarget.m_pEntity->m_vecOrigin();
 
 			// not lag compensated (i assume) so run movesim based on ping
-			MoveStorage tStorage;
-			F::MoveSim.Initialize(tTarget.m_pEntity, tStorage);
-			if (!tStorage.m_bFailed)
+			MoveStorage tMoveStorage;
+			F::MoveSim.Initialize(tTarget.m_pEntity, tMoveStorage);
+			if (!tMoveStorage.m_bFailed)
 			{
 				for (int i = 1 - TIME_TO_TICKS(F::Backtrack.GetReal()); i <= 0; i++)
 				{
-					F::MoveSim.RunTick(tStorage);
-					tTarget.m_vPos = tStorage.m_vPredictedOrigin;
+					F::MoveSim.RunTick(tMoveStorage);
+					tTarget.m_vPos = tMoveStorage.m_vPredictedOrigin;
 				}
 			}
-			F::MoveSim.Restore(tStorage);
+			F::MoveSim.Restore(tMoveStorage);
 
 			float flBoneScale = std::max(Vars::Aimbot::Hitscan::BoneSizeMinimumScale.Value, Vars::Aimbot::Hitscan::MultipointScale.Value / 100.f);
 			float flBoneSubtract = Vars::Aimbot::Hitscan::BoneSizeSubtract.Value;

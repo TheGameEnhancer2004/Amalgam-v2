@@ -20,7 +20,7 @@ public:
 			flGravityCorrection = (powf(flDeltaTicks, 2.f) - flDeltaTicks) / 2.f * sv_gravity->GetFloat() * powf(TICK_INTERVAL, 2);
 		}
 		float flDeltaValue = m_flNewAxisValue - m_flOldAxisValue;
-		float flTickVelocity = flDeltaValue + (flDeltaValue ? 0.0625f * sign(m_flNewAxisValue) : 0.f) - flGravityCorrection;
+		float flTickVelocity = flDeltaValue + (flDeltaValue ? PLAYER_ORIGIN_COMPRESSION / 2 * sign(m_flNewAxisValue) : 0.f) - flGravityCorrection;
 		return flTickVelocity / TICKS_TO_TIME(iDeltaTicks);
 	}
 };
@@ -57,13 +57,10 @@ MAKE_SIGNATURE(CBasePlayer_PostDataUpdate_SetAbsVelocity_Call, "client.dll", "0F
 MAKE_HOOK(CBaseEntity_SetAbsVelocity, S::CBaseEntity_SetAbsVelocity(), void,
 	void* rcx, const Vec3& vecAbsVelocity)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseEntity_SetAbsVelocity[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, vecAbsVelocity);
-#endif
+	DEBUG_RETURN(CBaseEntity_SetAbsVelocity, rcx, vecAbsVelocity);
 
-	const auto dwDesired = S::CBasePlayer_PostDataUpdate_SetAbsVelocity_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CBasePlayer_PostDataUpdate_SetAbsVelocity_Call();
 
 	if (dwRetAddr != dwDesired || G::Unload)
 		return CALL_ORIGINAL(rcx, vecAbsVelocity);
@@ -102,10 +99,10 @@ MAKE_HOOK(CBaseEntity_SetAbsVelocity, S::CBaseEntity_SetAbsVelocity(), void,
 		if (i == 2 && bGrounded)
 			break;
 
-		float flOldPos1 = tOldRecord.m_vecOrigin[i], flOldPos2 = flOldPos1 + 0.125f * sign(flOldPos1);
-		float flNewPos1 = tNewRecord.m_vecOrigin[i], flNewPos2 = flNewPos1 + 0.125f * sign(flNewPos1);
-		if (!flOldPos1) flOldPos1 = -0.125f, flOldPos2 = 0.125f;
-		if (!flNewPos1) flNewPos1 = -0.125f, flNewPos2 = 0.125f;
+		float flOldPos1 = tOldRecord.m_vecOrigin[i], flOldPos2 = flOldPos1 + PLAYER_ORIGIN_COMPRESSION * sign(flOldPos1);
+		float flNewPos1 = tNewRecord.m_vecOrigin[i], flNewPos2 = flNewPos1 + PLAYER_ORIGIN_COMPRESSION * sign(flNewPos1);
+		if (!flOldPos1) flOldPos1 = -PLAYER_ORIGIN_COMPRESSION, flOldPos2 = PLAYER_ORIGIN_COMPRESSION;
+		if (!flNewPos1) flNewPos1 = -PLAYER_ORIGIN_COMPRESSION, flNewPos2 = PLAYER_ORIGIN_COMPRESSION;
 
 		FloatRange_t flVelocityRange;
 		{

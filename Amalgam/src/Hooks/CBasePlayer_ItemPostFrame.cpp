@@ -69,10 +69,7 @@ typedef enum
 MAKE_HOOK(CBasePlayer_ItemPostFrame, S::CBasePlayer_ItemPostFrame(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBasePlayer_ItemPostFrame[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CBasePlayer_ItemPostFrame, rcx);
 
 	auto pLocal = reinterpret_cast<CTFPlayer*>(rcx);
 	auto pWeapon = H::Entities.GetWeapon();

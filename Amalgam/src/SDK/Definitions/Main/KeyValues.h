@@ -55,7 +55,7 @@ public:
 		KeyValues* m_pKeyValues;
 	};
 
-	bool LoadFromBuffer(char const* resource_name, const char* buffer, void* file_system = 0, const char* path_id = 0);
+	bool LoadFromBuffer(char const* resourceName, const char* pBuffer, void* pFileSystem = 0, const char* pPathID = 0);
 	void Initialize(const char* name);
 	KeyValues(const char* name);
 
@@ -89,6 +89,7 @@ public:
 	void SetColor(const char* keyName, Color_t value);
 	void SetBool(const char* keyName, bool value);
 
+	void Clear();
 	void DeleteThis();
 };
 

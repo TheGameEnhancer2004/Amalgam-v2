@@ -6,10 +6,7 @@ MAKE_SIGNATURE(CTFRocketLauncher_FireProjectile, "client.dll", "48 89 74 24 ? 57
 MAKE_HOOK(CTFRocketLauncher_CheckReloadMisfire, S::CTFRocketLauncher_CheckReloadMisfire(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFRocketLauncher_CheckReloadMisfire[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFRocketLauncher_CheckReloadMisfire, rcx);
 
 	auto pWeapon = reinterpret_cast<CTFWeaponBase*>(rcx);
 	if (!SDK::AttribHookValue(0, "can_overload", pWeapon))
@@ -40,10 +37,7 @@ MAKE_HOOK(CTFRocketLauncher_CheckReloadMisfire, S::CTFRocketLauncher_CheckReload
 MAKE_HOOK(CTFRocketLauncher_FireProjectile, S::CTFRocketLauncher_FireProjectile(), CBaseEntity*,
 	void* rcx, CTFPlayer* pPlayer)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFRocketLauncher_FireProjectile[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pPlayer);
-#endif
+	DEBUG_RETURN(CTFRocketLauncher_FireProjectile, rcx, pPlayer);
 
 	auto pWeapon = reinterpret_cast<CTFWeaponBase*>(rcx);
 	pWeapon->m_bRemoveable() = false;
@@ -57,10 +51,7 @@ MAKE_SIGNATURE(CTFBat_Wood_LaunchBall, "client.dll", "40 53 48 83 EC ? 48 8B D9 
 MAKE_HOOK(CTFBat_Wood_LaunchBall, S::CTFBat_Wood_LaunchBall(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFBat_Wood_LaunchBall[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFBat_Wood_LaunchBall, rcx);
 
 	auto pWeapon = reinterpret_cast<CTFWeaponBase*>(rcx);
 	pWeapon->CalcIsAttackCritical();
