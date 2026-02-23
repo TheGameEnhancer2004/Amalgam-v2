@@ -18,7 +18,9 @@ void CFollowBot::UpdateTargets(CTFPlayer* pLocal)
 
 	float flMaxDist = Vars::Misc::Movement::FollowBot::UseNav.Value && F::NavEngine.IsNavMeshLoaded() ? Vars::Misc::Movement::FollowBot::NavAbandonDistance.Value : Vars::Misc::Movement::FollowBot::ActivationDistance.Value;
 	bool bTryDormant = Vars::Misc::Movement::FollowBot::UseNav.Value == Vars::Misc::Movement::FollowBot::UseNavEnum::Dormant && F::NavEngine.IsNavMeshLoaded();
-	for (auto pEntity : H::Entities.GetGroup(eGroup))
+	const auto& vPlayers = H::Entities.GetGroup(eGroup);
+	m_vTargets.reserve(vPlayers.size());
+	for (auto pEntity : vPlayers)
 	{
 		int iEntIndex = pEntity->entindex();
 		if (pLocal->entindex() != iEntIndex && pResource->m_bValid(iEntIndex))
@@ -175,7 +177,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	UpdateTargets(pLocal);
 	UpdateLockedTarget(pLocal);
 
-	if (!m_vTargets.size())
+	if (m_vTargets.empty())
 	{
 		if (m_tLockedTarget.m_iUserID == -1)
 		{
@@ -346,7 +348,7 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 		else if (Vars::Misc::Movement::FollowBot::LookAtPathMode.Value == Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::Path)
 			vCurrentAngles.push_back(vDest);
 
-		std::deque<Vec3>* pFinalAngles = vCurrentAngles.size() ? &vCurrentAngles : pCurrentAngles;
+		std::deque<Vec3>* pFinalAngles = !vCurrentAngles.empty() ? &vCurrentAngles : pCurrentAngles;
 		LookAtPath(pLocal, pCmd, pFinalAngles, Vars::Misc::Movement::FollowBot::LookAtPathNoSnap.Value && Math::CalcFov(pFinalAngles->front(), F::BotUtils.m_vLastAngles) > 3.f);
 	}
 

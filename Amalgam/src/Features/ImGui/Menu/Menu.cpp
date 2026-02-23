@@ -695,7 +695,7 @@ void CMenu::MenuVisuals(int iTab)
 					Divider(H::Draw.Scale(), H::Draw.Scale(8), -H::Draw.Scale());
 					PushTransparent(!(tGroup.m_iTargets & TargetsEnum::Players));
 					{
-						FDropdown("Players", &tGroup.m_iPlayers, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy", "##Divider", "Invulnerable", "Crits", "Invisible", "Disguise", "Hurt" }, {}, FDropdownEnum::Multi, 0, "All");
+						FDropdown("Players", &tGroup.m_iPlayers, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy", "##Divider", "Invulnerable", "Crits", (tGroup.m_iPlayers & PlayerEnum::NotInvis) ? "Not invisible" : "Invisible", "Disguise", "Hurt", "##Divider", "Invisible -> Not invisible" }, {}, FDropdownEnum::Multi, 0, "All");
 					}
 					PopTransparent();
 					PushTransparent(!(tGroup.m_iTargets & TargetsEnum::Buildings));
@@ -1456,9 +1456,13 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Automation::AntiBackstab); // pitch/fake _might_ slip up some auto backstabs
 					FToggle(Vars::Misc::Automation::AcceptItemDrops);
 					FToggle(Vars::Misc::Automation::AntiAFK, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AntiAutobalance, FToggleEnum::Right);
+					FDropdown(Vars::Misc::Automation::AntiAutobalance, FDropdownEnum::Right);
 					FToggle(Vars::Misc::Automation::KartControl, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoReport, FToggleEnum::Right);
+					FToggle(Vars::Misc::Automation::AutoDisguise, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::AutoBanJoiner, FToggleEnum::Right);
+					// i think it doesnt work anymore but dh wanted it so here it is
+					FToggle(Vars::Misc::Automation::JoinSpam, FToggleEnum::Left);
 				} EndSection();
 				if (Section("Voting", 8))
 				{
@@ -1642,9 +1646,6 @@ void CMenu::MenuMisc(int iTab)
 						FSlider(Vars::Misc::Movement::NavBot::StickyDangerRange);
 						FSlider(Vars::Misc::Movement::NavBot::ProjectileDangerRange);
 					} EndSection();
-					if (Section("##Debug Nav Engine"))
-					{
-					} EndSection();
 				}
 			}
 
@@ -1721,6 +1722,14 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Automation::VoiceCommandSpam);
 					FToggle(Vars::Misc::Automation::Micspam, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AchievementSpam, FToggleEnum::Right);
+					PushTransparent(!Vars::Misc::Automation::AchievementSpam.Value);
+					{
+						FDropdown(
+							Vars::Misc::Automation::AchievementSpamID,
+							Vars::Misc::Automation::GetAchievementSpamDropdownEntries(),
+							Vars::Misc::Automation::GetAchievementSpamDropdownIDs());
+					}
+					PopTransparent();
 					FToggle(Vars::Misc::Automation::NoiseSpam, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::CallVoteSpam, FToggleEnum::Right);
 					// if (FButton("HELP", FButtonEnum::Left, { 0, 24 }))
@@ -3956,38 +3965,13 @@ void CMenu::MenuSettings(int iTab)
 			if (!I::EngineClient->IsConnected())
 			{
 				if (FButton("Unlock achievements", FButtonEnum::Left))
-					OpenPopup("UnlockAchievements");
-				if (FButton("Lock achievements", FButtonEnum::Right | FButtonEnum::SameLine))
-					OpenPopup("LockAchievements");
-
-				if (FBeginPopupModal("UnlockAchievements", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysUseWindowPadding))
-				{
-					FText("Do you really want to unlock all achievements?");
-
-					if (FButton("Yes, unlock", FButtonEnum::Left))
-					{
-						F::Misc.UnlockAchievements();
-						CloseCurrentPopup();
-					}
-					if (FButton("No", FButtonEnum::Right | FButtonEnum::SameLine))
-						CloseCurrentPopup();
-
-					EndPopup();
-				}
-				else if (FBeginPopupModal("LockAchievements", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysUseWindowPadding))
-				{
-					FText("Do you really want to lock all achievements?");
-
-					if (FButton("Yes, lock", FButtonEnum::Left))
-					{
-						F::Misc.LockAchievements();
-						CloseCurrentPopup();
-					}
-					if (FButton("No", FButtonEnum::Right | FButtonEnum::SameLine))
-						CloseCurrentPopup();
-
-					EndPopup();
-				}
+					F::Misc.UnlockAchievements();
+				if (FButton("Unlock item achievements", FButtonEnum::Right | FButtonEnum::SameLine))
+					F::Misc.UnlockItemAchievements();
+				if (FButton("Lock achievements", FButtonEnum::Left))
+					F::Misc.LockAchievements();
+				if (FButton("Lock item achievements", FButtonEnum::Right | FButtonEnum::SameLine))
+					F::Misc.LockItemAchievements();
 			}
 
 		} EndSection();

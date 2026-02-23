@@ -9,7 +9,6 @@
 #ifdef TEXTMODE
 #include "NamedPipe/NamedPipe.h"
 #endif
-#include <fstream>
 
 MAKE_SIGNATURE(Voice_IsRecording, "engine.dll", "80 3D ? ? ? ? ? 74 ? 80 3D ? ? ? ? ? 75", 0x0);
 MAKE_SIGNATURE(ReportPlayerAccount, "client.dll", "48 89 5C 24 ? 57 48 83 EC ? 48 8B D9 8B FA 48 C1 E9", 0x0);
@@ -19,8 +18,11 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 	NoiseSpam(pLocal);
 	VoiceCommandSpam(pLocal);
 	ChatSpam(pLocal);
+	AutoDisguise(pLocal);
+	JoinSpam(pLocal);
 	AchievementSpam(pLocal);
 	CallVoteSpam(pLocal);
+	AutoBanJoiner();
 	CheatsBypass();
 	WeaponSway();
 	AutoReport();
@@ -316,6 +318,89 @@ void CMisc::NoiseSpam(CTFPlayer* pLocal)
 	I::EngineClient->ServerCmdKeyValues(new KeyValues("use_action_slot_item_server"));
 }
 
+void CMisc::AutoDisguise(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::AutoDisguise.Value || !pLocal->IsAlive() || !pLocal->IsInValidTeam() || pLocal->m_iClass() != TF_CLASS_SPY)
+		return;
+
+	if (pLocal->InCond(TF_COND_DISGUISING) || pLocal->InCond(TF_COND_DISGUISED) || pLocal->InCond(TF_COND_DISGUISE_WEARINGOFF))
+		return;
+
+	static Timer tDisguiseTimer{};
+	if (!tDisguiseTimer.Run(0.75f))
+		return;
+
+	const int iClass = SDK::RandomInt(1, 9);
+	I::EngineClient->ClientCmd_Unrestricted(std::format("disguise {} -1", iClass).c_str());
+}
+
+void CMisc::JoinSpam(CTFPlayer* pLocal)
+{
+	if (!Vars::Misc::Automation::JoinSpam.Value)
+		return;
+
+	static Timer tJoinSpamTimer{};
+	if (!tJoinSpamTimer.Run(1.5f))
+		return;
+
+	if (!pLocal->IsInValidTeam())
+	{
+		I::EngineClient->ClientCmd_Unrestricted("autoteam");
+		return;
+	}
+
+	I::EngineClient->ClientCmd_Unrestricted(pLocal->m_iTeamNum() == TF_TEAM_RED ? "jointeam blue" : "jointeam red");
+}
+
+void CMisc::AutoBanJoiner()
+{
+	static bool bApplied = false;
+	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
+	static auto fps_max = H::ConVars.FindVar("fps_max");
+	static auto host_timescale = H::ConVars.FindVar("host_timescale");
+
+	static float m_fOldFPSValue = 30.f;
+	static int m_nOldFPSValue = 30;
+	static int m_nOldCheatsValue = 1;
+
+	const bool bShouldApply = Vars::Misc::Automation::AutoBanJoiner.Value && I::EngineClient->IsDrawingLoadingImage();
+	if (bShouldApply)
+	{	
+		if (bApplied)
+			return;
+
+		// Save original fps_max values every time we run this
+		m_fOldFPSValue = fps_max->m_fValue;
+		m_nOldFPSValue = fps_max->m_nValue;
+
+		// Also save original sv_cheats
+		m_nOldCheatsValue = sv_cheats->m_nValue;
+		sv_cheats->m_nValue = 1;
+
+		fps_max->m_fValue = 0.3f;
+		fps_max->m_nValue = 0;
+		host_timescale->m_fValue = 40.f;
+		host_timescale->m_nValue = 40;
+
+		bApplied = true;
+		return;
+	}
+
+	if (!bApplied)
+		return;
+
+	sv_cheats->m_nValue = 1;
+
+	fps_max->m_fValue = m_fOldFPSValue;
+	fps_max->m_nValue = m_nOldFPSValue;
+	host_timescale->m_fValue = 1.f;
+	host_timescale->m_nValue = 1;
+
+	sv_cheats->m_nValue = m_nOldCheatsValue;
+
+	bApplied = false;
+}
+
 void CMisc::CallVoteSpam(CTFPlayer* pLocal)
 {
 	if (!Vars::Misc::Automation::CallVoteSpam.Value || !m_tCallVoteSpamTimer.Run(1.0f))
@@ -370,16 +455,11 @@ void CMisc::CheatsBypass()
 {
 	static bool bCheatSet = false;
 	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
-	if (Vars::Misc::Exploits::CheatsBypass.Value)
-	{
-		sv_cheats->m_nValue = 1;
-		bCheatSet = true;
-	}
+	const bool bShouldBypass = Vars::Misc::Exploits::CheatsBypass.Value;
+	if (bShouldBypass)
+		bCheatSet = sv_cheats->m_nValue = 1;
 	else if (bCheatSet)
-	{
-		sv_cheats->m_nValue = 0;
 		bCheatSet = false;
-	}
 }
 
 void CMisc::WeaponSway()
@@ -556,6 +636,7 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 	case FNV1A::Hash32Const("game_newmap"):
 		m_vChatSpamLines.clear();
 		m_iCurrentChatSpamIndex = 0;
+		m_bAutoBalanceTeamChangePending = false;
 		ResetBuyBot();
 		break;
 	case FNV1A::Hash32Const("player_spawn"):
@@ -566,6 +647,37 @@ void CMisc::Event(IGameEvent* pEvent, uint32_t uHash)
 		const int iLocalPlayer = I::EngineClient->GetLocalPlayer();
 		const int iAttacker = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
 		const int iVictim = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+
+		if (iVictim == iLocalPlayer
+			&& m_bAutoBalanceTeamChangePending
+			&& Vars::Misc::Automation::AntiAutobalance.Value == Vars::Misc::Automation::AntiAutobalanceEnum::RetryOnDeath)
+		{
+			auto pResource = H::Entities.GetResource();
+			if (pResource)
+			{
+				int iRedPlayers = 0, iBluePlayers = 0;
+				for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+				{
+					if (!pResource->m_bValid(n) || !pResource->m_bConnected(n))
+						continue;
+
+					switch (pResource->m_iTeam(n))
+					{
+					case TF_TEAM_RED: iRedPlayers++; break;
+					case TF_TEAM_BLUE: iBluePlayers++; break;
+					}
+				}
+
+				const int iLocalTeam = pResource->m_iTeam(iLocalPlayer);
+				if (iLocalTeam == TF_TEAM_RED || iLocalTeam == TF_TEAM_BLUE)
+				{
+					const int iOurPlayers = iLocalTeam == TF_TEAM_RED ? iRedPlayers : iBluePlayers;
+					const int iEnemyPlayers = iLocalTeam == TF_TEAM_RED ? iBluePlayers : iRedPlayers;
+					if (iOurPlayers - iEnemyPlayers > 2)
+						I::EngineClient->ClientCmd_Unrestricted("retry");
+				}
+			}
+		}
 
 		if (iAttacker == iLocalPlayer && iAttacker != iVictim)
 		{
@@ -737,6 +849,30 @@ void CMisc::UnlockAchievements()
 	}
 }
 
+void CMisc::UnlockItemAchievements()
+{
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
+	if (pAchievementMgr)
+	{
+		const std::unordered_set<int> vItemAchievementIDs(
+			Vars::Misc::Automation::GetItemAchievementIDs().begin(),
+			Vars::Misc::Automation::GetItemAchievementIDs().end());
+
+		I::SteamUserStats->RequestCurrentStats();
+		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
+		{
+			if (const auto pAchievement = pAchievementMgr->GetAchievementByIndex(i))
+			{
+				const int iAchievementID = pAchievement->GetAchievementID();
+				if (vItemAchievementIDs.contains(iAchievementID))
+					pAchievementMgr->AwardAchievement(iAchievementID);
+			}
+		}
+		I::SteamUserStats->StoreStats();
+		I::SteamUserStats->RequestCurrentStats();
+	}
+}
+
 void CMisc::LockAchievements()
 {
 	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
@@ -745,6 +881,29 @@ void CMisc::LockAchievements()
 		I::SteamUserStats->RequestCurrentStats();
 		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
 			I::SteamUserStats->ClearAchievement(pAchievementMgr->GetAchievementByIndex(i)->GetName());
+		I::SteamUserStats->StoreStats();
+		I::SteamUserStats->RequestCurrentStats();
+	}
+}
+
+void CMisc::LockItemAchievements()
+{
+	const auto pAchievementMgr = I::EngineClient->GetAchievementMgr();
+	if (pAchievementMgr)
+	{
+		const std::unordered_set<int> vItemAchievementIDs(
+			Vars::Misc::Automation::GetItemAchievementIDs().begin(),
+			Vars::Misc::Automation::GetItemAchievementIDs().end());
+
+		I::SteamUserStats->RequestCurrentStats();
+		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
+		{
+			if (const auto pAchievement = pAchievementMgr->GetAchievementByIndex(i))
+			{
+				if (vItemAchievementIDs.contains(pAchievement->GetAchievementID()))
+					I::SteamUserStats->ClearAchievement(pAchievement->GetName());
+			}
+		}
 		I::SteamUserStats->StoreStats();
 		I::SteamUserStats->RequestCurrentStats();
 	}
@@ -772,9 +931,7 @@ void CMisc::AchievementSpam(CTFPlayer* pLocal)
 		if (!m_tAchievementSpamTimer.Run(20.0f))
 			return;
 
-		// Do Androids Dream? achievement by default
-		// TODO: add a new column to edit achievement timer & number directly in cheat (like you did with autoitem)
-		int specificAchievementID = 2332;
+		int specificAchievementID = Vars::Misc::Automation::AchievementSpamID.Value;
 
 		IAchievement* pAchievement = nullptr;
 		for (int i = 0; i < pAchievementMgr->GetAchievementCount(); i++)
@@ -788,7 +945,14 @@ void CMisc::AchievementSpam(CTFPlayer* pLocal)
 		}
 
 		if (!pAchievement || !pAchievement->GetName())
-			return;
+		{
+			pAchievement = pAchievementMgr->GetAchievementByIndex(0);
+			if (!pAchievement || !pAchievement->GetName())
+				return;
+
+			specificAchievementID = pAchievement->GetAchievementID();
+			Vars::Misc::Automation::AchievementSpamID.Value = specificAchievementID;
+		}
 
 		m_iAchievementSpamID = specificAchievementID;
 		m_sAchievementSpamName = pAchievement->GetName();

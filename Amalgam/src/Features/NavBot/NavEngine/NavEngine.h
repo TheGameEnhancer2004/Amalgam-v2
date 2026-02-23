@@ -75,6 +75,9 @@ private:
 	bool m_bCrumbCacheReady = false;
 	bool m_bCrumbCacheDirty = false;
 	std::string m_sCrumbCachePath = {};
+	std::array<float, 10> m_flRecentFallSpeeds = {};
+	size_t m_iRecentFallSpeedIndex = 0;
+	size_t m_nRecentFallSpeedCount = 0;
 
 	void BuildIntraAreaCrumbs(const Vector& vStart, const Vector& vDestination, CNavArea* pArea);
 	void BuildAdaptiveAreaCrumbs(const NavPoints_t& tPoints, const DropdownHint_t& tDrop, CNavArea* pArea, std::vector<CachedCrumb_t>& vOut) const;
@@ -86,6 +89,7 @@ private:
 	std::vector<CachedCrumb_t> BuildConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea);
 	const std::vector<CachedCrumb_t>* FindConnectionCacheEntry(CNavArea* pArea, CNavArea* pNextArea) const;
 	void AppendCachedCrumbs(CNavArea* pArea, const std::vector<CachedCrumb_t>& vCachedCrumbs);
+	void ConsumeFrontCrumbs(size_t nCount);
 
 	// Use when something unexpected happens, e.g. vischeck fails
 	void AbandonPath(const std::string& sReason);

@@ -18,6 +18,9 @@ private:
 	void VoiceCommandSpam(CTFPlayer* pLocal);
 	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
+	void AutoDisguise(CTFPlayer* pLocal);
+	void JoinSpam(CTFPlayer* pLocal);
+	void AutoBanJoiner();
 
 	void AchievementSpam(CTFPlayer* pLocal);
 	void NoiseSpam(CTFPlayer* pLocal);
@@ -63,6 +66,7 @@ private:
 	int m_iAchievementSpamID = 0;
 	std::string m_sAchievementSpamName = "";
 	Timer m_tCallVoteSpamTimer;
+	bool m_bAutoBalanceTeamChangePending = false;
 
 	int m_iBuybotStep = 1;
 	float m_flBuybotClock = 0.0f;
@@ -95,7 +99,10 @@ public:
 
 	void PingReducer();
 	void UnlockAchievements();
+	void UnlockItemAchievements();
 	void LockAchievements();
+	void LockItemAchievements();
+	void SetAutoBalanceTeamChangePending(bool bPending) { m_bAutoBalanceTeamChangePending = bPending; }
 	void AutoMvmReadyUp();
 	void OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget);
 	void OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg);

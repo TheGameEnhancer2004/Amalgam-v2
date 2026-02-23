@@ -210,14 +210,15 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 	if (m_iTeam == -1)
 		m_iTeam = m_pSkip ? m_pSkip->m_iTeamNum() : TEAM_UNASSIGNED;
 
+	/*
 	if (nClassID == ETFClassID::CBaseDoor ||
 		nClassID == ETFClassID::CBasePropDoor)
 	{
 		if (pEntity->m_nSolidType() == SOLID_NONE || (pEntity->m_usSolidFlags() & FSOLID_NOT_SOLID))
 			return false;
 
-		const int iTeamMask = m_iTeam == TF_TEAM_RED ? RED_CONTENTS_MASK :
-			(m_iTeam == TF_TEAM_BLUE ? BLU_CONTENTS_MASK : CONTENTS_PLAYERCLIP);
+		const int iTeamMask = m_iTeam == TF_TEAM_RED ? BLU_CONTENTS_MASK :
+			(m_iTeam == TF_TEAM_BLUE ? RED_CONTENTS_MASK : CONTENTS_PLAYERCLIP);
 		const bool bBlocksMovement = pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, iTeamMask);
 		if (!bBlocksMovement)
 			return false;
@@ -230,6 +231,7 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 
 		return true;
 	}
+	*/
 
 	if (nClassID == ETFClassID::CDynamicProp ||
 		nClassID == ETFClassID::CPhysicsProp ||
@@ -258,7 +260,7 @@ bool CTraceFilterNavigation::ShouldHitEntity(IHandleEntity* pServerEntity, int n
 	}
 
 	if (nClassID == ETFClassID::CFuncRespawnRoomVisualizer)
-		return (nContentsMask & CONTENTS_PLAYERCLIP) && m_iTeam != TEAM_UNASSIGNED && pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, m_iTeam == TF_TEAM_RED ? RED_CONTENTS_MASK : BLU_CONTENTS_MASK);
+		return (nContentsMask & CONTENTS_PLAYERCLIP) && m_iTeam != TEAM_UNASSIGNED && pEntity->ShouldCollide(MOVEMENT_COLLISION_GROUP, m_iTeam == TF_TEAM_RED ? BLU_CONTENTS_MASK : RED_CONTENTS_MASK);
 
 	return false;
 }
