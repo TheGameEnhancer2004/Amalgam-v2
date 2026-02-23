@@ -695,7 +695,7 @@ void CMenu::MenuVisuals(int iTab)
 					Divider(H::Draw.Scale(), H::Draw.Scale(8), -H::Draw.Scale());
 					PushTransparent(!(tGroup.m_iTargets & TargetsEnum::Players));
 					{
-						FDropdown("Players", &tGroup.m_iPlayers, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy", "##Divider", "Invulnerable", "Crits", "Invisible", "Disguise", "Hurt" }, {}, FDropdownEnum::Multi, 0, "All");
+						FDropdown("Players", &tGroup.m_iPlayers, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy", "##Divider", "Invulnerable", "Crits", (tGroup.m_iPlayers & PlayerEnum::NotInvis) ? "Not invisible" : "Invisible", "Disguise", "Hurt", "##Divider", "Invisible -> Not invisible" }, {}, FDropdownEnum::Multi, 0, "All");
 					}
 					PopTransparent();
 					PushTransparent(!(tGroup.m_iTargets & TargetsEnum::Buildings));
@@ -758,8 +758,6 @@ void CMenu::MenuVisuals(int iTab)
 						vEntries.insert(vEntries.end(), { "Intel return time" });
 						vValues.insert(vValues.end(), { ESPEnum::IntelReturnTime });
 					}
-
-					FToggle(Vars::ESP::IgnoreInvisibleSpies, FToggleEnum::Left);
 
 					PushTransparent(tGroup.m_iTargets && !(tGroup.m_iTargets & TargetsEnum::ESP));
 					{

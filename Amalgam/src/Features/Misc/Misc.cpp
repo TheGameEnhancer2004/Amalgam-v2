@@ -359,17 +359,24 @@ void CMisc::AutoBanJoiner()
 	static auto fps_max = H::ConVars.FindVar("fps_max");
 	static auto host_timescale = H::ConVars.FindVar("host_timescale");
 
-	if (!sv_cheats || !fps_max || !host_timescale)
-		return;
+	static float m_fOldFPSValue = 30.f;
+	static int m_nOldFPSValue = 30;
+	static int m_nOldCheatsValue = 1;
 
 	const bool bShouldApply = Vars::Misc::Automation::AutoBanJoiner.Value && I::EngineClient->IsDrawingLoadingImage();
 	if (bShouldApply)
-	{
+	{	
 		if (bApplied)
 			return;
 
+		// Save original fps_max values every time we run this
+		m_fOldFPSValue = fps_max->m_fValue;
+		m_nOldFPSValue = fps_max->m_nValue;
+
+		// Also save original sv_cheats
+		m_nOldCheatsValue = sv_cheats->m_nValue;
 		sv_cheats->m_nValue = 1;
-		sv_cheats->m_fValue = 1.f;
+
 		fps_max->m_fValue = 0.3f;
 		fps_max->m_nValue = 0;
 		host_timescale->m_fValue = 40.f;
@@ -382,15 +389,14 @@ void CMisc::AutoBanJoiner()
 	if (!bApplied)
 		return;
 
-#ifdef TEXTMODE
-	fps_max->m_fValue = 30.f;
-	fps_max->m_nValue = 30;
-#else
-	fps_max->m_fValue = 500.f;
-	fps_max->m_nValue = 500;
-#endif
+	sv_cheats->m_nValue = 1;
+
+	fps_max->m_fValue = m_fOldFPSValue;
+	fps_max->m_nValue = m_nOldFPSValue;
 	host_timescale->m_fValue = 1.f;
 	host_timescale->m_nValue = 1;
+
+	sv_cheats->m_nValue = m_nOldCheatsValue;
 
 	bApplied = false;
 }
@@ -449,17 +455,11 @@ void CMisc::CheatsBypass()
 {
 	static bool bCheatSet = false;
 	static auto sv_cheats = H::ConVars.FindVar("sv_cheats");
-	const bool bShouldBypass = Vars::Misc::Exploits::CheatsBypass.Value || Vars::Misc::Automation::AutoBanJoiner.Value;
+	const bool bShouldBypass = Vars::Misc::Exploits::CheatsBypass.Value;
 	if (bShouldBypass)
-	{
-		sv_cheats->m_nValue = 1;
-		sv_cheats->m_fValue = 1.f;
-		bCheatSet = true;
-	}
+		bCheatSet = sv_cheats->m_nValue = 1;
 	else if (bCheatSet)
-	{
 		bCheatSet = false;
-	}
 }
 
 void CMisc::WeaponSway()

@@ -576,7 +576,6 @@ namespace Vars
 
 	NAMESPACE_BEGIN(ESP)
 		CVarValues(ActiveGroups, "Active groups", int(0b11111111111111111111111111111111), VISUAL | DROPDOWN_MULTI, nullptr);
-		CVar(IgnoreInvisibleSpies, "Ignore invisible spies", false, VISUAL);
 	NAMESPACE_END(ESP);
 
 	NAMESPACE_BEGIN(Visuals)

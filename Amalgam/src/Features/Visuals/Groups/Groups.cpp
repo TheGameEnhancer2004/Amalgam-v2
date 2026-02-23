@@ -45,12 +45,6 @@ static inline bool ShouldTargetPlayer(Group_t& tGroup, int iBit, CBaseEntity* pE
 	auto pPlayer = pEntity->As<CTFPlayer>();
 	if (!pPlayer->IsAlive() || pPlayer->IsAGhost())
 		return false;
-	if (Vars::ESP::IgnoreInvisibleSpies.Value
-		&& pPlayer->m_iClass() == TF_CLASS_SPY
-		&& pPlayer->IsInvisible())
-	{
-		return false;
-	}
 
 	if (tGroup.m_iPlayers)
 	{
@@ -76,7 +70,7 @@ static inline bool ShouldTargetPlayer(Group_t& tGroup, int iBit, CBaseEntity* pE
 		{
 			if (tGroup.m_iPlayers & PlayerEnum::Invulnerable && !pPlayer->IsInvulnerable()
 				|| tGroup.m_iPlayers & PlayerEnum::Crits && !pPlayer->IsCritBoosted()
-				|| tGroup.m_iPlayers & PlayerEnum::Invisible && !pPlayer->IsInvisible()
+				|| tGroup.m_iPlayers & PlayerEnum::Invisible && ((tGroup.m_iPlayers & PlayerEnum::NotInvis) ? pPlayer->IsInvisible() : !pPlayer->IsInvisible())
 				|| tGroup.m_iPlayers & PlayerEnum::Disguise && !pPlayer->InCond(TF_COND_DISGUISED)
 				|| tGroup.m_iPlayers & PlayerEnum::Hurt && pPlayer->m_iHealth() >= pPlayer->GetMaxHealth())
 				return false;
