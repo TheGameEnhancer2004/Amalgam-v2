@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+cathook-master
+source-sdk-2013
+tf2source
+.vscode
+AGENTS.md
+neptune
+TicketServer
+leysourceengineclient
