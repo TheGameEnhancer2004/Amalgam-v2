@@ -5,9 +5,6 @@
 
 bool CNoSpread::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
-	if (Vars::Aimbot::General::DisableOnSpectate.Value && H::Entities.IsSpectated())
-		return false;
-
 	if (!Vars::Aimbot::General::NoSpread.Value
 		|| !pWeapon || !pLocal->CanAttack())
 		return false;

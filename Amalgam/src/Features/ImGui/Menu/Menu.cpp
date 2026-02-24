@@ -336,7 +336,6 @@ void CMenu::MenuAimbot(int iTab)
 						FColorPicker(Vars::Colors::FOVCircle, FColorPickerEnum::Right);
 					}
 					PopTransparent();
-					FToggle(Vars::Aimbot::General::DisableOnSpectate, FToggleEnum::Left);
 					FToggle(Vars::CritHack::ForceCrits, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::General::PrioritizeNavbot, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::PrioritizeFollowbot, FToggleEnum::Right);
@@ -404,6 +403,7 @@ void CMenu::MenuAimbot(int iTab)
 					if (Section("##Debug Projectile"))
 					{
 						FText("Ground");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::GroundSamples, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::GroundStraightFuzzyValue, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::GroundLowMinimumSamples, FSliderEnum::Left);
@@ -413,7 +413,9 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::GroundMaxChanges, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::GroundMaxChangeTime, FSliderEnum::Right);
 
-						FText("\nAir");
+						Divider();
+						FText("Air");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::AirSamples, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::AirStraightFuzzyValue, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::AirLowMinimumSamples, FSliderEnum::Left);
@@ -423,7 +425,9 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::AirMaxChanges, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::AirMaxChangeTime, FSliderEnum::Right);
 
-						FText("");
+						Divider();
+						FText("General");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::VelocityAverageCount, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::VerticalShift, FSliderEnum::Right);
 
@@ -434,9 +438,12 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::Projectile::HuntsmanAdd, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::HuntsmanAddLow, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::HuntsmanClamp, FSliderEnum::Left);
-						FToggle(Vars::Aimbot::Projectile::HuntsmanPullPoint, FToggleEnum::Right);
-						SetCursorPosY(GetCursorPosY() + 8);
+						FToggle(Vars::Aimbot::Projectile::HuntsmanPullPoint, FSliderEnum::Left);
+						FToggle(Vars::Aimbot::Projectile::HuntsmanPullNoZ, FToggleEnum::Right);
 
+						Divider();
+						FText("Splash");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::SplashPointsDirect, FSliderEnum::Left);
 						FSlider(Vars::Aimbot::Projectile::SplashPointsArc, FSliderEnum::Right);
 						FSlider(Vars::Aimbot::Projectile::SplashCountDirect, FSliderEnum::Left);
@@ -448,8 +455,12 @@ void CMenu::MenuAimbot(int iTab)
 						FDropdown(Vars::Aimbot::Projectile::SplashMode, FDropdownEnum::Left);
 						FDropdown(Vars::Aimbot::Projectile::RocketSplashMode, FDropdownEnum::Right, 0, &Hovered); FTooltip("Special splash type for rockets, more expensive", Hovered);
 						FToggle(Vars::Aimbot::Projectile::SplashGrates);
-						SetCursorPosY(GetCursorPosY() + 8);
+						FSlider(Vars::Aimbot::Projectile::Out2NormalMin, FSliderEnum::Left);
+						FSlider(Vars::Aimbot::Projectile::Out2NormalMax, FSliderEnum::Right);
 
+						Divider();
+						FText("Misc");
+						Divider();
 						FSlider(Vars::Aimbot::Projectile::DeltaCount, FSliderEnum::Left);
 						FDropdown(Vars::Aimbot::Projectile::DeltaMode, FDropdownEnum::Right);
 						FDropdown(Vars::Aimbot::Projectile::MovesimFrictionFlags);
@@ -840,7 +851,7 @@ void CMenu::MenuVisuals(int iTab)
 					{
 						SetCursorPosY(GetCursorPosY() - H::Draw.Scale(8));
 
-						FDropdown("##Draw", &tGroup.m_iBacktrack, { "Last", "First", "##Divider", "Always" }, { BacktrackEnum::Last, BacktrackEnum::First, BacktrackEnum::Always }, FDropdownEnum::Multi, 0, "All");
+						FDropdown("##Draw", &tGroup.m_iBacktrack, { "Last", "First", "##Divider", "Always" }, { BacktrackEnum::Last, BacktrackEnum::First, BacktrackEnum::Always }, FDropdownEnum::Multi | FDropdownEnum::NoSanitization, 0, "All");
 
 						FMDropdown("Material", &tGroup.m_vBacktrackChams, FDropdownEnum::Left);
 						SetCursorPos({ GetWindowWidth() / 2 + GetStyle().WindowPadding.x / 2, GetCursorPosY() - H::Draw.Scale(32) });
@@ -870,7 +881,7 @@ void CMenu::MenuVisuals(int iTab)
 					{
 						SetCursorPosY(GetCursorPosY() - H::Draw.Scale(8));
 
-						FDropdown("Flags", &tGroup.m_iTrajectory, { "Predict", "##Divider", "Radius", "Trace", "Sphere", "##Divider", "Path" }, { TrajectoryEnum::Predict, TrajectoryEnum::Radius, TrajectoryEnum::Trace, TrajectoryEnum::Sphere, TrajectoryEnum::Path }, FDropdownEnum::Multi);
+						FDropdown("Flags", &tGroup.m_iTrajectory, { "Predict", "##Divider", "Radius", "Trace", "Sphere", "##Divider", "Path" }, { TrajectoryEnum::Predict, TrajectoryEnum::Radius, TrajectoryEnum::Trace, TrajectoryEnum::Sphere, TrajectoryEnum::Path }, FDropdownEnum::Multi | FDropdownEnum::NoSanitization);
 						FToggle("Ignore Z", &tGroup.m_iTrajectory, SightlinesEnum::IgnoreZ);
 
 						EndPopup();
@@ -1331,7 +1342,6 @@ void CMenu::MenuHvH(int iTab)
 					FToggle(Vars::AntiAim::MinWalk, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::AntiOverlap, FToggleEnum::Left);
 					FToggle(Vars::AntiAim::InvalidShootPitch, FToggleEnum::Right);
-					FToggle(Vars::AntiAim::DisableOnSpectate, FToggleEnum::Left);
 				} EndSection();
 			}
 			/* Column 2 */
@@ -1427,20 +1437,24 @@ void CMenu::MenuMisc(int iTab)
 				{
 					if (Section("##Debug"))
 					{
-						FSlider(Vars::Misc::Movement::TimingOffset);
-						FSlider(Vars::Misc::Movement::ChokeCount);
-						FSlider(Vars::Misc::Movement::ApplyAbove);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeGrounded, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeAir, FToggleEnum::Right);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipGround, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipAir, FToggleEnum::Right);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpTimingOffset, FToggleEnum::Left);
+						FSlider(Vars::Misc::Movement::AutoRocketJumpApplyAbove, FToggleEnum::Right);
 					} EndSection();
 				}
 				if (Section("Exploits"))
 				{
 					FToggle(Vars::Misc::Exploits::PureBypass, FToggleEnum::Left);
 					FToggle(Vars::Misc::Exploits::CheatsBypass, FToggleEnum::Right);
-					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::UnlockCVars, FToggleEnum::Left);
+					FToggle(Vars::Misc::Exploits::EquipRegionUnlock, FToggleEnum::Right);
+					FToggle(Vars::Misc::Exploits::BackpackExpander, FToggleEnum::Left);
 					FToggle(Vars::Misc::Exploits::BreakShootSound, FToggleEnum::Right);
 					FTooltip("breaks weapon shoot sound by switching weapons (soldier only)");
 					FToggleSlider(Vars::Misc::Exploits::PingReducer, Vars::Misc::Exploits::PingTarget);
-					FToggle(Vars::Misc::Exploits::BackpackExpander);
 				} EndSection();
 				if (Section("Mann vs. Machine", 8))
 				{
@@ -1519,10 +1533,9 @@ void CMenu::MenuMisc(int iTab)
 				if (Section("Nav Engine"))
 				{
 					FToggle(Vars::Misc::Movement::NavEngine::Enabled, FToggleEnum::Left);
-				FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
-				FToggle(Vars::Misc::Movement::NavEngine::PathRandomization, FToggleEnum::Left);
-				FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Right);
-				FToggle(Vars::Misc::Movement::NavEngine::DisableOnSpectate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavEngine::PathInSetup, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::NavEngine::PathRandomization, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::NavBot::SmartJump, FToggleEnum::Right);
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FDropdown(Vars::Misc::Movement::NavEngine::LookAtPath);
@@ -1550,7 +1563,6 @@ void CMenu::MenuMisc(int iTab)
 					PushTransparent(!Vars::Misc::Movement::NavEngine::Enabled.Value);
 					{
 						FToggle(Vars::Misc::Movement::NavBot::Enabled, FToggleEnum::Left);
-						FToggle(Vars::Misc::Movement::NavBot::DisableOnSpectate, FToggleEnum::Right);
 						PushTransparent(!Vars::Misc::Movement::NavBot::Enabled.Value || !Vars::Misc::Movement::NavEngine::Enabled.Value);
 						{
 							FDropdown(Vars::Misc::Movement::NavBot::RechargeDT);
@@ -1660,7 +1672,7 @@ void CMenu::MenuMisc(int iTab)
 				if (Section("Queueing", 8))
 				{
 					FDropdown(Vars::Misc::Queueing::ForceRegions);
-					FToggle(Vars::Misc::Queueing::FreezeQueue, FToggleEnum::Left);
+					FToggle(Vars::Misc::Queueing::ExtendQueue, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::AutoCasualQueue, FToggleEnum::Right);
 					FToggle(Vars::Misc::Queueing::AutoCasualJoin, FToggleEnum::Left);
 					FToggle(Vars::Misc::Queueing::MapPopularizing, FToggleEnum::Right);
@@ -2183,13 +2195,13 @@ void CMenu::MenuLogs(int iTab)
 
 						// text + icons
 						int lOffset = H::Draw.Scale(10);
-						if (tPlayer.m_bLocal || F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID || tPlayer.m_bFriend || tPlayer.m_bParty)
+						if (tPlayer.m_bLocal || F::Spectate.GetTarget(true) == tPlayer.m_iUserID || tPlayer.m_bFriend || tPlayer.m_bParty)
 						{
 							lOffset += H::Draw.Scale(19);
 							SetCursorPos({ vOriginalPos.x + H::Draw.Scale(7), vOriginalPos.y + H::Draw.Scale(6) });
 							if (tPlayer.m_bLocal)
 								IconImage(ICON_MD_PERSON);
-							else if (F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID)
+							else if (F::Spectate.GetTarget(true) == tPlayer.m_iUserID)
 								IconImage(ICON_MD_VISIBILITY);
 							else if (tPlayer.m_bFriend)
 								IconImage(ICON_MD_GROUP);
@@ -2265,7 +2277,7 @@ void CMenu::MenuLogs(int iTab)
 						}
 						SetCursorPos(vOriginalPos);
 						Button(std::format("##{}", tPlayer.m_iUserID).c_str(), { flWidth, flHeight });
-						bPopup = bPopup || IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
+						bPopup |= IsItemHovered() && IsMouseReleased(ImGuiMouseButton_Right);
 
 						// popups
 						if (bPopup)
@@ -2283,7 +2295,7 @@ void CMenu::MenuLogs(int iTab)
 									I::SteamFriends->ActivateGameOverlayToWebPage(std::format("https://steamhistory.net/id/{}", CSteamID(tPlayer.m_uAccountID, k_EUniversePublic, k_EAccountTypeIndividual).ConvertToUint64()).c_str());
 							}
 
-							if (FSelectable(F::Spectate.m_iIntendedTarget == tPlayer.m_iUserID ? "Unspectate" : "Spectate"))
+							if (FSelectable(F::Spectate.GetTarget(true) == tPlayer.m_iUserID ? "Unspectate" : "Spectate"))
 								F::Spectate.SetTarget(tPlayer.m_iUserID);
 
 							if (!I::EngineClient->IsPlayingDemo() && FBeginMenu("Votekick"))
@@ -3003,12 +3015,12 @@ void CMenu::MenuLogs(int iTab)
 					try
 					{
 						int iBackupCount = 0;
-						for (auto& entry : std::filesystem::directory_iterator(F::Configs.m_sCorePath))
+						for (auto& tEntry : std::filesystem::directory_iterator(F::Configs.m_sCorePath))
 						{
-							if (!entry.is_regular_file() || entry.path().extension() != F::Configs.m_sConfigExtension)
+							if (!tEntry.is_regular_file() || tEntry.path().extension() != F::Configs.m_sConfigExtension)
 								continue;
 
-							std::string sConfigName = entry.path().filename().string();
+							std::string sConfigName = tEntry.path().filename().string();
 							sConfigName.erase(sConfigName.end() - F::Configs.m_sConfigExtension.size(), sConfigName.end());
 							if (sConfigName.find("Backup") != std::string::npos)
 								iBackupCount++;
@@ -3447,13 +3459,14 @@ void CMenu::MenuSettings(int iTab)
 					if (FButton(std::format("Parent: {}", sParent).c_str(), FButtonEnum::Right | FButtonEnum::SameLine | FButtonEnum::NoUpper, { 0, 40 }))
 						bParent = 2;
 				}
-				FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot" }, {}, FDropdownEnum::Left);
+				FDropdown("Type", &tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 				switch (tBind.m_iType)
 				{
-				case BindEnum::Key: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 2); FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::Class: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 8); FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::WeaponType: tBind.m_iInfo = std::clamp(tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
-				case BindEnum::ItemSlot: tBind.m_iInfo = std::max(tBind.m_iInfo, 0); FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Key: FDropdown("Behavior", &tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Class: FDropdown("Class", &tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::WeaponType: FDropdown("Weapon type", &tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::ItemSlot: FDropdown("Item slot", &tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+				case BindEnum::Misc: FDropdown("Misc", &tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 				}
 			} EndChild();
 
@@ -3597,6 +3610,31 @@ void CMenu::MenuSettings(int iTab)
 							sType = "slot";
 							sInfo = std::format("{}", _tBind.m_iInfo + 1);
 							break;
+						case BindEnum::Misc:
+							switch (_tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Spectated:
+							case BindEnum::MiscEnum::SpectatedFirst:
+							case BindEnum::MiscEnum::SpectatedThird:
+								sType = "spectated";
+								switch (_tBind.m_iInfo)
+								{
+								case BindEnum::MiscEnum::Spectated: { sInfo = "any"; break; }
+								case BindEnum::MiscEnum::SpectatedFirst: { sInfo = "1st"; break; }
+								case BindEnum::MiscEnum::SpectatedThird: { sInfo = "3rd"; break; }
+								}
+								break;
+							case BindEnum::MiscEnum::Zoomed:
+							case BindEnum::MiscEnum::Aiming:
+								sType = "cond";
+								switch (_tBind.m_iInfo)
+								{
+								case BindEnum::MiscEnum::Zoomed: { sInfo = "zoomed"; break; }
+								case BindEnum::MiscEnum::Aiming: { sInfo = "aiming"; break; }
+								}
+								break;
+							}
+							break;
 						}
 						if (_tBind.m_bNot && (_tBind.m_iType != BindEnum::Key || _tBind.m_iInfo == BindEnum::KeyEnum::Hold))
 							sType = std::format("not {}", sType);
@@ -3718,13 +3756,14 @@ void CMenu::MenuSettings(int iTab)
 									_tBind.m_sName = sInput;
 							}
 
-							FDropdown("Type", &_tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot" }, {}, FDropdownEnum::Left);
+							FDropdown("Type", &_tBind.m_iType, { "Key", "Class", "Weapon type", "Item slot", "Misc" }, {}, FDropdownEnum::Left);
 							switch (_tBind.m_iType)
 							{
-							case BindEnum::Key: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 2); FDropdown("Behavior", &_tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::Class: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 8); FDropdown("Class", &_tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::WeaponType: _tBind.m_iInfo = std::clamp(_tBind.m_iInfo, 0, 3); FDropdown("Weapon type", &_tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
-							case BindEnum::ItemSlot: _tBind.m_iInfo = std::max(_tBind.m_iInfo, 0); FDropdown("Item slot", &_tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Key: FDropdown("Behavior", &_tBind.m_iInfo, { "Hold", "Toggle", "Double click" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Class: FDropdown("Class", &_tBind.m_iInfo, { "Scout", "Soldier", "Pyro", "Demoman", "Heavy", "Engineer", "Medic", "Sniper", "Spy" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::WeaponType: FDropdown("Weapon type", &_tBind.m_iInfo, { "Hitscan", "Projectile", "Melee", "Throwable" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::ItemSlot: FDropdown("Item slot", &_tBind.m_iInfo, { "1", "2", "3", "4", "5", "6", "7", "8", "9" }, {}, FDropdownEnum::Right); break;
+							case BindEnum::Misc: FDropdown("Misc", &_tBind.m_iInfo, { "Spectated", "Spectated 1st", "Spectated 3rd", "##Divider", "Zoomed", "Aiming" }, {}, FDropdownEnum::Right); break;
 							}
 							if (_tBind.m_iType == BindEnum::Key)
 								FKeybind("Key", _tBind.m_iKey);
@@ -3978,7 +4017,6 @@ void CMenu::MenuSettings(int iTab)
 				if (FButton("Lock item achievements", FButtonEnum::Right | FButtonEnum::SameLine))
 					F::Misc.LockItemAchievements();
 			}
-
 		} EndSection();
 		if (Vars::Debug::Options.Value && I::EngineClient->IsConnected())
 		{
@@ -4037,7 +4075,7 @@ void CMenu::MenuSettings(int iTab)
 		{
 			int i = 0; for (auto& pBase : G::Vars)
 			{
-				if (pBase->m_sName.find("Vars::Hooks::") == std::string::npos)
+				if (std::string(pBase->Name()).find("Vars::Hooks::") == std::string::npos)
 					continue;
 
 				FToggle(*pBase->As<bool>(), !(i % 2) ? FToggleEnum::Left : FToggleEnum::Right);
@@ -4072,8 +4110,8 @@ void CMenu::MenuSearch(std::string sSearch)
 			if (!Vars::Debug::Options[DEFAULT_BIND] && pBase->m_iFlags & DEBUGVAR)
 				continue;
 
-			std::vector<const char*> vSearch = { pBase->m_sName.c_str(), pBase->m_sSection };
-			vSearch.insert(vSearch.end(), pBase->m_vTitle.begin(), pBase->m_vTitle.end());
+			std::vector<const char*> vSearch = { pBase->Name(), pBase->Section() };
+			vSearch.insert(vSearch.end(), pBase->m_vNames.begin(), pBase->m_vNames.end());
 			vSearch.insert(vSearch.end(), pBase->m_vValues.begin(), pBase->m_vValues.end());
 			for (auto pSearch : vSearch)
 			{
@@ -4106,7 +4144,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		else if (auto pVar = pBase->As<int>())
 		{
 			if (!pVar->m_vValues.empty()
-				|| FNV1A::Hash32(pVar->m_sName.c_str()) == FNV1A::Hash32Const("Vars::ESP::ActiveGroups"))
+				|| FNV1A::Hash32(pVar->Name()) == FNV1A::Hash32Const("Vars::ESP::ActiveGroups"))
 				iWidgetEnum = iTypeEnum = WidgetEnum::FDropdown;
 			else if (pVar->m_sExtra)
 				iWidgetEnum = WidgetEnum::FISlider, iTypeEnum = WidgetEnum::FSlider;
@@ -4130,12 +4168,12 @@ void CMenu::MenuSearch(std::string sSearch)
 		else
 			continue;
 
-		uint32_t uSection = FNV1A::Hash32(pBase->m_sSection);
+		uint32_t uSection = FNV1A::Hash32(pBase->Section());
 		if (uSection != uLastSection)
 		{
 			if (uLastSection)
 				EndSection();
-			Section(std::format("{}## {}", pBase->m_sSection, pBase->m_sName).c_str());
+			Section(std::format("{}## {}", pBase->Section(), pBase->Name()).c_str());
 			i = 0;
 		}
 		uLastSection = uSection;
@@ -4183,7 +4221,7 @@ void CMenu::MenuSearch(std::string sSearch)
 			auto pVar = pBase->As<bool>();
 			if (FToggle(*pVar, !(i % 2) ? FToggleEnum::Left : FToggleEnum::Right, nullptr, iOverride/*, iOverride*/))
 			{
-				if (FNV1A::Hash32(pVar->m_sName.c_str()) == FNV1A::Hash32Const("Vars::Debug::Options"))
+				if (FNV1A::Hash32(pVar->Name()) == FNV1A::Hash32Const("Vars::Debug::Options"))
 					uStaticHash = 0;
 			}
 			break;
@@ -4198,7 +4236,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		{
 			auto pVar = pBase->As<float>();
 			const char* sFormat = pVar->m_sExtra;
-			switch (FNV1A::Hash32(pVar->m_sName.c_str()))
+			switch (FNV1A::Hash32(pVar->Name()))
 			{
 			case FNV1A::Hash32Const("Vars::Aimbot::Projectile::SplashRotateX"):
 			case FNV1A::Hash32Const("Vars::Aimbot::Projectile::SplashRotateY"):
@@ -4255,7 +4293,7 @@ void CMenu::MenuSearch(std::string sSearch)
 		{
 			auto pVar = pBase->As<int>();
 			std::vector<int> vIgnore;
-			switch (FNV1A::Hash32(pVar->m_sName.c_str()))
+			switch (FNV1A::Hash32(pVar->Name()))
 			{
 			case FNV1A::Hash32Const("Vars::Menu::PrimaryKey"):
 				vIgnore = { Vars::Menu::SecondaryKey[DEFAULT_BIND], VK_LBUTTON, VK_RBUTTON };
@@ -4266,7 +4304,7 @@ void CMenu::MenuSearch(std::string sSearch)
 			default:
 				vIgnore = { Vars::Menu::PrimaryKey[DEFAULT_BIND], Vars::Menu::SecondaryKey[DEFAULT_BIND] };
 			}
-			FKeybind(iOverride != -1 ? pVar->m_vTitle[iOverride] : pVar->m_vTitle.front(), pVar->Map[DEFAULT_BIND], !(i % 2) ? FButtonEnum::Left : FButtonEnum::Right | FButtonEnum::SameLine, vIgnore);
+			FKeybind(iOverride != -1 ? pVar->m_vNames[iOverride] : pVar->m_vNames.front(), pVar->Map[DEFAULT_BIND], !(i % 2) ? FButtonEnum::Left : FButtonEnum::Right | FButtonEnum::SameLine, vIgnore);
 			break;
 		}
 		}
@@ -4392,7 +4430,7 @@ void CMenu::DrawBinds()
 {
 	using namespace ImGui;
 
-	if (m_bIsOpen ? false : !Vars::Menu::BindWindow.Value || I::EngineVGui->IsGameUIVisible() || I::MatSystemSurface->IsCursorVisible() && !I::EngineClient->IsPlayingDemo())
+	if (!F::Binds.m_bDisplay)
 		return;
 
 	std::vector<BindInfo_t> vInfo;
@@ -4446,6 +4484,31 @@ void CMenu::DrawBinds()
 					case BindEnum::ItemSlot:
 						sType = "slot";
 						sInfo = std::format("{}", tBind.m_iInfo + 1);
+						break;
+					case BindEnum::Misc:
+						switch (tBind.m_iInfo)
+						{
+						case BindEnum::MiscEnum::Spectated:
+						case BindEnum::MiscEnum::SpectatedFirst:
+						case BindEnum::MiscEnum::SpectatedThird:
+							sType = "spectated";
+							switch (tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Spectated: { sInfo = "any"; break; }
+							case BindEnum::MiscEnum::SpectatedFirst: { sInfo = "1st"; break; }
+							case BindEnum::MiscEnum::SpectatedThird: { sInfo = "3rd"; break; }
+							}
+							break;
+						case BindEnum::MiscEnum::Zoomed:
+						case BindEnum::MiscEnum::Aiming:
+							sType = "cond";
+							switch (tBind.m_iInfo)
+							{
+							case BindEnum::MiscEnum::Zoomed: { sInfo = "zoomed"; break; }
+							case BindEnum::MiscEnum::Aiming: { sInfo = "aiming"; break; }
+							}
+							break;
+						}
 						break;
 					}
 					if (tBind.m_bNot && (tBind.m_iType != BindEnum::Key || tBind.m_iInfo == BindEnum::KeyEnum::Hold))

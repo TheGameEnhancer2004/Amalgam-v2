@@ -25,7 +25,7 @@ static inline bool ShouldTarget(CBaseEntity* pProjectile, CTFPlayer* pLocal)
 	return true;
 }
 
-bool CAutoAirblast::CanAirblastEntity(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pEntity, Vec3& vAngle)
+bool CAutoAirblast::CanAirblastEntity(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CBaseEntity* pEntity, const Vec3& vAngle)
 {
 	auto flRadius = SDK::AttribHookValue(1, "deflection_size_multiplier", pWeapon) * 128.f;
 

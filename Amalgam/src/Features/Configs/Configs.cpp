@@ -4,32 +4,12 @@
 #include "../Visuals/Groups/Groups.h"
 #include "../Visuals/Materials/Materials.h"
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, bool v)
+template <class T> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const T& v)
 {
 	t.put(s, v);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, byte v)
-{
-	t.put(s, v);
-}
-
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, int v)
-{
-	t.put(s, v);
-}
-
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, float v)
-{
-	t.put(s, v);
-}
-
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const std::string& v)
-{
-	t.put(s, v);
-}
-
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const IntRange_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const IntRange_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "Min", v.Min);
@@ -38,7 +18,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const FloatRange_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const FloatRange_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "Min", v.Min);
@@ -47,7 +27,18 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const std::vector <std::pair <std::string, ChamsMaterial_t>> &v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Color_t& v)
+{
+	boost::property_tree::ptree tChild;
+	SaveJson(tChild, "r", v.r);
+	SaveJson(tChild, "g", v.g);
+	SaveJson(tChild, "b", v.b);
+	SaveJson(tChild, "a", v.a);
+
+	t.put_child(s, tChild);
+}
+
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const std::vector<std::pair<std::string, ChamsMaterial_t>>& v)
 {
 	boost::property_tree::ptree tChild;
 	for (auto& [sName, tMaterial] : v)
@@ -65,18 +56,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Color_t& v)
-{
-	boost::property_tree::ptree tChild;
-	SaveJson(tChild, "r", v.r);
-	SaveJson(tChild, "g", v.g);
-	SaveJson(tChild, "b", v.b);
-	SaveJson(tChild, "a", v.a);
-
-	t.put_child(s, tChild);
-}
-
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Gradient_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Gradient_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "StartColor", v.StartColor);
@@ -85,7 +65,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const DragBox_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const DragBox_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "x", v.x);
@@ -94,7 +74,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const WindowBox_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const WindowBox_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "x", v.x);
@@ -105,7 +85,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Chams_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Chams_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "Visible", v.Visible);
@@ -114,7 +94,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Glow_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const Glow_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "Stencil", v.Stencil);
@@ -126,7 +106,7 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const ESP_t& v)
+template <> void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, const ESP_t& v)
 {
 	boost::property_tree::ptree tChild;
 	SaveJson(tChild, "Draw", v.Draw);
@@ -138,37 +118,15 @@ void CConfigs::SaveJson(boost::property_tree::ptree& t, const std::string& s, co
 	t.put_child(s, tChild);
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, bool& v)
+
+
+template <class T> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, T& v)
 {
-	if (auto o = t.get_optional<bool>(s))
+	if (auto o = t.get_optional<T>(s))
 		v = *o;
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, byte& v)
-{
-	if (auto o = t.get_optional<byte>(s))
-		v = *o;
-}
-
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, int& v)
-{
-	if (auto o = t.get_optional<int>(s))
-		v = *o;
-}
-
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, float& v)
-{
-	if (auto o = t.get_optional<float>(s))
-		v = *o;
-}
-
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, std::string& v)
-{
-	if (auto o = t.get_optional<std::string>(s))
-		v = *o;
-}
-
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, IntRange_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, IntRange_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -177,7 +135,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, FloatRange_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, FloatRange_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -186,54 +144,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, std::vector<std::pair<std::string, ChamsMaterial_t>>& v)
-{
-	if (auto tChild = t.get_child_optional(s))
-	{
-		v.clear();
-
-		for (auto& [_, tLayer] : *tChild)
-		{
-			auto o = tLayer.get_optional<std::string>("Material");
-			if (!o)
-				continue;
-
-			std::string& m = *o;
-			Color_t c;
-			float flStart = 0.f, flEnd = 8192.f;
-			bool bSmoothAlpha = false;
-			LoadJson(tLayer, "Color", c);
-			LoadJson(tLayer, "Start", flStart);
-			LoadJson(tLayer, "End", flEnd);
-			LoadJson(tLayer, "SmoothAlpha", bSmoothAlpha);
-
-			bool bFound = false; // ensure no duplicates are assigned
-			for (auto& [sMat, _] : v)
-			{
-				if (FNV1A::Hash32(sMat.c_str()) == FNV1A::Hash32(m.c_str()))
-				{
-					bFound = true;
-					break;
-				}
-			}
-			if (!bFound)
-				v.emplace_back(m, ChamsMaterial_t{ c, flStart, flEnd, bSmoothAlpha});
-		}
-
-		// remove invalid materials
-		for (auto it = v.begin(); it != v.end();)
-		{
-			auto uHash = FNV1A::Hash32(it->first.c_str());
-			if (uHash == FNV1A::Hash32Const("None")
-				|| uHash != FNV1A::Hash32Const("Original") && !F::Materials.m_mMaterials.contains(uHash))
-				it = v.erase(it);
-			else
-				++it;
-		}
-	}
-}
-
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Color_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Color_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -244,7 +155,49 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Gradient_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, std::vector<std::pair<std::string, ChamsMaterial_t>>& v)
+{
+	if (auto tChild = t.get_child_optional(s))
+	{
+		v.clear();
+		for (auto& [_, tLayer] : *tChild)
+		{
+			if (auto o = tLayer.get_optional<std::string>("Material"))
+			{
+				std::string& m = *o;
+				Color_t c; LoadJson(tLayer, "Color", c);
+				float flStart = 0.f; LoadJson(tLayer, "Start", flStart);
+				float flEnd = 8192.f; LoadJson(tLayer, "End", flEnd);
+				bool bSmoothAlpha = false; LoadJson(tLayer, "SmoothAlpha", bSmoothAlpha);
+				v.emplace_back(m, ChamsMaterial_t{ c, flStart, flEnd, bSmoothAlpha});
+			}
+		}
+	}
+
+	// remove invalid/duplicate materials
+	for (auto it = v.begin(); it != v.end();)
+	{
+		auto uHash = FNV1A::Hash32(it->first.c_str());
+		bool bValid = uHash != FNV1A::Hash32Const("None") && (uHash == FNV1A::Hash32Const("Original") || F::Materials.m_mMaterials.contains(uHash));
+		if (bValid)
+		{
+			int i = 0; for (auto& [s, _] : v)
+			{
+				auto uHash2 = FNV1A::Hash32(s.c_str());
+				if (uHash == uHash2)
+					i++;
+			}
+			bValid = i <= 1;
+		}
+
+		if (bValid)
+			++it;
+		else
+			it = v.erase(it);
+	}
+}
+
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Gradient_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -253,7 +206,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, DragBox_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, DragBox_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -262,7 +215,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, WindowBox_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, WindowBox_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -273,7 +226,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Chams_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Chams_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -282,7 +235,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Glow_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, Glow_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -294,7 +247,7 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 	}
 }
 
-void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ESP_t& v)
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ESP_t& v)
 {
 	if (auto tChild = t.get_child_optional(s))
 	{
@@ -304,6 +257,119 @@ void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string&
 		LoadJson(*tChild, "End", v.End);
 		LoadJson(*tChild, "SmoothAlpha", v.SmoothAlpha);
 	}
+}
+
+
+
+template <class T> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<T>* c, int i)
+{
+	LoadJson(t, s, c->Map[i]);
+}
+
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<int>* c, int i)
+{
+	auto& v = c->Map[i];
+	LoadJson(t, s, v);
+
+	if (!c->m_vValues.empty())
+	{
+		if (c->m_iFlags & DROPDOWN_NOSANITIZATION)
+			return;
+
+		if (!(c->m_iFlags & DROPDOWN_MULTI))
+			v = std::clamp(v, 0, int(c->m_vValues.size() - 1));
+		else
+		{
+			for (int i = 0; i < sizeof(int) * 8; i++)
+			{
+				bool bFound = v & (1 << i) && i < c->m_vValues.size();
+				if (!bFound)
+					v &= ~(1 << i);
+			}
+		}
+	}
+	else if (c->m_sExtra)
+	{
+		if (!(c->m_iFlags & SLIDER_PRECISION))
+			v = float(v) - fnmodf(float(v) - c->m_unStep.i / 2.f, c->m_unStep.i) + c->m_unStep.i / 2.f;
+		if (c->m_iFlags & SLIDER_CLAMP)
+			v = std::clamp(v, c->m_unMin.i, c->m_unMax.i);
+		else if (c->m_iFlags & SLIDER_MIN)
+			v = std::max(v, c->m_unMin.i);
+		else if (c->m_iFlags & SLIDER_MAX)
+			v = std::min(v, c->m_unMax.i);
+	}
+}
+
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<float>* c, int i)
+{
+	auto& v = c->Map[i];
+	LoadJson(t, s, v);
+
+	if (!(c->m_iFlags & SLIDER_PRECISION))
+		v = v - fnmodf(v - c->m_unStep.f / 2, c->m_unStep.f) + c->m_unStep.f / 2;
+	if (c->m_iFlags & SLIDER_CLAMP)
+		v = std::clamp(v, c->m_unMin.f, c->m_unMax.f);
+	else if (c->m_iFlags & SLIDER_MIN)
+		v = std::max(v, c->m_unMin.f);
+	else if (c->m_iFlags & SLIDER_MAX)
+		v = std::min(v, c->m_unMax.f);
+}
+
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<IntRange_t>* c, int i)
+{
+	auto& v = c->Map[i];
+	LoadJson(t, s, v);
+
+	if (!(c->m_iFlags & SLIDER_PRECISION))
+	{
+		v.Min = float(v.Min) - fnmodf(float(v.Min) - c->m_unStep.i / 2.f, c->m_unStep.i) + c->m_unStep.i / 2.f;
+		v.Max = float(v.Max) - fnmodf(float(v.Max) - c->m_unStep.i / 2.f, c->m_unStep.i) + c->m_unStep.i / 2.f;
+	}
+	if (c->m_iFlags & SLIDER_CLAMP)
+	{
+		v.Min = std::clamp(v.Min, c->m_unMin.i, c->m_unMax.i - c->m_unStep.i);
+		v.Max = std::clamp(v.Max, c->m_unMin.i + c->m_unStep.i, c->m_unMax.i);
+	}
+	else if (c->m_iFlags & SLIDER_MIN)
+	{
+		v.Min = std::max(v.Min, c->m_unMin.i);
+		v.Max = std::max(v.Max, c->m_unMin.i + c->m_unStep.i);
+	}
+	else if (c->m_iFlags & SLIDER_MAX)
+	{
+		v.Min = std::min(v.Min, c->m_unMax.i - c->m_unStep.i);
+		v.Max = std::min(v.Max, c->m_unMax.i);
+	}
+	v.Max = std::max(v.Max, v.Min + c->m_unStep.i);
+}
+
+template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const std::string& s, ConfigVar<FloatRange_t>* c, int i)
+{
+	auto& v = c->Map[i];
+	LoadJson(t, s, v);
+
+	if (!(c->m_iFlags & SLIDER_PRECISION))
+	{
+		v.Min = v.Min - fnmodf(v.Min - c->m_unStep.f / 2, c->m_unStep.f) + c->m_unStep.f / 2;
+		v.Max = v.Max - fnmodf(v.Max - c->m_unStep.f / 2, c->m_unStep.f) + c->m_unStep.f / 2;
+	}
+	if (c->m_iFlags & SLIDER_CLAMP)
+	{
+		v.Min = std::clamp(v.Min, c->m_unMin.f, c->m_unMax.f - c->m_unStep.f);
+		v.Max = std::clamp(v.Max, c->m_unMin.f + c->m_unStep.f, c->m_unMax.f);
+	}
+	else if (c->m_iFlags & SLIDER_MIN)
+	{
+		v.Min = std::max(v.Min, c->m_unMin.f);
+		v.Max = std::max(v.Max, c->m_unMin.f + c->m_unStep.f);
+	}
+	else if (c->m_iFlags & SLIDER_MAX)
+	{
+		v.Min = std::min(v.Min, c->m_unMax.f - c->m_unStep.f);
+		v.Max = std::min(v.Max, c->m_unMax.f);
+	}
+	v.Max = std::max(v.Max, v.Min + c->m_unStep.f);
 }
 
 
@@ -338,7 +404,7 @@ static inline void SaveMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 	boost::property_tree::ptree tMap;
 	for (auto& [iBind, tValue] : pVar->Map)
 		F::Configs.SaveJson(tMap, std::to_string(iBind), tValue);
-	tTree.put_child(pVar->m_sName, tMap);
+	tTree.put_child(pVar->Name(), tMap);
 }
 #define Save(t, j) if (IsType(t)) SaveMain<t>(pBase, j);
 
@@ -348,21 +414,21 @@ static inline void LoadMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 	auto pVar = pBase->As<T>();
 
 	pVar->Map = { { DEFAULT_BIND, pVar->Default } };
-	if (auto tMap = tTree.get_child_optional(pVar->m_sName))
+	if (auto tMap = tTree.get_child_optional(pVar->Name()))
 	{
 		for (auto& [sKey, _] : *tMap)
 		{
 			int iBind = std::stoi(sKey);
 			if (iBind == DEFAULT_BIND || F::Binds.m_vBinds.size() > iBind && !(pVar->m_iFlags & NOBIND))
 			{
-				F::Configs.LoadJson(*tMap, sKey, pVar->Map[iBind]);
+				F::Configs.LoadJson(*tMap, sKey, pVar, iBind);
 				if (iBind != DEFAULT_BIND)
 					std::next(F::Binds.m_vBinds.begin(), iBind)->m_vVars.push_back(pVar);
 			}
 		}
 	}
 	else if (!(pVar->m_iFlags & NOSAVE))
-		SDK::Output("Amalgam", std::format("{} not found", pVar->m_sName).c_str(), ALTERNATE_COLOR, OUTPUT_CONSOLE | OUTPUT_MENU | OUTPUT_DEBUG);
+		SDK::Output("Amalgam", std::format("{} not found", pVar->Name()).c_str(), ALTERNATE_COLOR, OUTPUT_CONSOLE | OUTPUT_MENU | OUTPUT_DEBUG);
 }
 #define Load(t, j) if (IsType(t)) LoadMain<t>(pBase, j);
 
@@ -531,7 +597,7 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 				else Load(DragBox_t, *tSub)
 				else Load(WindowBox_t, *tSub)
 
-				if (bNoSave && pBase->m_sName.find("LoadDebugSettings") != std::string::npos && pBase->As<bool>()->Map[DEFAULT_BIND])
+				if (bNoSave && FNV1A::Hash32(pBase->Name()) == FNV1A::Hash32Const("Vars::Config::LoadDebugSettings") && pBase->As<bool>()->Map[DEFAULT_BIND])
 					bNoSave = false;
 			}
 		}
@@ -589,14 +655,14 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 template <class T>
 static inline void SaveMiscMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 {
-	F::Configs.SaveJson(tTree, pBase->m_sName, pBase->As<T>()->Map[DEFAULT_BIND]);
+	F::Configs.SaveJson(tTree, pBase->Name(), pBase->As<T>()->Map[DEFAULT_BIND]);
 }
 #define SaveMisc(t, j) if (IsType(t)) SaveMiscMain<t>(pBase, j);
 
 template <class T>
 static inline void LoadMiscMain(BaseVar*& pBase, boost::property_tree::ptree& tTree)
 {
-	F::Configs.LoadJson(tTree, pBase->m_sName, pBase->As<T>()->Map[DEFAULT_BIND]);
+	F::Configs.LoadJson(tTree, pBase->Name(), pBase->As<T>(), DEFAULT_BIND);
 }
 #define LoadMisc(t, j) if (IsType(t)) LoadMiscMain<t>(pBase, j);
 

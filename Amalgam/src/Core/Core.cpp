@@ -156,8 +156,9 @@ void CCore::Load()
 	F::Materials.LoadMaterials();
 #endif
 	H::ConVars.Unlock();
-
-
+#ifndef TEXTMODE
+	H::Fonts.Reload(Vars::Menu::Scale[DEFAULT_BIND]);
+#endif
 	F::Configs.LoadConfig(F::Configs.m_sCurrentConfig, false);
 	I::EngineClient->ClientCmd_Unrestricted("exec catexec");
 	SDK::Output("Amalgam", "Loaded", DEFAULT_COLOR, OUTPUT_CONSOLE | OUTPUT_TOAST | OUTPUT_MENU | OUTPUT_DEBUG);
@@ -197,7 +198,6 @@ void CCore::Unload()
 
 	if (F::Menu.m_bIsOpen)
 		I::MatSystemSurface->SetCursorAlwaysVisible(false);
-	F::Visuals.RestoreWorldModulation();
 	if (I::Input->CAM_IsThirdPerson())
 	{
 		if (auto pLocal = H::Entities.GetLocal())
@@ -206,6 +206,7 @@ void CCore::Unload()
 			pLocal->ThirdPersonSwitch();
 		}
 	}
+	F::Visuals.RestoreWorldModulation();
 	H::ConVars.FindVar("cl_wpn_sway_interp")->SetValue(0.f);
 	H::ConVars.FindVar("cl_wpn_sway_scale")->SetValue(0.f);
 

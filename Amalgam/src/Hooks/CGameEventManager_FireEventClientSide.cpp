@@ -6,6 +6,8 @@
 MAKE_HOOK(CGameEventManager_FireEventClientSide, U::Memory.GetVirtual(I::GameEventManager, 8), bool,
 	IGameEventManager2* rcx, IGameEvent* event)
 {
+	DEBUG_RETURN(CGameEventManager_FireEventClientSide, rcx, event);
+
 	// We have to do it here because our own event listener runs after game event manager
 	if (Vars::Visuals::Other::KillstreakWeapons.Value)
 	{

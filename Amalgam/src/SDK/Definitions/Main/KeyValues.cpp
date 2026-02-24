@@ -27,9 +27,9 @@ static int UTF8ToUnicode(const char* ansi, wchar_t* unicode, int unicodeBufferSi
 
 
 
-bool KeyValues::LoadFromBuffer(char const* resource_name, const char* buffer, void* file_system, const char* path_id)
+bool KeyValues::LoadFromBuffer(char const* resourceName, const char* pBuffer, void* pFileSystem, const char* pPathID)
 {
-	return S::KeyValues_LoadFromBuffer.Call<bool>(this, resource_name, buffer, file_system, path_id);
+	return S::KeyValues_LoadFromBuffer.Call<bool>(this, resourceName, pBuffer, pFileSystem, pPathID);
 }
 
 void KeyValues::Initialize(const char* name)
@@ -461,6 +461,13 @@ void KeyValues::SetColor(const char* keyName, Color_t value)
 void KeyValues::SetBool(const char* keyName, bool value)
 {
 	SetInt(keyName, value ? 1 : 0);
+}
+
+void KeyValues::Clear()
+{
+	delete m_pSub;
+	m_pSub = NULL;
+	m_iDataType = TYPE_NONE;
 }
 
 void KeyValues::DeleteThis()

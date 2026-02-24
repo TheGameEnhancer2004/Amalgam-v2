@@ -275,6 +275,11 @@ public:
 		return x * v.x + y * v.y;
 	}
 
+	inline float DotNormalized(const Vec2& v) const
+	{
+		return (x * v.x + y * v.y) / (Length() * v.Length());
+	}
+
 	inline bool IsZero(float flEpsilon = 0.001f) const
 	{
 		return fabsf(x) < flEpsilon &&
@@ -622,6 +627,11 @@ public:
 		return x * v.x + y * v.y + z * v.z;
 	}
 
+	inline float DotNormalized(const Vec3& v) const
+	{
+		return (x * v.x + y * v.y + z * v.z) / (Length() * v.Length());
+	}
+
 	inline Vec3 Cross(const Vec3& v) const
 	{
 		return Vec3(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
@@ -849,7 +859,7 @@ struct Color_t
 			flR = flG = flB = flV;
 		else
 		{
-			int i = int(floor(flH /= 60));
+			int i = int(flH /= 60);
 			float flF = flH - i;
 			float flP = flV * (1 - flS);
 			float flQ = flV * (1 - flF * flS);
@@ -872,7 +882,7 @@ struct Color_t
 		a = byte(std::clamp(flA, 0.f, 255.f));
 	}
 
-	inline void GetHSV(float& flH, float& flS, float& flV)
+	inline void GetHSV(float& flH, float& flS, float& flV) const
 	{
 		float flR = r / 255.f;
 		float flG = g / 255.f;
@@ -907,14 +917,14 @@ struct Color_t
 		return tOut;
 	}
 
-	inline bool operator==(Color_t other) const
+	inline bool operator==(const Color_t t) const
 	{
-		return r == other.r && g == other.g && b == other.b && a == other.a;
+		return r == t.r && g == t.g && b == t.b && a == t.a;
 	}
 
-	inline bool operator!=(Color_t other) const
+	inline bool operator!=(const Color_t t) const
 	{
-		return r != other.r || g != other.g || b != other.b || a != other.a;
+		return r != t.r || g != t.g || b != t.b || a != t.a;
 	}
 
 	inline std::string ToHex() const
@@ -987,14 +997,14 @@ struct Gradient_t
 	Color_t StartColor = {};
 	Color_t EndColor = {};
 
-	inline bool operator==(Gradient_t other) const
+	inline bool operator==(const Gradient_t& t) const
 	{
-		return StartColor == other.StartColor && EndColor == other.EndColor;
+		return StartColor == t.StartColor && EndColor == t.EndColor;
 	}
 
-	inline bool operator!=(Gradient_t other) const
+	inline bool operator!=(const Gradient_t& t) const
 	{
-		return StartColor != other.StartColor || EndColor != other.EndColor;
+		return StartColor != t.StartColor || EndColor != t.EndColor;
 	}
 };
 
@@ -1033,7 +1043,7 @@ struct Chams_t
 
 	inline bool operator()(bool bVisibleOnly = false) const
 	{
-		return bVisibleOnly ? !Visible.empty() : Visible != std::vector<std::pair<std::string, ChamsMaterial_t>>{ { "Original", ChamsMaterial_t() } } || !Occluded.empty();
+		return Visible != std::vector<std::pair<std::string, ChamsMaterial_t>>{ { "Original", ChamsMaterial_t() } } || !bVisibleOnly && !Occluded.empty();
 	}
 };
 
@@ -1064,8 +1074,8 @@ struct ESP_t
 
 struct Glow_t
 {
-	int		Stencil = 0;
-	float	Blur = 0;
+	int Stencil = 0;
+	float Blur = 0;
 
 	float	Start = 0.f;
 	float	End = 8192.f;

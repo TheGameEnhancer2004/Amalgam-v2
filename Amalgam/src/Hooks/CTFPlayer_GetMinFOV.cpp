@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CTFPlayer_GetMinFOV, "client.dll", "F3 0F 10 05 ? ? ? ? C3 CC CC 
 MAKE_HOOK(CTFPlayer_GetMinFOV, S::CTFPlayer_GetMinFOV(), float,
 	/*void* rcx*/)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayer_GetMinFOV[DEFAULT_BIND])
-		return CALL_ORIGINAL(/*rcx*/);
-#endif
+	DEBUG_RETURN(CTFPlayer_GetMinFOV, /*rcx*/);
 
 	return 0.f;
 }

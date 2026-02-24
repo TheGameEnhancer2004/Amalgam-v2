@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CAchievementMgr_CheckAchievementsEnabled, "client.dll", "40 53 48
 MAKE_HOOK(CAchievementMgr_CheckAchievementsEnabled, S::CAchievementMgr_CheckAchievementsEnabled(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CAchievementMgr_CheckAchievementsEnabled[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CAchievementMgr_CheckAchievementsEnabled, rcx);
 
 	return !I::EngineClient->IsPlayingDemo();
 }

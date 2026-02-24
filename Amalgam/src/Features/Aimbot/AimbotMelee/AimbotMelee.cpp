@@ -190,18 +190,18 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 	if ((Vars::Aimbot::Melee::SwingPrediction.Value && iSimTicks || m_iDoubletapTicks) && G::CanPrimaryAttack && pWeapon->m_flSmackTime() < 0.f)
 	{
-		std::unordered_map<int, MoveStorage> mStorage;
+		std::unordered_map<int, MoveStorage> mMoveStorage;
 
-		F::MoveSim.Initialize(pLocal, mStorage[I::EngineClient->GetLocalPlayer()], false, !m_iDoubletapTicks);
+		F::MoveSim.Initialize(pLocal, mMoveStorage[I::EngineClient->GetLocalPlayer()], false, !m_iDoubletapTicks);
 		for (auto& tTarget : vTargets)
-			F::MoveSim.Initialize(tTarget.m_pEntity, mStorage[tTarget.m_pEntity->entindex()], false);
+			F::MoveSim.Initialize(tTarget.m_pEntity, mMoveStorage[tTarget.m_pEntity->entindex()], false);
 
 		int iMax = std::max(iSimTicks, m_iDoubletapTicks);
 		int iTicks = iMax; bool bSwung = false;
 		for (int i = 0; i < iTicks; i++) // intended for plocal to collide with targets
 		{
 			{
-				auto& tStorage = mStorage[I::EngineClient->GetLocalPlayer()];
+				auto& tMoveStorage = mMoveStorage[I::EngineClient->GetLocalPlayer()];
 
 				if (!bSwung && (!m_iDoubletapTicks || Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity() || iMax - i <= iSwingTicks))
 				{
@@ -211,18 +211,18 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 					if (pLocal->InCond(TF_COND_SHIELD_CHARGE))
 					{	// demo charge fix for swing pred
-						tStorage.m_MoveData.m_flMaxSpeed = tStorage.m_MoveData.m_flClientMaxSpeed = SDK::MaxSpeed(pLocal, false, true);
-						pLocal->m_flMaxspeed() = tStorage.m_MoveData.m_flMaxSpeed;
+						tMoveStorage.m_MoveData.m_flMaxSpeed = tMoveStorage.m_MoveData.m_flClientMaxSpeed = SDK::MaxSpeed(pLocal, false, true);
+						pLocal->m_flMaxspeed() = tMoveStorage.m_MoveData.m_flMaxSpeed;
 						pLocal->RemoveCond(TF_COND_SHIELD_CHARGE);
 					}
 				}
 				if (m_iDoubletapTicks && Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity())
-					F::Ticks.AntiWarp(pLocal, pCmd->viewangles.y, tStorage.m_MoveData.m_flForwardMove, tStorage.m_MoveData.m_flSideMove, iMax - i - 1);
+					F::Ticks.AntiWarp(pLocal, pCmd->viewangles.y, tMoveStorage.m_MoveData.m_flForwardMove, tMoveStorage.m_MoveData.m_flSideMove, iMax - i - 1);
 
-				F::MoveSim.RunTick(tStorage);
+				F::MoveSim.RunTick(tMoveStorage);
 				m_mRecordMap[I::EngineClient->GetLocalPlayer()].emplace_front(
 					pLocal->m_flSimulationTime() + TICKS_TO_TIME(i + 1),
-					tStorage.m_MoveData.m_vecAbsOrigin,
+					tMoveStorage.m_MoveData.m_vecAbsOrigin,
 					pLocal->m_vecMins(), pLocal->m_vecMaxs()
 				);
 			}
@@ -231,26 +231,26 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			{
 				for (auto& tTarget : vTargets)
 				{
-					auto& tStorage = mStorage[tTarget.m_pEntity->entindex()];
-					if (tStorage.m_bFailed)
+					auto& tMoveStorage = mMoveStorage[tTarget.m_pEntity->entindex()];
+					if (tMoveStorage.m_bFailed)
 						continue;
 
-					F::MoveSim.RunTick(tStorage);
+					F::MoveSim.RunTick(tMoveStorage);
 					m_mRecordMap[tTarget.m_pEntity->entindex()].emplace_front(
-						!Vars::Aimbot::Melee::SwingPredictLag.Value || tStorage.m_bPredictNetworked ? tTarget.m_pEntity->m_flSimulationTime() + TICKS_TO_TIME(i + 1) : 0.f,
-						Vars::Aimbot::Melee::SwingPredictLag.Value ? tStorage.m_vPredictedOrigin : tStorage.m_MoveData.m_vecAbsOrigin,
+						!Vars::Aimbot::Melee::SwingPredictLag.Value || tMoveStorage.m_bPredictNetworked ? tTarget.m_pEntity->m_flSimulationTime() + TICKS_TO_TIME(i + 1) : 0.f,
+						Vars::Aimbot::Melee::SwingPredictLag.Value ? tMoveStorage.m_vPredictedOrigin : tMoveStorage.m_MoveData.m_vecAbsOrigin,
 						tTarget.m_pEntity->m_vecMins(), tTarget.m_pEntity->m_vecMaxs()
 					);
 				}
 			}
 		}
-		m_vEyePos = mStorage[I::EngineClient->GetLocalPlayer()].m_MoveData.m_vecAbsOrigin + pLocal->m_vecViewOffset();
+		m_vEyePos = mMoveStorage[I::EngineClient->GetLocalPlayer()].m_MoveData.m_vecAbsOrigin + pLocal->m_vecViewOffset();
 		m_flRange = pWeapon->GetSwingRange();
 
 		if (Vars::Visuals::Simulation::SwingLines.Value && Vars::Visuals::Simulation::PlayerPath.Value)
 		{
-			for (auto& [iIndex, tStorage] : mStorage)
-				m_mPaths[iIndex] = tStorage.m_vPath;
+			for (auto& [iIndex, tMoveStorage] : mMoveStorage)
+				m_mPaths[iIndex] = tMoveStorage.m_vPath;
 
 			const bool bAlwaysDraw = !Vars::Aimbot::General::AutoShoot.Value || Vars::Debug::Info.Value;
 			if (bAlwaysDraw)
@@ -269,8 +269,8 @@ void CAimbotMelee::UpdateInfo(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 			}
 		}
 
-		for (auto& [_, tStorage] : mStorage)
-			F::MoveSim.Restore(tStorage);
+		for (auto& [_, tMoveStorage] : mMoveStorage)
+			F::MoveSim.Restore(tMoveStorage);
 	}
 
 	m_bShouldSwing = m_iDoubletapTicks <= iSwingTicks || Vars::Doubletap::AntiWarp.Value && pLocal->m_hGroundEntity();
@@ -294,7 +294,7 @@ bool CAimbotMelee::CanBackstab(CBaseEntity* pTarget, CTFPlayer* pLocal, Vec3 vEy
 	}
 
 	Vec3 vEyePos = m_vEyePos;
-	const float flCompDist = 0.0625f;
+	const float flCompDist = PLAYER_ORIGIN_COMPRESSION / 2;
 	const float flSqCompDist = 0.0884f;
 
 	if (auto pCmd = G::CurrentUserCmd;
@@ -415,8 +415,8 @@ int CAimbotMelee::CanHit(Target_t& tTarget, CTFPlayer* pLocal, CTFWeaponBase* pW
 		Vec3 vRestoreMaxs = tTarget.m_pEntity->m_vecMaxs();
 
 		tTarget.m_pEntity->SetAbsOrigin(pRecord->m_vOrigin);
-		tTarget.m_pEntity->m_vecMins() = pRecord->m_vMins + 0.125f; // account for origin compression
-		tTarget.m_pEntity->m_vecMaxs() = pRecord->m_vMaxs - 0.125f;
+		tTarget.m_pEntity->m_vecMins() = pRecord->m_vMins + PLAYER_ORIGIN_COMPRESSION; // account for origin compression
+		tTarget.m_pEntity->m_vecMaxs() = pRecord->m_vMaxs - PLAYER_ORIGIN_COMPRESSION;
 
 		Vec3 vDiff = { 0, 0, std::clamp(m_vEyePos.z - pRecord->m_vOrigin.z, pRecord->m_vMins.z, pRecord->m_vMaxs.z) };
 		tTarget.m_vPos = pRecord->m_vOrigin + vDiff;
@@ -766,7 +766,7 @@ bool CAimbotMelee::RunSapper(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd
 	else
 		bShouldAim = pCmd->buttons & IN_ATTACK;
 	if (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::Silent)
-		bShouldAim = bShouldAim && !I::ClientState->chokedcommands && F::Ticks.CanChoke(true);
+		bShouldAim &= !I::ClientState->chokedcommands && F::Ticks.CanChoke(true);
 
 	if (bShouldAim)
 	{

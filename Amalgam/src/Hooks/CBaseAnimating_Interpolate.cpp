@@ -8,10 +8,7 @@ MAKE_SIGNATURE(CBaseAnimating_Interpolate, "client.dll", "48 8B C4 48 89 70 ? F3
 MAKE_HOOK(CBaseAnimating_Interpolate, S::CBaseAnimating_Interpolate(), bool,
 	void* rcx, float currentTime)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_Interpolate[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, currentTime);
-#endif
+	DEBUG_RETURN(CBaseAnimating_Interpolate, rcx, currentTime);
 
 	if (rcx == H::Entities.GetLocal() ? F::Ticks.m_bRecharge : Vars::Visuals::Removals::Interpolation.Value)
 		return true;

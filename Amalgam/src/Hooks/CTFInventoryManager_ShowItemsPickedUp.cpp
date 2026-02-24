@@ -5,10 +5,8 @@ MAKE_SIGNATURE(CTFInventoryManager_ShowItemsPickedUp, "client.dll", "44 88 4C 24
 MAKE_HOOK(CTFInventoryManager_ShowItemsPickedUp, S::CTFInventoryManager_ShowItemsPickedUp(), bool,
 	void* rcx, bool bForce, bool bReturnToGame, bool bNoPanel)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFInventoryManager_ShowItemsPickedUp[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, bForce, bReturnToGame, bNoPanel);
-#endif
+	DEBUG_RETURN(CTFInventoryManager_ShowItemsPickedUp, rcx, bForce, bReturnToGame, bNoPanel);
+
 #ifndef TEXTMODE
 	if (Vars::Misc::Automation::AcceptItemDrops.Value)
 #endif

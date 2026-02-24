@@ -4,6 +4,9 @@
 class CChams
 {
 private:
+	void Begin();
+	void End();
+
 	void DrawModel(CBaseEntity* pEntity, Chams_t& tChams, IMatRenderContext* pRenderContext, float flDistance, bool bTwoModels = true);
 
 	void RenderBacktrack(const DrawModelState_t& pState, const ModelRenderInfo_t& pInfo);

@@ -11,14 +11,11 @@ MAKE_SIGNATURE(CClientScoreBoardDialog_NeedsUpdate, "client.dll", "48 8B 05 ? ? 
 MAKE_HOOK(CTFPlayerShared_IsPlayerDominated, S::CTFPlayerShared_IsPlayerDominated(), bool,
 	void* rcx, int index)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayerShared_IsPlayerDominated[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, index);
-#endif
+	DEBUG_RETURN(CTFPlayerShared_IsPlayerDominated, rcx, index);
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_IsPlayerDominated_Call();
 	const auto dwJump = S::CTFClientScoreBoardDialog_UpdatePlayerList_Jump();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	bool bReturn = CALL_ORIGINAL(rcx, index);
 
@@ -31,14 +28,11 @@ MAKE_HOOK(CTFPlayerShared_IsPlayerDominated, S::CTFPlayerShared_IsPlayerDominate
 MAKE_HOOK(KeyValues_SetInt, S::KeyValues_SetInt(), void,
 	void* rcx, const char* keyName, int value)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::KeyValues_SetInt[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, keyName, value);
-#endif
+	DEBUG_RETURN(KeyValues_SetInt, rcx, keyName, value);
 
+	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 	const auto dwDesired = S::CTFClientScoreBoardDialog_UpdatePlayerList_SetInt_Call();
 	const auto dwJump = S::CTFClientScoreBoardDialog_UpdatePlayerList_Jump();
-	const auto dwRetAddr = uintptr_t(_ReturnAddress());
 
 	CALL_ORIGINAL(rcx, keyName, value);
 
@@ -49,10 +43,7 @@ MAKE_HOOK(KeyValues_SetInt, S::KeyValues_SetInt(), void,
 MAKE_HOOK(CClientScoreBoardDialog_NeedsUpdate, S::CClientScoreBoardDialog_NeedsUpdate(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CClientScoreBoardDialog_NeedsUpdate[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CClientScoreBoardDialog_NeedsUpdate, rcx);
 
 	static bool bStaticMod = false;
 	const bool bLastMod = bStaticMod;

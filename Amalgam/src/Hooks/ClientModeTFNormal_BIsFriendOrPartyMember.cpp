@@ -6,13 +6,10 @@ MAKE_SIGNATURE(CHudInspectPanel_UserCmd_InspectTarget_BIsFriendOrPartyMember_Cal
 MAKE_HOOK(ClientModeTFNormal_BIsFriendOrPartyMember, S::ClientModeTFNormal_BIsFriendOrPartyMember(), bool,
 	void* rcx, CBaseEntity* pEntity)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::ClientModeTFNormal_BIsFriendOrPartyMember[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pEntity);
-#endif
+	DEBUG_RETURN(ClientModeTFNormal_BIsFriendOrPartyMember, rcx, pEntity);
 
-	const auto dwDesired = S::CHudInspectPanel_UserCmd_InspectTarget_BIsFriendOrPartyMember_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CHudInspectPanel_UserCmd_InspectTarget_BIsFriendOrPartyMember_Call();
 
 	if (dwRetAddr == dwDesired && Vars::Misc::MannVsMachine::AllowInspect.Value)
 		return true;

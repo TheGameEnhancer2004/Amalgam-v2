@@ -5,10 +5,7 @@ MAKE_SIGNATURE(CTFPlayerShared_ShouldSuppressPrediction, "client.dll", "8B 81 ? 
 MAKE_HOOK(CTFPlayerShared_ShouldSuppressPrediction, S::CTFPlayerShared_ShouldSuppressPrediction(), bool,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFPlayerShared_ShouldSuppressPrediction[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CTFPlayerShared_ShouldSuppressPrediction, rcx);
 
 	return false;
 }

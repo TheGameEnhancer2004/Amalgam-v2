@@ -9,13 +9,10 @@ MAKE_SIGNATURE(CHudVote_MsgFunc_VoteStart_ReadString_Call, "client.dll", "8B 4B 
 MAKE_HOOK(bf_read_ReadString, S::bf_read_ReadString(), bool,
 	void* rcx, char* pStr, int maxLen, bool bLine, int* pOutNumChars)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::bf_read_ReadString[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, pStr, maxLen, bLine, pOutNumChars);
-#endif
+	DEBUG_RETURN(bf_read_ReadString, rcx, pStr, maxLen, bLine, pOutNumChars);
 
-	const auto dwDesired = S::CHudVote_MsgFunc_VoteStart_ReadString_Call();
 	const auto dwRetAddr = uintptr_t(_ReturnAddress());
+	const auto dwDesired = S::CHudVote_MsgFunc_VoteStart_ReadString_Call();
 
 	bool bReturn = CALL_ORIGINAL(rcx, pStr, maxLen, bLine, pOutNumChars);
 

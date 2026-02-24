@@ -12,6 +12,13 @@
 #define BOT_IGNORE_TAG (FRIEND_IGNORE_TAG-1)
 #define TAG_COUNT (-BOT_IGNORE_TAG)
 
+#define LOCAL "Local"
+#define FRIEND "Friend"
+#define PARTY "Party"
+#define ENEMY "Enemy"
+#define TEAMMATE "Teammate"
+#define PLAYER "Player"
+
 struct ListPlayer_t
 {
 	std::string m_sName;

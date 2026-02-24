@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CTFWeaponBase_CanFireRandomCriticalShot, "client.dll", "F3 0F 58 
 MAKE_HOOK(CTFWeaponBase_CanFireRandomCriticalShot, S::CTFWeaponBase_CanFireRandomCriticalShot(), bool,
 	void* rcx, float flCritChance)
 {	// not present on the client so it will always be a crit behind otherwise
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CTFWeaponBase_CanFireRandomCriticalShot[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx, flCritChance);
-#endif
+	DEBUG_RETURN(CTFWeaponBase_CanFireRandomCriticalShot, rcx, flCritChance);
 
 	int nRandomRangedCritDamage = F::CritHack.GetCritDamage();
 	int nTotalDamage = F::CritHack.GetRangedDamage();

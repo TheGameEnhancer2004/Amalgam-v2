@@ -1197,6 +1197,7 @@
     <ClCompile Include="src\Hooks\CHudItemEffectMeter_Weapon_C_TFWeaponBase_IsEnabled.cpp" />
     <ClCompile Include="src\Hooks\CHudTournamentSetup_OnTick.cpp" />
     <ClCompile Include="src\Hooks\CBasePlayer_CalcObserverView.cpp" />
+    <ClCompile Include="src\Hooks\CHLTVCamera_CalcView.cpp" />
     <ClCompile Include="src\Hooks\CInput_ValidateUserCmd.cpp" />
     <ClCompile Include="src\Hooks\CTFGCClientSystem_SOCreated.cpp" />
     <ClCompile Include="src\Hooks\CTFHudPlayerClass_UpdateModelPanel.cpp" />
@@ -1231,7 +1232,7 @@
     <ClCompile Include="src\Hooks\CTFPlayer_GetMinFOV.cpp" />
     <ClCompile Include="src\Hooks\CWeaponMedigun_PrimaryAttack.cpp" />
     <ClCompile Include="src\Hooks\Host_IsSecureServerAllowed.cpp" />
-    <ClCompile Include="src\Hooks\IEngineTrace_SetTraceEntity.cpp" />
+    <ClCompile Include="src\Hooks\IEngineTrace_TraceRay.cpp" />
     <ClCompile Include="src\Hooks\CNetChannel_SendDatagram.cpp" />
     <ClCompile Include="src\Hooks\CNetChannel_SendNetMsg.cpp" />
     <ClCompile Include="src\Hooks\COPRenderSprites_Render.cpp" />
@@ -1290,6 +1291,7 @@
     <ClCompile Include="src\Hooks\NotificationQueue_Add.cpp" />
     <ClCompile Include="src\Hooks\RecvProxy_SimulationTime.cpp" />
     <ClCompile Include="src\Hooks\R_DrawSkyBox.cpp" />
+    <ClCompile Include="src\Hooks\CTFPlayer_InSameDisguisedTeam.cpp" />
     <ClCompile Include="src\Hooks\TF_IsHolidayActive.cpp" />
     <ClCompile Include="src\Hooks\VGuiMenuBuilder_AddMenuItem.cpp" />
     <ClCompile Include="src\Hooks\Voice_Enabled.cpp" />
@@ -1528,6 +1530,7 @@
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFGCClientSystem.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CHLClient.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\CTFInventoryManager.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CThirdPersonManager.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoPlayer.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IDemoRecorder.h" />
     <ClInclude Include="src\SDK\Definitions\Interfaces\IFileSystem.h" />
@@ -1557,6 +1560,7 @@
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoom.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CFuncRespawnRoomShim.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CGameTrace.h" />
+    <ClInclude Include="src\SDK\Definitions\Interfaces\CHLTVCamera.h" />
     <ClInclude Include="src\SDK\Definitions\Main\CServerBaseEntity.h" />
     <ClInclude Include="src\SDK\Definitions\Main\IServerEntity.h" />
     <ClInclude Include="src\SDK\Definitions\Main\IServerUnknown.h" />

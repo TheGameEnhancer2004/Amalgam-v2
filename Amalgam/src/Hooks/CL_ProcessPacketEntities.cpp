@@ -15,15 +15,12 @@ struct CriticalStorage_t
 MAKE_HOOK(CL_ProcessPacketEntities, S::CL_ProcessPacketEntities(), bool,
 	SVC_PacketEntities* entmsg)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CL_ProcessPacketEntities[DEFAULT_BIND])
-		return CALL_ORIGINAL(entmsg);
-#endif
+	DEBUG_RETURN(CL_ProcessPacketEntities, entmsg);
 
 	if (entmsg->m_bIsDelta || G::Unload) // we won't need to restore
 		return CALL_ORIGINAL(entmsg);
 
-	CTFPlayer* pLocal = H::Entities.GetLocal();
+	auto pLocal = H::Entities.GetLocal();
 	if (!pLocal || !pLocal->m_hMyWeapons())
 	{
 		SDK::Output("ProcessPacketEntities", "Failed to restore weapon crit data! (1)", { 255, 100, 100 });

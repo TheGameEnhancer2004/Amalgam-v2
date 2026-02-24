@@ -7,10 +7,7 @@ MAKE_SIGNATURE(CBaseAnimating_UpdateClientSideAnimation, "client.dll", "48 89 5C
 MAKE_HOOK(CBaseAnimating_UpdateClientSideAnimation, S::CBaseAnimating_UpdateClientSideAnimation(), void,
 	void* rcx)
 {
-#ifdef DEBUG_HOOKS
-	if (!Vars::Hooks::CBaseAnimating_UpdateClientSideAnimation[DEFAULT_BIND])
-		return CALL_ORIGINAL(rcx);
-#endif
+	DEBUG_RETURN(CBaseAnimating_UpdateClientSideAnimation, rcx);
 
 	auto pLocal = H::Entities.GetLocal();
 	auto pPlayer = reinterpret_cast<CTFPlayer*>(rcx);

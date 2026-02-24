@@ -12,9 +12,6 @@
 
 bool CAimbot::ShouldRun(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
-	if (Vars::Aimbot::General::DisableOnSpectate.Value && H::Entities.IsSpectated())
-		return false;
-
 	if (!pWeapon || !pLocal->CanAttack()
 		|| !SDK::AttribHookValue(1, "mult_dmg", pWeapon)
 		/*|| I::EngineVGui->IsGameUIVisible()*/)
@@ -108,7 +105,7 @@ void CAimbot::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (!ShouldRun(pLocal, pWeapon))
 		return;
 
-	F::AutoDetonate.Run(pLocal, pWeapon, pCmd);
+	F::AutoDetonate.Run(pLocal, pCmd);
 	F::AutoAirblast.Run(pLocal, pWeapon, pCmd);
 	F::AutoHeal.Run(pLocal, pWeapon, pCmd);
 

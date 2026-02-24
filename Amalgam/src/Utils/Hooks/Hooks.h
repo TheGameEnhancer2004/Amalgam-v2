@@ -31,19 +31,46 @@ public:
 	}
 };
 
-#define MAKE_HOOK(name, address, type, ...) \
-namespace Hooks \
-{ \
-	namespace name \
+#ifndef DEBUG_HOOKS
+	#define MAKE_HOOK(name, address, type, ...) \
+	namespace Hooks \
 	{ \
-		bool Init(); \
-		inline CHook Hook(#name, Init); \
-		using FN = type(__fastcall*)(__VA_ARGS__); \
-		type __fastcall Func(__VA_ARGS__); \
+		namespace name \
+		{ \
+			bool Init(); \
+			inline CHook Hook(#name, Init); \
+			using FN = type(__fastcall*)(__VA_ARGS__); \
+			type __fastcall Func(__VA_ARGS__); \
+		} \
 	} \
-} \
-bool Hooks::name::Init() { if (address) {Hook.Create(reinterpret_cast<void*>(address), Func); return true;} else { SDK::Output("Amalgam", std::format("Failed to initialize hook: {}", #name).c_str(), { 255, 150, 175, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG); return false;}} \
-type __fastcall Hooks::name::Func(__VA_ARGS__)
+	bool Hooks::name::Init() { if (address) {Hook.Create(reinterpret_cast<void*>(address), Func); return true;} else { SDK::Output("Amalgam", std::format("Failed to initialize hook: {}", #name).c_str(), { 255, 150, 175, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG); return false;}} \
+	type __fastcall Hooks::name::Func(__VA_ARGS__)
+
+	#define DEBUG_RETURN()
+#else
+	#define MAKE_HOOK(name, address, type, ...) \
+	namespace Vars { \
+		namespace Hooks { \
+			inline ConfigVar<bool> name = { true, { #name }, "Vars::Hooks::"#name##"_", "Hooks", NOSAVE | DEBUGVAR }; \
+		} \
+	} \
+	namespace Hooks \
+	{ \
+		namespace name \
+		{ \
+			bool Init(); \
+			inline CHook Hook(#name, Init); \
+			using FN = type(__fastcall*)(__VA_ARGS__); \
+			type __fastcall Func(__VA_ARGS__); \
+		} \
+	} \
+	bool Hooks::name::Init() { if (address) {Hook.Create(reinterpret_cast<void*>(address), Func); return true;} else { SDK::Output("Amalgam", std::format("Failed to initialize hook: {}", #name).c_str(), { 255, 150, 175, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG); return false;}} \
+	type __fastcall Hooks::name::Func(__VA_ARGS__)
+
+	#define DEBUG_RETURN(hook, ...) \
+		if (!Vars::Hooks::hook[DEFAULT_BIND]) \
+			return CALL_ORIGINAL(__VA_ARGS__);
+#endif
 
 #define CALL_ORIGINAL Hook.As<FN>()
 
