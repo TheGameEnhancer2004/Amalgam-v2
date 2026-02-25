@@ -328,19 +328,27 @@ void CMenu::MenuAimbot(int iTab)
 						FSlider(Vars::Aimbot::General::TickTolerance, FSliderEnum::Right);
 					}
 					PopTransparent();
-					FToggle(Vars::Aimbot::General::AutoShoot, FToggleEnum::Left);
-					FToggle(Vars::Aimbot::General::NoSpread, FToggleEnum::Right);
-					FToggle(Vars::Aimbot::General::FOVCircle, FToggleEnum::Left);
 					PushTransparent(!Vars::Aimbot::General::FOVCircle.Value);
 					{
-						FColorPicker(Vars::Colors::FOVCircle, FColorPickerEnum::Right);
+						FColorPicker(Vars::Colors::FOVCircle);
 					}
 					PopTransparent();
-					FToggle(Vars::CritHack::ForceCrits, FToggleEnum::Right);
+					FToggle(Vars::Aimbot::General::AutoShoot, FToggleEnum::Left);
+					FToggle(Vars::Aimbot::General::FOVCircle, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::General::PrioritizeNavbot, FToggleEnum::Left);
 					FToggle(Vars::Aimbot::General::PrioritizeFollowbot, FToggleEnum::Right);
+
+					Divider();
+					FText("Crithack");
+					Divider();
+					FToggle(Vars::CritHack::ForceCrits);
 					FToggle(Vars::CritHack::AvoidRandomCrits, FToggleEnum::Left);
 					FToggle(Vars::CritHack::AlwaysMeleeCrit, FToggleEnum::Right);
+
+					Divider();
+					FText("Misc");
+					Divider();
+					FToggle(Vars::Aimbot::General::NoSpread);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
