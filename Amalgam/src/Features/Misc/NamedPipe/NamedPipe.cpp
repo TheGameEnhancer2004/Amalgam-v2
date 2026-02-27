@@ -7,58 +7,15 @@
 #include <sstream>
 #include <iomanip>
 
-// Dont use base64 encoding its just a waste of resources since you have to decode it every time
-// 
-// TIP: Optimize your messages instead. Use numberical codes for msg types
-
-static const std::string base64_chars =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-"abcdefghijklmnopqrstuvwxyz"
-"0123456789+/";
-
-static std::string base64_encode(const std::string& in)
+static std::string EncodePipeMessage(const std::string& sContent)
 {
-	std::string out;
-	int val = 0, valb = -6;
-	for (unsigned char c : in)
-	{
-		val = (val << 8) + c;
-		valb += 8;
-		while (valb >= 0)
-		{
-			out.push_back(base64_chars[(val >> valb) & 0x3F]);
-			valb -= 6;
-		}
-	}
-	if (valb > -6) out.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
-	while (out.size() % 4) out.push_back('=');
-	return out;
-}
-
-static std::string base64_decode(const std::string& in)
-{
-	std::string out;
-	std::vector<int> T(256, -1);
-	for (int i = 0; i < 64; i++) T[base64_chars[i]] = i;
-
-	int val = 0, valb = -8;
-	for (unsigned char c : in)
-	{
-		if (T[c] == -1) break;
-		val = (val << 6) + T[c];
-		valb += 6;
-		if (valb >= 0)
-		{
-			out.push_back(char((val >> valb) & 0xFF));
-			valb -= 8;
-		}
-	}
-	return out;
+	return sContent + "\n";
 }
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
 const int MAX_RECONNECT_DELAY_MS = 10000;
+const size_t MAX_PENDING_COMMANDS = 64;
 
 static double GetNowSeconds()
 {
@@ -97,7 +54,11 @@ void CNamedPipe::Shutdown()
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 {
 	std::lock_guard lock(m_infoMutex);
-	if (bCreateMove)
+
+	if (!pLocal)
+		pLocal = H::Entities.GetLocal();
+
+	if (pLocal)
 	{
 		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
 		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
@@ -109,8 +70,13 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
 		}
 
-		UpdateLocalBotIgnoreStatus();
-		return;
+		static DWORD dwLastIgnoreStatusUpdate = 0;
+		const DWORD dwNow = GetTickCount();
+		if (bCreateMove || dwNow - dwLastIgnoreStatusUpdate >= 1000)
+		{
+			UpdateLocalBotIgnoreStatus();
+			dwLastIgnoreStatusUpdate = dwNow;
+		}
 	}
 
 	if (!tInfo.m_uAccountID)
@@ -313,6 +279,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				}
 			}
 			F::NamedPipe.ProcessMessageQueue();
+			F::NamedPipe.FlushPendingCommands();
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
@@ -426,7 +393,10 @@ void CNamedPipe::ConnectAndMaintainPipe()
 								continue;
 
 							// F::NamedPipe.Log("Processing line: " + sLine);
-							std::string sDecoded = base64_decode(sLine);
+							if (!sLine.empty() && sLine.back() == '\r')
+								sLine.pop_back();
+
+							std::string sDecoded = sLine;
 							std::istringstream iss(sDecoded);
 							std::string sBotNumber, sMessageType, sContent;
 							std::getline(iss, sBotNumber, ':');
@@ -470,7 +440,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 			if (F::NamedPipe.m_iBotId != -1)
 			{
 				std::string sContent = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting";
-				std::string sMessage = base64_encode(sContent) + "\n";
+				std::string sMessage = EncodePipeMessage(sContent);
 				DWORD dwBytesWritten = 0;
 				WriteFile(F::NamedPipe.m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 			}
@@ -496,17 +466,54 @@ void CNamedPipe::SendStatusUpdate(std::string sStatus)
 void CNamedPipe::ExecuteCommand(std::string sCommand)
 {
 	Log("ExecuteCommand called with: " + sCommand);
-	if (I::EngineClient)
+
+	if (DispatchCommand(sCommand))
 	{
-		Log("EngineClient is available, sending command to TF2 console");
-		I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
 		Log("Command sent to TF2 console: " + sCommand);
 		SendStatusUpdate("CommandExecuted:" + sCommand);
 	}
 	else
 	{
-		Log("EngineClient is NOT available, command ignored: " + sCommand);
-		SendStatusUpdate("CommandFailed:EngineClientNotAvailable");
+		Log("EngineClient is not available yet, queueing command: " + sCommand);
+		{
+			std::lock_guard lock(m_pendingCommandsMutex);
+			if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
+				m_vPendingCommands.erase(m_vPendingCommands.begin());
+			m_vPendingCommands.push_back(sCommand);
+		}
+		SendStatusUpdate("CommandQueued:" + sCommand);
+	}
+}
+
+bool CNamedPipe::DispatchCommand(const std::string& sCommand)
+{
+	if (sCommand.empty() || !I::EngineClient)
+		return false;
+
+	I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
+	return true;
+}
+
+void CNamedPipe::FlushPendingCommands()
+{
+	if (!I::EngineClient)
+		return;
+
+	std::vector<std::string> vPendingCommands;
+	{
+		std::lock_guard lock(m_pendingCommandsMutex);
+		if (m_vPendingCommands.empty())
+			return;
+		vPendingCommands.swap(m_vPendingCommands);
+	}
+
+	for (const auto& sCommand : vPendingCommands)
+	{
+		if (DispatchCommand(sCommand))
+		{
+			Log("Flushed queued command to TF2 console: " + sCommand);
+			SendStatusUpdate("CommandExecuted:" + sCommand);
+		}
 	}
 }
 
@@ -549,7 +556,7 @@ void CNamedPipe::ProcessMessageQueue()
 		else
 			sContent = "0:" + it->m_sType + ":" + it->m_sContent;
 
-		std::string sMessage = base64_encode(sContent) + "\n";
+		std::string sMessage = EncodePipeMessage(sContent);
 
 		DWORD dwBytesWritten = 0;
 		OVERLAPPED tOverlapped = { 0 };
