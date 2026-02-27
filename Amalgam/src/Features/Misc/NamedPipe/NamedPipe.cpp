@@ -479,8 +479,6 @@ void CNamedPipe::ConnectAndMaintainPipe()
 void CNamedPipe::SendStatusUpdate(std::string sStatus)
 {
 	QueueMessage("Status", sStatus, true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 void CNamedPipe::ExecuteCommand(std::string sCommand)
