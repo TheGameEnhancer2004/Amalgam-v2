@@ -18,6 +18,15 @@ MAKE_HOOK(CPrediction_RunSimulation, S::CPrediction_RunSimulation(), void,
 {
 	DEBUG_RETURN(CPrediction_RunSimulation, rcx, current_command, curtime, cmd, localPlayer);
 
+	if (!I::EngineClient || !I::EngineClient->IsInGame())
+	{
+		s_vTickbaseFixes.clear();
+		return CALL_ORIGINAL(rcx, current_command, curtime, cmd, localPlayer);
+	}
+
+	auto pKnownLocal = H::Entities.GetLocal();
+	const bool bValidLocal = cmd && localPlayer && pKnownLocal && localPlayer == pKnownLocal;
+
 	if (F::Ticks.m_bShifting && F::Ticks.m_iShiftedTicks + 1 == F::Ticks.m_iShiftStart)
 	{
 		s_vTickbaseFixes.emplace_back(G::CurrentUserCmd, I::ClientState->lastoutgoingcommand, F::Ticks.m_iShiftStart - F::Ticks.m_iShiftedGoal);
@@ -31,15 +40,18 @@ MAKE_HOOK(CPrediction_RunSimulation, S::CPrediction_RunSimulation(), void,
 			it = s_vTickbaseFixes.erase(it);
 			continue;
 		}
-		if (cmd == it->m_pCmd)
+		if (bValidLocal && cmd == it->m_pCmd)
 		{
-			localPlayer->m_nTickBase() -= it->m_iTickbaseShift;
+			pKnownLocal->m_nTickBase() -= it->m_iTickbaseShift;
 			break;
 		}
 		++it;
 	}
 
-	F::EnginePrediction.AdjustPlayers(localPlayer);
+	if (!bValidLocal)
+		return CALL_ORIGINAL(rcx, current_command, curtime, cmd, localPlayer);
+
+	F::EnginePrediction.AdjustPlayers(pKnownLocal);
 	CALL_ORIGINAL(rcx, current_command, curtime, cmd, localPlayer);
 	F::EnginePrediction.RestorePlayers();
 }

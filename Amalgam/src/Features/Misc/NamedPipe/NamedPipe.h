@@ -103,6 +103,7 @@ private:
 public:
 	void Initialize();
 	void Shutdown();
+	void PumpCommands();
 
 	bool IsLocalBot(uint32_t uAccountID);
 	std::vector<int> GetOtherBotsOnServer(std::string sServerIP);

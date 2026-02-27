@@ -51,55 +51,36 @@ void CNamedPipe::Shutdown()
 		m_pipeThread.join();
 }
 
+void CNamedPipe::PumpCommands()
+{
+	FlushPendingCommands();
+}
+
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 {
+	(void)pLocal;
+	(void)bCreateMove;
+
 	std::unique_lock lock(m_infoMutex);
 
 	const bool bInGame = I::EngineClient && I::EngineClient->IsInGame();
 	tInfo.m_bInGame = bInGame;
+	tInfo.m_iCurrentHealth = -1;
+	tInfo.m_iCurrentClass = TF_CLASS_UNDEFINED;
+	tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
+	tInfo.m_iCurrentKills = -1;
+	tInfo.m_iCurrentDeaths = -1;
 
-	CTFPlayer* pCurrentLocal = pLocal;
+	if (!tInfo.m_uAccountID && I::SteamUser)
+		tInfo.m_uAccountID = I::SteamUser->GetSteamID().GetAccountID();
 
-	if (bInGame && pCurrentLocal)
+	if (!bInGame)
 	{
-		tInfo.m_iCurrentHealth = pCurrentLocal->IsAlive() ? pCurrentLocal->m_iHealth() : -1;
-		tInfo.m_iCurrentClass = pCurrentLocal->IsInValidTeam() ? pCurrentLocal->m_iClass() : TF_CLASS_UNDEFINED;
-		tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
-		if (auto pResource = H::Entities.GetResource())
-		{
-			int iLocalIdx = pCurrentLocal->entindex();
-			tInfo.m_iCurrentKills = pResource->m_iScore(iLocalIdx);
-			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
-		}
-		else
-		{
-			tInfo.m_iCurrentKills = -1;
-			tInfo.m_iCurrentDeaths = -1;
-		}
-
-		static DWORD dwLastIgnoreStatusUpdate = 0;
-		const DWORD dwNow = GetTickCount();
-		if (bCreateMove || dwNow - dwLastIgnoreStatusUpdate >= 1000)
-		{
-			UpdateLocalBotIgnoreStatus();
-			dwLastIgnoreStatusUpdate = dwNow;
-		}
-	}
-	else
-	{
-		tInfo.m_iCurrentHealth = -1;
-		tInfo.m_iCurrentClass = TF_CLASS_UNDEFINED;
-		tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
-		tInfo.m_iCurrentKills = -1;
-		tInfo.m_iCurrentDeaths = -1;
 		tInfo.m_sCurrentMapName = "N/A";
 		tInfo.m_sCurrentServer = "N/A";
 		m_bSetMapName = false;
 		m_bSetServerName = false;
 	}
-
-	if (!tInfo.m_uAccountID && bInGame)
-		tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
 
 	if (bInGame && !m_bSetMapName)
 	{
@@ -132,7 +113,6 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 		tInfo.m_sBotName = "Unknown";
 
 	lock.unlock();
-	FlushPendingCommands();
 }
 
 void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
@@ -170,6 +150,9 @@ std::string CNamedPipe::GetErrorMessage(DWORD dwError)
 	char* cMessageBuffer = nullptr;
 	size_t uSize = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&cMessageBuffer, 0, NULL);
+	if (!cMessageBuffer || !uSize)
+		return "Unknown error";
+
 	std::string sMessage(cMessageBuffer, uSize);
 	LocalFree(cMessageBuffer);
 	return sMessage;
@@ -238,22 +221,13 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				F::NamedPipe.Log("Attempting to connect to pipe (attempt " + std::to_string(F::NamedPipe.m_iCurrentReconnectAttempts) +
 					", delay: " + std::to_string(iReconnectDelay) + "ms)");
 
-				OVERLAPPED tOverlapped = { 0 };
-				tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-				if (tOverlapped.hEvent == NULL)
-				{
-					F::NamedPipe.Log("Failed to create connection event: " + std::to_string(GetLastError()));
-					std::this_thread::sleep_for(std::chrono::milliseconds(iReconnectDelay));
-					continue;
-				}
-
 				F::NamedPipe.m_hPipe = CreateFile(
 					PIPE_NAME,
 					GENERIC_READ | GENERIC_WRITE,
 					0,
 					NULL,
 					OPEN_EXISTING,
-					FILE_FLAG_OVERLAPPED,
+					0,
 					NULL);
 
 				if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
@@ -279,7 +253,6 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					DWORD dwError = GetLastError();
 					F::NamedPipe.Log("Failed to connect to pipe: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 				}
-				CloseHandle(tOverlapped.hEvent);
 			}
 			else
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -351,94 +324,65 @@ void CNamedPipe::ConnectAndMaintainPipe()
 
 			char cBuffer[4096] = { 0 };
 			DWORD dwBytesRead = 0;
-			OVERLAPPED tOverlapped = { 0 };
-			tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			if (tOverlapped.hEvent != NULL)
+			if (dwBytesAvail > 0)
 			{
-				if (dwBytesAvail > 0)
+				BOOL bReadSuccess = ReadFile(F::NamedPipe.m_hPipe, cBuffer, sizeof(cBuffer) - 1, &dwBytesRead, NULL);
+				if (!bReadSuccess)
 				{
-					BOOL bReadSuccess = ReadFile(F::NamedPipe.m_hPipe, cBuffer, sizeof(cBuffer) - 1, &dwBytesRead, &tOverlapped);
-					if (!bReadSuccess && GetLastError() == ERROR_IO_PENDING)
+					DWORD dwError = GetLastError();
+					if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED || dwError == ERROR_NO_DATA)
 					{
-						DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
-						if (waitResult == WAIT_OBJECT_0)
-						{
-							if (!GetOverlappedResult(F::NamedPipe.m_hPipe, &tOverlapped, &dwBytesRead, FALSE))
-							{
-								F::NamedPipe.Log("GetOverlappedResult failed: " + std::to_string(GetLastError()));
-								CloseHandle(tOverlapped.hEvent);
-								CloseHandle(F::NamedPipe.m_hPipe);
-								F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-								continue;
-							}
-						}
-						else if (waitResult == WAIT_TIMEOUT)
-						{
-							CancelIo(F::NamedPipe.m_hPipe);
-							CloseHandle(tOverlapped.hEvent);
-							continue;
-						}
-						else
-						{
-							F::NamedPipe.Log("Wait failed: " + std::to_string(GetLastError()));
-							CloseHandle(tOverlapped.hEvent);
-							CloseHandle(F::NamedPipe.m_hPipe);
-							F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-							continue;
-						}
+						F::NamedPipe.Log("ReadFile disconnected: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 					}
-					else if (!bReadSuccess)
-					{
-						F::NamedPipe.Log("ReadFile failed immediately: " + std::to_string(GetLastError()));
-						CloseHandle(tOverlapped.hEvent);
-						CloseHandle(F::NamedPipe.m_hPipe);
-						F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-						continue;
-					}
+					else
+						F::NamedPipe.Log("ReadFile failed: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 
-					if (dwBytesRead > 0)
-					{
-						cBuffer[dwBytesRead] = '\0'; // Ensure null termination
-						sReadBuffer.append(cBuffer, dwBytesRead);
-						// F::NamedPipe.Log("Received chunk: " + std::string(cBuffer, dwBytesRead));
-
-						size_t pos = 0;
-						size_t newlinePos;
-						while ((newlinePos = sReadBuffer.find('\n', pos)) != std::string::npos)
-						{
-							std::string sLine = sReadBuffer.substr(pos, newlinePos - pos);
-							pos = newlinePos + 1;
-
-							if (sLine.empty())
-								continue;
-
-							// F::NamedPipe.Log("Processing line: " + sLine);
-							if (!sLine.empty() && sLine.back() == '\r')
-								sLine.pop_back();
-
-							std::string sDecoded = sLine;
-							std::istringstream iss(sDecoded);
-							std::string sBotNumber, sMessageType, sContent;
-							std::getline(iss, sBotNumber, ':');
-							std::getline(iss, sMessageType, ':');
-							std::getline(iss, sContent);
-
-							if (sMessageType == "Command")
-							{
-								F::NamedPipe.Log("Executing command: " + sContent);
-								F::NamedPipe.ExecuteCommand(sContent);
-							}
-							else if (sMessageType == "LocalBot")
-								F::NamedPipe.ProcessLocalBotMessage(sContent);
-							else if (sMessageType == "CPCapture")
-								F::NamedPipe.ProcessCaptureReservationMessage(sContent);
-							else
-								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
-						}
-						sReadBuffer.erase(0, pos);
-					}
+					CloseHandle(F::NamedPipe.m_hPipe);
+					F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+					continue;
 				}
-				CloseHandle(tOverlapped.hEvent);
+
+				if (dwBytesRead > 0)
+				{
+					cBuffer[dwBytesRead] = '\0'; // Ensure null termination
+					sReadBuffer.append(cBuffer, dwBytesRead);
+					// F::NamedPipe.Log("Received chunk: " + std::string(cBuffer, dwBytesRead));
+
+					size_t pos = 0;
+					size_t newlinePos;
+					while ((newlinePos = sReadBuffer.find('\n', pos)) != std::string::npos)
+					{
+						std::string sLine = sReadBuffer.substr(pos, newlinePos - pos);
+						pos = newlinePos + 1;
+
+						if (sLine.empty())
+							continue;
+
+						// F::NamedPipe.Log("Processing line: " + sLine);
+						if (!sLine.empty() && sLine.back() == '\r')
+							sLine.pop_back();
+
+						std::string sDecoded = sLine;
+						std::istringstream iss(sDecoded);
+						std::string sBotNumber, sMessageType, sContent;
+						std::getline(iss, sBotNumber, ':');
+						std::getline(iss, sMessageType, ':');
+						std::getline(iss, sContent);
+
+						if (sMessageType == "Command")
+						{
+							F::NamedPipe.Log("Executing command: " + sContent);
+							F::NamedPipe.ExecuteCommand(sContent);
+						}
+						else if (sMessageType == "LocalBot")
+							F::NamedPipe.ProcessLocalBotMessage(sContent);
+						else if (sMessageType == "CPCapture")
+							F::NamedPipe.ProcessCaptureReservationMessage(sContent);
+						else
+							F::NamedPipe.Log("Received unknown message type: " + sMessageType);
+					}
+					sReadBuffer.erase(0, pos);
+				}
 			}
 		}
 
@@ -577,43 +521,22 @@ void CNamedPipe::ProcessMessageQueue()
 		std::string sMessage = EncodePipeMessage(sContent);
 
 		DWORD dwBytesWritten = 0;
-		OVERLAPPED tOverlapped = { 0 };
-		tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-		if (tOverlapped.hEvent == NULL)
-		{
-			Log("Failed to create event for write: " + std::to_string(GetLastError()));
-			break;
-		}
-
-		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, &tOverlapped);
-
-		if (!bSuccess && GetLastError() == ERROR_IO_PENDING)
-		{
-			DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
-			if (waitResult == WAIT_OBJECT_0)
-			{
-				bSuccess = GetOverlappedResult(m_hPipe, &tOverlapped, &dwBytesWritten, FALSE);
-			}
-			else
-			{
-				bSuccess = FALSE;
-				CancelIo(m_hPipe);
-			}
-		}
-
-		CloseHandle(tOverlapped.hEvent);
-
+		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 		if (bSuccess && dwBytesWritten == sMessage.length())
 		{
 			it = m_vMessageQueue.erase(it);
 			processCount++;
+			continue;
 		}
-		else
+
+		const DWORD dwError = GetLastError();
+		Log("Failed to write queued message: " + std::to_string(dwError) + " - " + GetErrorMessage(dwError));
+		if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED || dwError == ERROR_NO_DATA)
 		{
-			Log("Failed to write queued message: " + std::to_string(GetLastError()));
-			break;
+			CloseHandle(m_hPipe);
+			m_hPipe = INVALID_HANDLE_VALUE;
 		}
+		break;
 	}
 }
 
@@ -663,8 +586,6 @@ void CNamedPipe::AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx
 	oss << std::fixed << std::setprecision(2) << "Claim|" << sMap << '|' << iPointIdx << '|' << vSpot.x << '|' << vSpot.y << '|' << vSpot.z
 		<< '|' << tInfo.m_uAccountID << '|' << flDurationSeconds << '|' << m_iBotId;
 	QueueMessage("CPCapture", oss.str(), true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointIdx)
@@ -684,8 +605,6 @@ void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointI
 	std::ostringstream oss;
 	oss << "Release|" << sMap << '|' << iPointIdx << '|' << tInfo.m_uAccountID;
 	QueueMessage("CPCapture", oss.str(), true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 std::vector<Vector> CNamedPipe::GetReservedCaptureSpots(const std::string& sMap, int iPointIdx, uint32_t uIgnoreAccountID)
