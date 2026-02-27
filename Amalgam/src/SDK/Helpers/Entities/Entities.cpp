@@ -58,8 +58,8 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 #ifdef TEXTMODE
 	m_iPartyCount = 0;
 
-	const int nMaxClients = I::EngineClient->GetMaxClients();
-	for (int n = 1; n <= nMaxClients; n++)
+	const int nMaxClientsTextmode = I::EngineClient->GetMaxClients();
+	for (int n = 1; n <= nMaxClientsTextmode; n++)
 	{
 		if (!pResource->m_bValid(n))
 			continue;
