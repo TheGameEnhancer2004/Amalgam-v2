@@ -4,6 +4,7 @@
 #include "../Features/Backtrack/Backtrack.h"
 #include "../Features/Binds/Binds.h"
 #include "../Features/CheaterDetection/CheaterDetection.h"
+#include "../Features/Configs/Configs.h"
 #include "../Features/CritHack/CritHack.h"
 #include "../Features/Players/PlayerUtils.h"
 #include "../Features/Resolver/Resolver.h"
@@ -41,6 +42,7 @@ MAKE_HOOK(CHLClient_FrameStageNotify, U::Memory.GetVirtual(I::Client, 35), void,
 	{
 		H::Entities.Store();
 		F::PlayerUtils.Store();
+		F::Configs.HandleAutoConfig();
 
 		F::Backtrack.Store();
 		F::MoveSim.Store();

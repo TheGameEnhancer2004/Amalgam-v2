@@ -171,6 +171,7 @@ public:
 NAMESPACE_BEGIN(Vars)
 	NAMESPACE_BEGIN(Config)
 		CVar(LoadDebugSettings, "Load debug settings", false);
+		CVar(AutoLoadCheaterConfig, "Auto load cheater config", false);
 		CVar(SteamWebAPIKey, "steamwebapi key", std::string(""), NOBIND);
 	NAMESPACE_END(Config)
 	

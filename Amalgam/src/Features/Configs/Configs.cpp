@@ -1,6 +1,7 @@
 #include "Configs.h"
 
 #include "../Binds/Binds.h"
+#include "../Players/PlayerUtils.h"
 #include "../Visuals/Groups/Groups.h"
 #include "../Visuals/Materials/Materials.h"
 
@@ -650,6 +651,41 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 	}
 
 	return true;
+}
+
+void CConfigs::HandleAutoConfig()
+{
+	if (!Vars::Config::AutoLoadCheaterConfig.Value)
+		return;
+
+	bool bHasCheater = false;
+	if (I::EngineClient->IsConnected())
+	{
+		if (auto pResource = H::Entities.GetResource())
+		{
+			const int iCheaterTag = F::PlayerUtils.TagToIndex(CHEATER_TAG);
+			for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
+			{
+				if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
+					continue;
+
+				if (F::PlayerUtils.HasTag(n, iCheaterTag))
+				{
+					bHasCheater = true;
+					break;
+				}
+			}
+		}
+	}
+
+	const char* sConfigName = bHasCheater ? "cheater" : "default";
+	if (FNV1A::Hash32(m_sCurrentConfig.c_str()) == FNV1A::Hash32(sConfigName))
+		return;
+
+	if (bHasCheater && !std::filesystem::exists(m_sConfigPath + sConfigName + m_sConfigExtension))
+		return;
+
+	LoadConfig(sConfigName, true);
 }
 
 template <class T>
