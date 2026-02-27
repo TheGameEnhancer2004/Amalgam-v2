@@ -53,21 +53,28 @@ void CNamedPipe::Shutdown()
 
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 {
-	std::lock_guard lock(m_infoMutex);
+	std::unique_lock lock(m_infoMutex);
 
-	if (!pLocal)
-		pLocal = H::Entities.GetLocal();
+	const bool bInGame = I::EngineClient && I::EngineClient->IsInGame();
+	tInfo.m_bInGame = bInGame;
 
-	if (pLocal)
+	CTFPlayer* pCurrentLocal = pLocal;
+
+	if (bInGame && pCurrentLocal)
 	{
-		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
-		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
-		tInfo.m_iCurrentFPS = (int)(1 / I::GlobalVars->absoluteframetime);
+		tInfo.m_iCurrentHealth = pCurrentLocal->IsAlive() ? pCurrentLocal->m_iHealth() : -1;
+		tInfo.m_iCurrentClass = pCurrentLocal->IsInValidTeam() ? pCurrentLocal->m_iClass() : TF_CLASS_UNDEFINED;
+		tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
 		if (auto pResource = H::Entities.GetResource())
 		{
-			int iLocalIdx = pLocal->entindex();
+			int iLocalIdx = pCurrentLocal->entindex();
 			tInfo.m_iCurrentKills = pResource->m_iScore(iLocalIdx);
 			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
+		}
+		else
+		{
+			tInfo.m_iCurrentKills = -1;
+			tInfo.m_iCurrentDeaths = -1;
 		}
 
 		static DWORD dwLastIgnoreStatusUpdate = 0;
@@ -78,18 +85,29 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 			dwLastIgnoreStatusUpdate = dwNow;
 		}
 	}
+	else
+	{
+		tInfo.m_iCurrentHealth = -1;
+		tInfo.m_iCurrentClass = TF_CLASS_UNDEFINED;
+		tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
+		tInfo.m_iCurrentKills = -1;
+		tInfo.m_iCurrentDeaths = -1;
+		tInfo.m_sCurrentMapName = "N/A";
+		tInfo.m_sCurrentServer = "N/A";
+		m_bSetMapName = false;
+		m_bSetServerName = false;
+	}
 
-	if (!tInfo.m_uAccountID)
+	if (!tInfo.m_uAccountID && bInGame)
 		tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
-	tInfo.m_bInGame = I::EngineClient->IsInGame();
 
-	if (!m_bSetMapName)
+	if (bInGame && !m_bSetMapName)
 	{
 		tInfo.m_sCurrentMapName = SDK::GetLevelName();
 		m_bSetMapName = true;
 	}
 
-	if (!m_bSetServerName)
+	if (bInGame && !m_bSetServerName)
 	{
 		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
 		{
@@ -112,6 +130,9 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 	}
 	else
 		tInfo.m_sBotName = "Unknown";
+
+	lock.unlock();
+	FlushPendingCommands();
 }
 
 void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
@@ -279,7 +300,6 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				}
 			}
 			F::NamedPipe.ProcessMessageQueue();
-			F::NamedPipe.FlushPendingCommands();
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
@@ -466,23 +486,14 @@ void CNamedPipe::SendStatusUpdate(std::string sStatus)
 void CNamedPipe::ExecuteCommand(std::string sCommand)
 {
 	Log("ExecuteCommand called with: " + sCommand);
+	{
+		std::lock_guard lock(m_pendingCommandsMutex);
+		if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
+			m_vPendingCommands.erase(m_vPendingCommands.begin());
+		m_vPendingCommands.push_back(sCommand);
+	}
 
-	if (DispatchCommand(sCommand))
-	{
-		Log("Command sent to TF2 console: " + sCommand);
-		SendStatusUpdate("CommandExecuted:" + sCommand);
-	}
-	else
-	{
-		Log("EngineClient is not available yet, queueing command: " + sCommand);
-		{
-			std::lock_guard lock(m_pendingCommandsMutex);
-			if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
-				m_vPendingCommands.erase(m_vPendingCommands.begin());
-			m_vPendingCommands.push_back(sCommand);
-		}
-		SendStatusUpdate("CommandQueued:" + sCommand);
-	}
+	SendStatusUpdate("CommandQueued:" + sCommand);
 }
 
 bool CNamedPipe::DispatchCommand(const std::string& sCommand)
@@ -507,12 +518,21 @@ void CNamedPipe::FlushPendingCommands()
 		vPendingCommands.swap(m_vPendingCommands);
 	}
 
-	for (const auto& sCommand : vPendingCommands)
+	for (size_t iCommand = 0; iCommand < vPendingCommands.size(); iCommand++)
 	{
+		const auto& sCommand = vPendingCommands[iCommand];
 		if (DispatchCommand(sCommand))
 		{
 			Log("Flushed queued command to TF2 console: " + sCommand);
 			SendStatusUpdate("CommandExecuted:" + sCommand);
+		}
+		else
+		{
+			std::lock_guard lock(m_pendingCommandsMutex);
+			m_vPendingCommands.insert(m_vPendingCommands.end(), vPendingCommands.begin() + iCommand, vPendingCommands.end());
+			if (m_vPendingCommands.size() > MAX_PENDING_COMMANDS)
+				m_vPendingCommands.erase(m_vPendingCommands.begin(), m_vPendingCommands.begin() + (m_vPendingCommands.size() - MAX_PENDING_COMMANDS));
+			break;
 		}
 	}
 }
