@@ -7,9 +7,73 @@
 #include <sstream>
 #include <iomanip>
 
+static const std::string sBase64Chars =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"0123456789+/";
+
+static std::string base64_encode(const std::string& sInput)
+{
+	std::string sOutput;
+	int iValue = 0;
+	int iBitCount = -6;
+	for (unsigned char cByte : sInput)
+	{
+		iValue = (iValue << 8) + cByte;
+		iBitCount += 8;
+		while (iBitCount >= 0)
+		{
+			sOutput.push_back(sBase64Chars[(iValue >> iBitCount) & 0x3F]);
+			iBitCount -= 6;
+		}
+	}
+	if (iBitCount > -6)
+		sOutput.push_back(sBase64Chars[((iValue << 8) >> (iBitCount + 8)) & 0x3F]);
+	while (sOutput.size() % 4)
+		sOutput.push_back('=');
+
+	return sOutput;
+}
+
+static std::string base64_decode(const std::string& sInput)
+{
+	std::string sOutput;
+	std::vector<int> vTable(256, -1);
+	for (int i = 0; i < 64; i++)
+		vTable[static_cast<unsigned char>(sBase64Chars[i])] = i;
+
+	int iValue = 0;
+	int iBitCount = -8;
+	for (unsigned char cByte : sInput)
+	{
+		if (vTable[cByte] == -1)
+			break;
+
+		iValue = (iValue << 6) + vTable[cByte];
+		iBitCount += 6;
+		if (iBitCount >= 0)
+		{
+			sOutput.push_back(static_cast<char>((iValue >> iBitCount) & 0xFF));
+			iBitCount -= 8;
+		}
+	}
+
+	return sOutput;
+}
+
 static std::string EncodePipeMessage(const std::string& sContent)
 {
-	return sContent + "\n";
+	return base64_encode(sContent) + "\n";
+}
+
+static bool TryParsePipeFrame(const std::string& sFrame, std::string& sBotNumber, std::string& sMessageType, std::string& sContent)
+{
+	std::istringstream iss(sFrame);
+	if (!std::getline(iss, sBotNumber, ':') || !std::getline(iss, sMessageType, ':'))
+		return false;
+
+	std::getline(iss, sContent);
+	return !sMessageType.empty();
 }
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
@@ -273,6 +337,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				}
 			}
 			F::NamedPipe.ProcessMessageQueue();
+			F::NamedPipe.FlushPendingCommands();
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
@@ -362,12 +427,13 @@ void CNamedPipe::ConnectAndMaintainPipe()
 						if (!sLine.empty() && sLine.back() == '\r')
 							sLine.pop_back();
 
-						std::string sDecoded = sLine;
-						std::istringstream iss(sDecoded);
+						const std::string sDecoded = base64_decode(sLine);
 						std::string sBotNumber, sMessageType, sContent;
-						std::getline(iss, sBotNumber, ':');
-						std::getline(iss, sMessageType, ':');
-						std::getline(iss, sContent);
+						if (!TryParsePipeFrame(sDecoded, sBotNumber, sMessageType, sContent))
+						{
+							F::NamedPipe.Log("Received malformed message frame");
+							continue;
+						}
 
 						if (sMessageType == "Command")
 						{
@@ -428,6 +494,15 @@ void CNamedPipe::SendStatusUpdate(std::string sStatus)
 void CNamedPipe::ExecuteCommand(std::string sCommand)
 {
 	Log("ExecuteCommand called with: " + sCommand);
+
+	if (DispatchCommand(sCommand))
+	{
+		Log("Command sent to TF2 console: " + sCommand);
+		SendStatusUpdate("CommandExecuted:" + sCommand);
+		return;
+	}
+
+	Log("EngineClient is not available yet, queueing command: " + sCommand);
 	{
 		std::lock_guard lock(m_pendingCommandsMutex);
 		if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
