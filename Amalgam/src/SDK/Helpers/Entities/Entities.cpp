@@ -51,6 +51,46 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 	m_mIF2P.clear();				m_mUF2P.clear();
 	m_mILevels.clear();				m_mULevels.clear();
 
+	auto pResource = GetResource();
+	if (!pResource)
+		return;
+
+#ifdef TEXTMODE
+	m_iPartyCount = 0;
+
+	const int nMaxClientsTextmode = I::EngineClient->GetMaxClients();
+	for (int n = 1; n <= nMaxClientsTextmode; n++)
+	{
+		if (!pResource->m_bValid(n))
+			continue;
+
+		const uint32_t uAccountID = pResource->m_iAccountID(n);
+		const bool bLocal = n == nLocalIndex;
+		if (bLocal)
+			m_uAccountID = uAccountID;
+
+		const int iPriority = bLocal ? 0 : F::PlayerUtils.GetPriority(uAccountID, false);
+		const int iFollowPriority = bLocal ? 0 : F::PlayerUtils.GetFollowPriority(uAccountID, false);
+		const bool bFriend = !pResource->IsFakePlayer(n)
+			&& I::SteamFriends
+			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
+
+		m_mIPriorities[n] = iPriority;
+		m_mUPriorities[uAccountID] = iPriority;
+		m_mIFollowPriorities[n] = iFollowPriority;
+		m_mUFollowPriorities[uAccountID] = iFollowPriority;
+		m_mIFriends[n] = bFriend;
+		m_mUFriends[uAccountID] = bFriend;
+		m_mIParty[n] = 0;
+		m_mUParty[uAccountID] = 0;
+		m_mIF2P[n] = false;
+		m_mUF2P[uAccountID] = false;
+		m_mILevels[n] = -2;
+		m_mULevels[uAccountID] = -2;
+	}
+	return;
+#endif
+
 	std::unordered_map<uint32_t, uint64_t> mParties;
 	std::unordered_map<uint32_t, bool> mF2P;
 	std::unordered_map<uint32_t, int> mLevels;
@@ -110,10 +150,6 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 	}
 	m_iPartyCount = uPartyCount;
 
-	auto pResource = GetResource();
-	if (!pResource)
-		return;
-
 	int nMaxClients = I::EngineClient->GetMaxClients();
 	for (int n = 1; n <= nMaxClients; n++)
 	{
@@ -122,10 +158,13 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 		uint32_t uAccountID = pResource->m_iAccountID(n);
 		bool bLocal = (n == nLocalIndex);
 		if (bLocal) m_uAccountID = uAccountID;
+		const bool bFriend = !pResource->IsFakePlayer(n)
+			&& I::SteamFriends
+			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
 
 		m_mIPriorities[n] = m_mUPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
 		m_mIFollowPriorities[n] = m_mUFollowPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
-		m_mIFriends[n] = m_mUFriends[uAccountID] = !pResource->IsFakePlayer(n) && I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
+		m_mIFriends[n] = m_mUFriends[uAccountID] = bFriend;
 		m_mIParty[n] = m_mUParty[uAccountID] = mParties.count(uAccountID) ? mParties[uAccountID] : 0;
 		m_mIF2P[n] = m_mUF2P[uAccountID] = mF2P.count(uAccountID) ? mF2P[uAccountID] : false;
 		m_mILevels[n] = m_mULevels[uAccountID] = mLevels.count(uAccountID) ? mLevels[uAccountID] : -2;
@@ -191,7 +230,15 @@ void CEntities::Store()
 
 	m_bIsSpectated = false;
 	m_pLocal = pLocalEntity->As<CTFPlayer>();
-	m_pLocalWeapon = m_pLocal->m_hActiveWeapon()->As<CTFWeaponBase>();
+	m_pLocalWeapon = nullptr;
+	if (m_pLocal)
+	{
+		if (auto pActiveWeapon = m_pLocal->m_hActiveWeapon().Get())
+			m_pLocalWeapon = pActiveWeapon->As<CTFWeaponBase>();
+	}
+	if (!m_pLocal)
+		return;
+
 	int iLocalTeam = m_pLocal->m_iTeamNum();
 
 	int iLag;
@@ -206,7 +253,11 @@ void CEntities::Store()
 
 	for (int n = 1; n <= nHighestEntity; n++)
 	{
-		auto pEntity = I::ClientEntityList->GetClientEntity(n)->As<CBaseEntity>();
+		auto pClientEntity = I::ClientEntityList->GetClientEntity(n);
+		if (!pClientEntity)
+			continue;
+
+		auto pEntity = pClientEntity->As<CBaseEntity>();
 		if (!pEntity)
 			continue;
 

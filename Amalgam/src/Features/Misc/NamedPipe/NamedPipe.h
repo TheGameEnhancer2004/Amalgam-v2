@@ -82,8 +82,13 @@ private:
 
 	void SendStatusUpdate(std::string sStatus);
 	void ExecuteCommand(std::string sCommand);
+	bool DispatchCommand(const std::string& sCommand);
+	void FlushPendingCommands();
 	void QueueMessage(std::string sType, std::string sContent, bool bIsPriority);
 	void ProcessMessageQueue();
+
+	std::mutex m_pendingCommandsMutex;
+	std::vector<std::string> m_vPendingCommands;
 
 	void ProcessLocalBotMessage(std::string sAccountID);
 	void UpdateLocalBotIgnoreStatus();
@@ -98,6 +103,7 @@ private:
 public:
 	void Initialize();
 	void Shutdown();
+	void PumpCommands();
 
 	bool IsLocalBot(uint32_t uAccountID);
 	std::vector<int> GetOtherBotsOnServer(std::string sServerIP);

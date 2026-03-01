@@ -67,6 +67,18 @@ static int GetRangedFallbackSlot(CTFPlayer* pLocal)
 	return SLOT_MELEE;
 }
 
+static bool IsMinigunJumpLocked(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+{
+	if (!pLocal || pLocal->m_iClass() != TF_CLASS_HEAVY || !pWeapon || pWeapon->GetWeaponID() != TF_WEAPON_MINIGUN)
+		return false;
+
+	const int iState = pWeapon->As<CTFMinigun>()->m_iWeaponState();
+	if (iState == AC_STATE_STARTFIRING || iState == AC_STATE_FIRING || iState == AC_STATE_SPINNING)
+		return true;
+
+	return pCmd && (pCmd->buttons & IN_ATTACK2);
+}
+
 bool CBotUtils::HasMedigunTargets(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
 {
 	if (!Vars::Aimbot::Healing::AutoHeal.Value)
@@ -1002,6 +1014,174 @@ void CBotUtils::AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* p
 	}
 }
 
+void CBotUtils::AutoRev(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+{
+	static bool bKeep = false;
+	static bool bShouldClearCache = false;
+	static Timer tRevTimer{};
+	if (!pLocal || !pWeapon || pWeapon->GetWeaponID() != TF_WEAPON_MINIGUN || pLocal->m_iClass() != TF_CLASS_HEAVY)
+	{
+		bKeep = false;
+		m_mAutoRevCache.clear();
+		return;
+	}
+
+	if (!pWeapon->HasAmmo())
+	{
+		bKeep = false;
+		m_mAutoRevCache.clear();
+		return;
+	}
+
+	if (!Vars::Misc::Movement::BotUtils::AutoScopeUseCachedResults.Value)
+		bShouldClearCache = true;
+
+	if (bShouldClearCache)
+	{
+		m_mAutoRevCache.clear();
+		bShouldClearCache = false;
+	}
+	else if (m_mAutoRevCache.size())
+		bShouldClearCache = true;
+
+	if (bKeep)
+	{
+		if (tRevTimer.Check(Vars::Misc::Movement::BotUtils::AutoScopeCancelTime.Value))
+			bKeep = false;
+		else
+		{
+			pCmd->buttons |= IN_ATTACK2;
+			return;
+		}
+	}
+
+	CNavArea* pCurrentDestinationArea = nullptr;
+	auto pCrumbs = F::NavEngine.GetCrumbs();
+	if (pCrumbs->size() > 4)
+		pCurrentDestinationArea = pCrumbs->at(4).m_pNavArea;
+
+	const Vector vLocalOrigin = pLocal->GetAbsOrigin();
+	auto pLocalNav = pCurrentDestinationArea ? pCurrentDestinationArea : F::NavEngine.FindClosestNavArea(vLocalOrigin);
+	if (!pLocalNav)
+		return;
+
+	Vector vFrom = pLocalNav->m_vCenter;
+	vFrom.z += PLAYER_JUMP_HEIGHT;
+
+	std::vector<std::pair<CBaseEntity*, float>> vTargetsSorted;
+	for (auto pEnemy : H::Entities.GetGroup(EntityEnum::PlayerEnemy))
+	{
+		if (pEnemy->IsDormant())
+			continue;
+
+		auto pEnemyPlayer = pEnemy->As<CTFPlayer>();
+		if (pEnemyPlayer->IsInvulnerable())
+			continue;
+
+		if (ShouldTarget(pLocal, pWeapon, pEnemy->entindex()) == ShouldTargetEnum::DontTarget)
+			continue;
+
+		vTargetsSorted.emplace_back(pEnemy, pEnemy->GetAbsOrigin().DistToSqr(vLocalOrigin));
+	}
+
+	for (auto pEnemyBuilding : H::Entities.GetGroup(EntityEnum::BuildingEnemy))
+	{
+		if (pEnemyBuilding->IsDormant())
+			continue;
+
+		if (ShouldTargetBuilding(pLocal, pEnemyBuilding->entindex()) == ShouldTargetEnum::DontTarget)
+			continue;
+
+		vTargetsSorted.emplace_back(pEnemyBuilding, pEnemyBuilding->GetAbsOrigin().DistToSqr(vLocalOrigin));
+	}
+
+	if (vTargetsSorted.empty())
+		return;
+
+	std::sort(vTargetsSorted.begin(), vTargetsSorted.end(), [&](std::pair<CBaseEntity*, float> a, std::pair<CBaseEntity*, float> b) -> bool { return a.second < b.second; });
+
+	auto CheckVisibility = [&](const Vec3& vTo, int iEntIndex) -> bool
+		{
+			CGameTrace trace = {};
+			CTraceFilterWorldAndPropsOnly filter = {};
+
+			SDK::Trace(Vector(vLocalOrigin.x, vLocalOrigin.y, vLocalOrigin.z + PLAYER_JUMP_HEIGHT), vTo, MASK_SHOT | CONTENTS_GRATE, &filter, &trace);
+			bool bHit = trace.fraction == 1.0f;
+			if (!bHit)
+			{
+				SDK::Trace(vFrom, vTo, MASK_SHOT | CONTENTS_GRATE, &filter, &trace);
+				bHit = trace.fraction == 1.0f;
+			}
+
+			if (iEntIndex != -1)
+				m_mAutoRevCache[iEntIndex] = bHit;
+
+			if (bHit)
+			{
+				pCmd->buttons |= IN_ATTACK2;
+				tRevTimer.Update();
+				bKeep = true;
+				return true;
+			}
+			return false;
+		};
+
+	const bool bSimple = Vars::Misc::Movement::BotUtils::AutoScope.Value != Vars::Misc::Movement::BotUtils::AutoScopeEnum::MoveSim;
+	const int iMaxTicks = TIME_TO_TICKS(0.4f);
+	MoveStorage tStorage{};
+	for (auto [pEntity, _] : vTargetsSorted)
+	{
+		const int iEntIndex = Vars::Misc::Movement::BotUtils::AutoScopeUseCachedResults.Value ? pEntity->entindex() : -1;
+		if (m_mAutoRevCache.contains(iEntIndex))
+		{
+			if (m_mAutoRevCache[iEntIndex])
+			{
+				pCmd->buttons |= IN_ATTACK2;
+				tRevTimer.Update();
+				bKeep = true;
+				break;
+			}
+			continue;
+		}
+
+		Vector vNonPredictedPos = pEntity->GetAbsOrigin();
+		vNonPredictedPos.z += PLAYER_JUMP_HEIGHT;
+		if (CheckVisibility(vNonPredictedPos, iEntIndex))
+			return;
+
+		if (bSimple || !pEntity->IsPlayer())
+			continue;
+
+		auto pEnemyPlayer = pEntity->As<CTFPlayer>();
+		F::MoveSim.Initialize(pEnemyPlayer, tStorage, false);
+		if (tStorage.m_bFailed)
+		{
+			F::MoveSim.Restore(tStorage);
+			continue;
+		}
+
+		for (int i = 0; i < iMaxTicks; i++)
+			F::MoveSim.RunTick(tStorage);
+
+		bool bResult = false;
+		Vector vPredictedPos = tStorage.m_vPredictedOrigin;
+		auto pTargetNav = F::NavEngine.FindClosestNavArea(vPredictedPos, false);
+		if (pTargetNav)
+		{
+			Vector vTo = pTargetNav->m_vCenter;
+			if (!pEnemyPlayer->OnSolid() && vTo.DistToSqr(vPredictedPos) >= pow(400.f, 2))
+				vTo = vPredictedPos;
+
+			vTo.z += PLAYER_JUMP_HEIGHT;
+			bResult = CheckVisibility(vTo, iEntIndex);
+		}
+		F::MoveSim.Restore(tStorage);
+
+		if (bResult)
+			break;
+	}
+}
+
 void CBotUtils::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if ((!Vars::Misc::Movement::NavBot::Enabled.Value && !(Vars::Misc::Movement::FollowBot::Enabled.Value && Vars::Misc::Movement::FollowBot::Targets.Value)) ||
@@ -1018,28 +1198,18 @@ void CBotUtils::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (!F::NavEngine.IsNavMeshLoaded() || (pCmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVERIGHT | IN_MOVELEFT) && !F::Misc.m_bAntiAFK))
 	{
 		m_mAutoScopeCache.clear();
+		m_mAutoRevCache.clear();
 		return;
 	}
 
 	AutoScope(pLocal, pWeapon, pCmd);
-
-	// Spin up the minigun if there are enemies nearby or if we had an active aimbot target 
-	if (pWeapon->GetWeaponID() == TF_WEAPON_MINIGUN)
-	{
-		static Timer tSpinupTimer{};
-		if (m_tClosestEnemy.m_pPlayer && m_tClosestEnemy.m_pPlayer->IsAlive() && !m_tClosestEnemy.m_pPlayer->IsInvulnerable() && pWeapon->HasAmmo())
-		{
-			if (G::AimTarget.m_iEntIndex && G::AimTarget.m_iDuration || m_tClosestEnemy.m_flDist <= 800.f)
-				tSpinupTimer.Update();
-			if (!tSpinupTimer.Check(3.f)) // 3 seconds until unrev
-				pCmd->buttons |= IN_ATTACK2;
-		}
-	}
+	AutoRev(pLocal, pWeapon, pCmd);
 }
 
 void CBotUtils::Reset()
 {
 	m_mAutoScopeCache.clear();
+	m_mAutoRevCache.clear();
 	m_vCloseEnemies.clear();
 	m_tClosestEnemy = {};
 	m_iBestSlot = -1;
@@ -1060,6 +1230,8 @@ bool CBotUtils::IsSurfaceWalkable(const Vector& vNormal)
 bool CBotUtils::SmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	if (!pLocal || !pLocal->IsAlive() || !Vars::Misc::Movement::NavBot::SmartJump.Value) return false;
+	if (IsMinigunJumpLocked(pLocal, H::Entities.GetWeapon(), pCmd))
+		return false;
 
 	if (pLocal->OnSolid())
 	{
@@ -1154,6 +1326,13 @@ void CBotUtils::HandleSmartJump(CTFPlayer* pLocal, CUserCmd* pCmd)
 {
 	if (!pLocal || !pLocal->IsAlive() || F::AutoRocketJump.IsRunning())
 	{
+		m_eJumpState = STATE_AWAITING_JUMP;
+		return;
+	}
+
+	if (IsMinigunJumpLocked(pLocal, H::Entities.GetWeapon(), pCmd))
+	{
+		pCmd->buttons &= ~IN_JUMP;
 		m_eJumpState = STATE_AWAITING_JUMP;
 		return;
 	}

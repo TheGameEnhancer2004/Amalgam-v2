@@ -7,58 +7,79 @@
 #include <sstream>
 #include <iomanip>
 
-// Dont use base64 encoding its just a waste of resources since you have to decode it every time
-// 
-// TIP: Optimize your messages instead. Use numberical codes for msg types
+static const std::string sBase64Chars =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"0123456789+/";
 
-static const std::string base64_chars =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-"abcdefghijklmnopqrstuvwxyz"
-"0123456789+/";
-
-static std::string base64_encode(const std::string& in)
+static std::string base64_encode(const std::string& sInput)
 {
-	std::string out;
-	int val = 0, valb = -6;
-	for (unsigned char c : in)
+	std::string sOutput;
+	int iValue = 0;
+	int iBitCount = -6;
+	for (unsigned char cByte : sInput)
 	{
-		val = (val << 8) + c;
-		valb += 8;
-		while (valb >= 0)
+		iValue = (iValue << 8) + cByte;
+		iBitCount += 8;
+		while (iBitCount >= 0)
 		{
-			out.push_back(base64_chars[(val >> valb) & 0x3F]);
-			valb -= 6;
+			sOutput.push_back(sBase64Chars[(iValue >> iBitCount) & 0x3F]);
+			iBitCount -= 6;
 		}
 	}
-	if (valb > -6) out.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
-	while (out.size() % 4) out.push_back('=');
-	return out;
+	if (iBitCount > -6)
+		sOutput.push_back(sBase64Chars[((iValue << 8) >> (iBitCount + 8)) & 0x3F]);
+	while (sOutput.size() % 4)
+		sOutput.push_back('=');
+
+	return sOutput;
 }
 
-static std::string base64_decode(const std::string& in)
+static std::string base64_decode(const std::string& sInput)
 {
-	std::string out;
-	std::vector<int> T(256, -1);
-	for (int i = 0; i < 64; i++) T[base64_chars[i]] = i;
+	std::string sOutput;
+	std::vector<int> vTable(256, -1);
+	for (int i = 0; i < 64; i++)
+		vTable[static_cast<unsigned char>(sBase64Chars[i])] = i;
 
-	int val = 0, valb = -8;
-	for (unsigned char c : in)
+	int iValue = 0;
+	int iBitCount = -8;
+	for (unsigned char cByte : sInput)
 	{
-		if (T[c] == -1) break;
-		val = (val << 6) + T[c];
-		valb += 6;
-		if (valb >= 0)
+		if (vTable[cByte] == -1)
+			break;
+
+		iValue = (iValue << 6) + vTable[cByte];
+		iBitCount += 6;
+		if (iBitCount >= 0)
 		{
-			out.push_back(char((val >> valb) & 0xFF));
-			valb -= 8;
+			sOutput.push_back(static_cast<char>((iValue >> iBitCount) & 0xFF));
+			iBitCount -= 8;
 		}
 	}
-	return out;
+
+	return sOutput;
+}
+
+static std::string EncodePipeMessage(const std::string& sContent)
+{
+	return base64_encode(sContent) + "\n";
+}
+
+static bool TryParsePipeFrame(const std::string& sFrame, std::string& sBotNumber, std::string& sMessageType, std::string& sContent)
+{
+	std::istringstream iss(sFrame);
+	if (!std::getline(iss, sBotNumber, ':') || !std::getline(iss, sMessageType, ':'))
+		return false;
+
+	std::getline(iss, sContent);
+	return !sMessageType.empty();
 }
 
 const char* PIPE_NAME = "\\\\.\\pipe\\AwootismBotPipe";
 const int BASE_RECONNECT_DELAY_MS = 500;
 const int MAX_RECONNECT_DELAY_MS = 10000;
+const size_t MAX_PENDING_COMMANDS = 64;
 
 static double GetNowSeconds()
 {
@@ -94,36 +115,44 @@ void CNamedPipe::Shutdown()
 		m_pipeThread.join();
 }
 
+void CNamedPipe::PumpCommands()
+{
+	FlushPendingCommands();
+}
+
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 {
-	std::lock_guard lock(m_infoMutex);
-	if (bCreateMove)
-	{
-		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
-		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
-		tInfo.m_iCurrentFPS = (int)(1 / I::GlobalVars->absoluteframetime);
-		if (auto pResource = H::Entities.GetResource())
-		{
-			int iLocalIdx = pLocal->entindex();
-			tInfo.m_iCurrentKills = pResource->m_iScore(iLocalIdx);
-			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
-		}
+	(void)pLocal;
+	(void)bCreateMove;
 
-		UpdateLocalBotIgnoreStatus();
-		return;
+	std::unique_lock lock(m_infoMutex);
+
+	const bool bInGame = I::EngineClient && I::EngineClient->IsInGame();
+	tInfo.m_bInGame = bInGame;
+	tInfo.m_iCurrentHealth = -1;
+	tInfo.m_iCurrentClass = TF_CLASS_UNDEFINED;
+	tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
+	tInfo.m_iCurrentKills = -1;
+	tInfo.m_iCurrentDeaths = -1;
+
+	if (!tInfo.m_uAccountID && I::SteamUser)
+		tInfo.m_uAccountID = I::SteamUser->GetSteamID().GetAccountID();
+
+	if (!bInGame)
+	{
+		tInfo.m_sCurrentMapName = "N/A";
+		tInfo.m_sCurrentServer = "N/A";
+		m_bSetMapName = false;
+		m_bSetServerName = false;
 	}
 
-	if (!tInfo.m_uAccountID)
-		tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
-	tInfo.m_bInGame = I::EngineClient->IsInGame();
-
-	if (!m_bSetMapName)
+	if (bInGame && !m_bSetMapName)
 	{
 		tInfo.m_sCurrentMapName = SDK::GetLevelName();
 		m_bSetMapName = true;
 	}
 
-	if (!m_bSetServerName)
+	if (bInGame && !m_bSetServerName)
 	{
 		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
 		{
@@ -146,6 +175,8 @@ void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 	}
 	else
 		tInfo.m_sBotName = "Unknown";
+
+	lock.unlock();
 }
 
 void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
@@ -183,6 +214,9 @@ std::string CNamedPipe::GetErrorMessage(DWORD dwError)
 	char* cMessageBuffer = nullptr;
 	size_t uSize = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&cMessageBuffer, 0, NULL);
+	if (!cMessageBuffer || !uSize)
+		return "Unknown error";
+
 	std::string sMessage(cMessageBuffer, uSize);
 	LocalFree(cMessageBuffer);
 	return sMessage;
@@ -251,22 +285,13 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				F::NamedPipe.Log("Attempting to connect to pipe (attempt " + std::to_string(F::NamedPipe.m_iCurrentReconnectAttempts) +
 					", delay: " + std::to_string(iReconnectDelay) + "ms)");
 
-				OVERLAPPED tOverlapped = { 0 };
-				tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-				if (tOverlapped.hEvent == NULL)
-				{
-					F::NamedPipe.Log("Failed to create connection event: " + std::to_string(GetLastError()));
-					std::this_thread::sleep_for(std::chrono::milliseconds(iReconnectDelay));
-					continue;
-				}
-
 				F::NamedPipe.m_hPipe = CreateFile(
 					PIPE_NAME,
 					GENERIC_READ | GENERIC_WRITE,
 					0,
 					NULL,
 					OPEN_EXISTING,
-					FILE_FLAG_OVERLAPPED,
+					0,
 					NULL);
 
 				if (F::NamedPipe.m_hPipe != INVALID_HANDLE_VALUE)
@@ -292,7 +317,6 @@ void CNamedPipe::ConnectAndMaintainPipe()
 					DWORD dwError = GetLastError();
 					F::NamedPipe.Log("Failed to connect to pipe: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 				}
-				CloseHandle(tOverlapped.hEvent);
 			}
 			else
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -313,6 +337,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				}
 			}
 			F::NamedPipe.ProcessMessageQueue();
+			F::NamedPipe.FlushPendingCommands();
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
@@ -364,91 +389,66 @@ void CNamedPipe::ConnectAndMaintainPipe()
 
 			char cBuffer[4096] = { 0 };
 			DWORD dwBytesRead = 0;
-			OVERLAPPED tOverlapped = { 0 };
-			tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			if (tOverlapped.hEvent != NULL)
+			if (dwBytesAvail > 0)
 			{
-				if (dwBytesAvail > 0)
+				BOOL bReadSuccess = ReadFile(F::NamedPipe.m_hPipe, cBuffer, sizeof(cBuffer) - 1, &dwBytesRead, NULL);
+				if (!bReadSuccess)
 				{
-					BOOL bReadSuccess = ReadFile(F::NamedPipe.m_hPipe, cBuffer, sizeof(cBuffer) - 1, &dwBytesRead, &tOverlapped);
-					if (!bReadSuccess && GetLastError() == ERROR_IO_PENDING)
+					DWORD dwError = GetLastError();
+					if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED || dwError == ERROR_NO_DATA)
 					{
-						DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
-						if (waitResult == WAIT_OBJECT_0)
-						{
-							if (!GetOverlappedResult(F::NamedPipe.m_hPipe, &tOverlapped, &dwBytesRead, FALSE))
-							{
-								F::NamedPipe.Log("GetOverlappedResult failed: " + std::to_string(GetLastError()));
-								CloseHandle(tOverlapped.hEvent);
-								CloseHandle(F::NamedPipe.m_hPipe);
-								F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-								continue;
-							}
-						}
-						else if (waitResult == WAIT_TIMEOUT)
-						{
-							CancelIo(F::NamedPipe.m_hPipe);
-							CloseHandle(tOverlapped.hEvent);
-							continue;
-						}
-						else
-						{
-							F::NamedPipe.Log("Wait failed: " + std::to_string(GetLastError()));
-							CloseHandle(tOverlapped.hEvent);
-							CloseHandle(F::NamedPipe.m_hPipe);
-							F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-							continue;
-						}
+						F::NamedPipe.Log("ReadFile disconnected: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 					}
-					else if (!bReadSuccess)
-					{
-						F::NamedPipe.Log("ReadFile failed immediately: " + std::to_string(GetLastError()));
-						CloseHandle(tOverlapped.hEvent);
-						CloseHandle(F::NamedPipe.m_hPipe);
-						F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
-						continue;
-					}
+					else
+						F::NamedPipe.Log("ReadFile failed: " + std::to_string(dwError) + " - " + F::NamedPipe.GetErrorMessage(dwError));
 
-					if (dwBytesRead > 0)
-					{
-						cBuffer[dwBytesRead] = '\0'; // Ensure null termination
-						sReadBuffer.append(cBuffer, dwBytesRead);
-						// F::NamedPipe.Log("Received chunk: " + std::string(cBuffer, dwBytesRead));
-
-						size_t pos = 0;
-						size_t newlinePos;
-						while ((newlinePos = sReadBuffer.find('\n', pos)) != std::string::npos)
-						{
-							std::string sLine = sReadBuffer.substr(pos, newlinePos - pos);
-							pos = newlinePos + 1;
-
-							if (sLine.empty())
-								continue;
-
-							// F::NamedPipe.Log("Processing line: " + sLine);
-							std::string sDecoded = base64_decode(sLine);
-							std::istringstream iss(sDecoded);
-							std::string sBotNumber, sMessageType, sContent;
-							std::getline(iss, sBotNumber, ':');
-							std::getline(iss, sMessageType, ':');
-							std::getline(iss, sContent);
-
-							if (sMessageType == "Command")
-							{
-								F::NamedPipe.Log("Executing command: " + sContent);
-								F::NamedPipe.ExecuteCommand(sContent);
-							}
-							else if (sMessageType == "LocalBot")
-								F::NamedPipe.ProcessLocalBotMessage(sContent);
-							else if (sMessageType == "CPCapture")
-								F::NamedPipe.ProcessCaptureReservationMessage(sContent);
-							else
-								F::NamedPipe.Log("Received unknown message type: " + sMessageType);
-						}
-						sReadBuffer.erase(0, pos);
-					}
+					CloseHandle(F::NamedPipe.m_hPipe);
+					F::NamedPipe.m_hPipe = INVALID_HANDLE_VALUE;
+					continue;
 				}
-				CloseHandle(tOverlapped.hEvent);
+
+				if (dwBytesRead > 0)
+				{
+					cBuffer[dwBytesRead] = '\0'; // Ensure null termination
+					sReadBuffer.append(cBuffer, dwBytesRead);
+					// F::NamedPipe.Log("Received chunk: " + std::string(cBuffer, dwBytesRead));
+
+					size_t pos = 0;
+					size_t newlinePos;
+					while ((newlinePos = sReadBuffer.find('\n', pos)) != std::string::npos)
+					{
+						std::string sLine = sReadBuffer.substr(pos, newlinePos - pos);
+						pos = newlinePos + 1;
+
+						if (sLine.empty())
+							continue;
+
+						// F::NamedPipe.Log("Processing line: " + sLine);
+						if (!sLine.empty() && sLine.back() == '\r')
+							sLine.pop_back();
+
+						const std::string sDecoded = base64_decode(sLine);
+						std::string sBotNumber, sMessageType, sContent;
+						if (!TryParsePipeFrame(sDecoded, sBotNumber, sMessageType, sContent))
+						{
+							F::NamedPipe.Log("Received malformed message frame");
+							continue;
+						}
+
+						if (sMessageType == "Command")
+						{
+							F::NamedPipe.Log("Executing command: " + sContent);
+							F::NamedPipe.ExecuteCommand(sContent);
+						}
+						else if (sMessageType == "LocalBot")
+							F::NamedPipe.ProcessLocalBotMessage(sContent);
+						else if (sMessageType == "CPCapture")
+							F::NamedPipe.ProcessCaptureReservationMessage(sContent);
+						else
+							F::NamedPipe.Log("Received unknown message type: " + sMessageType);
+					}
+					sReadBuffer.erase(0, pos);
+				}
 			}
 		}
 
@@ -470,7 +470,7 @@ void CNamedPipe::ConnectAndMaintainPipe()
 			if (F::NamedPipe.m_iBotId != -1)
 			{
 				std::string sContent = std::to_string(F::NamedPipe.m_iBotId) + ":Status:Disconnecting";
-				std::string sMessage = base64_encode(sContent) + "\n";
+				std::string sMessage = EncodePipeMessage(sContent);
 				DWORD dwBytesWritten = 0;
 				WriteFile(F::NamedPipe.m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 			}
@@ -489,24 +489,68 @@ void CNamedPipe::ConnectAndMaintainPipe()
 void CNamedPipe::SendStatusUpdate(std::string sStatus)
 {
 	QueueMessage("Status", sStatus, true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 void CNamedPipe::ExecuteCommand(std::string sCommand)
 {
 	Log("ExecuteCommand called with: " + sCommand);
-	if (I::EngineClient)
+
+	if (DispatchCommand(sCommand))
 	{
-		Log("EngineClient is available, sending command to TF2 console");
-		I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
 		Log("Command sent to TF2 console: " + sCommand);
 		SendStatusUpdate("CommandExecuted:" + sCommand);
+		return;
 	}
-	else
+
+	Log("EngineClient is not available yet, queueing command: " + sCommand);
 	{
-		Log("EngineClient is NOT available, command ignored: " + sCommand);
-		SendStatusUpdate("CommandFailed:EngineClientNotAvailable");
+		std::lock_guard lock(m_pendingCommandsMutex);
+		if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
+			m_vPendingCommands.erase(m_vPendingCommands.begin());
+		m_vPendingCommands.push_back(sCommand);
+	}
+
+	SendStatusUpdate("CommandQueued:" + sCommand);
+}
+
+bool CNamedPipe::DispatchCommand(const std::string& sCommand)
+{
+	if (sCommand.empty() || !I::EngineClient)
+		return false;
+
+	I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
+	return true;
+}
+
+void CNamedPipe::FlushPendingCommands()
+{
+	if (!I::EngineClient)
+		return;
+
+	std::vector<std::string> vPendingCommands;
+	{
+		std::lock_guard lock(m_pendingCommandsMutex);
+		if (m_vPendingCommands.empty())
+			return;
+		vPendingCommands.swap(m_vPendingCommands);
+	}
+
+	for (size_t iCommand = 0; iCommand < vPendingCommands.size(); iCommand++)
+	{
+		const auto& sCommand = vPendingCommands[iCommand];
+		if (DispatchCommand(sCommand))
+		{
+			Log("Flushed queued command to TF2 console: " + sCommand);
+			SendStatusUpdate("CommandExecuted:" + sCommand);
+		}
+		else
+		{
+			std::lock_guard lock(m_pendingCommandsMutex);
+			m_vPendingCommands.insert(m_vPendingCommands.end(), vPendingCommands.begin() + iCommand, vPendingCommands.end());
+			if (m_vPendingCommands.size() > MAX_PENDING_COMMANDS)
+				m_vPendingCommands.erase(m_vPendingCommands.begin(), m_vPendingCommands.begin() + (m_vPendingCommands.size() - MAX_PENDING_COMMANDS));
+			break;
+		}
 	}
 }
 
@@ -549,46 +593,25 @@ void CNamedPipe::ProcessMessageQueue()
 		else
 			sContent = "0:" + it->m_sType + ":" + it->m_sContent;
 
-		std::string sMessage = base64_encode(sContent) + "\n";
+		std::string sMessage = EncodePipeMessage(sContent);
 
 		DWORD dwBytesWritten = 0;
-		OVERLAPPED tOverlapped = { 0 };
-		tOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-
-		if (tOverlapped.hEvent == NULL)
-		{
-			Log("Failed to create event for write: " + std::to_string(GetLastError()));
-			break;
-		}
-
-		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, &tOverlapped);
-
-		if (!bSuccess && GetLastError() == ERROR_IO_PENDING)
-		{
-			DWORD waitResult = WaitForSingleObject(tOverlapped.hEvent, 1000);
-			if (waitResult == WAIT_OBJECT_0)
-			{
-				bSuccess = GetOverlappedResult(m_hPipe, &tOverlapped, &dwBytesWritten, FALSE);
-			}
-			else
-			{
-				bSuccess = FALSE;
-				CancelIo(m_hPipe);
-			}
-		}
-
-		CloseHandle(tOverlapped.hEvent);
-
+		BOOL bSuccess = WriteFile(m_hPipe, sMessage.c_str(), static_cast<DWORD>(sMessage.length()), &dwBytesWritten, NULL);
 		if (bSuccess && dwBytesWritten == sMessage.length())
 		{
 			it = m_vMessageQueue.erase(it);
 			processCount++;
+			continue;
 		}
-		else
+
+		const DWORD dwError = GetLastError();
+		Log("Failed to write queued message: " + std::to_string(dwError) + " - " + GetErrorMessage(dwError));
+		if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED || dwError == ERROR_NO_DATA)
 		{
-			Log("Failed to write queued message: " + std::to_string(GetLastError()));
-			break;
+			CloseHandle(m_hPipe);
+			m_hPipe = INVALID_HANDLE_VALUE;
 		}
+		break;
 	}
 }
 
@@ -638,8 +661,6 @@ void CNamedPipe::AnnounceCaptureSpotClaim(const std::string& sMap, int iPointIdx
 	oss << std::fixed << std::setprecision(2) << "Claim|" << sMap << '|' << iPointIdx << '|' << vSpot.x << '|' << vSpot.y << '|' << vSpot.z
 		<< '|' << tInfo.m_uAccountID << '|' << flDurationSeconds << '|' << m_iBotId;
 	QueueMessage("CPCapture", oss.str(), true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointIdx)
@@ -659,8 +680,6 @@ void CNamedPipe::AnnounceCaptureSpotRelease(const std::string& sMap, int iPointI
 	std::ostringstream oss;
 	oss << "Release|" << sMap << '|' << iPointIdx << '|' << tInfo.m_uAccountID;
 	QueueMessage("CPCapture", oss.str(), true);
-	if (m_hPipe != INVALID_HANDLE_VALUE)
-		ProcessMessageQueue();
 }
 
 std::vector<Vector> CNamedPipe::GetReservedCaptureSpots(const std::string& sMap, int iPointIdx, uint32_t uIgnoreAccountID)

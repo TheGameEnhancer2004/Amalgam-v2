@@ -565,6 +565,33 @@ float CMap::EvaluateConnectionCost(CNavArea* pCurrentArea, CNavArea* pNextArea, 
 	if (pNextArea->m_iAttributeFlags & NAV_MESH_CROUCH)
 		flCost += flForwardDistance * 5.f;
 
+	const bool bHasReturnPath = HasDirectConnection(pNextArea, pCurrentArea);
+	const bool bIrreversibleEnter = !bHasReturnPath;
+	int iForwardExitCount = 0;
+	for (const auto& tExit : pNextArea->m_vConnections)
+	{
+		auto pExitArea = tExit.m_pArea;
+		if (!pExitArea || pExitArea == pNextArea || pExitArea == pCurrentArea || !IsAreaValid(pExitArea))
+			continue;
+		iForwardExitCount++;
+	}
+
+	if (iForwardExitCount == 0)
+		flCost += bIrreversibleEnter ? 900.f : 220.f;
+	else if (iForwardExitCount == 1)
+		flCost += 90.f;
+
+	if (bIrreversibleEnter)
+	{
+		flCost += 160.f;
+
+		if (tDropdown.m_bRequiresDrop)
+			flCost += std::clamp(tDropdown.m_flDropHeight * 3.0f, 120.f, 420.f);
+
+		if (pNextArea->m_iAttributeFlags & NAV_MESH_NO_JUMP)
+			flCost += 220.f;
+	}
+
 	return std::max(flCost, 1.f);
 }
 

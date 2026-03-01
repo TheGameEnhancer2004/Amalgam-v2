@@ -1342,7 +1342,12 @@ void CMenu::MenuHvH(int iTab)
 						FSlider(Vars::AntiAim::FakeYawValue, FSliderEnum::Right);
 					}
 					PopTransparent();
-					PushTransparent(Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Spin && Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Spin);
+					PushTransparent(Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Spin
+						&& Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Tornado
+						&& Vars::AntiAim::YawFake.Value != Vars::AntiAim::YawEnum::Helix
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Spin
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Tornado
+						&& Vars::AntiAim::YawReal.Value != Vars::AntiAim::YawEnum::Helix);
 					{
 						FSlider(Vars::AntiAim::SpinSpeed, FSliderEnum::Left);
 					}
@@ -3413,6 +3418,10 @@ void CMenu::MenuSettings(int iTab)
 			TableNextColumn();
 			if (Section("Config"))
 			{
+				FToggle(Vars::Config::AutoLoadCheaterConfig, FToggleEnum::Left);
+				FTooltip("Loads cheater.json when a tagged cheater is in match and switches back to default.json when none are present.");
+				DebugDummy({ 0, H::Draw.Scale(6) });
+
 				static std::string sStaticName;
 
 				drawConfigs(sStaticName);

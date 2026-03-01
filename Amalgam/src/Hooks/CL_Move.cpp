@@ -35,6 +35,8 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 	F::Misc.MicSpam();
 #ifdef TEXTMODE
 	F::NamedPipe.Store();
+	if (I::EngineClient && I::EngineClient->IsInGame())
+		F::NamedPipe.PumpCommands();
 #endif
 
 	F::Ticks.Move(accumulated_extra_samples, bFinalTick);
