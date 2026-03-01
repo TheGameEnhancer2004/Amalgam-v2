@@ -95,6 +95,7 @@ public:
 
 	void Event(IGameEvent* pEvent, uint32_t uNameHash);
 	int AntiBackstab(CTFPlayer* pLocal, CUserCmd* pCmd);
+	void AutoFaNJump(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void MicSpam();
 
 	void PingReducer();

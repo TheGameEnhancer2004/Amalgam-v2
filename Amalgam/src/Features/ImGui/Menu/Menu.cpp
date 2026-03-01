@@ -503,6 +503,12 @@ void CMenu::MenuAimbot(int iTab)
 					FToggle(Vars::Aimbot::Healing::AutoVaccinator, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::Healing::ActivateOnVoice, FToggleEnum::Left);
 					FSlider(Vars::Aimbot::Healing::ActivationHealthPercent, FSliderEnum::Right, Vars::Aimbot::Healing::ActivationHealthPercent[DEFAULT_BIND] <= 0.f ? "Off" : "%g%%");
+					PushTransparent(!Vars::Aimbot::Healing::AutoArrow.Value);
+					{
+						FToggleSlider(Vars::Aimbot::Healing::AutoSwitch, Vars::Aimbot::Healing::AutoSwitchHealth);
+						FTooltip("Automatically switch to crossbow and heal if target has less hp than max and has resistance or invulnerability or medigun does not have enough charges.\nThe slider controls how much less hp the target should have from max amount.");
+					}
+					PopTransparent();
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
@@ -1428,24 +1434,34 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Movement::AutoJumpbug, FToggleEnum::Left); // this is unreliable without setups, do not depend on it!
 					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::AutoRocketJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoFaNJump, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Left);
+
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
 					if (Section("##Debug"))
 					{
+						FText("Rocket jump");
+						Divider();
 						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeGrounded, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeAir, FToggleEnum::Right);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipGround, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipAir, FToggleEnum::Right);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpTimingOffset, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpApplyAbove, FToggleEnum::Right);
+
+						Divider();
+						FText("FaN jump");
+						Divider();
+						FSlider(Vars::Misc::Movement::AutoFaNJumpOnSolidTicks, FToggleEnum::Left);
+						FToggle(Vars::Misc::Movement::AutoFaNJumpCheckCeiling, FToggleEnum::Right);
 					} EndSection();
 				}
 				if (Section("Exploits"))
@@ -1608,7 +1624,7 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
 					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
 						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
-						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
+						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.\nAt target - look at current target.");
 						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
 					PopTransparent();
 					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);

@@ -455,10 +455,12 @@ NAMESPACE_BEGIN(Vars)
 				None, PrioritizeTeam, PrioritizeFriends, FriendsOnly);
 			CVar(AutoHeal, "Auto heal", false);
 			CVar(AutoArrow, "Auto arrow", false);
+			CVar(AutoSwitch, "Auto switch", false);
 			CVar(AutoSandvich, "Auto sandvich", false);
 			CVar(AutoVaccinator, "Auto vaccinator", false);
 			CVar(ActivateOnVoice, "Activate on voice", false);
 			CVar(ActivationHealthPercent, "Activate at health", 0.f, SLIDER_MIN | SLIDER_PRECISION, 0.f, 100.f, 5.f, "%g%%");
+			CVar(AutoSwitchHealth, "Switch at", 75, SLIDER_CLAMP, 75, 200);
 
 			CVar(AutoVaccinatorBulletScale, "Auto vaccinator bullet scale", 100.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 0.f, 200.f, 10.f, "%g%%");
 			CVar(AutoVaccinatorBlastScale, "Auto vaccinator blast scale", 100.f, NOSAVE | DEBUGVAR | SLIDER_MIN | SLIDER_PRECISION, 0.f, 200.f, 10.f, "%g%%");
@@ -789,6 +791,7 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(AutoJumpbug, "Auto jumpbug", false);
 			CVar(NoPush, "No push", false);
 			CVar(AutoRocketJump, "Auto rocket jump", false);
+			CVar(AutoFaNJump, "Auto FaN jump", false);
 			CVar(AutoCTap, "Auto ctap", false);
 			CVar(FastStop, "Fast stop", false);
 			CVar(FastAccelerate, "Fast accelerate", false);
@@ -876,8 +879,8 @@ I dont think this is a good idea to disable simulations completely:
 					VA_LIST("Off", "Plain", "Silent"),
 					Off, Plain, Silent);
 				CVarEnum(LookAtPathMode, "Look at path mode", 0, NONE, nullptr,
-					VA_LIST("Path", "Copy target", "Copy target immediate"),
-					Path, Copy, CopyImmediate);
+					VA_LIST("Path", "Copy target", "Copy target immediate", "At target"),
+					Path, Copy, CopyImmediate, AtTarget);
 				CVar(LookAtPathNoSnap, "Avoid view snap", false);
 
 				CVar(DrawPath, "Draw path nodes", false);
@@ -895,6 +898,9 @@ I dont think this is a good idea to disable simulations completely:
 			CVar(AutoRocketJumpSkipAir, "Skip air", 1, NOSAVE | DEBUGVAR, 0, 3);
 			CVar(AutoRocketJumpTimingOffset, "Timing offset", 0, NOSAVE | DEBUGVAR, 0, 3);
 			CVar(AutoRocketJumpApplyAbove, "Apply offset above", 0, NOSAVE | DEBUGVAR, 0, 10);
+
+			CVar(AutoFaNJumpOnSolidTicks, "On solid ticks", 8, NOSAVE | DEBUGVAR, 2, 30);
+			CVar(AutoFaNJumpCheckCeiling, "Check ceiling", true, NOSAVE | DEBUGVAR);
 		NAMESPACE_END(Movement)
 
 		NAMESPACE_BEGIN(Automation)
