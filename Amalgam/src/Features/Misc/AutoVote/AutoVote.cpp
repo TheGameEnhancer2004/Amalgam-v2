@@ -88,8 +88,9 @@ void CAutoVote::OnCallVoteFail(int iTimeLeft)
 	m_flCallCooldownExpireTime = I::GlobalVars->curtime + iTimeLeft;
 }
 
-void CAutoVote::Run(CTFPlayer* pLocal)
+void CAutoVote::Run()
 {
+	auto pLocal = H::Entities.GetLocal();
 	if (!pLocal)
 		return;
 
