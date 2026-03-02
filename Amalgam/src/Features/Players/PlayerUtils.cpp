@@ -78,59 +78,6 @@ int CPlayerlistUtils::GetTag(const std::string& sTag)
 }
 
 
-// // warnin.... coded by ai :broken_heart:
-// // also, i know thats dumb bcuz everyone can add these chars to their name, but legits are too dumb lol
-// bool CPlayerlistUtils::ContainsSpecialChars(const std::string& sName)
-// {
-// 	if (sName.empty())
-// 		return false;
-
-// 	// UTF-8 sequences for Thai characters are 3 bytes each
-// 	// Check for these sequences in the input string
-// 	for (size_t i = 0; i < sName.size(); )
-// 	{
-// 		// Check if this position could start a Thai character (first byte of sequence)
-// 		if ((unsigned char)sName[i] == 0xE0 && i + 2 < sName.size())
-// 		{
-// 			// Verify if we have a Thai character
-// 			for (size_t j = 0; j < m_vSpecialChars.size(); j += 3) 
-// 			{
-// 				if ((unsigned char)sName[i] == m_vSpecialChars[j] &&
-// 					(unsigned char)sName[i + 1] == m_vSpecialChars[j + 1] &&
-// 					(unsigned char)sName[i + 2] == m_vSpecialChars[j + 2])
-// 					return true;
-// 			}
-// 		}
-		
-// 		// Move to next character (UTF-8 aware)
-// 		if ((sName[i] & 0x80) == 0)
-// 			i += 1;  // ASCII character
-// 		else if ((sName[i] & 0xE0) == 0xC0)
-// 			i += 2;  // 2-byte UTF-8 sequence
-// 		else if ((sName[i] & 0xF0) == 0xE0)
-// 			i += 3;  // 3-byte UTF-8 sequence (Thai characters are here)
-// 		else if ((sName[i] & 0xF8) == 0xF0)
-// 			i += 4;  // 4-byte UTF-8 sequence
-// 		else
-// 			i += 1;  // Invalid UTF-8, skip
-// 	}
-	
-// 	return false;
-// }
-
-// void CPlayerlistUtils::ProcessSpecialCharsInName(uint32_t uAccountID, const std::string& sName)
-// {
-// 	if (!uAccountID || sName.empty())
-// 		return;
-
-// 	if (ContainsSpecialChars(sName) && !HasTags(uAccountID))
-// 	{
-// 		AddTag(uAccountID, TagToIndex(IGNORED_TAG), true, sName.c_str());
-// 		SDK::Output("Amalgam", std::format("Auto-ignored player with special characters: {}", sName).c_str(), { 255, 100, 100, 255 }, OUTPUT_CONSOLE | OUTPUT_DEBUG | OUTPUT_TOAST | OUTPUT_MENU);
-// 		m_bSave = true;
-// 	}
-// }
-
 
 void CPlayerlistUtils::AddTag(uint32_t uAccountID, int iID, bool bSave, const char* sName, std::unordered_map<uint32_t, std::vector<int>>& mPlayerTags, const char* sReason, int iDetections, bool bAuto)
 {
@@ -258,12 +205,6 @@ int CPlayerlistUtils::GetPriority(uint32_t uAccountID, bool bCache)
 	if (HasTag(uAccountID, TagToIndex(IGNORED_TAG)))
 		return m_vTags[TagToIndex(IGNORED_TAG)].m_iPriority;
 
-	else if (HasTag(uAccountID, TagToIndex(FRIEND_IGNORE_TAG)))
-		return m_vTags[TagToIndex(FRIEND_IGNORE_TAG)].m_iPriority;
-
-	else if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
-		return m_vTags[TagToIndex(BOT_IGNORE_TAG)].m_iPriority;
-
 	std::vector<int> vPriorities;
 	if (m_mPlayerTags.contains(uAccountID))
 	{
@@ -309,7 +250,7 @@ int CPlayerlistUtils::GetPriority(int iIndex, bool bCache)
 int CPlayerlistUtils::GetFollowPriority(uint32_t uAccountID, bool bCache)
 {
 	if (bCache)
-		return H::Entities.GetFollowPriority(uAccountID);
+		return H::Entities.GetPriority(uAccountID, PriorityTypeEnum::Follow);
 
 	const int iDefault = m_vTags[TagToIndex(DEFAULT_TAG)].m_iFollowPriority;
 	if (!uAccountID)
@@ -358,9 +299,66 @@ int CPlayerlistUtils::GetFollowPriority(uint32_t uAccountID, bool bCache)
 int CPlayerlistUtils::GetFollowPriority(int iIndex, bool bCache)
 {
 	if (bCache)
-		return H::Entities.GetFollowPriority(iIndex);
+		return H::Entities.GetPriority(iIndex, PriorityTypeEnum::Follow);
 
 	return GetFollowPriority(GetAccountID(iIndex));
+}
+
+int CPlayerlistUtils::GetVotePriority(uint32_t uAccountID, bool bCache)
+{
+	if (bCache)
+		return H::Entities.GetPriority(uAccountID, PriorityTypeEnum::Vote);
+
+	const int iDefault = m_vTags[TagToIndex(DEFAULT_TAG)].m_iVotePriority;
+	if (!uAccountID)
+		return iDefault;
+
+	std::vector<int> vPriorities;
+	if (m_mPlayerTags.contains(uAccountID))
+	{
+		for (auto& iID : m_mPlayerTags[uAccountID])
+		{
+			auto pTag = GetTag(iID);
+			if (pTag && !pTag->m_bLabel)
+			{
+				if (pTag->m_iVotePriority < 0)
+					return -1;
+
+				vPriorities.push_back(pTag->m_iVotePriority);
+			}
+		}
+	}
+	if (H::Entities.IsFriend(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(FRIEND_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iVotePriority);
+	}
+	if (H::Entities.InParty(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(PARTY_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iVotePriority);
+	}
+	if (H::Entities.IsF2P(uAccountID))
+	{
+		auto& tTag = m_vTags[TagToIndex(F2P_TAG)];
+		if (!tTag.m_bLabel)
+			vPriorities.push_back(tTag.m_iVotePriority);
+	}
+	if (vPriorities.empty())
+		return iDefault;
+
+	std::sort(vPriorities.begin(), vPriorities.end(), std::greater<int>());
+	return vPriorities.front();
+}
+
+int CPlayerlistUtils::GetVotePriority(int iIndex, bool bCache)
+{
+	if (bCache)
+		return H::Entities.GetPriority(iIndex, PriorityTypeEnum::Vote);
+
+	return GetVotePriority(GetAccountID(iIndex));
 }
 
 PriorityLabel_t* CPlayerlistUtils::GetSignificantTag(uint32_t uAccountID, int iMode)
@@ -452,27 +450,6 @@ PriorityLabel_t* CPlayerlistUtils::GetSignificantTag(int iIndex, int iMode)
 
 bool CPlayerlistUtils::IsIgnored(uint32_t uAccountID)
 {
-	if (HasTag(uAccountID, TagToIndex(FRIEND_IGNORE_TAG)))
-		return true;
-
-	if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
-	{
-		auto& tBotData = m_mBotIgnoreData[uAccountID];
-		if (!tBotData.m_bIsIgnored)
-			return false;
-			
-		if (tBotData.m_iKillCount >= 2)
-		{
-			// bigga u killed me twice, now youll feel my rough.
-			RemoveTag(uAccountID, TagToIndex(BOT_IGNORE_TAG), true);
-			tBotData.m_iKillCount = 0;
-			tBotData.m_bIsIgnored = false;
-			m_bSave = true;
-			return false;
-		}
-		return true;
-	}
-
 	const int iPriority = GetPriority(uAccountID);
 	const int iIgnored = m_vTags[TagToIndex(IGNORED_TAG)].m_iPriority;
 	return iPriority <= iIgnored;
@@ -661,19 +638,6 @@ void CPlayerlistUtils::Store()
 
 		if (uAccountID)
 			F::SteamProfileCache.Touch(uAccountID);
-	}
-}
-
-void CPlayerlistUtils::IncrementBotIgnoreKillCount(uint32_t uAccountID)
-{
-	if (!uAccountID)
-		return;
-
-	if (HasTag(uAccountID, TagToIndex(BOT_IGNORE_TAG)))
-	{
-		auto& tBotData = m_mBotIgnoreData[uAccountID];
-		tBotData.m_iKillCount++;
-		m_bSave = true;
 	}
 }
 

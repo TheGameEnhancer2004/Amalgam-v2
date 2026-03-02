@@ -32,7 +32,6 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 #endif
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
-	RandomVotekick(pLocal);
 	ExecBuyBot(pLocal);
 
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
@@ -1220,50 +1219,6 @@ void CMisc::AutoReport()
 	}
 }
 
-void CMisc::RandomVotekick(CTFPlayer* pLocal)
-{
-	if (!Vars::Misc::Automation::AutoVotekick.Value || !pLocal->IsInValidTeam())
-		return;
-
-	if (!m_tAutoVotekickTimer.Run(1.0f))
-		return;
-
-	auto pResource = H::Entities.GetResource();
-	if (!pResource)
-		return;
-
-	std::vector<int> vPotentialTargets;
-
-	for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
-	{
-		if (i == pLocal->entindex())
-			continue;
-
-		if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i))
-			continue;
-
-		if (Vars::Misc::Automation::AutoVotekick.Value == Vars::Misc::Automation::AutoVotekickEnum::Prio && !F::PlayerUtils.IsPrioritized(i))
-			continue;
-
-		if (H::Entities.IsFriend(i) ||
-			H::Entities.InParty(i) ||
-			F::PlayerUtils.IsIgnored(i) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
-			continue;
-
-		vPotentialTargets.push_back(i);
-	}
-
-	if (vPotentialTargets.empty())
-		return;
-
-	int iRandom = SDK::RandomInt(0, static_cast<int>(vPotentialTargets.size()) - 1);
-	int iTarget = vPotentialTargets[iRandom];
-
-	I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pResource->m_iUserID(iTarget)).c_str());
-}
-
 void CMisc::ChatSpam(CTFPlayer* pLocal)
 {
 	auto ResetChatTimer = [&]()
@@ -1939,9 +1894,9 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::strin
 	return sMsg;
 }
 
-void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget)
+void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sTarget)
 {
-	if (!Vars::Misc::Automation::ChatSpam::VoteKickReply.Value || sReason.find("Kick") == std::string::npos)
+	if (!Vars::Misc::Automation::ChatSpam::VoteKickReply.Value)
 		return;
 
 	static Timer tReloadTimer{};

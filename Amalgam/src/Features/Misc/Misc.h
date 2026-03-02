@@ -16,7 +16,6 @@ private:
 	void ExecBuyBot(CTFPlayer* pLocal);
 	void ResetBuyBot();
 	void VoiceCommandSpam(CTFPlayer* pLocal);
-	void RandomVotekick(CTFPlayer* pLocal);
 	void ChatSpam(CTFPlayer* pLocal);
 	void AutoDisguise(CTFPlayer* pLocal);
 	void JoinSpam(CTFPlayer* pLocal);
@@ -105,7 +104,7 @@ public:
 	void LockItemAchievements();
 	void SetAutoBalanceTeamChangePending(bool bPending) { m_bAutoBalanceTeamChangePending = bPending; }
 	void AutoMvmReadyUp();
-	void OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget);
+	void OnVoteStart(int iCaller, int iTarget, const std::string& sTarget);
 	void OnChatMessage(int iEntIndex, const std::string& sName, const std::string& sMsg);
 	std::string ReplaceTags(std::string sMsg, std::string sTarget = "", std::string sInitiator = "");
 	ProfileDumpResult_t DumpProfiles(bool bAnnounce = true);
@@ -114,7 +113,6 @@ public:
 	//int m_iWishUpdaterate = -1;
 	bool m_bAntiAFK = false;
 	std::string m_sLastKilledName = "";
-	Timer m_tAutoVotekickTimer;
 };
 
 ADD_FEATURE(CMisc, Misc);

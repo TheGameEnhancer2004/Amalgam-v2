@@ -23,6 +23,28 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 
 	switch (type)
 	{
+	case VotePass:
+	case VoteFailed:
+		if (Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Defend ||
+			Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Assist)
+		{
+			msgData.SeekRelative(4);
+			F::AutoVote.OnVoteEnd(msgData.ReadLong());
+			msgData.Reset();
+		}
+		break;
+	case CallVoteFailed:
+	{
+		if (Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Kick)
+		{
+			int nReason = msgData.ReadByte();
+			if (nReason == VOTE_FAILED_ON_COOLDOWN ||
+				nReason == VOTE_FAILED_RATE_EXCEEDED)
+				F::AutoVote.OnCallVoteFail(msgData.ReadShort());
+			msgData.Reset();
+		}
+		break;
+	}
 	case VoteStart:
 	{
 		int iTeam = msgData.ReadByte();
@@ -34,9 +56,11 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 		msgData.Reset();
 
 		F::Output.UserMessage(msgData);
-		F::AutoVote.UserMessage(msgData);
-		F::Misc.OnVoteStart(iCaller, iTarget, sReason, sTarget);
-
+		if (std::string(sReason).find("kick") != std::string::npos)
+		{
+			F::AutoVote.OnVoteStart(iTeam, iVoteID, iCaller, iTarget);
+			F::Misc.OnVoteStart(iCaller, iTarget, sTarget);
+		}
 		break;
 	}
 	case VoiceSubtitle:
@@ -133,6 +157,8 @@ MAKE_HOOK(CHLClient_DispatchUserMessage, U::Memory.GetVirtual(I::Client, 36), bo
 					break;
 				}
 			}
+			else if (FNV1A::Hash32(sMsg.c_str()) == FNV1A::Hash32Const("#GameUI_vote_failed_vote_in_progress"))
+				F::AutoVote.m_bActiveVote = true;
 		}
 		break;
 	}

@@ -2,6 +2,7 @@
 #include "../../../Utils/Macros/Macros.h"
 #include "../../Definitions/Classes.h"
 #include "../../Vars.h"
+#include <array>
 
 Enum(Entity, Invalid = -1,
 	PlayerAll, PlayerEnemy, PlayerTeam,
@@ -10,6 +11,8 @@ Enum(Entity, Invalid = -1,
 	WorldProjectile, WorldObjective, WorldNPC, WorldBomb,
 	LocalStickies, LocalFlares, SniperDots
 )
+
+Enum(PriorityType, Relationship, Follow, Vote, Count)
 
 struct DormantData
 {
@@ -47,10 +50,8 @@ private:
 	std::unordered_map<int, uint32_t> m_mModels = {};
 	std::unordered_map<int, std::deque<VelFixRecord>> m_mOrigins = {};
 
-	std::unordered_map<int, int> m_mIPriorities = {};
-	std::unordered_map<uint32_t, int> m_mUPriorities = {};
-	std::unordered_map<int, int> m_mIFollowPriorities = {};
-	std::unordered_map<uint32_t, int> m_mUFollowPriorities = {};
+	std::array<std::unordered_map<int, int>, PriorityTypeEnum::Count> m_aIPriorities = {};
+	std::array<std::unordered_map<uint32_t, int>, PriorityTypeEnum::Count> m_aUPriorities = {};
 	std::unordered_map<int, bool> m_mIFriends = {};
 	std::unordered_map<uint32_t, bool> m_mUFriends = {};
 	std::unordered_map<int, int> m_mIParty = {};
@@ -93,10 +94,8 @@ public:
 	uint32_t GetModel(int iIndex);
 	std::deque<VelFixRecord>* GetOrigins(int iIndex);
 
-	int GetPriority(int iIndex);
-	int GetPriority(uint32_t uAccountID);
-	int GetFollowPriority(int iIndex);
-	int GetFollowPriority(uint32_t uAccountID);
+	int GetPriority(int iIndex, PriorityTypeEnum::PriorityTypeEnum eType = PriorityTypeEnum::Relationship);
+	int GetPriority(uint32_t uAccountID, PriorityTypeEnum::PriorityTypeEnum eType = PriorityTypeEnum::Relationship);
 	bool IsFriend(int iIndex);
 	bool IsFriend(uint32_t uAccountID);
 	bool InParty(int iIndex);

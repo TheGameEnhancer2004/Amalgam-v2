@@ -1108,11 +1108,11 @@ I dont think this is a good idea to disable simulations completely:
 				};
 				return vItemAchievementIDs;
 			}
-			CVar(AutoF2Ignored, "Auto F2 ignored", false);
-			CVar(AutoF1Priority, "Auto F1 priority", false);
-			CVarEnum(AutoVotekick, "Auto votekick", 0, NONE, nullptr,
-				VA_LIST("Off", "Random", "Prioritized only"),
-				Off, Random, Prio);
+			CVarEnum(AutoVote, "Auto vote", 0b0, DROPDOWN_MULTI, "Off",
+				VA_LIST("Defend", "Assist", "Kick", "##Divider", "Kick all", "Wait for cooldown"),
+				Defend = 1 << 0, Assist = 1 << 1, Kick = 1 << 2, KickAll = 1 << 3, Cooldown = 1 << 4);
+			CVar(AutoVoteDelay, "Random vote delay", false);
+			CVar(AutoVoteDelayInterval, "Delay interval", FloatRange_t(1.f, 6.5f), SLIDER_MIN, 1.f, 6.5f, 0.5f, "%0.1fs - %0.1fs");
 			CVar(RandomClass, "Random class", false);
 			CVarEnum(RandomClassExclude, "Random class exclude", 0b0, DROPDOWN_MULTI, "None",
 				VA_LIST("Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"),
