@@ -44,7 +44,7 @@ struct RespawnRoom_t
 class CNavEngine
 {
 private:
-	static constexpr int kCrumbCacheVersion = 1;
+	static constexpr int kCrumbCacheVersion = 2;
 	static constexpr float kConnectionSegmentLength = 95.f;
 	static constexpr int kMaxConnectionIntermediateCrumbs = 24;
 	static constexpr float kMinAdaptiveSpacing = 72.f;
@@ -60,6 +60,7 @@ private:
 	Timer m_tInactivityTimer = {};
 	Timer m_tOffMeshTimer = {};
 	Vector m_vOffMeshTarget = {};
+	int m_iStuckJumpAttempts = 0;
 
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;

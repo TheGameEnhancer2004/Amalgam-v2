@@ -167,7 +167,7 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 	{
 		if (vArgs.size() < 2)
 		{
-			SDK::Output("Usage:\n\tcat_ignore <id32> <tag>");
+			SDK::Output("Usage:\n\tcat_ignore <id32> <tag|rage>");
 			return;
 		}
 		
@@ -188,8 +188,13 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 			return;
 		}
 
-		const char* sTag = vArgs[1];
-		int iTagID = F::PlayerUtils.GetTag(sTag);
+		std::string sTag = vArgs[1];
+		std::string sTagLower = sTag;
+		std::transform(sTagLower.begin(), sTagLower.end(), sTagLower.begin(), ::tolower);
+
+		int iTagID = FNV1A::Hash32(sTagLower.c_str()) == FNV1A::Hash32Const("rage")
+			? F::PlayerUtils.TagToIndex(CHEATER_TAG)
+			: F::PlayerUtils.GetTag(sTag);
 		if (iTagID == -1)
 		{
 			SDK::Output(std::format("Invalid tag: {}", sTag).c_str());
@@ -202,15 +207,16 @@ static std::unordered_map<uint32_t, CommandCallback> s_mCommands = {
 			SDK::Output(std::format("Tag {} is not assignable", sTag).c_str());
 			return;
 		}
+		const char* sTagName = pTag->m_sName.c_str();
 
 		if (F::PlayerUtils.HasTag(uFriendsID, iTagID))
 		{
-			SDK::Output(std::format("ID32 {} already has tag {}", uFriendsID, sTag).c_str());
+			SDK::Output(std::format("ID32 {} already has tag {}", uFriendsID, sTagName).c_str());
 			return;
 		}
 
 		F::PlayerUtils.AddTag(uFriendsID, iTagID, true);
-		SDK::Output(std::format("Added tag {} to ID32 {}", sTag, uFriendsID).c_str());
+		SDK::Output(std::format("Added tag {} to ID32 {}", sTagName, uFriendsID).c_str());
 	})
 	AddCommand("cat_dump",
 	{

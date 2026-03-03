@@ -34,9 +34,9 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 	F::Backtrack.SendLerp();
 	F::Misc.PingReducer();
 	F::Misc.MicSpam();
-	F::AutoVote.Run();
 #ifdef TEXTMODE
 	F::NamedPipe.Store();
+	F::NamedPipe.ProcessCommandQueue();
 #endif
 
 	F::Ticks.Move(accumulated_extra_samples, bFinalTick);

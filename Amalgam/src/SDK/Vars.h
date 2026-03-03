@@ -171,6 +171,7 @@ public:
 NAMESPACE_BEGIN(Vars)
 	NAMESPACE_BEGIN(Config)
 		CVar(LoadDebugSettings, "Load debug settings", false);
+		CVar(AutoLoadCheaterConfig, "Auto load cheater config", false);
 		CVar(SteamWebAPIKey, "steamwebapi key", std::string(""), NOBIND);
 	NAMESPACE_END(Config)
 	
@@ -522,16 +523,16 @@ NAMESPACE_BEGIN(Vars)
 	NAMESPACE_BEGIN(AntiAim, Antiaim)
 		CVar(Enabled, VA_LIST("Enabled", "Antiaim enabled"), false);
 		CVarEnum(PitchReal, "Real pitch", 0, NONE, nullptr,
-			VA_LIST("None", "Up", "Down", "Zero", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random"),
-			None, Up, Down, Zero, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom);
+			VA_LIST("None", "Up", "Down", "Zero", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random", "Heck", "Saw", "Moonwalk", "Timed flip (3s)", "Timed flip (3-10s)"),
+			None, Up, Down, Zero, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom, Heck, Saw, Moonwalk, TimedFlip, TimedFlipRandom);
 		CVarEnum(PitchFake, "Fake pitch", 0, NONE, nullptr,
-			VA_LIST("None", "Up", "Down", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random"),
-			None, Up, Down, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom);
-		Enum(Yaw, Forward, Left, Right, Backwards, Edge, Jitter, Spin, Random, Wiggle, Mercedes, Star, UltraRandom);
+			VA_LIST("None", "Up", "Down", "Jitter", "Reverse jitter", "Half up", "Half down", "Random", "Spin", "Ultra Random", "Inverse", "Mirror"),
+			None, Up, Down, Jitter, ReverseJitter, HalfUp, HalfDown, Random, Spin, UltraRandom, Inverse, Mirror);
+		Enum(Yaw, Forward, Left, Right, Backwards, Edge, Jitter, Spin, Random, Wiggle, Mercedes, Star, UltraRandom, Sideways, Omega, RandomUnclamped, Heck, Tornado, Pulse, Helix, Quantum);
 		CVarValues(YawReal, "Real yaw", 0, NONE, nullptr,
-			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random");
+			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random", "Sideways", "Omega", "Random Unclamped", "Heck", "Tornado", "Pulse", "Helix", "Quantum");
 		CVarValues(YawFake, "Fake yaw", 0, NONE, nullptr,
-			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random");
+			"Forward", "Left", "Right", "Backwards", "Edge", "Jitter", "Spin", "Random", "Wiggle", "Mercedes", "Star", "Ultra Random", "Sideways", "Omega", "Random Unclamped", "Heck", "Tornado", "Pulse", "Helix", "Quantum");
 		Enum(YawMode, View, Target);
 		CVarValues(RealYawBase, "Real base", 0, NONE, nullptr,
 			"View", "Target");

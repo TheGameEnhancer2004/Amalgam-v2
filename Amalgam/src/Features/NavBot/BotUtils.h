@@ -24,6 +24,7 @@ class CBotUtils
 {
 private:
 	std::unordered_map<int, bool> m_mAutoScopeCache;
+	std::unordered_map<int, bool> m_mAutoRevCache;
 	std::vector<ClosestEnemy_t> m_vCloseEnemies;
 	ClosestEnemy_t UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* pWeapon);
 
@@ -94,6 +95,7 @@ public:
 	void ForceJump() { if (m_eJumpState == STATE_AWAITING_JUMP) m_eJumpState = Vars::Misc::Movement::AutoCTap.Value ? STATE_CTAP : STATE_JUMP; }
 
 	void AutoScope(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
+	void AutoRev(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd);
 	void Reset();
 };

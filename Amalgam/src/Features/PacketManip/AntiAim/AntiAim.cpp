@@ -150,6 +150,81 @@ float CAntiAim::GetYawOffset(CTFPlayer* pEntity, bool bFake)
 		else
 			return flYawOffset[i];
 	}
+	case Vars::AntiAim::YawEnum::Sideways:
+	{
+		static bool bSideways = false;
+		if (bFake)
+			bSideways = !bSideways;
+		return bSideways ? 90.f : -90.f;
+	}
+	case Vars::AntiAim::YawEnum::Omega:
+	{
+		static float flRandomYaw = 0.f;
+		if (bFake)
+		{
+			flRandomYaw = Math::NormalizeAngle(flRandomYaw + SDK::RandomFloat(-30.f, 30.f));
+			return flRandomYaw;
+		}
+		return Math::NormalizeAngle(flRandomYaw - 180.f + SDK::RandomFloat(-40.f, 40.f));
+	}
+	case Vars::AntiAim::YawEnum::RandomUnclamped: return SDK::RandomFloat(-65536.f, 65536.f);
+	case Vars::AntiAim::YawEnum::Heck: return SDK::RandomFloat(-359999.97f, 359999.97f);
+	case Vars::AntiAim::YawEnum::Tornado:
+	{
+		static float flYaw[2] = {};
+		static float flSpeed[2] = {};
+		static int iRetuneTick[2] = {};
+
+		const int i = bFake ? 1 : 0;
+		const int iTick = I::GlobalVars->tickcount;
+		if (iTick >= iRetuneTick[i] || !flSpeed[i])
+		{
+			iRetuneTick[i] = iTick + SDK::RandomInt(8, 24);
+			const float flBaseSpeed = fmaxf(5.f, fabsf(Vars::AntiAim::SpinSpeed.Value));
+			flSpeed[i] = SDK::RandomFloat(flBaseSpeed, flBaseSpeed * 3.f) * (SDK::RandomInt(0, 1) ? 1.f : -1.f);
+		}
+
+		flYaw[i] = Math::NormalizeAngle(flYaw[i] + flSpeed[i]);
+		return Math::NormalizeAngle(flYaw[i] + sinf(iTick * 0.28f + i * 0.7f) * 35.f);
+	}
+	case Vars::AntiAim::YawEnum::Pulse:
+	{
+		float flBase = 0.f;
+		switch ((I::GlobalVars->tickcount / 6 + (bFake ? 1 : 0)) % 4)
+		{
+		case 0: flBase = 0.f; break;
+		case 1: flBase = 180.f; break;
+		case 2: flBase = 90.f; break;
+		default: flBase = -90.f; break;
+		}
+		return Math::NormalizeAngle(flBase + SDK::RandomFloat(-15.f, 15.f));
+	}
+	case Vars::AntiAim::YawEnum::Helix:
+	{
+		static float flPhase[2] = {};
+		const int i = bFake ? 1 : 0;
+		const float flStep = fmaxf(0.01f, fabsf(Vars::AntiAim::SpinSpeed.Value) * 0.006f);
+		flPhase[i] += flStep + (bFake ? 0.07f : 0.05f);
+
+		const float flYaw = sinf(flPhase[i] * 2.3f) * 125.f + cosf(flPhase[i] * 1.1f) * 35.f;
+		return Math::NormalizeAngle(flYaw);
+	}
+	case Vars::AntiAim::YawEnum::Quantum:
+	{
+		static int iNextShift[2] = {};
+		static float flQuantumYaw[2] = {};
+		static constexpr float arrQuantumAngles[8] = { -180.f, -135.f, -90.f, -45.f, 0.f, 45.f, 90.f, 135.f };
+
+		const int i = bFake ? 1 : 0;
+		const int iTick = I::GlobalVars->tickcount;
+		if (iTick >= iNextShift[i])
+		{
+			iNextShift[i] = iTick + SDK::RandomInt(2, 7);
+			flQuantumYaw[i] = arrQuantumAngles[SDK::RandomInt(0, 7)];
+		}
+
+		return Math::NormalizeAngle(flQuantumYaw[i] + SDK::RandomFloat(-25.f, 25.f));
+	}
 	}
 	return 0.f;
 }
@@ -231,6 +306,81 @@ float CAntiAim::GetPitch(float flCurPitch)
 		flRealPitch = flPitch;
 		break;
 	}
+	case Vars::AntiAim::PitchRealEnum::Heck: flRealPitch = SDK::RandomFloat(-149489.97f, 149489.97f); break;
+	case Vars::AntiAim::PitchRealEnum::Saw:
+	{
+		const float flProgress = fmodf(I::GlobalVars->tickcount * 0.035f, 2.f);
+		flRealPitch = flProgress < 1.f ? -89.f + flProgress * 178.f : 89.f - (flProgress - 1.f) * 178.f;
+		break;
+	}
+	case Vars::AntiAim::PitchRealEnum::Moonwalk:
+	{
+		static int iNextPick = 0;
+		static float flPitch = 0.f;
+		static constexpr float arrPitches[5] = { -89.f, 89.f, -45.f, 45.f, 0.f };
+
+		const int iTick = I::GlobalVars->tickcount;
+		if (iTick >= iNextPick)
+		{
+			iNextPick = iTick + SDK::RandomInt(2, 8);
+			flPitch = arrPitches[SDK::RandomInt(0, 4)];
+		}
+
+		flRealPitch = flPitch;
+		break;
+	}
+	case Vars::AntiAim::PitchRealEnum::TimedFlip:
+	{
+		static bool bUp = false;
+		static float flNextSwap = 0.f;
+		const float flCurTime = I::GlobalVars->curtime;
+
+		if (flNextSwap < flCurTime - 15.f)
+		{
+			flNextSwap = 0.f;
+			bUp = false;
+		}
+
+		if (!flNextSwap)
+		{
+			bUp = true;
+			flNextSwap = flCurTime + 3.f;
+		}
+		else if (flCurTime >= flNextSwap)
+		{
+			bUp = !bUp;
+			flNextSwap = flCurTime + 3.f;
+		}
+
+		flRealPitch = bUp ? -89.f : 89.f;
+		break;
+	}
+	case Vars::AntiAim::PitchRealEnum::TimedFlipRandom:
+	{
+		static bool bUp = false;
+		static float flNextSwap = 0.f;
+		const float flCurTime = I::GlobalVars->curtime;
+
+		if (flNextSwap < flCurTime - 15.f)
+		{
+			flNextSwap = 0.f;
+			bUp = false;
+		}
+
+		if (!flNextSwap)
+		{
+			bUp = true;
+			flNextSwap = flCurTime + SDK::RandomFloat(3.f, 10.f);
+		}
+		else if (flCurTime >= flNextSwap)
+		{
+			bUp = !bUp;
+			flNextSwap = flCurTime + SDK::RandomFloat(3.f, 10.f);
+		}
+
+		flRealPitch = bUp ? -89.f : 89.f;
+		break;
+	}
 	}
 
 	switch (Vars::AntiAim::PitchFake.Value)
@@ -255,10 +405,28 @@ float CAntiAim::GetPitch(float flCurPitch)
 		flFakePitch = flPitch;
 		break;
 	}
+	case Vars::AntiAim::PitchFakeEnum::Inverse: break;
+	case Vars::AntiAim::PitchFakeEnum::Mirror: break;
+	}
+
+	if (Vars::AntiAim::PitchFake.Value == Vars::AntiAim::PitchFakeEnum::Mirror)
+	{
+		float flPitch = -(Vars::AntiAim::PitchReal.Value ? flRealPitch : flCurPitch);
+		return flPitch + (flPitch >= 0.f ? 360.f : -360.f);
+	}
+
+	if (Vars::AntiAim::PitchFake.Value == Vars::AntiAim::PitchFakeEnum::Inverse)
+	{
+		float flPitch = Vars::AntiAim::PitchReal.Value ? flRealPitch : flCurPitch;
+		if (flPitch <= -89.f)
+			return flPitch + 360.f;
+		if (flPitch >= 89.f)
+			return flPitch - 360.f;
+		return flPitch;
 	}
 
 	if (Vars::AntiAim::PitchReal.Value && Vars::AntiAim::PitchFake.Value)
-		return flRealPitch + (flFakePitch > 0.f ? 360 : -360);
+		return flRealPitch + (flFakePitch > 0.f ? 360.f : -360.f);
 	else if (Vars::AntiAim::PitchReal.Value)
 		return flRealPitch;
 	else if (Vars::AntiAim::PitchFake.Value)

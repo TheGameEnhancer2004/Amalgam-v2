@@ -81,9 +81,12 @@ private:
 	static void ConnectAndMaintainPipe();
 
 	void SendStatusUpdate(std::string sStatus);
-	void ExecuteCommand(std::string sCommand);
+	void QueueCommand(std::string sCommand);
 	void QueueMessage(std::string sType, std::string sContent, bool bIsPriority);
 	void ProcessMessageQueue();
+
+	std::mutex m_commandQueueMutex;
+	std::vector<std::string> m_vCommandQueue;
 
 	void ProcessLocalBotMessage(std::string sAccountID);
 	void UpdateLocalBotIgnoreStatus();
@@ -98,6 +101,7 @@ private:
 public:
 	void Initialize();
 	void Shutdown();
+	void ProcessCommandQueue();
 
 	bool IsLocalBot(uint32_t uAccountID);
 	std::vector<int> GetOtherBotsOnServer(std::string sServerIP);
