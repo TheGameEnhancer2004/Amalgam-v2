@@ -97,7 +97,7 @@
     - cat_achievement_unlock: Unlocks item only or all in-game achievements depending on the given argument
 	- cat_achievement_unlock_item: Unlocks item achievements
 	- cat_achievement_unlock_weapon: Same as `cat_achievement_unlock_item`
-	- cat_achievement_lock: Locks achievements, works the same way as `cat_achievement_unlock`
+	- cat_achievement_lock: Locks achievements
 	- cat_achievement_lock_item: Locks item achievements
 	- cat_achievement_lock_weapon: Same as `cat_achievement_lock_item`
 - **Visual**

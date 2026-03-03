@@ -8,9 +8,7 @@
 #define FRIEND_TAG (CHEATER_TAG-1)
 #define PARTY_TAG (FRIEND_TAG-1)
 #define F2P_TAG (PARTY_TAG-1)
-#define FRIEND_IGNORE_TAG (F2P_TAG-1)
-#define BOT_IGNORE_TAG (FRIEND_IGNORE_TAG-1)
-#define TAG_COUNT (-BOT_IGNORE_TAG)
+#define TAG_COUNT (-F2P_TAG)
 
 #define LOCAL "Local"
 #define FRIEND "Friend"
@@ -35,12 +33,6 @@ struct ListPlayer_t
 	int m_iParty;
 };
 
-struct BotIgnoreData_t
-{
-	int m_iKillCount = 0;
-	bool m_bIsIgnored = false;
-};
-
 struct CheaterRecord_t
 {
 	uint32_t m_uAccountID = 0;
@@ -57,6 +49,7 @@ struct PriorityLabel_t
 	Color_t m_tColor = {};
 	int m_iPriority = 0;
 	int m_iFollowPriority = 0;
+	int m_iVotePriority = 0;
 
 	bool m_bLabel = false;
 	bool m_bAssignable = true;
@@ -70,18 +63,15 @@ class CPlayerlistUtils
 public:
 	std::unordered_map<uint32_t, std::vector<int>> m_mPlayerTags = {};
 	std::unordered_map<uint32_t, std::string> m_mPlayerAliases = {};
-	std::unordered_map<uint32_t, BotIgnoreData_t> m_mBotIgnoreData = {};
 	std::unordered_map<uint32_t, CheaterRecord_t> m_mCheaterRecords = {};
 
 	std::vector<PriorityLabel_t> m_vTags = {
-		{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
-		{ "Ignored", { 200, 200, 200, 255 }, -1, 0, false, true, true },
-		{ "Cheater", { 255, 100, 100, 255 }, 1, 0, false, true, true },
-		{ "Friend", { 100, 255, 100, 255 }, 0, 2, true, false, true },
-		{ "Party", { 100, 100, 255, 255 }, 0, 1, true, false, true },
-		{ "F2P", { 255, 255, 255, 255 }, 0, 0, true, false, true },
-		{ "Friend Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true },
-		{ "Bot Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true }
+		{ "Default", { 200, 200, 200, 255 }, 0, 0, 0, false, false, true },
+		{ "Ignored", { 200, 200, 200, 255 }, -1, 0, -1, false, true, true },
+		{ "Cheater", { 255, 100, 100, 255 }, 1, 0, 0, false, true, true },
+		{ "Friend", { 100, 255, 100, 255 }, 0, 2, -1, true, false, true },
+		{ "Party", { 100, 100, 255, 255 }, 0, 1, -1, true, false, true },
+		{ "F2P", { 255, 255, 255, 255 }, 0, 0, 0, true, false, true }
 	};
 
 	std::vector<ListPlayer_t> m_vPlayerCache = {};
@@ -92,15 +82,6 @@ public:
 	bool m_bCheaterLoad = true;
 	bool m_bCheaterSave = false;
 
-	// Thai characters to check for auto-tagging
-	const std::vector<unsigned char> m_vSpecialChars = { 
-		0xE0, 0xB9, 0x87,  // '็'
-		0xE0, 0xB9, 0x88,  // '่'
-		0xE0, 0xB9, 0x8A,  // '๊'
-		0xE0, 0xB9, 0x8B,  // '๋'
-		0xE0, 0xB9, 0x8C,  // '์'
-		0xE0, 0xB9, 0xB9   // 'ู'
-	};
 	mutable std::shared_mutex m_tMutex;
 private:
 	std::vector<int> m_vDummy = {};
@@ -152,6 +133,8 @@ public:
 	int GetPriority(int iIndex, bool bCache = true);
 	int GetFollowPriority(uint32_t uAccountID, bool bCache = true);
 	int GetFollowPriority(int iIndex, bool bCache = true);
+	int GetVotePriority(uint32_t uAccountID, bool bCache = true);
+	int GetVotePriority(int iIndex, bool bCache = true);
 	PriorityLabel_t* GetSignificantTag(uint32_t uAccountID, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
 	PriorityLabel_t* GetSignificantTag(int iIndex, int iMode = 1); // iMode: 0 - Priorities & Labels, 1 - Priorities, 2 - Labels
 	bool IsIgnored(uint32_t uAccountID);
@@ -165,10 +148,6 @@ public:
 	const char* GetPlayerName(uint32_t uAccountID, const char* sDefault, int* pType = nullptr);
 	const char* GetPlayerName(int iIndex);
 	const char* GetPlayerName(uint32_t uAccountID);
-
-	// bool ContainsSpecialChars(const std::string& sName);
-	// void ProcessSpecialCharsInName(uint32_t uAccountID, const std::string& sName);
-	void IncrementBotIgnoreKillCount(uint32_t uAccountID);
 
 	std::vector<int>& GetPlayerTags(uint32_t uAccountID) { return m_mPlayerTags.contains(uAccountID) ? m_mPlayerTags[uAccountID] : m_vDummy; }
 	std::string* GetPlayerAlias(uint32_t uAccountID) { return m_mPlayerAliases.contains(uAccountID) ? &m_mPlayerAliases[uAccountID] : nullptr; }

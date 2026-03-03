@@ -15,6 +15,37 @@ void CAutoHeal::AutoHeal(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 	if (!pTarget || pCmd->buttons & IN_ATTACK && !(G::LastUserCmd->buttons & IN_ATTACK))
 		return;
 
+	m_iTargetIdx = pTarget->entindex();
+
+	if (G::SavedWepIds[SLOT_PRIMARY] == TF_WEAPON_CROSSBOW && Vars::Aimbot::Healing::AutoArrow.Value && Vars::Aimbot::Healing::AutoSwitch.Value)
+	{
+		if (auto pCrossbow = pLocal->GetWeaponFromSlot(SLOT_PRIMARY))
+		{
+			float flDeployTimeMultiplier = 1.0f;
+			SDK::AttribHookValue(flDeployTimeMultiplier, "mult_deploy_time", pLocal);
+			SDK::AttribHookValue(flDeployTimeMultiplier, "mult_single_wep_deploy_time", pCrossbow);
+			flDeployTimeMultiplier = std::max(flDeployTimeMultiplier, 0.00001f);
+
+			float flDeployTime = 0.5f * flDeployTimeMultiplier;
+			float flNextPrimaryAttack = pCrossbow->m_flNextPrimaryAttack();
+			if (flNextPrimaryAttack - flDeployTime <= I::GlobalVars->curtime && pTarget->m_iHealth() < pTarget->GetMaxHealth() - Vars::Aimbot::Healing::AutoSwitchHealth.Value)
+			{
+				float flMinCharge = pWeapon->GetMedigunType() == MEDIGUN_RESIST ? 0.25f : 1.f;
+				if (pWeapon->m_flChargeLevel() < flMinCharge || pTarget->IsInvulnerable()
+					|| pTarget->InCond(TF_COND_BULLET_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST)
+					|| pTarget->InCond(TF_COND_BLAST_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST)
+					|| pTarget->InCond(TF_COND_FIRE_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST))
+				{
+					I::EngineClient->ClientCmd_Unrestricted("slot1");
+
+					m_flAutoSwitchExpireTime = flNextPrimaryAttack > I::GlobalVars->curtime ? flNextPrimaryAttack + 0.1f : I::GlobalVars->curtime + 1.1f;
+					m_iAutoSwitch = 1;
+					return;
+				}
+			}
+		}
+	}
+
 	std::vector<TickRecord*> vRecords = {};
 	if (!F::Backtrack.GetRecords(pTarget, vRecords))
 		return;
@@ -34,8 +65,14 @@ void CAutoHeal::AutoHeal(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 	}
 }
 
-static bool ShouldPopAtHealth(CTFPlayer* pTarget, float flScale)
+static bool ShouldPopAtHealth(CTFPlayer* pTarget, float flScale, int iResistType)
 {
+	if (pTarget->IsInvulnerable()
+		|| pTarget->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST) && iResistType == MEDIGUN_BULLET_RESIST
+		|| pTarget->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST) && iResistType == MEDIGUN_BLAST_RESIST
+		|| pTarget->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST) && iResistType == MEDIGUN_FIRE_RESIST)
+		return false;
+
 	return pTarget->m_iHealth() <= pTarget->GetMaxHealth() * flScale;
 }
 
@@ -45,7 +82,7 @@ void CAutoHeal::Activate(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 		return;
 
 	float flHealthScale = Vars::Aimbot::Healing::ActivationHealthPercent.Value / 100;
-	if (flHealthScale && ShouldPopAtHealth(pLocal, flHealthScale))	// Self check
+	if (flHealthScale && ShouldPopAtHealth(pLocal, flHealthScale, m_iResistType))	// Self check
 		pCmd->buttons |= IN_ATTACK2;
 
 	auto pTarget = pWeapon->m_hHealingTarget().Get();
@@ -55,7 +92,7 @@ void CAutoHeal::Activate(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 		return;
 
 	if ((Vars::Aimbot::Healing::ActivateOnVoice.Value && m_mMedicCallers.contains(pTarget->entindex())) ||
-		(flHealthScale && ShouldPopAtHealth(pTarget->As<CTFPlayer>(), flHealthScale)))
+		(flHealthScale && ShouldPopAtHealth(pTarget->As<CTFPlayer>(), flHealthScale, m_iResistType)))
 		pCmd->buttons |= IN_ATTACK2;
 }
 
@@ -629,18 +666,36 @@ void CAutoHeal::AutoVaccinator(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUser
 	if (m_flSwapTime < I::GlobalVars->curtime)
 		m_iResistType = pWeapon->GetResistType();
 	m_flChargeLevel = pWeapon->m_flChargeLevel();
-	}
+}
 
 void CAutoHeal::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	if (pWeapon->GetWeaponID() != TF_WEAPON_MEDIGUN)
 	{
+		if (m_iAutoSwitch == 2 || !(Vars::Aimbot::Healing::AutoArrow.Value && Vars::Aimbot::Healing::AutoSwitch.Value) && m_iAutoSwitch != 0)
+		{
+			I::EngineClient->ClientCmd_Unrestricted("slot2");
+			m_iAutoSwitch = 0;
+			return;
+		}
+
 		m_mMedicCallers.clear();
 		m_iResistType = -1;
 		m_flDamagedTime = 0.f;
+		m_iTargetIdx = -1;
 		return;
 	}
 
+	if (m_iAutoSwitch == 1)
+	{
+		if (!(Vars::Aimbot::Healing::AutoArrow.Value && Vars::Aimbot::Healing::AutoSwitch.Value))
+			m_iAutoSwitch = 0;
+		else
+		{
+			I::EngineClient->ClientCmd_Unrestricted("slot1");
+			return;
+		}
+	}
 	AutoHeal(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);
 
 	Activate(pLocal, pWeapon->As<CWeaponMedigun>(), pCmd);

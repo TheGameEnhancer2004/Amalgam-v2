@@ -4,6 +4,7 @@
 #include "../../EnginePrediction/EnginePrediction.h"
 #include "../../Ticks/Ticks.h"
 #include "../AutoAirblast/AutoAirblast.h"
+#include "../AutoHeal/AutoHeal.h"
 #include "../../NavBot/BotUtils.h"
 
 //#define SPLASH_DEBUG1 // normal splash visualization
@@ -61,7 +62,7 @@ static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase*
 			int iPriority = F::AimbotGlobal.GetPriority(pEntity->entindex());
 			if (bTeam && bHeal)
 			{
-				iPriority = 0;
+				iPriority = pEntity->entindex() == F::AutoHeal.m_iTargetIdx ? std::numeric_limits<int>::max() : 0;
 				switch (Vars::Aimbot::Healing::HealPriority.Value)
 				{
 				case Vars::Aimbot::Healing::HealPriorityEnum::PrioritizeFriends:
@@ -1928,7 +1929,11 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 			}
 		}
 		if (G::Attacking = SDK::IsAttacking(pLocal, pWeapon, pCmd, true))
+		{
 			F::Aimbot.m_eRanType = EWeaponType::PROJECTILE;
+			if (F::AutoHeal.m_iAutoSwitch == 1)
+				F::AutoHeal.m_iAutoSwitch = 2;
+		}
 		DrawVisuals(iResult, tTarget, m_vPlayerPath, m_vProjectilePath, m_vBoxes);
 
 		Aim(pCmd, tTarget.m_vAngleTo);
@@ -1955,7 +1960,23 @@ bool CAimbotProjectile::RunMain(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUser
 void CAimbotProjectile::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 {
 	m_iWeaponID = pWeapon->GetWeaponID();
+	int iOldAimType = Vars::Aimbot::General::AimType.Value;
+	bool bOldAutoShoot = Vars::Aimbot::General::AutoShoot.Value;
+	if (F::AutoHeal.m_iAutoSwitch != 0)
+	{
+		Vars::Aimbot::General::AimType.Value = Vars::Aimbot::General::AimTypeEnum::Silent;
+		Vars::Aimbot::General::AutoShoot.Value = true;
+	}
 	const bool bSuccess = RunMain(pLocal, pWeapon, pCmd);
+	if (F::AutoHeal.m_iAutoSwitch != 0)
+	{
+		// Force it to switch back if we cant shoot for too long
+		if (!bSuccess && F::AutoHeal.m_flAutoSwitchExpireTime < I::GlobalVars->curtime)
+			F::AutoHeal.m_iAutoSwitch = 2;
+
+		Vars::Aimbot::General::AimType.Value = iOldAimType;
+		Vars::Aimbot::General::AutoShoot.Value = bOldAutoShoot;
+	}
 #ifdef SPLASH_DEBUG5
 	if (Vars::Aimbot::General::AimType.Value && !s_mTraceCount.empty())
 	{

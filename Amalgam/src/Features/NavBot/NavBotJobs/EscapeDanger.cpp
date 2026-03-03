@@ -367,8 +367,9 @@ bool CNavBotDanger::EscapeSpawn(CTFPlayer* pLocal)
 
 	// Don't try too often
 	static Timer tSpawnEscapeCooldown{};
-	if (!tSpawnEscapeCooldown.Run(2.f))
-		return F::NavEngine.m_eCurrentPriority == PriorityListEnum::EscapeSpawn;
+	bool bActive = F::NavEngine.m_eCurrentPriority == PriorityListEnum::EscapeSpawn;
+	if (bActive || !tSpawnEscapeCooldown.Run(2.f))
+		return bActive;
 
 	const auto vLocalOrigin = pLocal->GetAbsOrigin();
 	float flBestDist = FLT_MAX;	CNavArea* pClosest = nullptr;

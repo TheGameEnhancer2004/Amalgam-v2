@@ -32,7 +32,6 @@ void CMisc::RunPre(CTFPlayer* pLocal, CUserCmd* pCmd)
 #endif
 	AntiAFK(pLocal, pCmd);
 	InstantRespawnMVM(pLocal);
-	RandomVotekick(pLocal);
 	ExecBuyBot(pLocal);
 
 	if (!pLocal->IsAlive() || pLocal->IsAGhost() || pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming()
@@ -170,6 +169,112 @@ void CMisc::AutoStrafe(CTFPlayer* pLocal, CUserCmd* pCmd)
 		pCmd->forwardmove = flCosRot * flForward - flSinRot * flSide;
 		pCmd->sidemove = flSinRot * flForward + flCosRot * flSide;
 	}
+	}
+}
+
+void CMisc::AutoFaNJump(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
+{
+	static bool bDidJump = false, bCanJump = false, bShouldRun = false;
+	static int iTicksOnSolid = Vars::Misc::Movement::AutoFaNJumpOnSolidTicks.Value;
+
+	bool bOnSolid = pLocal->OnSolid();
+	if (!bOnSolid)
+	{
+		iTicksOnSolid = 0;
+		if (pLocal->InCond(TF_COND_STUNNED))
+			bCanJump = false;
+	}
+	else iTicksOnSolid += bCanJump = true;
+	
+	if (bDidJump)
+	{
+		if (iTicksOnSolid >= Vars::Misc::Movement::AutoFaNJumpOnSolidTicks.Value)
+		{
+			bDidJump = false;
+			bShouldRun = false;
+		}
+		return;
+	}
+
+	if (!Vars::Misc::Movement::AutoFaNJump.Value || !bCanJump
+		|| G::Attacking == 1 || !G::CanPrimaryAttack
+		|| !pLocal->IsAlive() || pLocal->IsAGhost() 
+		|| pLocal->m_MoveType() != MOVETYPE_WALK || pLocal->IsSwimming() 
+		|| pLocal->IsTaunting() || pLocal->InCond(TF_COND_HALLOWEEN_KART))
+		return;
+
+	if (!pWeapon || pWeapon->m_iClip1() <= 0)
+		return;
+
+	int iDefIndex = pWeapon->m_iItemDefinitionIndex();
+	if (iDefIndex != Scout_m_ForceANature && iDefIndex != Scout_m_FestiveForceANature)
+		return;
+
+	const Vector vVelocity = pLocal->m_vecVelocity();
+
+	// If we dont have enough speed we wont be able to climb anything.
+	// From my experience 150.f is enough to climb the grate dropdowns on 2fort bases
+	if (vVelocity.Length2D() <= 150.f)
+		return;
+
+	Vector vAngles;
+	float flScale = 0.f;
+	if (vVelocity.Length2D() > 300.f && !bOnSolid)
+	{
+		flScale = Math::RemapVal(vVelocity.Length2D(), 300.f, 450.f, 0.f, 1.f);
+
+		CGameTrace wallTrace = {};
+		CTraceFilterWorldAndPropsOnly filter(pLocal);
+		Vector vTrace = pLocal->GetCenter(), vMins =  pLocal->m_vecMins() * 3, vMaxs = pLocal->m_vecMaxs() * 3;
+		vMins.z = -1;
+		SDK::TraceHull(vTrace, vTrace, vMins, vMaxs, MASK_PLAYERSOLID_BRUSHONLY, &filter, &wallTrace);
+		if (!wallTrace.DidHit())
+		{
+			// Preserve speed if we are not attempting to climb
+			vAngles = pCmd->viewangles;
+			vAngles.x = 89.f; 
+		}
+	}
+
+	if (vAngles.x == 0.f)
+	{
+		Math::VectorAngles(vVelocity, vAngles);
+		
+		// 2fort sewers to bridge jump pitch angle if we have enough speed and not on solid
+		vAngles.x = 37.f * (1 + 0.5f * flScale); 
+		vAngles.z = 0;
+	}
+
+	if (!bShouldRun)
+	{
+		if (!Vars::Misc::Movement::AutoFaNJumpCheckCeiling.Value || vVelocity.z <= -300.f)
+			bShouldRun = true;
+		else
+		{
+			CGameTrace ceilingTrace = {};
+			CTraceFilterWorldAndPropsOnly filter(pLocal);
+			Vector vStart = pLocal->m_vecOrigin(); vStart += Vector(0, 0, pLocal->m_vecMaxs().z);
+			Vector vEnd = vStart + Vector(0, 0, pLocal->m_vecMaxs().z * 1.25);
+
+			// Increase hull size because if we change the pitch the trajectory also changes
+			float flSizeScale = 1 + 0.75f * flScale;
+			SDK::TraceHull(vStart, vEnd, pLocal->m_vecMins() * flSizeScale, pLocal->m_vecMaxs() * flSizeScale, MASK_PLAYERSOLID_BRUSHONLY, &filter, &ceilingTrace);
+			if (!ceilingTrace.DidHit())
+				bShouldRun = true;
+		}
+	}
+
+	if (bShouldRun)
+	{
+		if (bOnSolid)
+			pCmd->buttons |= IN_JUMP;
+
+		pCmd->buttons |= IN_ATTACK;
+		G::Attacking = true;
+		bDidJump = true;
+
+		pCmd->viewangles = vAngles;
+		G::SilentAngles = true;
 	}
 }
 
@@ -1114,50 +1219,6 @@ void CMisc::AutoReport()
 	}
 }
 
-void CMisc::RandomVotekick(CTFPlayer* pLocal)
-{
-	if (!Vars::Misc::Automation::AutoVotekick.Value || !pLocal->IsInValidTeam())
-		return;
-
-	if (!m_tAutoVotekickTimer.Run(1.0f))
-		return;
-
-	auto pResource = H::Entities.GetResource();
-	if (!pResource)
-		return;
-
-	std::vector<int> vPotentialTargets;
-
-	for (int i = 1; i <= I::EngineClient->GetMaxClients(); i++)
-	{
-		if (i == pLocal->entindex())
-			continue;
-
-		if (!pResource->m_bValid(i) || pResource->IsFakePlayer(i))
-			continue;
-
-		if (Vars::Misc::Automation::AutoVotekick.Value == Vars::Misc::Automation::AutoVotekickEnum::Prio && !F::PlayerUtils.IsPrioritized(i))
-			continue;
-
-		if (H::Entities.IsFriend(i) ||
-			H::Entities.InParty(i) ||
-			F::PlayerUtils.IsIgnored(i) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-			F::PlayerUtils.HasTag(i, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
-			continue;
-
-		vPotentialTargets.push_back(i);
-	}
-
-	if (vPotentialTargets.empty())
-		return;
-
-	int iRandom = SDK::RandomInt(0, static_cast<int>(vPotentialTargets.size()) - 1);
-	int iTarget = vPotentialTargets[iRandom];
-
-	I::ClientState->SendStringCmd(std::format("callvote Kick \"{} other\"", pResource->m_iUserID(iTarget)).c_str());
-}
-
 void CMisc::ChatSpam(CTFPlayer* pLocal)
 {
 	auto ResetChatTimer = [&]()
@@ -1833,9 +1894,9 @@ std::string CMisc::ReplaceTags(std::string sMsg, std::string sTarget, std::strin
 	return sMsg;
 }
 
-void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sReason, const std::string& sTarget)
+void CMisc::OnVoteStart(int iCaller, int iTarget, const std::string& sTarget)
 {
-	if (!Vars::Misc::Automation::ChatSpam::VoteKickReply.Value || sReason.find("Kick") == std::string::npos)
+	if (!Vars::Misc::Automation::ChatSpam::VoteKickReply.Value)
 		return;
 
 	static Timer tReloadTimer{};

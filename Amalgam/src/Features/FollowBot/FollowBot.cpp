@@ -343,8 +343,21 @@ void CFollowBot::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 	if (Vars::Misc::Movement::FollowBot::LookAtPath.Value)
 	{
 		std::deque<Vec3> vCurrentAngles;
-		if (!pCurrentAngles || Vars::Misc::Movement::FollowBot::LookAtPathMode.Value == Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::CopyImmediate)
-			vCurrentAngles.push_back(m_tLockedTarget.m_pPlayer ? m_vLastTargetAngles = m_tLockedTarget.m_pPlayer->GetEyeAngles() : m_tLockedTarget.m_iEntIndex != -1 ? m_vLastTargetAngles : I::EngineClient->GetViewAngles());
+		if (!pCurrentAngles || Vars::Misc::Movement::FollowBot::LookAtPathMode.Value >= Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::CopyImmediate)
+		{ 
+			Vector vAngles = m_vLastTargetAngles;
+			if (m_tLockedTarget.m_pPlayer)
+			{
+				if (Vars::Misc::Movement::FollowBot::LookAtPathMode.Value == Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::AtTarget)
+					vAngles = m_vLastTargetAngles = Math::CalcAngle(pLocal->GetEyePosition(), m_tLockedTarget.m_pPlayer->m_vecOrigin() + m_tLockedTarget.m_pPlayer->GetViewOffset());
+				else
+					vAngles = m_vLastTargetAngles = m_tLockedTarget.m_pPlayer->GetEyeAngles();
+			}
+			else if (m_tLockedTarget.m_iEntIndex == -1)
+				vAngles = I::EngineClient->GetViewAngles();
+
+			vCurrentAngles.push_back(vAngles);
+		}
 		else if (Vars::Misc::Movement::FollowBot::LookAtPathMode.Value == Vars::Misc::Movement::FollowBot::LookAtPathModeEnum::Path)
 			vCurrentAngles.push_back(vDest);
 

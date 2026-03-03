@@ -8,6 +8,7 @@
 #include "../Features/Backtrack/Backtrack.h"
 #include "../Features/Misc/Misc.h"
 #include "../Features/Visuals/Visuals.h"
+#include "../Features/Misc/AutoVote/AutoVote.h"
 #ifdef TEXTMODE
 #include "../Features/Misc/NamedPipe/NamedPipe.h"
 #endif 
@@ -33,6 +34,7 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 	F::Backtrack.SendLerp();
 	F::Misc.PingReducer();
 	F::Misc.MicSpam();
+	F::AutoVote.Run();
 #ifdef TEXTMODE
 	F::NamedPipe.Store();
 	if (I::EngineClient && I::EngineClient->IsInGame())

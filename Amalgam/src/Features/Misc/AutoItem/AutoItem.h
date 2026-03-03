@@ -1,6 +1,5 @@
 #pragma once
 #include "../../../SDK/SDK.h"
-#include <array>
 #include <chrono>
 
 struct AchivementItem_t

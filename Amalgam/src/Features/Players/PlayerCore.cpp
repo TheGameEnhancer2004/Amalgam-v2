@@ -39,6 +39,7 @@ void CPlayerlistCore::SavePlayerlist()
 				F::Configs.SaveJson(tChild, "Color", tTag.m_tColor);
 				F::Configs.SaveJson(tChild, "Priority", tTag.m_iPriority);
 				F::Configs.SaveJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
+				F::Configs.SaveJson(tChild, "VotePriority", tTag.m_iVotePriority);
 				F::Configs.SaveJson(tChild, "Label", tTag.m_bLabel);
 
 				tSub.put_child(std::to_string(F::PlayerUtils.IndexToTag(iID)), tChild);
@@ -65,17 +66,6 @@ void CPlayerlistCore::SavePlayerlist()
 			}
 			tWrite.put_child("Tags", tSub);
 		}
-
-		boost::property_tree::ptree tBotIgnoreTree;
-		for (auto& [uFriendsID, botData] : F::PlayerUtils.m_mBotIgnoreData)
-		{
-			boost::property_tree::ptree dataEntry;
-			dataEntry.put("KillCount", botData.m_iKillCount);
-			dataEntry.put("IsIgnored", botData.m_bIsIgnored);
-			
-			tBotIgnoreTree.put_child(std::to_string(uFriendsID), dataEntry);
-		}
-		tWrite.put_child("BotIgnore", tBotIgnoreTree);
 
 		{
 			boost::property_tree::ptree tSub;
@@ -116,16 +106,13 @@ void CPlayerlistCore::LoadPlayerlist()
 
 		F::PlayerUtils.m_mPlayerTags.clear();
 		F::PlayerUtils.m_mPlayerAliases.clear();
-		F::PlayerUtils.m_mBotIgnoreData.clear();
 		F::PlayerUtils.m_vTags = {
-			{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
-			{ "Ignored", { 200, 200, 200, 255 }, -1, 0, false, true, true },
-			{ "Cheater", { 255, 100, 100, 255 }, 1, 0, false, true, true },
-			{ "Friend", { 100, 255, 100, 255 }, 0, 2, true, false, true },
-			{ "Party", { 100, 50, 255, 255 }, 0, 1, true, false, true },
-			{ "F2P", { 255, 255, 255, 255 }, 0, 0, true, false, true },
-			{ "Friend Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true },
-			{ "Bot Ignore", { 255, 100, 100, 255 }, -1, 0, false, true, true }
+			{ "Default", { 200, 200, 200, 255 }, 0, 0, 0, false, false, true },
+			{ "Ignored", { 200, 200, 200, 255 }, -1, 0, -1, false, true, true },
+			{ "Cheater", { 255, 100, 100, 255 }, 1, 0, 0, false, true, true },
+			{ "Friend", { 100, 255, 100, 255 }, 0, 2, -1, true, false, true },
+			{ "Party", { 100, 100, 255, 255 }, 0, 1, -1, true, false, true },
+			{ "F2P", { 255, 255, 255, 255 }, 0, 0, 0, true, false, true }
 		};
 
 		if (auto tSub = tRead.get_child_optional("Config"))
@@ -137,15 +124,17 @@ void CPlayerlistCore::LoadPlayerlist()
 				F::Configs.LoadJson(tChild, "Color", tTag.m_tColor);
 				F::Configs.LoadJson(tChild, "Priority", tTag.m_iPriority);
 				F::Configs.LoadJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
+				F::Configs.LoadJson(tChild, "VotePriority", tTag.m_iVotePriority);
 				F::Configs.LoadJson(tChild, "Label", tTag.m_bLabel);
 
 				int iID = F::PlayerUtils.TagToIndex(std::stoi(sName));
-				if (iID > -1 && iID < F::PlayerUtils.m_vTags.size())
+				if (iID > -1 && iID < F::PlayerUtils.m_vTags.size()) 
 				{
 					F::PlayerUtils.m_vTags[iID].m_sName = tTag.m_sName;
 					F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
 					F::PlayerUtils.m_vTags[iID].m_iPriority = tTag.m_iPriority;
 					F::PlayerUtils.m_vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
+					F::PlayerUtils.m_vTags[iID].m_iVotePriority = tTag.m_iVotePriority;
 					F::PlayerUtils.m_vTags[iID].m_bLabel = tTag.m_bLabel;
 				}
 				else
@@ -171,24 +160,6 @@ void CPlayerlistCore::LoadPlayerlist()
 
 					if (!F::PlayerUtils.HasTag(uAccountID, iID))
 						F::PlayerUtils.AddTag(uAccountID, iID, false);
-				}
-			}
-			
-			// Load bot ignore data
-			if (auto tBotIgnoreTree = tRead.get_child_optional("BotIgnore"))
-			{
-				for (auto& player : *tBotIgnoreTree)
-				{
-					uint32_t uFriendsID = std::stoi(player.first);
-					BotIgnoreData_t tBotData;
-					
-					if (auto getValue = player.second.get_optional<int>("KillCount")) 
-						tBotData.m_iKillCount = *getValue;
-					
-					if (auto getValue = player.second.get_optional<bool>("IsIgnored")) 
-						tBotData.m_bIsIgnored = *getValue;
-					
-					F::PlayerUtils.m_mBotIgnoreData[uFriendsID] = tBotData;
 				}
 			}
 		}

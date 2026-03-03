@@ -310,6 +310,7 @@ void CCreateMove::Run(int nSequenceNum, float flInputSampleFrametime, bool bActi
 		F::NoSpread.Run(pLocal, pWeapon, pCmd);
 		F::Resolver.CreateMove();
 		F::Misc.RunPost(pLocal, pCmd);
+		F::Misc.AutoFaNJump(pLocal, pWeapon, pCmd);
 		F::PacketManip.Run(pLocal, pWeapon, pCmd);
 #ifndef TEXTMODE
 		F::Visuals.CreateMove(pLocal, pWeapon);

@@ -6,6 +6,7 @@
 #include "../../../Features/Backtrack/Backtrack.h"
 #include "../../../Features/CheaterDetection/CheaterDetection.h"
 #include "../../../Features/Resolver/Resolver.h"
+#include "../../../Features/Misc/AutoVote/AutoVote.h"
 
 bool CEntities::UpdatePlayerDetails(int nIndex, CTFPlayer* pPlayer, int iLag)
 {
@@ -44,8 +45,11 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 	if (!tUpdateTimer.Run(1.0f))
 		return;
 
-	m_mIPriorities.clear();			m_mUPriorities.clear();
-	m_mIFollowPriorities.clear();	m_mUFollowPriorities.clear();
+	for (int i = 0; i < PriorityTypeEnum::Count; i++)
+	{
+		m_aIPriorities[i].clear();
+		m_aUPriorities[i].clear();
+	}
 	m_mIFriends.clear();			m_mUFriends.clear();
 	m_mIParty.clear();				m_mUParty.clear();
 	m_mIF2P.clear();				m_mUF2P.clear();
@@ -71,14 +75,14 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 
 		const int iPriority = bLocal ? 0 : F::PlayerUtils.GetPriority(uAccountID, false);
 		const int iFollowPriority = bLocal ? 0 : F::PlayerUtils.GetFollowPriority(uAccountID, false);
+		const int iVotePriority = bLocal ? -1 : F::PlayerUtils.GetVotePriority(uAccountID, false);
 		const bool bFriend = !pResource->IsFakePlayer(n)
 			&& I::SteamFriends
 			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
 
-		m_mIPriorities[n] = iPriority;
-		m_mUPriorities[uAccountID] = iPriority;
-		m_mIFollowPriorities[n] = iFollowPriority;
-		m_mUFollowPriorities[uAccountID] = iFollowPriority;
+		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = iPriority;
+		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = iFollowPriority;
+		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = iVotePriority;
 		m_mIFriends[n] = bFriend;
 		m_mUFriends[uAccountID] = bFriend;
 		m_mIParty[n] = 0;
@@ -162,8 +166,10 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 			&& I::SteamFriends
 			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
 
-		m_mIPriorities[n] = m_mUPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
-		m_mIFollowPriorities[n] = m_mUFollowPriorities[uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
+		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
+		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
+		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = !bLocal ? F::PlayerUtils.GetVotePriority(uAccountID, false) : -1;
+
 		m_mIFriends[n] = m_mUFriends[uAccountID] = bFriend;
 		m_mIParty[n] = m_mUParty[uAccountID] = mParties.count(uAccountID) ? mParties[uAccountID] : 0;
 		m_mIF2P[n] = m_mUF2P[uAccountID] = mF2P.count(uAccountID) ? mF2P[uAccountID] : false;
@@ -431,8 +437,11 @@ void CEntities::Clear(bool bShutdown)
 		m_mModels.clear();
 		m_mOrigins.clear();
 
-		m_mIPriorities.clear();			m_mUPriorities.clear();
-		m_mIFollowPriorities.clear();	m_mUFollowPriorities.clear();
+		for (int i = 0; i < PriorityTypeEnum::Count; i++)
+		{
+			m_aIPriorities[i].clear();
+			m_aUPriorities[i].clear();
+		}
 		m_mIFriends.clear();			m_mUFriends.clear();
 		m_mIParty.clear();				m_mUParty.clear();
 		m_mIF2P.clear();				m_mUF2P.clear();
@@ -613,10 +622,8 @@ void CEntities::SetAvgVelocity(int iIndex, Vec3 vAvgVelocity) { m_mAvgVelocities
 uint32_t CEntities::GetModel(int iIndex) { return m_mModels[iIndex]; }
 std::deque<VelFixRecord>* CEntities::GetOrigins(int iIndex) { return m_mOrigins.contains(iIndex) ? &m_mOrigins[iIndex] : nullptr; }
 
-int CEntities::GetPriority(int iIndex) { return m_mIPriorities[iIndex]; }
-int CEntities::GetPriority(uint32_t uAccountID) { return m_mUPriorities[uAccountID]; }
-int CEntities::GetFollowPriority(int iIndex) { return m_mIFollowPriorities[iIndex]; }
-int CEntities::GetFollowPriority(uint32_t uAccountID) { return m_mUFollowPriorities[uAccountID]; }
+int CEntities::GetPriority(int iIndex, PriorityTypeEnum::PriorityTypeEnum eType) { return m_aIPriorities[eType][iIndex]; }
+int CEntities::GetPriority(uint32_t uAccountID, PriorityTypeEnum::PriorityTypeEnum eType) { return m_aUPriorities[eType][uAccountID]; }
 bool CEntities::IsFriend(int iIndex) { return m_mIFriends[iIndex]; }
 bool CEntities::IsFriend(uint32_t uAccountID) { return m_mUFriends[uAccountID]; }
 bool CEntities::InParty(int iIndex) { return iIndex != I::EngineClient->GetLocalPlayer() && m_mIParty[iIndex] == 1; }

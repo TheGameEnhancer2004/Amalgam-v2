@@ -503,6 +503,12 @@ void CMenu::MenuAimbot(int iTab)
 					FToggle(Vars::Aimbot::Healing::AutoVaccinator, FToggleEnum::Right);
 					FToggle(Vars::Aimbot::Healing::ActivateOnVoice, FToggleEnum::Left);
 					FSlider(Vars::Aimbot::Healing::ActivationHealthPercent, FSliderEnum::Right, Vars::Aimbot::Healing::ActivationHealthPercent[DEFAULT_BIND] <= 0.f ? "Off" : "%g%%");
+					PushTransparent(!Vars::Aimbot::Healing::AutoArrow.Value);
+					{
+						FToggleSlider(Vars::Aimbot::Healing::AutoSwitch, Vars::Aimbot::Healing::AutoSwitchHealth);
+						FTooltip("Automatically switch to crossbow and heal if target has less hp than max and has resistance or invulnerability or medigun does not have enough charges.\nThe slider controls how much less hp the target should have from max amount.");
+					}
+					PopTransparent();
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
@@ -1433,24 +1439,34 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Movement::AutoJumpbug, FToggleEnum::Left); // this is unreliable without setups, do not depend on it!
 					FToggle(Vars::Misc::Movement::BreakJump, FToggleEnum::Right);
 					FToggle(Vars::Misc::Movement::AutoRocketJump, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Right);
-					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Left);
-					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoFaNJump, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::AutoCTap, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::FastStop, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::FastAccelerate, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::DuckSpeed, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::MovementLock, FToggleEnum::Left);
+					FToggle(Vars::Misc::Movement::ShieldTurnRate, FToggleEnum::Right);
+					FToggle(Vars::Misc::Movement::NoPush, FToggleEnum::Left);
+
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
 					if (Section("##Debug"))
 					{
+						FText("Rocket jump");
+						Divider();
 						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeGrounded, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpChokeAir, FToggleEnum::Right);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipGround, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpSkipAir, FToggleEnum::Right);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpTimingOffset, FToggleEnum::Left);
 						FSlider(Vars::Misc::Movement::AutoRocketJumpApplyAbove, FToggleEnum::Right);
+
+						Divider();
+						FText("FaN jump");
+						Divider();
+						FSlider(Vars::Misc::Movement::AutoFaNJumpOnSolidTicks, FToggleEnum::Left);
+						FToggle(Vars::Misc::Movement::AutoFaNJumpCheckCeiling, FToggleEnum::Right);
 					} EndSection();
 				}
 				if (Section("Exploits"))
@@ -1488,15 +1504,23 @@ void CMenu::MenuMisc(int iTab)
 					FToggle(Vars::Misc::Automation::AutoReport, FToggleEnum::Right);
 					FToggle(Vars::Misc::Automation::AutoDisguise, FToggleEnum::Left);
 					FToggle(Vars::Misc::Automation::AutoBanJoiner, FToggleEnum::Right);
-					// i think it doesnt work anymore but dh wanted it so here it is
-					FToggle(Vars::Misc::Automation::JoinSpam, FToggleEnum::Left);
+					FToggle(Vars::Misc::Automation::JoinSpam, FToggleEnum::Left); // i think it doesnt work anymore but dh wanted it so here it is
 				} EndSection();
 				if (Section("Voting", 8))
 				{
-					FDropdown(Vars::Misc::Automation::AutoVotekick);
+					FDropdown(Vars::Misc::Automation::AutoVote);
+					PushTransparent(!(Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Defend) 
+						&& !(Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Assist));
+					{
+						FToggle(Vars::Misc::Automation::AutoVoteDelay, FToggleEnum::Left);
+						PushTransparent(!Vars::Misc::Automation::AutoVoteDelay.Value);
+						{
+							FSlider(Vars::Misc::Automation::AutoVoteDelayInterval, FSliderEnum::Right);
+						}
+						PopTransparent();
+					}
+					PopTransparent();
 					FToggleSlider(Vars::Misc::Automation::AutoVoteMap, Vars::Misc::Automation::AutoVoteMapOption);
-					FToggle(Vars::Misc::Automation::AutoF2Ignored, FToggleEnum::Left);
-					FToggle(Vars::Misc::Automation::AutoF1Priority, FToggleEnum::Right);
 				} EndSection();
 				if (Section("Taunts", 8))
 				{
@@ -1613,7 +1637,7 @@ void CMenu::MenuMisc(int iTab)
 					FDropdown(Vars::Misc::Movement::FollowBot::LookAtPath, FDropdownEnum::Left);
 					PushTransparent(!Vars::Misc::Movement::FollowBot::LookAtPath.Value);
 						FDropdown(Vars::Misc::Movement::FollowBot::LookAtPathMode, FDropdownEnum::Right);
-						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.");
+						FTooltip("Look at path mode:\nPath - look at current path node.\nCopy - use saved target viewangles.\nCopy immediate - use current target viewangles.\nAt target - look at current target.");
 						FToggle(Vars::Misc::Movement::FollowBot::LookAtPathNoSnap);
 					PopTransparent();
 					FSlider(Vars::Misc::Movement::FollowBot::MaxNodes, FSliderEnum::Left);
@@ -2532,17 +2556,17 @@ void CMenu::MenuLogs(int iTab)
 			static int iID = -1;
 			static PriorityLabel_t tTag = {};
 
-			auto vTable = WidgetTable(3, H::Draw.Scale(80), { GetWindowWidth() / 2, GetWindowWidth() / 2 - H::Draw.Scale(90) - GetStyle().WindowPadding.x });
+			auto vTable = WidgetTable(2, H::Draw.Scale(104));
 
 			if (BeginWidgetTable(0, vTable))
 			{
-				FSDropdown("Name", &tTag.m_sName, {}, FDropdownEnum::Left | FSDropdownEnum::AutoUpdate, -10);
+				FSDropdown("Name", &tTag.m_sName, {}, FSDropdownEnum::AutoUpdate, -10);
 				FColorPicker("Color", &tTag.m_tColor, FColorPickerEnum::SameLine, {}, { H::Draw.Scale(10), H::Draw.Scale(40) });
 
 				PushDisabled(iID == DEFAULT_TAG || iID == IGNORED_TAG);
 				{
 					int iLabel = Disabled ? 0 : tTag.m_bLabel;
-					FDropdown("Type", &iLabel, { "Priority", "Label" }, {}, FDropdownEnum::Right);
+					FDropdown("Type", &iLabel, { "Priority", "Label" }, {});
 					tTag.m_bLabel = iLabel;
 					if (Disabled)
 						tTag.m_bLabel = false;
@@ -2554,19 +2578,17 @@ void CMenu::MenuLogs(int iTab)
 			{
 				PushTransparent(tTag.m_bLabel); // transparent if we want a label, user can still use to sort
 				{
-					SetCursorPosY(GetCursorPos().y + H::Draw.Scale(12));
-					FSlider("Priority", &tTag.m_iPriority, -10, 10);
-					FSlider("Followbot priority", &tTag.m_iFollowPriority, -1, 10);
+					SetCursorPosY(GetCursorPos().y + H::Draw.Scale(16));
+					FSlider("Priority", &tTag.m_iPriority, -10, 10, 1, "%i", FSliderEnum::Left);
+					FSlider("Followbot priority", &tTag.m_iFollowPriority, -1, 10, 1, tTag.m_iFollowPriority < 0 ? "ignore" : "%i", FSliderEnum::Right);
+					FDropdown("Vote priority", &tTag.m_iVotePriority, { "Defend", "Ignore", "Kick" }, { -1, 0, 1 }, FDropdownEnum::None, -96);
 				}
 				PopTransparent();
-			} EndChild();
 
-			if (BeginWidgetTable(2, vTable))
-			{
 				// create/modify button
 				bool bCreate = false, bClear = false;
 
-				SetCursorPos({ GetWindowWidth() - H::Draw.Scale(95), H::Draw.Scale(8) });
+				SetCursorPos({ GetWindowWidth() - H::Draw.Scale(96), H::Draw.Scale(56) });
 				PushDisabled(tTag.m_sName.empty());
 				{
 					bCreate = FButton(iID != -1 ? ICON_MD_SETTINGS : ICON_MD_ADD, FButtonEnum::None, { 40, 40 }, 0, F::Render.IconFont);
@@ -2574,7 +2596,7 @@ void CMenu::MenuLogs(int iTab)
 				PopDisabled();
 
 				// clear button
-				SetCursorPos({ GetWindowWidth() - H::Draw.Scale(47), H::Draw.Scale(8) });
+				SetCursorPos({ GetWindowWidth() - H::Draw.Scale(48), H::Draw.Scale(56) });
 				bClear = FButton(ICON_MD_CLEAR, FButtonEnum::None, { 40, 40 }, 0, F::Render.IconFont);
 
 				if (bCreate)
@@ -2586,6 +2608,7 @@ void CMenu::MenuLogs(int iTab)
 						F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
 						F::PlayerUtils.m_vTags[iID].m_iPriority = tTag.m_iPriority;
 						F::PlayerUtils.m_vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
+						F::PlayerUtils.m_vTags[iID].m_iVotePriority = tTag.m_iVotePriority;
 						F::PlayerUtils.m_vTags[iID].m_bLabel = tTag.m_bLabel;
 					}
 					else
@@ -2602,7 +2625,7 @@ void CMenu::MenuLogs(int iTab)
 				{
 					int _iID = std::distance(F::PlayerUtils.m_vTags.begin(), it);
 
-					ImVec2 vOriginalPos = { !_tTag.m_bLabel ? GetStyle().WindowPadding.x : GetWindowWidth() * 2 / 3 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(120 + 36 * y) };
+					ImVec2 vOriginalPos = { !_tTag.m_bLabel ? GetStyle().WindowPadding.x : GetWindowWidth() * 2 / 3 + GetStyle().WindowPadding.x / 2, H::Draw.Scale(152 + 36 * y) };
 
 					// background
 					float flWidth = GetWindowWidth() * (_tTag.m_bLabel ? 1.f / 3 : 2.f / 3) - GetStyle().WindowPadding.x * 1.5f;
@@ -2627,18 +2650,19 @@ void CMenu::MenuLogs(int iTab)
 
 					if (!_tTag.m_bLabel)
 					{
-						SetCursorPos({ vOriginalPos.x + flWidth / 2, vOriginalPos.y + H::Draw.Scale(7) });
-						if (_tTag.m_iPriority < 0)
-							IconImage(ICON_MD_FAVORITE);
-						else
-							IconImage(ICON_MD_HEART_BROKEN, ImVec4(0.867f, 0.18f, 0.267f, 1.f));
-						SetCursorPos({ vOriginalPos.x + flWidth / 2 + H::Draw.Scale(20), vOriginalPos.y + H::Draw.Scale(7) });
-						FText(std::format("{}", _tTag.m_iPriority).c_str());
+						auto drawQuickInfo = [](ImVec2 vOriginalPos, float& flOffset, float flWidth, int iValue, const char* sIcon, ImVec4 tIconColor = { 1.0f, 1.0f, 1.0f, -1.0f }) -> void
+							{
+								SetCursorPos({ vOriginalPos.x + flOffset, vOriginalPos.y + H::Draw.Scale(7) });
+								IconImage(sIcon, tIconColor);
+								SetCursorPos({ vOriginalPos.x + flOffset + H::Draw.Scale(20), vOriginalPos.y + H::Draw.Scale(7) });
+								FText(std::format("{}", iValue).c_str());
+								flOffset += flWidth / 8;
+							};
 
-						SetCursorPos({ vOriginalPos.x + flWidth / 2 + flWidth / 4, vOriginalPos.y + H::Draw.Scale(7) });
-						IconImage(ICON_MD_DIRECTIONS_RUN);
-						SetCursorPos({ vOriginalPos.x + flWidth / 2 + flWidth / 4 + H::Draw.Scale(20), vOriginalPos.y + H::Draw.Scale(7) });
-						FText(std::format("{}", _tTag.m_iFollowPriority).c_str());
+						float flOffset = flWidth / 2;
+						drawQuickInfo(vOriginalPos, flOffset, flWidth, _tTag.m_iPriority, _tTag.m_iPriority < 0 ? ICON_MD_FAVORITE : ICON_MD_HEART_BROKEN, _tTag.m_iPriority < 0 ? ImVec4(1.0f, 1.0f, 1.0f, -1.0f) : ImVec4(0.867f, 0.18f, 0.267f, 1.f));
+						drawQuickInfo(vOriginalPos, flOffset, flWidth, _tTag.m_iFollowPriority, ICON_MD_DIRECTIONS_RUN);
+						drawQuickInfo(vOriginalPos, flOffset, flWidth, _tTag.m_iVotePriority, ICON_MD_CAMPAIGN);
 					}
 
 					// buttons / icons
@@ -2673,6 +2697,7 @@ void CMenu::MenuLogs(int iTab)
 						tTag.m_tColor = _tTag.m_tColor;
 						tTag.m_iPriority = _tTag.m_iPriority;
 						tTag.m_iFollowPriority = _tTag.m_iFollowPriority;
+						tTag.m_iVotePriority = _tTag.m_iVotePriority;
 						tTag.m_bLabel = _tTag.m_bLabel;
 					}
 					else if (bPopup)
@@ -2761,8 +2786,8 @@ void CMenu::MenuLogs(int iTab)
 				};
 
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
-			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(120) }); FText("Priorities");
-			SetCursorPos({ GetWindowWidth() * 2 / 3 + H::Draw.Scale(9), H::Draw.Scale(120) }); FText("Labels");
+			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(122) }); Divider(); SetCursorPosY(H::Draw.Scale(134)); FText("Priorities");
+			SetCursorPos({ GetWindowWidth() * 2 / 3 + H::Draw.Scale(9), H::Draw.Scale(134) }); FText("Labels");
 			PopStyleColor();
 
 			std::vector<std::pair<std::vector<PriorityLabel_t>::iterator, PriorityLabel_t>> vPriorities = {}, vLabels = {};
@@ -2791,6 +2816,9 @@ void CMenu::MenuLogs(int iTab)
 					if (a.second.m_iFollowPriority != b.second.m_iFollowPriority)
 						return a.second.m_iFollowPriority > b.second.m_iFollowPriority;
 
+					if (a.second.m_iVotePriority != b.second.m_iVotePriority)
+						return a.second.m_iVotePriority > b.second.m_iVotePriority;
+
 					return a.second.m_sName < b.second.m_sName;
 				});
 			std::sort(vLabels.begin(), vLabels.end(), [&](const auto& a, const auto& b) -> bool
@@ -2801,6 +2829,9 @@ void CMenu::MenuLogs(int iTab)
 
 					if (a.second.m_iFollowPriority != b.second.m_iFollowPriority)
 						return a.second.m_iFollowPriority > b.second.m_iFollowPriority;
+
+					if (a.second.m_iVotePriority != b.second.m_iVotePriority)
+						return a.second.m_iVotePriority > b.second.m_iVotePriority;
 
 					return a.second.m_sName < b.second.m_sName;
 				});
@@ -2817,7 +2848,7 @@ void CMenu::MenuLogs(int iTab)
 				drawTag(pair.first, pair.second, iLabels);
 				iLabels++;
 			}
-			SetCursorPos({ 0, H::Draw.Scale(84 + 36 * std::max(iPriorities, iLabels)) }); DebugDummy({ 0, H::Draw.Scale(28) });
+			SetCursorPos({ 0, H::Draw.Scale(116 + 36 * std::max(iPriorities, iLabels)) }); DebugDummy({ 0, H::Draw.Scale(28) });
 		} EndSection();
 		{
 			PushDisabled(F::PlayerUtils.m_bLoad);
@@ -2867,12 +2898,12 @@ void CMenu::MenuLogs(int iTab)
 							mPlayerAliases.clear();
 							mAs.clear();
 							vTags = {
-								{ "Default", { 200, 200, 200, 255 }, 0, 0, false, false, true },
-								{ "Ignored", { 200, 200, 200, 255 }, -1, 0, false, true, true },
-								{ "Cheater", { 255, 100, 100, 255 }, 1, 0, false, true, true },
-								{ "Friend", { 100, 255, 100, 255 }, 0, 2, true, false, true },
-								{ "Party", { 100, 100, 255, 255 }, 0, 1, true, false, true },
-								{ "F2P", { 255, 255, 255, 255 }, 0, 0, true, false, true }
+								{ "Default", { 200, 200, 200, 255 }, 0, 0, 0, false, false, true },
+								{ "Ignored", { 200, 200, 200, 255 }, -1, 0, -1, false, true, true },
+								{ "Cheater", { 255, 100, 100, 255 }, 1, 0, 0, false, true, true },
+								{ "Friend", { 100, 255, 100, 255 }, 0, 2, -1, true, false, true },
+								{ "Party", { 100, 100, 255, 255 }, 0, 1, -1, true, false, true },
+								{ "F2P", { 255, 255, 255, 255 }, 0, 0, 0, true, false, true }
 							};
 
 							if (auto tSub = tRead.get_child_optional("Config"))
@@ -2884,6 +2915,7 @@ void CMenu::MenuLogs(int iTab)
 									F::Configs.LoadJson(tChild, "Color", tTag.m_tColor);
 									F::Configs.LoadJson(tChild, "Priority", tTag.m_iPriority);
 									F::Configs.LoadJson(tChild, "FollowPriority", tTag.m_iFollowPriority);
+									F::Configs.LoadJson(tChild, "VotePriority", tTag.m_iVotePriority);
 									F::Configs.LoadJson(tChild, "Label", tTag.m_bLabel);
 
 									int iID = F::PlayerUtils.TagToIndex(std::stoi(sName));
@@ -2893,6 +2925,7 @@ void CMenu::MenuLogs(int iTab)
 										vTags[iID].m_tColor = tTag.m_tColor;
 										vTags[iID].m_iPriority = tTag.m_iPriority;
 										vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
+										vTags[iID].m_iVotePriority = tTag.m_iVotePriority;
 										vTags[iID].m_bLabel = tTag.m_bLabel;
 									}
 									else
@@ -3518,7 +3551,8 @@ void CMenu::MenuSettings(int iTab)
 			} EndChild();
 
 			PushStyleColor(ImGuiCol_Text, F::Render.Inactive.Value);
-			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(128) });
+			SetCursorPos({ H::Draw.Scale(13), H::Draw.Scale(124) });
+			Divider(); SetCursorPosY(H::Draw.Scale(136));
 			FText("Binds");
 			SetCursorPosY(GetCursorPosY() - H::Draw.Scale(5));
 			PopStyleColor();

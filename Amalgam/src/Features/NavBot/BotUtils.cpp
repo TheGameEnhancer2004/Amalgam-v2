@@ -5,6 +5,7 @@
 #include "../Misc/Misc.h"
 #include "../Aimbot/AimbotGlobal/AimbotGlobal.h"
 #include "../Aimbot/AutoRocketJump/AutoRocketJump.h"
+#include "../Aimbot/AutoHeal/AutoHeal.h"
 #include "../Misc/NamedPipe/NamedPipe.h"
 #include "../Ticks/Ticks.h"
 
@@ -257,7 +258,7 @@ ClosestEnemy_t CBotUtils::UpdateCloseEnemies(CTFPlayer* pLocal, CTFWeaponBase* p
 
 void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 {
-	if (!Vars::Misc::Movement::BotUtils::WeaponSlot.Value)
+	if (!Vars::Misc::Movement::BotUtils::WeaponSlot.Value || F::AutoHeal.m_iAutoSwitch != 0)
 	{
 		m_iBestSlot = -1;
 		return;
@@ -400,7 +401,7 @@ void CBotUtils::UpdateBestSlot(CTFPlayer* pLocal)
 
 void CBotUtils::SetSlot(CTFPlayer* pLocal, int iSlot)
 {
-	if (iSlot > -1)
+	if (iSlot > -1 && F::AutoHeal.m_iAutoSwitch == 0)
 	{
 		auto sCommand = "slot" + std::to_string(iSlot + 1);
 		if (m_iCurrentSlot != iSlot)
