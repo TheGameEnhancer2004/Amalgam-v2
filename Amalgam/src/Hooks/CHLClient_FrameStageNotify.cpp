@@ -4,7 +4,6 @@
 #include "../Features/Backtrack/Backtrack.h"
 #include "../Features/Binds/Binds.h"
 #include "../Features/CheaterDetection/CheaterDetection.h"
-#include "../Features/Configs/Configs.h"
 #include "../Features/CritHack/CritHack.h"
 #include "../Features/Players/PlayerUtils.h"
 #include "../Features/Resolver/Resolver.h"
