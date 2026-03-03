@@ -115,68 +115,67 @@ void CNamedPipe::Shutdown()
 		m_pipeThread.join();
 }
 
-void CNamedPipe::PumpCommands()
-{
-	FlushPendingCommands();
-}
-
 void CNamedPipe::Store(CTFPlayer* pLocal, bool bCreateMove)
 {
-	(void)pLocal;
-	(void)bCreateMove;
-
 	std::unique_lock lock(m_infoMutex);
 
-	const bool bInGame = I::EngineClient && I::EngineClient->IsInGame();
-	tInfo.m_bInGame = bInGame;
-	tInfo.m_iCurrentHealth = -1;
-	tInfo.m_iCurrentClass = TF_CLASS_UNDEFINED;
-	tInfo.m_iCurrentFPS = I::GlobalVars && I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
-	tInfo.m_iCurrentKills = -1;
-	tInfo.m_iCurrentDeaths = -1;
-
-	if (!tInfo.m_uAccountID && I::SteamUser)
-		tInfo.m_uAccountID = I::SteamUser->GetSteamID().GetAccountID();
-
-	if (!bInGame)
+	if (bCreateMove)
 	{
-		tInfo.m_sCurrentMapName = "N/A";
-		tInfo.m_sCurrentServer = "N/A";
-		m_bSetMapName = false;
-		m_bSetServerName = false;
-	}
-
-	if (bInGame && !m_bSetMapName)
-	{
-		tInfo.m_sCurrentMapName = SDK::GetLevelName();
-		m_bSetMapName = true;
-	}
-
-	if (bInGame && !m_bSetServerName)
-	{
-		if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
+		tInfo.m_iCurrentHealth = pLocal->IsAlive() ? pLocal->m_iHealth() : -1;
+		tInfo.m_iCurrentClass = pLocal->IsInValidTeam() ? pLocal->m_iClass() : TF_CLASS_UNDEFINED;
+		tInfo.m_iCurrentFPS = I::GlobalVars->absoluteframetime > 0.f ? static_cast<int>(1.f / I::GlobalVars->absoluteframetime) : -1;
+		if (auto pResource = H::Entities.GetResource())
 		{
-			const char* cAddr = pNetChan->GetAddress();
-			if (cAddr && cAddr[0] != '\0' && std::string(cAddr) != "loopback")
-			{
-				tInfo.m_sCurrentServer = std::string(cAddr);
-				m_bSetServerName = true;
-			}
+			int iLocalIdx = pLocal->entindex();
+			tInfo.m_iCurrentKills = pResource->m_iScore(iLocalIdx);
+			tInfo.m_iCurrentDeaths = pResource->m_iDeaths(iLocalIdx);
 		}
-	}
 
-	if (I::SteamFriends)
-	{
-		const char* szPersonaName = I::SteamFriends->GetPersonaName();
-		if (szPersonaName)
-			tInfo.m_sBotName = szPersonaName;
-		else
-			tInfo.m_sBotName = "Unknown";
+		UpdateLocalBotIgnoreStatus();
+		return;
 	}
 	else
-		tInfo.m_sBotName = "Unknown";
+	{
+		if (!tInfo.m_uAccountID)
+			tInfo.m_uAccountID = H::Entities.GetLocalAccountID();
 
-	lock.unlock();
+		tInfo.m_bInGame = I::EngineClient->IsInGame();
+		if (tInfo.m_bInGame)
+		{
+			if (!m_bSetMapName)
+			{
+				tInfo.m_sCurrentMapName = SDK::GetLevelName();
+				m_bSetMapName = true;
+			}
+
+			if (!m_bSetServerName)
+			{
+				if (auto pNetChan = I::EngineClient->GetNetChannelInfo())
+				{
+					const char* cAddr = pNetChan->GetAddress();
+					if (cAddr && cAddr[0] != '\0' && std::string(cAddr) != "loopback")
+					{
+						tInfo.m_sCurrentServer = std::string(cAddr);
+						m_bSetServerName = true;
+					}
+				}
+			}
+		}
+		else
+		{
+			tInfo.m_sCurrentMapName = "N/A";
+			tInfo.m_sCurrentServer = "N/A";
+			m_bSetMapName = false;
+			m_bSetServerName = false;
+		}
+
+		static Timer tNameRefreshTimer{};
+		if (tNameRefreshTimer.Run(5.f))
+		{
+			const char* szPersonaName = I::SteamFriends->GetPersonaName();
+			tInfo.m_sBotName = szPersonaName != nullptr ? szPersonaName : "Unknown";
+		}
+	}
 }
 
 void CNamedPipe::Event(IGameEvent* pEvent, uint32_t uHash)
@@ -337,7 +336,6 @@ void CNamedPipe::ConnectAndMaintainPipe()
 				}
 			}
 			F::NamedPipe.ProcessMessageQueue();
-			F::NamedPipe.FlushPendingCommands();
 
 			static DWORD dwLastHeartbeat = 0;
 			DWORD dwNow = GetTickCount();
@@ -437,8 +435,8 @@ void CNamedPipe::ConnectAndMaintainPipe()
 
 						if (sMessageType == "Command")
 						{
-							F::NamedPipe.Log("Executing command: " + sContent);
-							F::NamedPipe.ExecuteCommand(sContent);
+							F::NamedPipe.Log("Queueing command: " + sContent);
+							F::NamedPipe.QueueCommand(sContent);
 						}
 						else if (sMessageType == "LocalBot")
 							F::NamedPipe.ProcessLocalBotMessage(sContent);
@@ -491,66 +489,38 @@ void CNamedPipe::SendStatusUpdate(std::string sStatus)
 	QueueMessage("Status", sStatus, true);
 }
 
-void CNamedPipe::ExecuteCommand(std::string sCommand)
+void CNamedPipe::QueueCommand(std::string sCommand)
 {
-	Log("ExecuteCommand called with: " + sCommand);
+	Log("QueueCommand called with: " + sCommand);
 
-	if (DispatchCommand(sCommand))
-	{
-		Log("Command sent to TF2 console: " + sCommand);
-		SendStatusUpdate("CommandExecuted:" + sCommand);
+	if (sCommand.empty())
 		return;
-	}
 
-	Log("EngineClient is not available yet, queueing command: " + sCommand);
 	{
-		std::lock_guard lock(m_pendingCommandsMutex);
-		if (m_vPendingCommands.size() >= MAX_PENDING_COMMANDS)
-			m_vPendingCommands.erase(m_vPendingCommands.begin());
-		m_vPendingCommands.push_back(sCommand);
+		std::lock_guard lock(m_commandQueueMutex);
+		if (m_vCommandQueue.size() >= MAX_PENDING_COMMANDS)
+			m_vCommandQueue.erase(m_vCommandQueue.begin());
+		m_vCommandQueue.push_back(sCommand);
 	}
 
 	SendStatusUpdate("CommandQueued:" + sCommand);
 }
 
-bool CNamedPipe::DispatchCommand(const std::string& sCommand)
+void CNamedPipe::ProcessCommandQueue()
 {
-	if (sCommand.empty() || !I::EngineClient)
-		return false;
-
-	I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
-	return true;
-}
-
-void CNamedPipe::FlushPendingCommands()
-{
-	if (!I::EngineClient)
-		return;
-
-	std::vector<std::string> vPendingCommands;
+	std::vector<std::string> vCommands;
 	{
-		std::lock_guard lock(m_pendingCommandsMutex);
-		if (m_vPendingCommands.empty())
+		std::lock_guard lock(m_commandQueueMutex);
+		if (m_vCommandQueue.empty())
 			return;
-		vPendingCommands.swap(m_vPendingCommands);
+		vCommands.swap(m_vCommandQueue);
 	}
 
-	for (size_t iCommand = 0; iCommand < vPendingCommands.size(); iCommand++)
+	for (const auto& sCommand : vCommands)
 	{
-		const auto& sCommand = vPendingCommands[iCommand];
-		if (DispatchCommand(sCommand))
-		{
-			Log("Flushed queued command to TF2 console: " + sCommand);
-			SendStatusUpdate("CommandExecuted:" + sCommand);
-		}
-		else
-		{
-			std::lock_guard lock(m_pendingCommandsMutex);
-			m_vPendingCommands.insert(m_vPendingCommands.end(), vPendingCommands.begin() + iCommand, vPendingCommands.end());
-			if (m_vPendingCommands.size() > MAX_PENDING_COMMANDS)
-				m_vPendingCommands.erase(m_vPendingCommands.begin(), m_vPendingCommands.begin() + (m_vPendingCommands.size() - MAX_PENDING_COMMANDS));
-			break;
-		}
+		I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());
+		Log("Executed queued command: " + sCommand);
+		SendStatusUpdate("CommandExecuted:" + sCommand);
 	}
 }
 
@@ -775,20 +745,17 @@ void CNamedPipe::UpdateLocalBotIgnoreStatus()
 		lock.unlock();
 	}
 
+	int iIgnoredTagIdx = F::PlayerUtils.TagToIndex(IGNORED_TAG);
+	int iFriendTagIdx = F::PlayerUtils.TagToIndex(IGNORED_TAG);
 	for (const auto& uAccountID : vLocalBotIds)
 	{
-		if (!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG)) ||
-			!F::PlayerUtils.HasTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG)))
+		if (!F::PlayerUtils.HasTag(uAccountID, iIgnoredTagIdx) ||
+			!F::PlayerUtils.HasTag(uAccountID, iFriendTagIdx))
 		{
-			const char* szName = "";
-			if (I::SteamFriends)
-			{
-				szName = I::SteamFriends->GetFriendPersonaName(CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual));
-				if (!szName) szName = "";
-			}
+			const char* szName = I::SteamFriends->GetFriendPersonaName(CSteamID(uAccountID, k_EUniversePublic, k_EAccountTypeIndividual));;
 
-			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(IGNORED_TAG), true, szName);
-			F::PlayerUtils.AddTag(uAccountID, F::PlayerUtils.TagToIndex(FRIEND_TAG), true, szName);
+			F::PlayerUtils.AddTag(uAccountID, iIgnoredTagIdx, true, szName);
+			F::PlayerUtils.AddTag(uAccountID, iFriendTagIdx, true, szName);
 			Log("Marked local bot as ignored and friend: " + std::string(szName));
 			break;
 		}

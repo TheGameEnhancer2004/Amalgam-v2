@@ -653,36 +653,29 @@ bool CConfigs::LoadConfig(const std::string& sConfigName, bool bNotify)
 	return true;
 }
 
-void CConfigs::HandleAutoConfig()
+void CConfigs::HandleAutoConfig(bool bHasCheater)
 {
 	if (!Vars::Config::AutoLoadCheaterConfig.Value)
 		return;
 
-	bool bHasCheater = false;
-	if (I::EngineClient->IsConnected())
+	const char* sConfigName = nullptr;
+	bool bHasNotLoaded = m_sLoadOriginalConfig.empty();
+	if (bHasCheater && bHasNotLoaded)
 	{
-		if (auto pResource = H::Entities.GetResource())
-		{
-			const int iCheaterTag = F::PlayerUtils.TagToIndex(CHEATER_TAG);
-			for (int n = 1; n <= I::EngineClient->GetMaxClients(); n++)
-			{
-				if (!pResource->m_bValid(n) || !pResource->m_bConnected(n) || pResource->IsFakePlayer(n))
-					continue;
-
-				if (F::PlayerUtils.HasTag(n, iCheaterTag))
-				{
-					bHasCheater = true;
-					break;
-				}
-			}
-		}
+		m_sLoadOriginalConfig = m_sCurrentConfig;
+		sConfigName = "cheater";
 	}
-
-	const char* sConfigName = bHasCheater ? "cheater" : "default";
-	if (FNV1A::Hash32(m_sCurrentConfig.c_str()) == FNV1A::Hash32(sConfigName))
+	else if (!bHasNotLoaded)
+		sConfigName = m_sLoadOriginalConfig.c_str();
+	else
 		return;
 
-	if (bHasCheater && !std::filesystem::exists(m_sConfigPath + sConfigName + m_sConfigExtension))
+	if (FNV1A::Hash32(m_sCurrentConfig.c_str()) == FNV1A::Hash32(sConfigName))
+		return;
+	else if (!bHasCheater)
+		m_sLoadOriginalConfig.clear();
+
+	if (!std::filesystem::exists(m_sConfigPath + sConfigName + m_sConfigExtension))
 		return;
 
 	LoadConfig(sConfigName, true);

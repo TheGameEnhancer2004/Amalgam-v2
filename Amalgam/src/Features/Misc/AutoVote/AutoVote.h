@@ -22,7 +22,7 @@ public:
 	void OnVoteEnd(int iVoteID);
 	void OnCallVoteFail(int iTimeLeft);
 
-	void Run();
+	void Run(CTFPlayer* pLocal);
 	void Reset();
 
 	bool m_bActiveVote = false;

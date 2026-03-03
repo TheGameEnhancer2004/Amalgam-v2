@@ -3436,7 +3436,7 @@ void CMenu::MenuSettings(int iTab)
 			if (Section("Config"))
 			{
 				FToggle(Vars::Config::AutoLoadCheaterConfig, FToggleEnum::Left);
-				FTooltip("Loads cheater.json when a tagged cheater is in match and switches back to default.json when none are present.");
+				FTooltip("Loads cheater.json when a tagged cheater is in match and switches back when none are present.");
 				DebugDummy({ 0, H::Draw.Scale(6) });
 
 				static std::string sStaticName;

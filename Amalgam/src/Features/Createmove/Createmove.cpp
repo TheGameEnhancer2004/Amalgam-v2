@@ -19,6 +19,7 @@
 #include "../FollowBot/FollowBot.h"
 #include "../AutoJoin/AutoJoin.h"
 #include "../Misc/AutoItem/AutoItem.h"
+#include "../Misc/AutoVote/AutoVote.h"
 
 MAKE_SIGNATURE(IHasGenericMeter_GetMeterMultiplier, "client.dll", "F3 0F 10 81 ? ? ? ? C3 CC CC CC CC CC CC CC 48 85 D2", 0x0);
 MAKE_SIGNATURE(C_BaseAnimating_AutoAllowBoneAccess, "client.dll", "40 53 48 83 EC ? 41 0F B6 C0 44 0F B6 CA", 0x0);
@@ -294,6 +295,7 @@ void CCreateMove::Run(int nSequenceNum, float flInputSampleFrametime, bool bActi
 	F::AutoItem.Run(pLocal);
 	F::GameObjectiveController.Update();
 	F::BotUtils.Run(pLocal, pWeapon, pCmd);
+	F::AutoVote.Run(pLocal);
 
 	F::Ticks.Start(pLocal, pCmd);
 	{

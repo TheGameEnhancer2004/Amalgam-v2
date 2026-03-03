@@ -7,6 +7,7 @@
 #include "../../../Features/CheaterDetection/CheaterDetection.h"
 #include "../../../Features/Resolver/Resolver.h"
 #include "../../../Features/Misc/AutoVote/AutoVote.h"
+#include "../../../Features/Configs/Configs.h"
 
 bool CEntities::UpdatePlayerDetails(int nIndex, CTFPlayer* pPlayer, int iLag)
 {
@@ -57,8 +58,13 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 
 	auto pResource = GetResource();
 	if (!pResource)
+	{
+		tUpdateTimer -= 1.0f;
 		return;
+	}
 
+	bool bHasCheater = !Vars::Config::AutoLoadCheaterConfig.Value;
+	const int iCheaterTag = F::PlayerUtils.TagToIndex(CHEATER_TAG);
 #ifdef TEXTMODE
 	m_iPartyCount = 0;
 
@@ -68,30 +74,23 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 		if (!pResource->m_bValid(n))
 			continue;
 
-		const uint32_t uAccountID = pResource->m_iAccountID(n);
-		const bool bLocal = n == nLocalIndex;
-		if (bLocal)
-			m_uAccountID = uAccountID;
+		constuint32_t uAccountID = pResource->m_iAccountID(n);
+		const bool bLocal = (n == nLocalIndex);
+		if (bLocal) m_uAccountID = uAccountID;
 
-		const int iPriority = bLocal ? 0 : F::PlayerUtils.GetPriority(uAccountID, false);
-		const int iFollowPriority = bLocal ? 0 : F::PlayerUtils.GetFollowPriority(uAccountID, false);
-		const int iVotePriority = bLocal ? -1 : F::PlayerUtils.GetVotePriority(uAccountID, false);
-		const bool bFriend = !pResource->IsFakePlayer(n)
-			&& I::SteamFriends
-			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
+		const int iPriority = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
+		if (!bHasCheater && iPriority >= 0 && F::PlayerUtils.HasTag(uAccountID, iCheaterTag))
+			bHasCheater = true;
 
 		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = iPriority;
-		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = iFollowPriority;
-		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = iVotePriority;
-		m_mIFriends[n] = bFriend;
-		m_mUFriends[uAccountID] = bFriend;
-		m_mIParty[n] = 0;
-		m_mUParty[uAccountID] = 0;
-		m_mIF2P[n] = false;
-		m_mUF2P[uAccountID] = false;
-		m_mILevels[n] = -2;
-		m_mULevels[uAccountID] = -2;
+		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
+		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = !bLocal ? F::PlayerUtils.GetVotePriority(uAccountID, false) : -1;
+		m_mIFriends[n] = m_mUFriends[uAccountID] = !pResource->IsFakePlayer(n) && I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
+		m_mIParty[n] = m_mUParty[uAccountID] = 0;
+		m_mIF2P[n] = m_mUF2P[uAccountID] = false;
+		m_mILevels[n] = m_mULevels[uAccountID] = -2;
 	}
+	F::Configs.HandleAutoConfig(bHasCheater);
 	return;
 #endif
 
@@ -162,19 +161,21 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 		uint32_t uAccountID = pResource->m_iAccountID(n);
 		bool bLocal = (n == nLocalIndex);
 		if (bLocal) m_uAccountID = uAccountID;
-		const bool bFriend = !pResource->IsFakePlayer(n)
-			&& I::SteamFriends
-			&& I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
 
-		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
+		const int iPriority = bLocal ? 0 : F::PlayerUtils.GetPriority(uAccountID, false);
+		if (!bHasCheater && iPriority >= 0 && F::PlayerUtils.HasTag(uAccountID, iCheaterTag))
+			bHasCheater = true;
+
+		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = iPriority;
 		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
 		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = !bLocal ? F::PlayerUtils.GetVotePriority(uAccountID, false) : -1;
 
-		m_mIFriends[n] = m_mUFriends[uAccountID] = bFriend;
+		m_mIFriends[n] = m_mUFriends[uAccountID] = !pResource->IsFakePlayer(n) && I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
 		m_mIParty[n] = m_mUParty[uAccountID] = mParties.count(uAccountID) ? mParties[uAccountID] : 0;
 		m_mIF2P[n] = m_mUF2P[uAccountID] = mF2P.count(uAccountID) ? mF2P[uAccountID] : false;
 		m_mILevels[n] = m_mULevels[uAccountID] = mLevels.count(uAccountID) ? mLevels[uAccountID] : -2;
 	}
+	F::Configs.HandleAutoConfig(bHasCheater);
 }
 
 void CEntities::UpdatePlayerAnimations(int nLocalIndex)
@@ -259,11 +260,7 @@ void CEntities::Store()
 
 	for (int n = 1; n <= nHighestEntity; n++)
 	{
-		auto pClientEntity = I::ClientEntityList->GetClientEntity(n);
-		if (!pClientEntity)
-			continue;
-
-		auto pEntity = pClientEntity->As<CBaseEntity>();
+		auto pEntity = I::ClientEntityList->GetClientEntity(n)->As<CBaseEntity>();
 		if (!pEntity)
 			continue;
 
