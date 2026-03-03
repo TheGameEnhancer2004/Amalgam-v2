@@ -74,7 +74,7 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 		if (!pResource->m_bValid(n))
 			continue;
 
-		constuint32_t uAccountID = pResource->m_iAccountID(n);
+		const uint32_t uAccountID = pResource->m_iAccountID(n);
 		const bool bLocal = (n == nLocalIndex);
 		if (bLocal) m_uAccountID = uAccountID;
 
