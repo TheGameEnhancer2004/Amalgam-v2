@@ -30,13 +30,14 @@ MAKE_HOOK(CL_Move, S::CL_Move(), void,
 		F::Backtrack.m_iTickCount--;
 
 	F::Binds.Run();
+#ifndef TEXTMODE
 	H::ConVars.Modify(Vars::Misc::Exploits::UnlockCVars.Value);
+#endif
 	F::Backtrack.SendLerp();
 	F::Misc.PingReducer();
 	F::Misc.MicSpam();
 #ifdef TEXTMODE
 	F::NamedPipe.Store();
-	F::NamedPipe.ProcessCommandQueue();
 #endif
 
 	F::Ticks.Move(accumulated_extra_samples, bFinalTick);

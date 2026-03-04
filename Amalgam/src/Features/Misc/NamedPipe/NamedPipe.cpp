@@ -516,6 +516,9 @@ void CNamedPipe::ProcessCommandQueue()
 		vCommands.swap(m_vCommandQueue);
 	}
 
+	if (vCommands.empty())
+		return;
+
 	for (const auto& sCommand : vCommands)
 	{
 		I::EngineClient->ClientCmd_Unrestricted(sCommand.c_str());

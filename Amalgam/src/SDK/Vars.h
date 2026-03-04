@@ -1161,7 +1161,7 @@ I dont think this is a good idea to disable simulations completely:
 		NAMESPACE_BEGIN(Exploits)
 			CVar(PureBypass, "Pure bypass", false);
 			CVar(CheatsBypass, "Cheats bypass", false);
-			CVar(UnlockCVars, "Unlock CVars", false);
+			CVar(UnlockCVars, "Unlock CVars", true);
 			CVar(EquipRegionUnlock, "Equip region unlock", false);
 			CVar(BreakShootSound, "Break shoot sound", false);
 			CVar(BackpackExpander, "Backpack expander", false);
