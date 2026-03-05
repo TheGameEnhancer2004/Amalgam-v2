@@ -2578,10 +2578,17 @@ void CMenu::MenuLogs(int iTab)
 			{
 				PushTransparent(tTag.m_bLabel); // transparent if we want a label, user can still use to sort
 				{
+					const bool bDisableVotePriority = iID != -1
+						&& (F::PlayerUtils.IndexToTag(iID) == IGNORED_TAG
+							|| F::PlayerUtils.IndexToTag(iID) == FRIEND_TAG
+							|| F::PlayerUtils.IndexToTag(iID) == PARTY_TAG);
+
 					SetCursorPosY(GetCursorPos().y + H::Draw.Scale(16));
 					FSlider("Priority", &tTag.m_iPriority, -10, 10, 1, "%i", FSliderEnum::Left);
 					FSlider("Followbot priority", &tTag.m_iFollowPriority, -1, 10, 1, tTag.m_iFollowPriority < 0 ? "ignore" : "%i", FSliderEnum::Right);
+					PushDisabled(bDisableVotePriority);
 					FDropdown("Vote priority", &tTag.m_iVotePriority, { "Defend", "Ignore", "Kick" }, { -1, 0, 1 }, FDropdownEnum::None, -96);
+					PopDisabled();
 				}
 				PopTransparent();
 
@@ -2604,11 +2611,16 @@ void CMenu::MenuLogs(int iTab)
 					F::PlayerUtils.m_bSave = true;
 					if (iID > -1 || iID < F::PlayerUtils.m_vTags.size())
 					{
+						const bool bDisableVotePriority = F::PlayerUtils.IndexToTag(iID) == IGNORED_TAG
+							|| F::PlayerUtils.IndexToTag(iID) == FRIEND_TAG
+							|| F::PlayerUtils.IndexToTag(iID) == PARTY_TAG;
+
 						F::PlayerUtils.m_vTags[iID].m_sName = tTag.m_sName;
 						F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
 						F::PlayerUtils.m_vTags[iID].m_iPriority = tTag.m_iPriority;
 						F::PlayerUtils.m_vTags[iID].m_iFollowPriority = tTag.m_iFollowPriority;
-						F::PlayerUtils.m_vTags[iID].m_iVotePriority = tTag.m_iVotePriority;
+						if (!bDisableVotePriority)
+							F::PlayerUtils.m_vTags[iID].m_iVotePriority = tTag.m_iVotePriority;
 						F::PlayerUtils.m_vTags[iID].m_bLabel = tTag.m_bLabel;
 					}
 					else
