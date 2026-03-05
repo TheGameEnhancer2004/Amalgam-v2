@@ -2576,12 +2576,10 @@ void CMenu::MenuLogs(int iTab)
 
 			if (BeginWidgetTable(1, vTable))
 			{
+				const int iTag = F::PlayerUtils.IndexToTag(iID);
 				PushTransparent(tTag.m_bLabel); // transparent if we want a label, user can still use to sort
 				{
-					const bool bDisableVotePriority = iID != -1
-						&& (F::PlayerUtils.IndexToTag(iID) == IGNORED_TAG
-							|| F::PlayerUtils.IndexToTag(iID) == FRIEND_TAG
-							|| F::PlayerUtils.IndexToTag(iID) == PARTY_TAG);
+					const bool bDisableVotePriority = iID != -1 && (iTag == IGNORED_TAG || iTag == FRIEND_TAG || iTag == PARTY_TAG);
 
 					SetCursorPosY(GetCursorPos().y + H::Draw.Scale(16));
 					FSlider("Priority", &tTag.m_iPriority, -10, 10, 1, "%i", FSliderEnum::Left);
@@ -2611,9 +2609,7 @@ void CMenu::MenuLogs(int iTab)
 					F::PlayerUtils.m_bSave = true;
 					if (iID > -1 || iID < F::PlayerUtils.m_vTags.size())
 					{
-						const bool bDisableVotePriority = F::PlayerUtils.IndexToTag(iID) == IGNORED_TAG
-							|| F::PlayerUtils.IndexToTag(iID) == FRIEND_TAG
-							|| F::PlayerUtils.IndexToTag(iID) == PARTY_TAG;
+						const bool bDisableVotePriority = iTag == IGNORED_TAG || iTag == FRIEND_TAG || iTag == PARTY_TAG;
 
 						F::PlayerUtils.m_vTags[iID].m_sName = tTag.m_sName;
 						F::PlayerUtils.m_vTags[iID].m_tColor = tTag.m_tColor;
