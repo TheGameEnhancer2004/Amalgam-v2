@@ -1,6 +1,7 @@
 #include "AutoVote.h"
 
 #include "../../Misc/NamedPipe/NamedPipe.h"
+#include "../../Players/PlayerUtils.h"
 
 static void HandleVote(CTFPlayerResource* pResource, const int iVoteID, const int iCaller, const int iTarget)
 {
@@ -15,7 +16,8 @@ static void HandleVote(CTFPlayerResource* pResource, const int iVoteID, const in
 #endif
 
 	int iTargetPriority = H::Entities.GetPriority(uTargetAccountID, PriorityTypeEnum::Vote);
-	bool bDefendTarget = bDefend && iTargetPriority < 0;
+	bool bDefendRole = F::PlayerUtils.IsIgnored(uTargetAccountID) || H::Entities.IsFriend(uTargetAccountID) || H::Entities.InParty(uTargetAccountID);
+	bool bDefendTarget = bDefend && (iTargetPriority < 0 || bDefendRole);
 	if (pResource->m_bValid(iCaller))
 	{
 		auto uCallerAccountID = pResource->m_iAccountID(iCaller);
@@ -26,10 +28,10 @@ static void HandleVote(CTFPlayerResource* pResource, const int iVoteID, const in
 			return;
 		}
 #endif
-		if (Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Kick && iTargetPriority > 0)
-			I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
-		else if (bDefendTarget)
+		if (bDefendTarget)
 			I::ClientState->SendStringCmd(std::format("vote {} option2", iVoteID).c_str());
+		else if (Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Kick && iTargetPriority > 0)
+			I::ClientState->SendStringCmd(std::format("vote {} option1", iVoteID).c_str());
 		else if (Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::Assist && H::Entities.GetPriority(uCallerAccountID, PriorityTypeEnum::Vote) < 0)
 			I::ClientState->SendStringCmd(std::format("vote {} option{}", iVoteID, !bDefendTarget ? "1" : "2").c_str());
 		return;
