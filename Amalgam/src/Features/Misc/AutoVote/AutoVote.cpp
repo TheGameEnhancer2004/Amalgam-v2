@@ -188,9 +188,13 @@ void CAutoVote::Run(CTFPlayer* pLocal)
 			continue;
 
 		auto uAccountID = pResource->m_iAccountID(i);
+#ifdef TEXTMODE
+		if (F::NamedPipe.IsLocalBot(uAccountID))
+			continue;
+#endif
 		int iPriority = H::Entities.GetPriority(uAccountID, PriorityTypeEnum::Vote);
 		if (iPriority < 0 || !(Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::KickAll) && iPriority != 2)
-			return;
+			continue;
 
 		vPotentialTargets.push_back(i);
 	}
