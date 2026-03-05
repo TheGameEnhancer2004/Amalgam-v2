@@ -198,6 +198,11 @@ void CAutoVote::Run(CTFPlayer* pLocal)
 		if (iPriority < 0 || !(Vars::Misc::Automation::AutoVote.Value & Vars::Misc::Automation::AutoVoteEnum::KickAll) && iPriority != 2)
 			continue;
 
+		if (F::PlayerUtils.IsIgnored(uAccountID) 
+			|| H::Entities.IsFriend(uAccountID) 
+			|| H::Entities.InParty(uAccountID))
+			continue;
+
 		vPotentialTargets.push_back(i);
 	}
 
