@@ -63,37 +63,6 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 		return;
 	}
 
-	bool bHasCheater = !Vars::Config::AutoLoadCheaterConfig.Value;
-	const int iCheaterTag = F::PlayerUtils.TagToIndex(CHEATER_TAG);
-#ifdef TEXTMODE
-	m_iPartyCount = 0;
-
-	const int nMaxClientsTextmode = I::EngineClient->GetMaxClients();
-	for (int n = 1; n <= nMaxClientsTextmode; n++)
-	{
-		if (!pResource->m_bValid(n))
-			continue;
-
-		const uint32_t uAccountID = pResource->m_iAccountID(n);
-		const bool bLocal = (n == nLocalIndex);
-		if (bLocal) m_uAccountID = uAccountID;
-
-		const int iPriority = !bLocal ? F::PlayerUtils.GetPriority(uAccountID, false) : 0;
-		if (!bHasCheater && iPriority >= 0 && F::PlayerUtils.HasTag(uAccountID, iCheaterTag))
-			bHasCheater = true;
-
-		m_aIPriorities[PriorityTypeEnum::Relationship][n] = m_aUPriorities[PriorityTypeEnum::Relationship][uAccountID] = iPriority;
-		m_aIPriorities[PriorityTypeEnum::Follow][n] = m_aUPriorities[PriorityTypeEnum::Follow][uAccountID] = !bLocal ? F::PlayerUtils.GetFollowPriority(uAccountID, false) : 0;
-		m_aIPriorities[PriorityTypeEnum::Vote][n] = m_aUPriorities[PriorityTypeEnum::Vote][uAccountID] = !bLocal ? F::PlayerUtils.GetVotePriority(uAccountID, false) : -1;
-		m_mIFriends[n] = m_mUFriends[uAccountID] = !pResource->IsFakePlayer(n) && I::SteamFriends->HasFriend({ uAccountID, 1, k_EUniversePublic, k_EAccountTypeIndividual }, k_EFriendFlagImmediate);
-		m_mIParty[n] = m_mUParty[uAccountID] = 0;
-		m_mIF2P[n] = m_mUF2P[uAccountID] = false;
-		m_mILevels[n] = m_mULevels[uAccountID] = -2;
-	}
-	F::Configs.HandleAutoConfig(bHasCheater);
-	return;
-#endif
-
 	std::unordered_map<uint32_t, uint64_t> mParties;
 	std::unordered_map<uint32_t, bool> mF2P;
 	std::unordered_map<uint32_t, int> mLevels;
@@ -153,6 +122,8 @@ void CEntities::UpdatePartyAndLobbyInfo(int nLocalIndex)
 	}
 	m_iPartyCount = uPartyCount;
 
+	bool bHasCheater = !Vars::Config::AutoLoadCheaterConfig.Value;
+	const int iCheaterTag = F::PlayerUtils.TagToIndex(CHEATER_TAG);
 	int nMaxClients = I::EngineClient->GetMaxClients();
 	for (int n = 1; n <= nMaxClients; n++)
 	{

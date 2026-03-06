@@ -760,7 +760,6 @@ void CNamedPipe::UpdateLocalBotIgnoreStatus()
 			F::PlayerUtils.AddTag(uAccountID, iIgnoredTagIdx, true, szName);
 			F::PlayerUtils.AddTag(uAccountID, iFriendTagIdx, true, szName);
 			Log("Marked local bot as ignored and friend: " + std::string(szName));
-			break;
 		}
 	}
 }
