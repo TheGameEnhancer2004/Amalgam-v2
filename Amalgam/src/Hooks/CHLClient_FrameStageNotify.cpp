@@ -16,6 +16,7 @@
 #include "../Features/Visuals/Groups/Groups.h"
 #include "../Features/Visuals/OffscreenArrows/OffscreenArrows.h"
 #ifdef TEXTMODE
+#include "../Features/Misc/AutoQueue/AutoQueue.h"
 #include "../Features/Misc/NamedPipe/NamedPipe.h"
 #endif 
 
@@ -70,6 +71,7 @@ MAKE_HOOK(CHLClient_FrameStageNotify, U::Memory.GetVirtual(I::Client, 35), void,
 	}
 	case FRAME_RENDER_START:
 #ifdef TEXTMODE
+		F::AutoQueue.Run();
 		F::NamedPipe.ProcessCommandQueue();
 #endif
 		for (auto& tBind : F::Binds.m_vBinds)
