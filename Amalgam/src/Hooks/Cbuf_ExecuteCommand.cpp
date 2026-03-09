@@ -1,9 +1,6 @@
 #include "../SDK/SDK.h"
 
 #include "../Features/Commands/Commands.h"
-#include <functional>
-#include <regex>
-#include <sstream>
 
 MAKE_SIGNATURE(Cbuf_ExecuteCommand, "engine.dll", "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 48 8B 05 ? ? ? ? 48 8D 3D", 0x0);
 
@@ -27,30 +24,6 @@ MAKE_HOOK(Cbuf_ExecuteCommand, S::Cbuf_ExecuteCommand(), void,
 
         if (F::Commands.Run(sCommand, vArgs))
             return;
-
-		// server does string comparison to "1"
-		if (strcmp(sCommand, "cl_flipviewmodels") == 0)
-        {
-            if (auto pCVar = I::CVar->FindVar(sCommand))
-			{
-				CALL_ORIGINAL(args, source);
-
-				try
-				{
-					if (pCVar->GetFloat() != float(std::stoi(pCVar->GetString())))
-						return;
-
-					auto sValue = std::format("{}", pCVar->GetInt());
-					if (FNV1A::Hash32(sValue.c_str()) == FNV1A::Hash32(pCVar->GetString()))
-						return;
-
-					pCVar->SetValue(sValue.c_str());
-				}
-				catch (...) {}
-
-				return;
-			}
-		}
 	}
 
     CALL_ORIGINAL(args, source);

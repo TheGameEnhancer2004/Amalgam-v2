@@ -188,6 +188,8 @@ public:
 	NETVAR(m_iCampaignMedals, int, "CTFPlayer", "m_iCampaignMedals");
 	NETVAR(m_iPlayerSkinOverride, int, "CTFPlayer", "m_iPlayerSkinOverride");
 	NETVAR(m_bViewingCYOAPDA, bool, "CTFPlayer", "m_bViewingCYOAPDA");
+	NETVAR(m_bRegenerating, bool, "CTFPlayer", "m_bRegenerating");
+	NETVAR(m_hOffHandWeapon, EHANDLE, "CTFPlayer", "m_hOffHandWeapon");
 
 	NETVAR_OFF(m_flInvisibility, float, "CTFPlayer", "m_flInvisChangeCompleteTime", -8);
 	NETVAR_OFF(m_flPrevInvisibility, float, "CTFPlayer", "m_flInvisChangeCompleteTime", -4);
