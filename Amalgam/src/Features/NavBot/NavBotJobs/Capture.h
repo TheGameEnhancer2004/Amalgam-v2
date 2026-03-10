@@ -11,13 +11,6 @@ private:
 	std::optional<Vector> m_vCurrentCaptureCenter;
 	std::optional<Vector> m_vLastClaimedCaptureSpot;
 
-	struct PayloadCache_t
-	{
-		Vector vPos = {};
-		float flTime = 0.0f;
-	};
-	std::array<PayloadCache_t, 2> m_aPayloadCache;
-
 public:
 	// Overwrite to return true for payload carts as an example
 	bool m_bOverwriteCapture = false;

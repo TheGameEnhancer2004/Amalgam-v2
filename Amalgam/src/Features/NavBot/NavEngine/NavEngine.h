@@ -62,6 +62,11 @@ private:
 	Vector m_vOffMeshTarget = {};
 	int m_iStuckJumpAttempts = 0;
 
+	Vector m_vStuckCheckPos = {};
+	float m_flStuckCheckDistToCrumb = FLT_MAX;
+	int m_iNoProgressSamples = 0;
+	Timer m_tStuckSampleTimer = {};
+
 	bool m_bCurrentNavToLocal = false;
 	bool m_bRepathOnFail = false;
 	bool m_bPathing = false;

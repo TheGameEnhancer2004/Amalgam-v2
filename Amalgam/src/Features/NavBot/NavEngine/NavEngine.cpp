@@ -61,17 +61,50 @@ static bool IsPayloadEscortPaceState(CTFPlayer* pLocal, const Vector& vLocalOrig
 	if (F::NavEngine.m_eCurrentPriority != PriorityListEnum::Capture)
 		return false;
 
+	static std::array<Vector, 2> aLastPayloadPos{};
+	static std::array<float, 2> aLastPayloadMoveTime{};
+	static std::array<bool, 2> aSeenPayload{};
+	static std::string sLastLevelName{};
+
+	const std::string sLevelName = SDK::GetLevelName();
+	if (sLastLevelName != sLevelName)
+	{
+		aLastPayloadPos = {};
+		aLastPayloadMoveTime = {};
+		aSeenPayload = {};
+		sLastLevelName = sLevelName;
+	}
+
 	Vector vPayloadPos{};
 	if (!F::PLController.GetClosestPayload(vLocalOrigin, pLocal->m_iTeamNum(), vPayloadPos))
 		return false;
 
 	constexpr float flPayloadEscortRadius = 120.0f;
 	constexpr float flMaxHeightDiff = PLAYER_JUMP_HEIGHT + 24.0f;
+	constexpr float flPayloadMoveThreshold = 4.0f;
+	constexpr float flPayloadMoveGrace = 0.35f;
 
 	if (std::fabs(vPayloadPos.z - vLocalOrigin.z) > flMaxHeightDiff)
 		return false;
 
-	return vPayloadPos.DistTo2DSqr(vLocalOrigin) <= flPayloadEscortRadius * flPayloadEscortRadius;
+	if (vPayloadPos.DistTo2DSqr(vLocalOrigin) > flPayloadEscortRadius * flPayloadEscortRadius)
+		return false;
+
+	const int iPayloadIndex = pLocal->m_iTeamNum() - TF_TEAM_RED;
+	if (iPayloadIndex < 0 || iPayloadIndex >= static_cast<int>(aLastPayloadPos.size()))
+		return false;
+
+	if (aSeenPayload[iPayloadIndex])
+	{
+		if (vPayloadPos.DistToSqr(aLastPayloadPos[iPayloadIndex]) >= pow(flPayloadMoveThreshold, 2))
+			aLastPayloadMoveTime[iPayloadIndex] = I::GlobalVars->curtime;
+	}
+	else
+		aSeenPayload[iPayloadIndex] = true;
+
+	aLastPayloadPos[iPayloadIndex] = vPayloadPos;
+
+	return I::GlobalVars->curtime - aLastPayloadMoveTime[iPayloadIndex] <= flPayloadMoveGrace;
 }
 
 bool CNavEngine::IsSetupTime()
@@ -1432,15 +1465,6 @@ void CNavEngine::UpdateStuckTime(CTFPlayer* pLocal, CUserCmd* pCmd)
 			return;
 		}
 
-		static Timer tConnectionStuckJumpTimer{};
-		if (m_pMap->m_mConnectionStuckTime[tKey].m_iTimeStuck > iDetectTicks / 2 &&
-			pLocal->OnSolid() &&
-			CanIssueNavJump(H::Entities.GetWeapon(), pCmd) &&
-			tConnectionStuckJumpTimer.Check(0.35f))
-		{
-			pCmd->buttons |= IN_JUMP;
-			tConnectionStuckJumpTimer.Update();
-		}
 	}
 }
 
@@ -1782,6 +1806,10 @@ void CNavEngine::CancelPath()
 	m_bIgnoreTraces = false;
 	m_iNextRepathTick = 0;
 	m_vLastLookTarget = {};
+	m_vStuckCheckPos = {};
+	m_flStuckCheckDistToCrumb = FLT_MAX;
+	m_iNoProgressSamples = 0;
+	m_tStuckSampleTimer.Update();
 }
 
 bool CanJumpIfScoped(CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
@@ -1810,9 +1838,10 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 
 		static Timer tLastJump{};
 		if (!bPayloadEscortPace &&
+			pLocal->OnSolid() &&
 			CanIssueNavJump(pWeapon, pCmd) &&
-			m_tInactivityTimer.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2) &&
-			tLastJump.Check(0.2f))
+			m_tInactivityTimer.Check(1.0f) &&
+			tLastJump.Check(0.6f))
 		{
 			F::BotUtils.ForceJump();
 			tLastJump.Update();
@@ -2093,91 +2122,114 @@ void CNavEngine::FollowCrumbs(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCm
 		}
 	}
 
-	// If we make any progress at all, reset this
-	// If we spend way too long on this crumb, ignore the logic below
 	if (bPayloadEscortPace)
 	{
 		m_tInactivityTimer.Update();
 		m_iStuckJumpAttempts = 0;
+		m_iNoProgressSamples = 0;
 	}
-	else if (!m_tTimeSpentOnCrumbTimer.Check(Vars::Misc::Movement::NavEngine::StuckDetectTime.Value))
+	else if (m_tStuckSampleTimer.Check(0.4f))
 	{
-		// 44.0f -> Revved brass beast, do not use z axis as jumping counts towards that.
-		if (!vLocalVelocity.Get2D().IsZero(40.0f))
+		m_tStuckSampleTimer.Update();
+
+		const float flCurrentDistToCrumb = (vCrumbTarget - vLocalOrigin).Length2D();
+		const float flMovedSinceLastSample = (vLocalOrigin - m_vStuckCheckPos).Length2D();
+
+		const bool bMadeProgress = (flCurrentDistToCrumb < m_flStuckCheckDistToCrumb - 10.f) || (flMovedSinceLastSample > 20.f);
+
+		if (bMadeProgress)
 		{
-			m_tInactivityTimer.Update();
+			m_iNoProgressSamples = 0;
 			m_iStuckJumpAttempts = 0;
+			m_tInactivityTimer.Update();
 		}
-		else if (bDropCrumb)
+		else
 		{
-			if (bHasMoveDir)
-				vMoveTarget += vMoveDir * (PLAYER_WIDTH * 1.25f);
-			if (pLocal->OnSolid() && CanIssueNavJump(pWeapon, pCmd))
-				pCmd->buttons |= IN_JUMP;
-			m_tInactivityTimer.Update();
-			m_iStuckJumpAttempts = 0;
+			m_iNoProgressSamples++;
 		}
-		else if (Vars::Debug::Logging.Value)
-			SDK::Output("CNavEngine", std::format("Spent too much time on the crumb, assuming were stuck, 2Dvelocity: ({},{})", fabsf(vLocalVelocity.Get2D().x), fabsf(vLocalVelocity.Get2D().y)).c_str(), { 255, 131, 131 }, OUTPUT_CONSOLE | OUTPUT_DEBUG);
+
+		m_vStuckCheckPos = vLocalOrigin;
+		m_flStuckCheckDistToCrumb = flCurrentDistToCrumb;
 	}
 
-	//if ( !G::DoubleTap && !G::Warp )
+	// Graduated stuck recovery based on position progress samples
+	// Each sample is ~0.4s, so 3 samples ≈ 1.2s, 5 ≈ 2.0s, 10 ≈ 4.0s
+	if (m_iNoProgressSamples >= 3 && !bPayloadEscortPace)
 	{
-		// Detect when jumping is necessary.
-		// 1. No jumping if zoomed (or revved)
-		// 2. Jump only after inactivity-based stuck detection (or explicit overrides)
-		if (pWeapon)
+		// Drop crumbs: never jump off edges, just abandon if stuck too long
+		if (bDropCrumb)
 		{
-			auto iWeaponID = pWeapon->GetWeaponID();
-			if ((iWeaponID != TF_WEAPON_SNIPERRIFLE &&
-				iWeaponID != TF_WEAPON_SNIPERRIFLE_CLASSIC &&
-				iWeaponID != TF_WEAPON_SNIPERRIFLE_DECAP) ||
-				CanJumpIfScoped(pLocal, pWeapon))
+			if (m_iNoProgressSamples >= 8 && m_bRepathOnFail)
 			{
-				if (CanIssueNavJump(pWeapon, pCmd))
+				AbandonPath("Stuck on drop");
+				return;
+			}
+		}
+		else
+		{
+			bool bCanJump = pWeapon && m_pLocalArea &&
+				!(m_pLocalArea->m_iAttributeFlags & (NAV_MESH_NO_JUMP | NAV_MESH_STAIRS));
+
+			if (bCanJump)
+			{
+				auto iWeaponID = pWeapon->GetWeaponID();
+				if ((iWeaponID == TF_WEAPON_SNIPERRIFLE ||
+					iWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC ||
+					iWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP) &&
+					!CanJumpIfScoped(pLocal, pWeapon))
+					bCanJump = false;
+
+				if (bCanJump && m_vCrumbs.size() > 1)
 				{
-					bool bShouldJump = false;
-					bool bPreventJump = bDropCrumb;
-					const bool bInactivityStuck = m_tInactivityTimer.Check(Vars::Misc::Movement::NavEngine::StuckTime.Value / 2);
-					if (!bInactivityStuck || bPayloadEscortPace)
-						m_iStuckJumpAttempts = 0;
+					float flHeightDiff = m_vCrumbs[0].m_vPos.z - m_vCrumbs[1].m_vPos.z;
+					if (flHeightDiff < 0 && flHeightDiff <= -PLAYER_JUMP_HEIGHT)
+						bCanJump = false;
+				}
+			}
 
-					if (m_vCrumbs.size() > 1)
+			// Phase 1 (~1.2-2.0s): nudge movement direction, no jumping
+			if (m_iNoProgressSamples < 5)
+			{
+				if (bHasMoveDir)
+				{
+					Vector vNudge(-vMoveDir.y, vMoveDir.x, 0.f);
+					if (m_iNoProgressSamples % 2)
+						vNudge *= -1.f;
+					vMoveTarget += vNudge * (PLAYER_WIDTH * 0.4f);
+				}
+			}
+			// Phase 2 (~2.0-4.0s): jump with moderate direction adjustment
+			else if (m_iNoProgressSamples < 10)
+			{
+				if (bCanJump && CanIssueNavJump(pWeapon, pCmd) && pLocal->OnSolid() && tLastJump.Check(0.5f))
+				{
+					F::BotUtils.ForceJump();
+					m_iStuckJumpAttempts++;
+					tLastJump.Update();
+
+					if (bHasMoveDir)
 					{
-						float flHeightDiff = m_vCrumbs[0].m_vPos.z - m_vCrumbs[1].m_vPos.z;
-						if (flHeightDiff < 0 && flHeightDiff <= -PLAYER_JUMP_HEIGHT)
-							bPreventJump = true;
+						Vector vSideStep(-vMoveDir.y, vMoveDir.x, 0.f);
+						if (m_iStuckJumpAttempts % 2)
+							vSideStep *= -1.f;
+						vMoveTarget += vSideStep * (PLAYER_WIDTH * 0.6f);
 					}
-					// Jump only when inactivity timer says we're stuck and if current area allows jumping
-					if (!bPayloadEscortPace && !bPreventJump && m_pLocalArea &&
-						bInactivityStuck &&
-						!(m_pLocalArea->m_iAttributeFlags & (NAV_MESH_NO_JUMP | NAV_MESH_STAIRS)))
-						bShouldJump = true;
-
-					float flJumpInterval = std::clamp(0.2f + std::min(m_iStuckJumpAttempts, 5) * 0.08f, 0.2f, 0.6f);
-					if (bShouldJump && tLastJump.Check(flJumpInterval))
-					{
-						F::BotUtils.ForceJump();
-						m_iStuckJumpAttempts++;
-
-						if (bHasMoveDir)
-						{
-							Vector vSideStep(-vMoveDir.y, vMoveDir.x, 0.f);
-							if (!(m_iStuckJumpAttempts % 2))
-								vSideStep *= -1.f;
-
-							const float flSideStepScale = std::clamp(0.6f + std::min(m_iStuckJumpAttempts, 4) * 0.2f, 0.6f, 1.4f);
-							vMoveTarget += vSideStep * (PLAYER_WIDTH * flSideStepScale);
-						}
-
-						tLastJump.Update();
-
-						if (m_iStuckJumpAttempts >= 6 && m_bRepathOnFail)
-						{
-							AbandonPath("Stuck (jump recovery failed)");
-							return;
-						}
-					}
+				}
+				else if (bHasMoveDir)
+				{
+					Vector vNudge(-vMoveDir.y, vMoveDir.x, 0.f);
+					if (m_iStuckJumpAttempts % 2)
+						vNudge *= -1.f;
+					vMoveTarget += vNudge * (PLAYER_WIDTH * 0.5f);
+				}
+			}
+			// Phase 3 (4.0s+): abandon path
+			else
+			{
+				if (m_bRepathOnFail)
+				{
+					AbandonPath("Stuck (no progress)");
+					return;
 				}
 			}
 		}
