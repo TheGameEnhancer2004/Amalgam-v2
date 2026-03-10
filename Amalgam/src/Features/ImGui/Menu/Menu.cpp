@@ -993,7 +993,8 @@ void CMenu::MenuVisuals(int iTab)
 						FSlider(Vars::Visuals::Trajectory::OffsetX);
 						FSlider(Vars::Visuals::Trajectory::OffsetY);
 						FSlider(Vars::Visuals::Trajectory::OffsetZ);
-						FToggle(Vars::Visuals::Trajectory::Pipes);
+						FSlider(Vars::Visuals::Trajectory::ForwardRedirect);
+						FSlider(Vars::Visuals::Trajectory::ForwardCutoff);
 						FSlider(Vars::Visuals::Trajectory::Hull);
 						FSlider(Vars::Visuals::Trajectory::Speed);
 						FSlider(Vars::Visuals::Trajectory::Gravity);
