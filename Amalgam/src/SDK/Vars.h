@@ -200,6 +200,7 @@ NAMESPACE_BEGIN(Vars)
 
 		CVar(Scale, "Scale", 1.f, NOBIND | SLIDER_MIN | SLIDER_PRECISION | SLIDER_NOAUTOUPDATE, 0.75f, 2.f, 0.25f);
 		CVar(CheapText, "Cheap text", false);
+		CVar(Streamproof, "Streamproof", false);
 
 		NAMESPACE_BEGIN(Theme)
 			CVar(Accent, "Accent color", Color_t(175, 150, 255, 255), VISUAL);
