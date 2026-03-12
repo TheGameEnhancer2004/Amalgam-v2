@@ -9,7 +9,7 @@ MAKE_HOOK(CViewRender_RenderView, U::Memory.GetVirtual(I::ViewRender, 6), void,
 
 #ifndef TEXTMODE
 	CALL_ORIGINAL(rcx, view, nClearFlags, whatToDraw);
-	if (SDK::CleanScreenshot() || G::Unload)
+	if (SDK::CleanScreenshot() || G::Unload || Vars::Menu::Streamproof.Value)
 		return;
 
 	F::CameraWindow.RenderView(rcx, view);

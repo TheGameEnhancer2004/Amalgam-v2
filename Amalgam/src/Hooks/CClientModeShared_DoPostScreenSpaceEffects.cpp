@@ -19,7 +19,7 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 #ifdef TEXTMODE
 	return false;
 #else
-	if (G::Unload || SDK::CleanScreenshot())
+	if (G::Unload || SDK::CleanScreenshot() || Vars::Menu::Streamproof.Value)
 		return CALL_ORIGINAL(rcx, pSetup);
 
 	auto pLocal = H::Entities.GetLocal();
@@ -61,7 +61,7 @@ MAKE_HOOK(CViewRender_DrawViewModels, S::CViewRender_DrawViewModels(), void,
 #ifndef TEXTMODE
 	CALL_ORIGINAL(rcx, viewRender, F::Spectate.HasTarget() && !I::EngineClient->IsHLTV() ? false : drawViewmodel);
 
-	if (SDK::CleanScreenshot() || F::CameraWindow.m_bDrawing || I::EngineVGui->IsGameUIVisible() || !F::Materials.m_bLoaded)
+	if (SDK::CleanScreenshot() || F::CameraWindow.m_bDrawing || I::EngineVGui->IsGameUIVisible() || !F::Materials.m_bLoaded || Vars::Menu::Streamproof.Value)
 		return;
 
 	F::Glow.RenderSecond();
