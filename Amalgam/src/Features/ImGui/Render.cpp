@@ -35,7 +35,7 @@ void CRender::Render(IDirect3DDevice9* pDevice)
 		}
 	}
 	{
-		static bool bStaticStreamproof = Vars::Menu::Streamproof.Value;
+		static bool bStaticStreamproof = !Vars::Menu::Streamproof.Value;
 		bool bOldStreamproof = bStaticStreamproof;
 		bool bNewStreamproof = bStaticStreamproof = Vars::Menu::Streamproof.Value;
 		if (bNewStreamproof != bOldStreamproof)
