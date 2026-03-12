@@ -34,6 +34,13 @@ void CRender::Render(IDirect3DDevice9* pDevice)
 			LoadStyle();
 		}
 	}
+	{
+		static bool bStaticStreamproof = Vars::Menu::Streamproof.Value;
+		bool bOldStreamproof = bStaticStreamproof;
+		bool bNewStreamproof = bStaticStreamproof = Vars::Menu::Streamproof.Value;
+		if (bNewStreamproof != bOldStreamproof)
+			SetWindowDisplayAffinity(WndProc::hwWindow, bNewStreamproof ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE);
+	}
 
 	DWORD dwOldRGB; pDevice->GetRenderState(D3DRS_SRGBWRITEENABLE, &dwOldRGB);
 	pDevice->SetRenderState(D3DRS_SRGBWRITEENABLE, false);

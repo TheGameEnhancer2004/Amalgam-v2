@@ -1249,6 +1249,7 @@ void CMenu::MenuVisuals(int iTab)
 					if (FSlider(Vars::Menu::Scale))
 						H::Fonts.Reload(Vars::Menu::Scale[DEFAULT_BIND]);
 					FToggle(Vars::Menu::CheapText);
+					FToggle(Vars::Menu::Streamproof);
 				} EndSection();
 				if (Vars::Debug::Options.Value)
 				{
