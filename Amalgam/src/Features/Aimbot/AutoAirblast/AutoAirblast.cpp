@@ -4,6 +4,46 @@
 #include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 #include "../../Backtrack/Backtrack.h"
 
+static inline bool IsLethalProjectile(CBaseEntity* pProjectile, CTFPlayer* pLocal, CTFWeaponBase* pWeapon)
+{
+	// Check if the projectile is heading toward the player
+	const Vec3 vVelocity = F::ProjSim.GetVelocity(pProjectile);
+	const Vec3 vEyePos = pLocal->GetShootPos();
+	const Vec3 vDir = (vEyePos - pProjectile->GetAbsOrigin()).Normalized();
+	if (vVelocity.Dot(vDir) <= 0.f)
+		return false;
+
+	float flDamage = 0.f;
+	bool bCritical = false;
+
+	switch (pProjectile->GetClassID())
+	{
+	case ETFClassID::CTFProjectile_Rocket:
+		flDamage = pWeapon ? pWeapon->GetDamage() : 90.f;
+		bCritical = pProjectile->As<CTFProjectile_Rocket>()->m_bCritical();
+		break;
+	case ETFClassID::CTFBaseRocket:
+	case ETFClassID::CTFFlameRocket:
+		flDamage = pWeapon ? pWeapon->GetDamage() : 90.f;
+		break;
+	case ETFClassID::CTFProjectile_SentryRocket:
+		flDamage = 100.f;
+		break;
+	case ETFClassID::CTFGrenadePipebombProjectile:
+		flDamage = pProjectile->As<CBaseGrenade>()->m_flDamage();
+		bCritical = pProjectile->As<CTFWeaponBaseGrenadeProj>()->m_bCritical();
+		break;
+	default:
+		// Unknown projectile type - treat as potentially lethal
+		return true;
+	}
+
+	if (bCritical)
+		flDamage *= 3.f;
+
+	return flDamage >= static_cast<float>(pLocal->m_iHealth());
+}
+
 static inline bool ShouldTarget(CBaseEntity* pProjectile, CTFPlayer* pLocal)
 {
 	if (pProjectile->m_iTeamNum() == pLocal->m_iTeamNum())
@@ -68,6 +108,10 @@ void CAutoAirblast::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCm
 	for (auto pProjectile : H::Entities.GetGroup(EntityEnum::WorldProjectile))
 	{
 		if (!ShouldTarget(pProjectile, pLocal))
+			continue;
+
+		if ((Vars::Aimbot::Projectile::AutoAirblast.Value & Vars::Aimbot::Projectile::AutoAirblastEnum::Smart)
+			&& !IsLethalProjectile(pProjectile, pLocal, F::ProjSim.GetEntities(pProjectile).first))
 			continue;
 
 		Vec3 vOrigin;
