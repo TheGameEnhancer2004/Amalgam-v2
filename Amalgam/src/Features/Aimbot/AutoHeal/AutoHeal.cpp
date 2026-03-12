@@ -6,6 +6,8 @@
 #include "../../Simulation/ProjectileSimulation/ProjectileSimulation.h"
 #include "../AimbotProjectile/AimbotProjectile.h"
 
+static bool ShouldPopAtHealth(CTFPlayer* pTarget, float flScale, int iResistType);
+
 void CAutoHeal::AutoHeal(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* pCmd)
 {	// manage lagcomp
 	if (!Vars::Aimbot::Healing::AutoHeal.Value)
@@ -31,10 +33,21 @@ void CAutoHeal::AutoHeal(CTFPlayer* pLocal, CWeaponMedigun* pWeapon, CUserCmd* p
 			if (flNextPrimaryAttack - flDeployTime <= I::GlobalVars->curtime && pTarget->m_iHealth() < pTarget->GetMaxHealth() - Vars::Aimbot::Healing::AutoSwitchHealth.Value)
 			{
 				float flMinCharge = pWeapon->GetMedigunType() == MEDIGUN_RESIST ? 0.25f : 1.f;
-				if (pWeapon->m_flChargeLevel() < flMinCharge || pTarget->IsInvulnerable()
+
+				// Don't switch to crossbow if uber is active or about to be popped at health threshold.
+				bool bShouldActivate = false;
+				if (Vars::Aimbot::Healing::ActivationHealthPercent.Value && pWeapon->m_flChargeLevel() >= flMinCharge)
+				{
+					float flHealthScale = Vars::Aimbot::Healing::ActivationHealthPercent.Value / 100;
+					bShouldActivate = ShouldPopAtHealth(pLocal, flHealthScale, m_iResistType)
+						|| ShouldPopAtHealth(pTarget, flHealthScale, m_iResistType);
+				}
+
+				if (!pLocal->IsInvulnerable() && !bShouldActivate
+					&& (pWeapon->m_flChargeLevel() < flMinCharge || pTarget->IsInvulnerable()
 					|| pTarget->InCond(TF_COND_BULLET_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_BULLET_RESIST)
 					|| pTarget->InCond(TF_COND_BLAST_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_BLAST_RESIST)
-					|| pTarget->InCond(TF_COND_FIRE_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST))
+					|| pTarget->InCond(TF_COND_FIRE_IMMUNE) || pTarget->InCond(TF_COND_MEDIGUN_UBER_FIRE_RESIST)))
 				{
 					I::EngineClient->ClientCmd_Unrestricted("slot1");
 
@@ -688,7 +701,7 @@ void CAutoHeal::Run(CTFPlayer* pLocal, CTFWeaponBase* pWeapon, CUserCmd* pCmd)
 
 	if (m_iAutoSwitch == 1)
 	{
-		if (!(Vars::Aimbot::Healing::AutoArrow.Value && Vars::Aimbot::Healing::AutoSwitch.Value))
+		if (!(Vars::Aimbot::Healing::AutoArrow.Value && Vars::Aimbot::Healing::AutoSwitch.Value) || pLocal->IsInvulnerable())
 			m_iAutoSwitch = 0;
 		else
 		{
