@@ -1370,6 +1370,7 @@ bool CAimbotProjectile::HandlePoint(const Vec3& vOrigin, int iSimTime, float flP
 			if (Vars::Aimbot::General::AssistStrength.Value == 100.f)
 				break;
 			[[fallthrough]];
+		case Vars::Aimbot::General::AimTypeEnum::SmoothVelocity:
 		case Vars::Aimbot::General::AimTypeEnum::Assistive:
 		{
 			Vec3 vPlainAngles = { flPitch, flYaw, 0.f };
