@@ -131,6 +131,103 @@ bool CCheaterDetection::IsCritManipulating(CTFPlayer* pEntity)
 	return bReturn;
 }
 
+bool CCheaterDetection::IsTriggerBot(CTFPlayer* pEntity)
+{
+	auto& tTriggerBot = mData[pEntity].m_TriggerBot;
+	if (!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::TriggerBot))
+	{
+		tTriggerBot = {};
+		return false;
+	}
+
+	bool bReturn = tTriggerBot.m_bInfract;
+	tTriggerBot.m_bInfract = false;
+	return bReturn;
+}
+
+void CCheaterDetection::TrackTriggerBot(CTFPlayer* pEntity)
+{
+	auto& tTriggerBot = mData[pEntity].m_TriggerBot;
+	if (!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::TriggerBot))
+	{
+		tTriggerBot.m_mFirstAimTime.clear();
+		return;
+	}
+
+	// Only detect triggerbot for snipers
+	if (pEntity->m_iClass() != TF_CLASS_SNIPER)
+	{
+		tTriggerBot.m_mFirstAimTime.clear();
+		return;
+	}
+
+	// Verify they have an active sniper rifle
+	auto pWeapon = pEntity->m_hActiveWeapon()->As<CTFWeaponBase>();
+	if (!pWeapon)
+	{
+		tTriggerBot.m_mFirstAimTime.clear();
+		return;
+	}
+
+	const int nWeaponID = pWeapon->GetWeaponID();
+	bool bAiming = false;
+	if (nWeaponID == TF_WEAPON_SNIPERRIFLE || nWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP)
+		bAiming = pEntity->InCond(TF_COND_ZOOMED);
+	else if (nWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC)
+		bAiming = pWeapon->As<CTFSniperRifleClassic>()->m_bCharging();
+	else
+	{
+		tTriggerBot.m_mFirstAimTime.clear();
+		return;
+	}
+
+	// Only track while the sniper is scoped/charging
+	if (!bAiming)
+	{
+		tTriggerBot.m_mFirstAimTime.clear();
+		return;
+	}
+
+	const Vec3 vEyePos = pEntity->m_vecOrigin() + pEntity->GetViewOffset();
+	const Vec3 vEyeAngles = pEntity->GetEyeAngles();
+	const float flMaxFOV = Vars::CheaterDetection::TriggerBotMaxFOV.Value;
+
+	std::unordered_set<int> currentTargets;
+
+	for (auto& pEnemyEntity : H::Entities.GetGroup(EntityEnum::PlayerAll))
+	{
+		auto pEnemy = pEnemyEntity->As<CTFPlayer>();
+		if (!pEnemy || pEnemy == pEntity)
+			continue;
+		if (pEnemy->IsDormant() || !pEnemy->IsAlive() || pEnemy->IsAGhost())
+			continue;
+		if (pEnemy->m_iTeamNum() == pEntity->m_iTeamNum())
+			continue;
+
+		const int iEnemyIndex = pEnemy->entindex();
+		const Vec3 vHeadPos = pEnemy->m_vecOrigin() + pEnemy->GetViewOffset();
+		const Vec3 vAngleTo = Math::CalcAngle(vEyePos, vHeadPos);
+
+		if (Math::CalcFov(vEyeAngles, vAngleTo) > flMaxFOV)
+			continue;
+		if (!SDK::VisPos(pEntity, pEnemy, vEyePos, vHeadPos))
+			continue;
+
+		currentTargets.insert(iEnemyIndex);
+		if (tTriggerBot.m_mFirstAimTime.find(iEnemyIndex) == tTriggerBot.m_mFirstAimTime.end())
+			tTriggerBot.m_mFirstAimTime[iEnemyIndex] = I::GlobalVars->curtime;
+	}
+
+	// Remove enemies no longer in the attacker's view
+	for (auto it = tTriggerBot.m_mFirstAimTime.begin(); it != tTriggerBot.m_mFirstAimTime.end();)
+	{
+		if (currentTargets.find(it->first) == currentTargets.end())
+			it = tTriggerBot.m_mFirstAimTime.erase(it);
+		else
+			++it;
+	}
+}
+
 void CCheaterDetection::TrackCritEvent(CTFPlayer* pEntity, CTFWeaponBase* pWeapon, bool bCrit)
 {
 	if (!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::CritManipulation) || !pWeapon)
@@ -220,6 +317,7 @@ void CCheaterDetection::Run()
 			mData[pPlayer].m_AimFlicking = {};
 			mData[pPlayer].m_DuckSpeed = {};
 			mData[pPlayer].m_CritTracker = {};
+			mData[pPlayer].m_TriggerBot = {};
 			continue;
 		}
 
@@ -238,6 +336,9 @@ void CCheaterDetection::Run()
 			Infract(pPlayer, "lag-comp abuse");
 		if (IsCritManipulating(pPlayer))
 			Infract(pPlayer, "crit manipulation");
+		TrackTriggerBot(pPlayer);
+		if (IsTriggerBot(pPlayer))
+			Infract(pPlayer, "triggerbot");
 	}
 }
 
@@ -270,7 +371,8 @@ void CCheaterDetection::ReportDamage(IGameEvent* pEvent)
 {
 	const bool bAimFlicking = Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::AimFlicking;
 	const bool bCritTracking = Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::CritManipulation;
-	if (!bAimFlicking && !bCritTracking)
+	const bool bTriggerBot = Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::TriggerBot;
+	if (!bAimFlicking && !bCritTracking && !bTriggerBot)
 		return;
 
 	int iIndex = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("attacker"));
@@ -298,4 +400,23 @@ void CCheaterDetection::ReportDamage(IGameEvent* pEvent)
 
 	if (bCritTracking)
 		TrackCritEvent(pEntity, pWeapon, pEvent->GetBool("crit"));
+
+	if (bTriggerBot)
+	{
+		const int nWeaponID = pWeapon->GetWeaponID();
+		if (nWeaponID == TF_WEAPON_SNIPERRIFLE || nWeaponID == TF_WEAPON_SNIPERRIFLE_DECAP || nWeaponID == TF_WEAPON_SNIPERRIFLE_CLASSIC)
+		{
+			const int iVictimIndex = I::EngineClient->GetPlayerForUserID(pEvent->GetInt("userid"));
+			auto& tTriggerBot = mData[pEntity].m_TriggerBot;
+			auto it = tTriggerBot.m_mFirstAimTime.find(iVictimIndex);
+			if (it != tTriggerBot.m_mFirstAimTime.end())
+			{
+				const float flThreshold = Vars::CheaterDetection::TriggerBotMaxReactionTime.Value / 1000.f;
+				const float flReactionTime = I::GlobalVars->curtime - it->second;
+				if (flReactionTime >= 0.f && flReactionTime < flThreshold)
+					tTriggerBot.m_bInfract = true;
+				tTriggerBot.m_mFirstAimTime.erase(it);
+			}
+		}
+	}
 }

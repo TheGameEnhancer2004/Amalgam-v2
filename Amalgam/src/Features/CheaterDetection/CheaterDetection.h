@@ -48,6 +48,12 @@ struct PlayerInfo
 		std::unordered_map<int, WeaponHistory_t> m_mWeaponHistory = {};
 		bool m_bInfract = false;
 	} m_CritTracker;
+
+	struct TriggerBot_t
+	{
+		std::unordered_map<int, float> m_mFirstAimTime = {}; // entity index -> curtime when attacker first aimed at their head
+		bool m_bInfract = false;
+	} m_TriggerBot;
 };
 
 class CCheaterDetection
@@ -62,6 +68,9 @@ private:
 	bool IsLagCompAbusing(CTFPlayer* pEntity, int iDeltaTicks);
 	bool IsCritManipulating(CTFPlayer* pEntity);
 	void TrackCritEvent(CTFPlayer* pEntity, CTFWeaponBase* pWeapon, bool bCrit);
+
+	bool IsTriggerBot(CTFPlayer* pEntity);
+	void TrackTriggerBot(CTFPlayer* pEntity);
 
 	void Infract(CTFPlayer* pEntity, const char* sReason);
 
