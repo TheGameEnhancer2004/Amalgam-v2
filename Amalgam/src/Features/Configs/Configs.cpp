@@ -179,7 +179,8 @@ template <> void CConfigs::LoadJson(const boost::property_tree::ptree& t, const 
 	for (auto it = v.begin(); it != v.end();)
 	{
 		auto uHash = FNV1A::Hash32(it->first.c_str());
-		bool bValid = uHash != FNV1A::Hash32Const("None") && (uHash == FNV1A::Hash32Const("Original") || F::Materials.m_mMaterials.contains(uHash));
+		auto matIt = F::Materials.m_mMaterials.find(uHash);
+		bool bValid = uHash != FNV1A::Hash32Const("None") && (uHash == FNV1A::Hash32Const("Original") || (matIt != F::Materials.m_mMaterials.end() && matIt->second.m_pMaterial != nullptr));
 		if (bValid)
 		{
 			int i = 0; for (auto& [s, _] : v)

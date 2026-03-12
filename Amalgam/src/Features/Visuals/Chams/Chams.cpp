@@ -58,6 +58,8 @@ void CChams::DrawModel(CBaseEntity* pEntity, Chams_t& tChams, IMatRenderContext*
 			continue;
 
 		auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
+		if (pMaterial && !pMaterial->m_pMaterial)
+			continue;
 
 		F::Materials.SetColor(pMaterial, tColor);
 		I::ModelRender->ForcedMaterialOverride(pMaterial ? pMaterial->m_pMaterial : nullptr);
@@ -94,6 +96,8 @@ void CChams::DrawModel(CBaseEntity* pEntity, Chams_t& tChams, IMatRenderContext*
 				continue;
 
 			auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
+			if (pMaterial && !pMaterial->m_pMaterial)
+				continue;
 
 			F::Materials.SetColor(pMaterial, tColor);
 			I::ModelRender->ForcedMaterialOverride(pMaterial ? pMaterial->m_pMaterial : nullptr);
@@ -319,6 +323,8 @@ bool CChams::RenderViewmodel(void* ecx, int flags, int* iReturn)
 	for (auto& [sName, tMaterial] : pGroup->m_tChams.Visible)
 	{
 		auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
+		if (pMaterial && !pMaterial->m_pMaterial)
+			continue;
 
 		F::Materials.SetColor(pMaterial, tMaterial.tColor);
 		I::ModelRender->ForcedMaterialOverride(pMaterial ? pMaterial->m_pMaterial : nullptr);
@@ -353,6 +359,8 @@ bool CChams::RenderViewmodel(const DrawModelState_t& pState, const ModelRenderIn
 	for (auto& [sName, tMaterial] : pGroup->m_tChams.Visible)
 	{
 		auto pMaterial = F::Materials.GetMaterial(FNV1A::Hash32(sName.c_str()));
+		if (pMaterial && !pMaterial->m_pMaterial)
+			continue;
 
 		F::Materials.SetColor(pMaterial, tMaterial.tColor);
 		I::ModelRender->ForcedMaterialOverride(pMaterial ? pMaterial->m_pMaterial : nullptr);

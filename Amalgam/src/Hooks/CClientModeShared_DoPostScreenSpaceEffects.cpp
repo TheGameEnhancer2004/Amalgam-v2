@@ -38,6 +38,17 @@ MAKE_HOOK(CClientModeShared_DoPostScreenSpaceEffects, U::Memory.GetVirtual(I::Cl
 	F::Chams.RenderMain();
 	F::Glow.RenderFirst();
 
+	// Safety cleanup: ensure render state is clean for subsequent rendering (e.g. VGUI panels)
+	F::Chams.m_bRendering = false;
+	F::Glow.m_bRendering = false;
+	if (auto pRenderContext = I::MaterialSystem->GetRenderContext())
+	{
+		pRenderContext->SetStencilEnable(false);
+		pRenderContext->DepthRange(0.f, 1.f);
+		pRenderContext->CullMode(MATERIAL_CULLMODE_CCW);
+	}
+	I::ModelRender->ForcedMaterialOverride(nullptr);
+
 	return CALL_ORIGINAL(rcx, pSetup);
 #endif
 }
