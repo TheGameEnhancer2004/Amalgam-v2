@@ -911,8 +911,13 @@ static inline void SolveProjectileSpeed(CTFWeaponBase* pWeapon, const Vec3& vLoc
 		return;
 
 	const float flGrav = flGravity * 800.0f;
+	if (!flGrav)
+		return;
+
 	const Vec3 vDelta = vTargetPos - vLocalPos;
 	const float flDist = vDelta.Length2D();
+	if (!flDist)
+		return;
 
 	const float flRoot = pow(flVelocity, 4) - flGrav * (flGrav * pow(flDist, 2) + 2.f * vDelta.z * pow(flVelocity, 2));
 	if (flRoot < 0.f)
