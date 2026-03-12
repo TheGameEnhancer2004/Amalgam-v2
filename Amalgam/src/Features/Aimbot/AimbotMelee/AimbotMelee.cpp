@@ -124,7 +124,9 @@ static inline std::vector<Target_t> GetTargets(CTFPlayer* pLocal, CTFWeaponBase*
 			Vec3 vPos = pEntity->GetCenter();
 			Vec3 vAngleTo = Math::CalcAngle(vLocalPos, vPos);
 			float flFOVTo = Math::CalcFov(vLocalAngles, vAngleTo);
-			if (flFOVTo > Vars::Aimbot::General::AimFOV.Value)
+			// Friendly buildings with auto repair/upgrade don't require the crosshair to already be on them
+			bool bSkipFOV = bTeam && bWrench;
+			if (!bSkipFOV && flFOVTo > Vars::Aimbot::General::AimFOV.Value)
 				continue;
 
 			int iPriority = 0;
