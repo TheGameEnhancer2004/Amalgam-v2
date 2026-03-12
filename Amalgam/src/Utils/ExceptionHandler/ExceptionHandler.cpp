@@ -5,6 +5,7 @@
 #include <ImageHlp.h>
 #include <Psapi.h>
 #include <deque>
+#include <mutex>
 #include <sstream>
 #include <fstream>
 #include <format>
@@ -28,6 +29,8 @@ static PVOID s_pHandle;
 static LPVOID s_lpParam;
 static std::unordered_map<LPVOID, bool> s_mAddresses = {};
 static int s_iExceptions = 0;
+static std::once_flag s_symInitFlag;
+static bool s_bSymReady = false;
 
 static inline std::deque<Frame_t> StackTrace(PCONTEXT pContext)
 {
@@ -36,7 +39,11 @@ static inline std::deque<Frame_t> StackTrace(PCONTEXT pContext)
 	HANDLE hProcess = GetCurrentProcess();
 	HANDLE hThread = GetCurrentThread();
 
-	if (!SymInitialize(hProcess, nullptr, TRUE))
+	std::call_once(s_symInitFlag, [&]
+		{
+			s_bSymReady = SymInitialize(hProcess, nullptr, TRUE) != FALSE;
+		});
+	if (!s_bSymReady)
 		return vTrace;
 
 	SymSetOptions(SYMOPT_LOAD_LINES);
@@ -95,11 +102,7 @@ static inline std::deque<Frame_t> StackTrace(PCONTEXT pContext)
 			auto sPattern = U::Memory.GenerateSignatureAtAddress(tStackFrame.AddrPC.Offset);
 			tFrame.m_sPattern = sPattern.empty() ? "No signature" : sPattern;
 		}
-
-		vTrace.push_back(tFrame);
 	}
-
-	SymCleanup(hProcess);
 
 	return vTrace;
 }

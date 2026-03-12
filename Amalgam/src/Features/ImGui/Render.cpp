@@ -2,6 +2,7 @@
 #include "Render.h"
 
 #include "../../Hooks/Direct3DDevice9.h"
+#include "../../Features/Configs/Configs.h"
 #include <ImGui/imgui_impl_win32.h>
 #include "Fonts/MaterialDesign/MaterialIcons.h"
 #include "Fonts/MaterialDesign/IconDefinitions.h"
@@ -162,7 +163,8 @@ void CRender::Initialize(IDirect3DDevice9* pDevice)
 	ImGui_ImplDX9_Init(pDevice);
 
 	auto& io = ImGui::GetIO();
-	//io.IniFilename = nullptr;
+	static std::string sIniPath = F::Configs.m_sConfigPath + "imgui.ini";
+	io.IniFilename = sIniPath.c_str();
 	io.LogFilename = nullptr;
 
 	LoadFonts();

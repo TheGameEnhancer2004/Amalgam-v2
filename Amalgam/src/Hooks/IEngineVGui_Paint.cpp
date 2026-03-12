@@ -26,6 +26,8 @@ MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 
 	F::AutoQueue.Run();
 
+	CALL_ORIGINAL(rcx, iMode);
+
 	if (iMode & PAINT_INGAMEPANELS && !SDK::CleanScreenshot())
 	{
 		H::Draw.UpdateScreenSize();
@@ -55,8 +57,6 @@ MAKE_HOOK(IEngineVGui_Paint, U::Memory.GetVirtual(I::EngineVGui, 14), void,
 		}
 		H::Draw.End();
 	}
-
-	CALL_ORIGINAL(rcx, iMode);
 
 	if (iMode & PAINT_UIPANELS && !SDK::CleanScreenshot())
 	{
