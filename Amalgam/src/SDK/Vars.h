@@ -565,8 +565,8 @@ NAMESPACE_BEGIN(Vars)
 
 	NAMESPACE_BEGIN(CheaterDetection, Cheater Detection)
 		CVarEnum(Methods, "Detection methods", 0b000000, DROPDOWN_MULTI, nullptr,
-			VA_LIST("Invalid pitch", "Packet choking", "Aim flicking", "Duck Speed", "Lagcomp abuse", "Critbucket"),
-			InvalidPitch = 1 << 0, PacketChoking = 1 << 1, AimFlicking = 1 << 2, DuckSpeed = 1 << 3, LagCompAbuse = 1 << 4, CritManipulation = 1 << 5);
+			VA_LIST("Invalid pitch", "Packet choking", "Aim flicking", "Duck Speed", "Lagcomp abuse", "Critbucket", "Triggerbot"),
+			InvalidPitch = 1 << 0, PacketChoking = 1 << 1, AimFlicking = 1 << 2, DuckSpeed = 1 << 3, LagCompAbuse = 1 << 4, CritManipulation = 1 << 5, TriggerBot = 1 << 6);
 		CVar(DetectionsRequired, "Detections required", 10, SLIDER_MIN, 0, 50);
 		CVar(MinimumChoking, "Minimum choking", 20, SLIDER_MIN, 4, 22);
 		CVar(MinimumFlick, "Minimum flick angle", 20.f, SLIDER_PRECISION, 10.f, 30.f); // min flick size to suspect
@@ -576,6 +576,8 @@ NAMESPACE_BEGIN(Vars)
 		CVar(LagCompBurstCount, "Lag burst count", 3, SLIDER_MIN, 1, 6);
 		CVar(CritWindow, "Crit window size", 12, SLIDER_MIN, 6, 30);
 		CVar(CritThreshold, "Crit rate threshold", 85.f, SLIDER_PRECISION, 50.f, 100.f, 5.f);
+		CVar(TriggerBotMaxReactionTime, "Triggerbot max reaction time", 100, SLIDER_MIN, 10, 500); // ms
+		CVar(TriggerBotMaxFOV, "Triggerbot max FOV", 5.f, SLIDER_PRECISION, 1.f, 30.f);
 	NAMESPACE_END(CheaterDetection)
 
 	NAMESPACE_BEGIN(ESP)

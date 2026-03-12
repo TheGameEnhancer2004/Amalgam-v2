@@ -2173,6 +2173,12 @@ void CMenu::MenuAnticheat(int iTab)
 				FSlider(Vars::CheaterDetection::CritThreshold, FSliderEnum::Right);
 			}
 			PopTransparent();
+			PushTransparent(!(Vars::CheaterDetection::Methods.Value & Vars::CheaterDetection::MethodsEnum::TriggerBot));
+			{
+				FSlider(Vars::CheaterDetection::TriggerBotMaxReactionTime, FSliderEnum::Left);
+				FSlider(Vars::CheaterDetection::TriggerBotMaxFOV, FSliderEnum::Right);
+			}
+			PopTransparent();
 		}
 		EndSection();
 		break;
