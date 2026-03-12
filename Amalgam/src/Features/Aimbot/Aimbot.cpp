@@ -53,12 +53,26 @@ float CAimbot::GetSmoothStrength(const Vec3& vCurAngle, const Vec3& vToAngle) co
 	float flVelocityScale = 1.f;
 	if (Vars::Aimbot::General::AimType.Value == Vars::Aimbot::General::AimTypeEnum::SmoothVelocity && G::AimTarget.m_iEntIndex > 0)
 	{
-		if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
+		static float s_flCachedVelocityScale = 1.f;
+		static int s_iCachedTick = -1;
+		static int s_iCachedEntIndex = -1;
+
+		const int iCurTick = I::GlobalVars->tickcount;
+		if (s_iCachedTick != iCurTick || s_iCachedEntIndex != G::AimTarget.m_iEntIndex)
 		{
-			const float flSpeed = pTarget->GetAbsVelocity().Length2D();
-			const float flSpeedRatio = std::clamp(flSpeed / 320.f, 0.f, 1.75f);
-			flVelocityScale = std::clamp(0.65f + flSpeedRatio * 0.4f, 0.35f, 1.35f);
+			s_iCachedTick = iCurTick;
+			s_iCachedEntIndex = G::AimTarget.m_iEntIndex;
+			s_flCachedVelocityScale = 1.f;
+
+			if (auto pTarget = I::ClientEntityList->GetClientEntity(G::AimTarget.m_iEntIndex)->As<CBaseEntity>())
+			{
+				const float flSpeed = pTarget->GetAbsVelocity().Length2D();
+				const float flSpeedRatio = std::clamp(flSpeed / 320.f, 0.f, 1.75f);
+				s_flCachedVelocityScale = std::clamp(0.65f + flSpeedRatio * 0.4f, 0.35f, 1.35f);
+			}
 		}
+
+		flVelocityScale = s_flCachedVelocityScale;
 	}
 
 	return std::clamp(flStrength * std::clamp(flCurve, 0.05f, 1.f) * flVelocityScale, 0.f, 1.f);
