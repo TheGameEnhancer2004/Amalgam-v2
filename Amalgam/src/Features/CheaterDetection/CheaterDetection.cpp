@@ -305,8 +305,6 @@ void CCheaterDetection::Run()
 		auto pPlayer = pEntity->As<CTFPlayer>();
 		int iIndex = pPlayer->entindex();
 		float flDeltaTime = H::Entities.GetDeltaTime(iIndex);
-		if (!flDeltaTime)
-			continue;
 
 		const int iDeltaTicks = TIME_TO_TICKS(flDeltaTime);
 
@@ -321,6 +319,16 @@ void CCheaterDetection::Run()
 			continue;
 		}
 
+		// Track dormancy state for all alive players (even with zero delta) to detect transitions.
+		// When a player exits dormancy their simulation time jumps, which would otherwise be
+		// mistaken for lag-comp abuse. Clearing the burst history on that transition prevents it.
+		const bool bCurrDormant = pPlayer->IsDormant();
+		const bool bWasDormant = mData[pPlayer].m_PacketChoking.m_LagComp.m_bWasDormant;
+		mData[pPlayer].m_PacketChoking.m_LagComp.m_bWasDormant = bCurrDormant;
+
+		if (!flDeltaTime)
+			continue;
+
 		mData[pPlayer].m_uAccountID = pResource->m_iAccountID(iIndex);
 		mData[pPlayer].m_sName = F::PlayerUtils.GetPlayerName(iIndex, pResource->GetName(iIndex));
 
@@ -332,7 +340,14 @@ void CCheaterDetection::Run()
 			Infract(pPlayer, "flicking");
 		if (IsDuckSpeed(pPlayer))
 			Infract(pPlayer, "duck speed");
-		if (IsLagCompAbusing(pPlayer, iDeltaTicks))
+		if (bWasDormant && !bCurrDormant)
+		{
+			// Player just became visible after dormancy; clear accumulated bursts so the
+			// sim-time catch-up on this frame is not mistakenly counted as lag-comp abuse.
+			mData[pPlayer].m_PacketChoking.m_LagComp.m_vBurstTicks.clear();
+			mData[pPlayer].m_PacketChoking.m_LagComp.m_vDeltaCmds.clear();
+		}
+		else if (IsLagCompAbusing(pPlayer, iDeltaTicks))
 			Infract(pPlayer, "lag-comp abuse");
 		if (IsCritManipulating(pPlayer))
 			Infract(pPlayer, "crit manipulation");
