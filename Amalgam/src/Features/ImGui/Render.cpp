@@ -48,8 +48,7 @@ void CRender::Render(IDirect3DDevice9* pDevice)
 	ImGui_ImplWin32_NewFrame();
 	NewFrame();
 
-	if (!Vars::Menu::Streamproof.Value)
-		F::Menu.Render();
+	F::Menu.Render();
 
 	EndFrame();
 	ImGui::Render();
