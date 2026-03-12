@@ -24,6 +24,7 @@ struct PlayerInfo
 			std::deque<int> m_vBurstTicks = {}; // tickcounts of recent multi-cmd bursts
 			std::deque<int> m_vDeltaCmds = {}; // delta cmd counts for reference
 			bool m_bInfract = false;
+			bool m_bWasDormant = false; // track dormancy transitions to avoid false positives
 		} m_LagComp;
 	} m_PacketChoking;
 
